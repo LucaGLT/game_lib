@@ -32,53 +32,53 @@
 ---
 
 ## Phase 5 – Tile Management
-- [ ] Implement `create_tile(id)` — inserts into `_tiles`, throws on duplicate
-- [ ] Implement `remove_tile(id)` — unassigns all member locations before deletion
-- [ ] Implement `has_tile(id)`
-- [ ] Implement `all_tiles()`
-- [ ] Implement `tile_count()`
+- [x] Implement `create_tile(id)` — inserts into `_tiles`, throws on duplicate
+- [x] Implement `remove_tile(id)` — unassigns all member locations before deletion
+- [x] Implement `has_tile(id)`
+- [x] Implement `all_tiles()`
+- [x] Implement `tile_count()`
 
 ---
 
 ## Phase 6 – Location ↔ Tile Assignment
-- [ ] Implement `assign_to_tile(loc, tile)` — handles re-assignment from another tile
-- [ ] Implement `unassign_from_tile(loc)` — no-op if not assigned
-- [ ] Implement `tile_of(loc)` — returns `std::optional<TileId>`
-- [ ] Implement `locations_in_tile(tile)`
+- [x] Implement `assign_to_tile(loc, tile)` — handles re-assignment from another tile
+- [x] Implement `unassign_from_tile(loc)` — no-op if not assigned
+- [x] Implement `tile_of(loc)` — returns `std::optional<TileId>`
+- [x] Implement `locations_in_tile(tile)`
 
 ---
 
 ## Phase 7 – Adjacency
-- [ ] Implement `set_adjacent(a, b, bidirectional)` — rejects self-loops
-- [ ] Implement `remove_adjacent(a, b, bidirectional)` — no-op if edge absent
-- [ ] Implement `are_adjacent(a, b)`
-- [ ] Implement `adjacent_to(id)`
+- [x] Implement `set_adjacent(a, b, bidirectional)` — rejects self-loops
+- [x] Implement `remove_adjacent(a, b, bidirectional)` — no-op if edge absent
+- [x] Implement `are_adjacent(a, b)`
+- [x] Implement `adjacent_to(id)`
 
 ---
 
 ## Phase 8 – Items
-- [ ] Implement `add_item(id, item)`
-- [ ] Implement `remove_item(id, index)` — throws on out-of-range
-- [ ] Implement `items_at(id)` — remove temporary static stub
-- [ ] Implement `clear_items(id)`
+- [x] Implement `add_item(id, item)`
+- [x] Implement `remove_item(id, index)` — throws on out-of-range
+- [x] Implement `items_at(id)` — remove temporary static stub
+- [x] Implement `clear_items(id)`
 
 ---
 
 ## Phase 9 – Location Metadata
-- [ ] Implement `set_location_meta(id, key, value)`
-- [ ] Implement `get_location_meta(id, key)` — throws `UnknownMetaKeyError`
-- [ ] Implement `has_location_meta(id, key)`
-- [ ] Implement `remove_location_meta(id, key)` — no-op if absent
-- [ ] Implement `location_metadata(id)` — remove temporary static stub
+- [x] Implement `set_location_meta(id, key, value)`
+- [x] Implement `get_location_meta(id, key)` — throws `UnknownMetaKeyError`
+- [x] Implement `has_location_meta(id, key)`
+- [x] Implement `remove_location_meta(id, key)` — no-op if absent
+- [x] Implement `location_metadata(id)` — remove temporary static stub
 
 ---
 
 ## Phase 10 – Tile Metadata
-- [ ] Implement `set_tile_meta(id, key, value)`
-- [ ] Implement `get_tile_meta(id, key)` — throws `UnknownMetaKeyError`
-- [ ] Implement `has_tile_meta(id, key)`
-- [ ] Implement `remove_tile_meta(id, key)` — no-op if absent
-- [ ] Implement `tile_metadata(id)` — remove temporary static stub
+- [x] Implement `set_tile_meta(id, key, value)`
+- [x] Implement `get_tile_meta(id, key)` — throws `UnknownMetaKeyError`
+- [x] Implement `has_tile_meta(id, key)`
+- [x] Implement `remove_tile_meta(id, key)` — no-op if absent
+- [x] Implement `tile_metadata(id)` — remove temporary static stub
 
 ---
 
@@ -99,5 +99,5 @@
 ## Phase 12 – Documentation
 - [ ] Configure `Doxyfile` for `gmMap`
 - [ ] Generate Doxygen HTML docs
-- [ ] Write `gmMap_API.md` (usage examples)
-- [ ] Update root `README.md`
+- [x] Write `gmMap_API.md` (usage examples)
+- [x] Update root `README.md`

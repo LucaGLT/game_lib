@@ -602,31 +602,50 @@ std::size_t gmMap<ItemT>::location_count() const
 template <typename ItemT>
 void gmMap<ItemT>::create_tile(TileId id)
 {
-    // TODO
+    if (_tiles.find(id) != _tiles.end()) {
+        throw DuplicateTileError("Tile " + std::to_string(id) + " already exists");
+    }
+    _tiles[id] = TileRecord{};
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_tile(TileId id)
 {
-    // TODO
+    _require_tile(id);
+
+    TileRecord& tile = _tiles[id];
+    for (LocationId loc : tile.locations) {
+        auto loc_it = _locations.find(loc);
+        if (loc_it != _locations.end()) {
+            loc_it->second.tile_id.reset();
+        }
+    }
+
+    _tiles.erase(id);
 }
 
 template <typename ItemT>
 bool gmMap<ItemT>::has_tile(TileId id) const
 {
-    return false; // TODO
+    return _tiles.find(id) != _tiles.end();
 }
 
 template <typename ItemT>
 std::vector<TileId> gmMap<ItemT>::all_tiles() const
 {
-    return {}; // TODO
+    std::vector<TileId> result;
+    result.reserve(_tiles.size());
+    for (const auto& [id, tile] : _tiles) {
+        (void)tile;
+        result.push_back(id);
+    }
+    return result;
 }
 
 template <typename ItemT>
 std::size_t gmMap<ItemT>::tile_count() const
 {
-    return 0; // TODO
+    return _tiles.size();
 }
 
 // -- Location ↔ Tile assignment ------------------------------------------------
@@ -634,25 +653,59 @@ std::size_t gmMap<ItemT>::tile_count() const
 template <typename ItemT>
 void gmMap<ItemT>::assign_to_tile(LocationId loc, TileId tile)
 {
-    // TODO
+    _require_location(loc);
+    _require_tile(tile);
+
+    LocationRecord& loc_rec = _locations[loc];
+    if (loc_rec.tile_id.has_value()) {
+        TileId prev_tile = loc_rec.tile_id.value();
+        if (prev_tile == tile) {
+            return;
+        }
+        _tiles[prev_tile].locations.erase(loc);
+    }
+
+    _tiles[tile].locations.insert(loc);
+    loc_rec.tile_id = tile;
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::unassign_from_tile(LocationId loc)
 {
-    // TODO
+    _require_location(loc);
+
+    LocationRecord& loc_rec = _locations[loc];
+    if (!loc_rec.tile_id.has_value()) {
+        return;
+    }
+
+    TileId tile = loc_rec.tile_id.value();
+    auto tile_it = _tiles.find(tile);
+    if (tile_it != _tiles.end()) {
+        tile_it->second.locations.erase(loc);
+    }
+    loc_rec.tile_id.reset();
 }
 
 template <typename ItemT>
 std::optional<TileId> gmMap<ItemT>::tile_of(LocationId loc) const
 {
-    return std::nullopt; // TODO
+    _require_location(loc);
+    return _locations.at(loc).tile_id;
 }
 
 template <typename ItemT>
 std::vector<LocationId> gmMap<ItemT>::locations_in_tile(TileId tile) const
 {
-    return {}; // TODO
+    _require_tile(tile);
+
+    const TileRecord& tile_rec = _tiles.at(tile);
+    std::vector<LocationId> result;
+    result.reserve(tile_rec.locations.size());
+    for (LocationId loc : tile_rec.locations) {
+        result.push_back(loc);
+    }
+    return result;
 }
 
 // -- Adjacency -----------------------------------------------------------------
@@ -660,25 +713,53 @@ std::vector<LocationId> gmMap<ItemT>::locations_in_tile(TileId tile) const
 template <typename ItemT>
 void gmMap<ItemT>::set_adjacent(LocationId a, LocationId b, bool bidirectional)
 {
-    // TODO
+    _require_location(a);
+    _require_location(b);
+
+    if (a == b) {
+        throw InvalidAdjacencyError("Cannot create self-loop for location " + std::to_string(a));
+    }
+
+    _locations[a].neighbors.insert(b);
+    if (bidirectional) {
+        _locations[b].neighbors.insert(a);
+    }
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_adjacent(LocationId a, LocationId b, bool bidirectional)
 {
-    // TODO
+    _require_location(a);
+    _require_location(b);
+
+    _locations[a].neighbors.erase(b);
+    if (bidirectional) {
+        _locations[b].neighbors.erase(a);
+    }
 }
 
 template <typename ItemT>
 bool gmMap<ItemT>::are_adjacent(LocationId a, LocationId b) const
 {
-    return false; // TODO
+    _require_location(a);
+    _require_location(b);
+
+    const auto& neighbors = _locations.at(a).neighbors;
+    return neighbors.find(b) != neighbors.end();
 }
 
 template <typename ItemT>
 std::vector<LocationId> gmMap<ItemT>::adjacent_to(LocationId id) const
 {
-    return {}; // TODO
+    _require_location(id);
+
+    const auto& neighbors = _locations.at(id).neighbors;
+    std::vector<LocationId> result;
+    result.reserve(neighbors.size());
+    for (LocationId neighbor : neighbors) {
+        result.push_back(neighbor);
+    }
+    return result;
 }
 
 // -- Items ---------------------------------------------------------------------
@@ -686,26 +767,37 @@ std::vector<LocationId> gmMap<ItemT>::adjacent_to(LocationId id) const
 template <typename ItemT>
 void gmMap<ItemT>::add_item(LocationId id, const ItemT& item)
 {
-    // TODO
+    _require_location(id);
+    _locations[id].items.push_back(item);
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_item(LocationId id, std::size_t index)
 {
-    // TODO
+    _require_location(id);
+
+    std::vector<ItemT>& items = _locations[id].items;
+    if (index >= items.size()) {
+        throw InvalidItemIndexError(
+            "Item index " + std::to_string(index) +
+            " out of range for location " + std::to_string(id));
+    }
+
+    items.erase(items.begin() + static_cast<std::ptrdiff_t>(index));
 }
 
 template <typename ItemT>
 const std::vector<ItemT>& gmMap<ItemT>::items_at(LocationId id) const
 {
-    static std::vector<ItemT> empty; // TODO - temporary stub return
-    return empty;
+    _require_location(id);
+    return _locations.at(id).items;
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::clear_items(LocationId id)
 {
-    // TODO
+    _require_location(id);
+    _locations[id].items.clear();
 }
 
 // -- Location metadata ---------------------------------------------------------
@@ -715,34 +807,45 @@ void gmMap<ItemT>::set_location_meta(LocationId id,
                                      const std::string& key,
                                      const std::any& value)
 {
-    // TODO
+    _require_location(id);
+    _locations[id].meta[key] = value;
 }
 
 template <typename ItemT>
 const std::any& gmMap<ItemT>::get_location_meta(LocationId id,
                                                 const std::string& key) const
 {
-    static std::any empty; // TODO - temporary stub return
-    return empty;
+    _require_location(id);
+
+    const Metadata& meta = _locations.at(id).meta;
+    auto it = meta.find(key);
+    if (it == meta.end()) {
+        throw UnknownMetaKeyError(
+            "Location metadata key '" + key + "' not found for location " + std::to_string(id));
+    }
+    return it->second;
 }
 
 template <typename ItemT>
 bool gmMap<ItemT>::has_location_meta(LocationId id, const std::string& key) const
 {
-    return false; // TODO
+    _require_location(id);
+    const Metadata& meta = _locations.at(id).meta;
+    return meta.find(key) != meta.end();
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_location_meta(LocationId id, const std::string& key)
 {
-    // TODO
+    _require_location(id);
+    _locations[id].meta.erase(key);
 }
 
 template <typename ItemT>
 const Metadata& gmMap<ItemT>::location_metadata(LocationId id) const
 {
-    static Metadata empty; // TODO - temporary stub return
-    return empty;
+    _require_location(id);
+    return _locations.at(id).meta;
 }
 
 // -- Tile metadata -------------------------------------------------------------
@@ -752,34 +855,45 @@ void gmMap<ItemT>::set_tile_meta(TileId id,
                                  const std::string& key,
                                  const std::any& value)
 {
-    // TODO
+    _require_tile(id);
+    _tiles[id].meta[key] = value;
 }
 
 template <typename ItemT>
 const std::any& gmMap<ItemT>::get_tile_meta(TileId id,
                                             const std::string& key) const
 {
-    static std::any empty; // TODO - temporary stub return
-    return empty;
+    _require_tile(id);
+
+    const Metadata& meta = _tiles.at(id).meta;
+    auto it = meta.find(key);
+    if (it == meta.end()) {
+        throw UnknownMetaKeyError(
+            "Tile metadata key '" + key + "' not found for tile " + std::to_string(id));
+    }
+    return it->second;
 }
 
 template <typename ItemT>
 bool gmMap<ItemT>::has_tile_meta(TileId id, const std::string& key) const
 {
-    return false; // TODO
+    _require_tile(id);
+    const Metadata& meta = _tiles.at(id).meta;
+    return meta.find(key) != meta.end();
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_tile_meta(TileId id, const std::string& key)
 {
-    // TODO
+    _require_tile(id);
+    _tiles[id].meta.erase(key);
 }
 
 template <typename ItemT>
 const Metadata& gmMap<ItemT>::tile_metadata(TileId id) const
 {
-    static Metadata empty; // TODO - temporary stub return
-    return empty;
+    _require_tile(id);
+    return _tiles.at(id).meta;
 }
 
 } // namespace GameMap

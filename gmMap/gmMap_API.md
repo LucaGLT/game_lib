@@ -971,6 +971,73 @@ try {
 }
 ```
 
+### Integrazione con gmLog (tracing operazioni mappa)
+
+```cpp
+#include "gmMap.hpp"
+#include "gmLog/LoggerFactory.hpp"
+#include "gmLog/macros/LogMacros.hpp"
+
+GameMap::gmMap<std::string> world;
+GmLog::Logger log = GmLog::LoggerFactory::createFileLogger(
+  "gmMapFlow", "gmMap_flow.log", GmLog::LogLevel::Info, true);
+
+world.create_tile(1);
+LOG_INFO(log, "Creato tile 1");
+
+world.create_location(1001);
+world.assign_to_tile(1001, 1);
+LOG_INFO(log, "Assegnata location 1001 a tile 1");
+
+world.set_location_meta(1001, "name", std::string("Bridge"));
+LOG_INFO(log, "Metadata aggiornati per location 1001");
+```
+
+### Integrazione con gmSave (snapshot JSON dello stato)
+
+`gmMap` usa internamente `std::any` per i metadata, quindi il salvataggio
+diretto dell'intera mappa richiede un DTO serializzabile. Una strategia
+pratica e stabile e' esportare uno snapshot tipizzato.
+
+```cpp
+#include "gmMap.hpp"
+#include "gmSave/gmSave.hpp"
+#include <string>
+#include <vector>
+
+struct MapSnapshot {
+  std::vector<GameMap::LocationId> locations;
+  std::vector<GameMap::TileId> tiles;
+};
+
+inline void to_json(nlohmann::json& j, const MapSnapshot& s) {
+  j = nlohmann::json{{"locations", s.locations}, {"tiles", s.tiles}};
+}
+
+inline void from_json(const nlohmann::json& j, MapSnapshot& s) {
+  j.at("locations").get_to(s.locations);
+  j.at("tiles").get_to(s.tiles);
+}
+
+GameMap::gmMap<std::string> world;
+world.create_location(1);
+world.create_location(2);
+world.create_tile(10);
+
+MapSnapshot out;
+out.locations = world.all_locations();
+out.tiles = world.all_tiles();
+
+GmSave::save_versioned("gmMap_snapshot.json", out, 1);
+
+MapSnapshot loaded = GmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 1);
+```
+
+Note:
+- Per persistere anche items e adjacency in modo completo, estendi il DTO con:
+  liste di edge, item per location e metadati in formato tipizzato (non `std::any`).
+- `gmSave::peek_version()` e' utile per migrazioni di formato degli snapshot.
+
 ---
 
 ## Error Handling
