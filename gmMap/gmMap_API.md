@@ -25,6 +25,7 @@
     - [Items](#items)
     - [Location Metadata](#location-metadata)
     - [Tile Metadata](#tile-metadata)
+    - [JSON Persistence](#json-persistence)
   - [Private Internals](#private-internals)
 - [Class Invariants](#class-invariants)
 - [Usage Examples](#usage-examples)
@@ -818,6 +819,96 @@ const Metadata& tile_metadata(TileId id) const;
 **Returns:** Const reference to the full `Metadata` map of the tile.
 
 **Throws:** `UnknownTileError` if `id` does not exist.
+
+---
+
+### JSON Persistence
+
+gmMap provides versioned JSON serialization and deserialization via the **gmSave** library, enabling complete round-trip persistence of map state including all locations, tiles, assignments, adjacency relationships, items, and metadata.
+
+#### `export_snapshot_json()`
+
+```cpp
+void export_snapshot_json(const std::string& filepath) const;
+```
+
+Exports the complete map state to a versioned JSON file. The JSON envelope contains:
+- All location IDs
+- All tile IDs
+- Location-to-tile assignments
+- Adjacency edges (stored as directed pairs)
+- Items at each location
+- Location metadata (serialized with type discriminators)
+- Tile metadata (serialized with type discriminators)
+
+| Parameter | Description |
+|---|---|
+| `filepath` | Output JSON file path. Created or overwritten. |
+
+**Throws:** `GmSave::FileWriteError` if the file cannot be written.
+
+**Example:**
+```cpp
+gmMap<int> game_map;
+// ... populate map ...
+game_map.export_snapshot_json("game_state.json");  // Saved with version envelope
+```
+
+#### `import_snapshot_json()`
+
+```cpp
+void import_snapshot_json(const std::string& filepath);
+```
+
+Imports a complete map state from a versioned JSON file (created by `export_snapshot_json()`).
+The current map state is cleared and replaced with the loaded snapshot.
+
+| Parameter | Description |
+|---|---|
+| `filepath` | Input JSON file path (must be versioned gmSave format). |
+
+**Throws:**
+- `GmSave::FileReadError` if the file cannot be read.
+- `GmSave::JsonParseError` if the JSON is malformed.
+- `GmSave::VersionMismatchError` if the version field does not match the expected version (currently v1).
+
+**Example:**
+```cpp
+gmMap<int> restored_map;
+restored_map.import_snapshot_json("game_state.json");
+// Map now contains all state from the saved file
+```
+
+#### Metadata Serialization Details
+
+Metadata values (`MetadataValue` variant) are serialized with explicit type discriminators to ensure type safety during deserialization:
+
+```json
+{
+  "location_id": 1,
+  "metadata": {
+    "name": { "_type": "string", "_value": "Central Chamber" },
+    "owner_id": { "_type": "uid_ref", "_value": 5001 },
+    "occupants": { "_type": "uid_list", "_value": [5001, 5002, 5003] },
+    "level": { "_type": "int64", "_value": 2 },
+    "danger": { "_type": "double", "_value": 7.5 },
+    "discovered": { "_type": "bool", "_value": true }
+  }
+}
+```
+
+Supported metadata types:
+- `null`: `nullptr_t`
+- `bool`: Boolean flag
+- `int64`: 64-bit signed integer
+- `double`: Floating-point number
+- `string`: Text value
+- `uid_ref`: Single external entity UID reference
+- `uid_list`: List of external entity UIDs
+
+**Note:** The `uid_ref` and `uid_list` types store stable `EntityUid` identifiers for external objects.
+The runtime pointer cache (`register_runtime_entity()`, etc.) is **not** persisted and must be
+repopulated by the application after loading.
 
 ---
 

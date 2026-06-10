@@ -19,8 +19,11 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
 #include <vector>
+
+#include "../gmSave/gmSave.hpp"
 
 namespace GameMap {
 
@@ -48,6 +51,38 @@ using MetadataValue = std::variant<std::nullptr_t, bool, int64_t, double, std::s
 
 /// @brief Key-value store used for metadata on locations and tiles.
 using Metadata = std::unordered_map<std::string, MetadataValue>;
+
+// --- Snapshot DTO for JSON persistence ----------------------------------------
+
+/**
+ * @brief Serializable snapshot of a gmMap state (includes locations, tiles,
+ *        assignment, adjacency, items, and metadata).
+ *
+ * @tparam ItemT The item type stored at locations.
+ */
+template <typename ItemT>
+struct MapSnapshot {
+    /// All location IDs currently in the map.
+    std::vector<LocationId> location_ids;
+
+    /// All tile IDs currently in the map.
+    std::vector<TileId> tile_ids;
+
+    /// Location-to-tile assignments (location -> tile).
+    std::vector<std::pair<LocationId, TileId>> assignments;
+
+    /// Adjacency edges stored as pairs of location IDs.
+    std::vector<std::pair<LocationId, LocationId>> adjacency_edges;
+
+    /// Items stored at each location.
+    std::unordered_map<LocationId, std::vector<ItemT>> items_by_location;
+
+    /// Metadata for each location.
+    std::unordered_map<LocationId, Metadata> location_metadata_map;
+
+    /// Metadata for each tile.
+    std::unordered_map<TileId, Metadata> tile_metadata_map;
+};
 
 // --- Exceptions ---------------------------------------------------------------
 
@@ -471,8 +506,30 @@ public:
     */
     void clear_runtime_entity_cache();
 
+    // -- JSON persistence (versioned via gmSave) -------------------------------
+
     /**
-     * @brief Checks whether a metadata key is present on a tile.
+     * @brief Exports the complete map state to a versioned JSON file.
+     *
+     * @param filepath Path to write the snapshot to.
+     * @throws FileWriteError if the file cannot be written.
+     */
+    void export_snapshot_json(const std::string& filepath) const;
+
+    /**
+     * @brief Imports a complete map state from a versioned JSON file.
+     *
+     * Clears the current map and replaces it with the loaded state.
+     *
+     * @param filepath Path to read the snapshot from.
+     * @throws FileReadError if the file cannot be read.
+     * @throws JsonParseError if the JSON is malformed.
+     * @throws VersionMismatchError if the version does not match expected (currently v1).
+     */
+    void import_snapshot_json(const std::string& filepath);
+
+    /**
+     * @brief Checks if a tile has a specific metadata key.
      * @param id  Target tile.
      * @param key Metadata key string.
      * @return `true` if the key exists, `false` otherwise.
@@ -966,6 +1023,244 @@ template <typename ItemT>
 void gmMap<ItemT>::clear_runtime_entity_cache()
 {
     _runtime_entities.clear();
+}
+
+// Helper to serialize a single MetadataValue to JSON
+inline nlohmann::json serialize_metadata_value(const MetadataValue& val)
+{
+    nlohmann::json j = nlohmann::json::object();
+
+    if (std::holds_alternative<std::nullptr_t>(val)) {
+        j["_type"] = "null";
+        j["_value"] = nullptr;
+    } else if (std::holds_alternative<bool>(val)) {
+        j["_type"] = "bool";
+        j["_value"] = std::get<bool>(val);
+    } else if (std::holds_alternative<int64_t>(val)) {
+        j["_type"] = "int64";
+        j["_value"] = std::get<int64_t>(val);
+    } else if (std::holds_alternative<double>(val)) {
+        j["_type"] = "double";
+        j["_value"] = std::get<double>(val);
+    } else if (std::holds_alternative<std::string>(val)) {
+        j["_type"] = "string";
+        j["_value"] = std::get<std::string>(val);
+    } else if (std::holds_alternative<UidRef>(val)) {
+        j["_type"] = "uid_ref";
+        j["_value"] = std::get<UidRef>(val).value;
+    } else if (std::holds_alternative<UidList>(val)) {
+        j["_type"] = "uid_list";
+        const auto& list = std::get<UidList>(val);
+        j["_value"] = nlohmann::json::array();
+        for (const auto& ref : list) {
+            j["_value"].push_back(ref.value);
+        }
+    }
+    return j;
+}
+
+// Helper to deserialize a MetadataValue from JSON
+inline MetadataValue deserialize_metadata_value(const nlohmann::json& j)
+{
+    std::string type = j.at("_type").get<std::string>();
+
+    if (type == "null") {
+        return nullptr;
+    } else if (type == "bool") {
+        return j.at("_value").get<bool>();
+    } else if (type == "int64") {
+        return j.at("_value").get<int64_t>();
+    } else if (type == "double") {
+        return j.at("_value").get<double>();
+    } else if (type == "string") {
+        return j.at("_value").get<std::string>();
+    } else if (type == "uid_ref") {
+        return UidRef{j.at("_value").get<EntityUid>()};
+    } else if (type == "uid_list") {
+        UidList list;
+        for (const auto& item : j.at("_value")) {
+            list.push_back(UidRef{item.get<EntityUid>()});
+        }
+        return list;
+    }
+    return nullptr;
+}
+
+template <typename ItemT>
+void to_json(nlohmann::json& j, const MapSnapshot<ItemT>& snap)
+{
+    j["location_ids"] = snap.location_ids;
+    j["tile_ids"] = snap.tile_ids;
+    j["assignments"] = snap.assignments;
+    j["adjacency_edges"] = snap.adjacency_edges;
+    j["items_by_location"] = snap.items_by_location;
+
+    // Serialize location metadata with explicit MetadataValue conversion
+    nlohmann::json loc_meta_json = nlohmann::json::object();
+    for (const auto& [loc_id, meta_map] : snap.location_metadata_map) {
+        nlohmann::json loc_meta_obj = nlohmann::json::object();
+        for (const auto& [key, value] : meta_map) {
+            loc_meta_obj[key] = serialize_metadata_value(value);
+        }
+        loc_meta_json[std::to_string(loc_id)] = loc_meta_obj;
+    }
+    j["location_metadata_map"] = loc_meta_json;
+
+    // Serialize tile metadata with explicit MetadataValue conversion
+    nlohmann::json tile_meta_json = nlohmann::json::object();
+    for (const auto& [tile_id, meta_map] : snap.tile_metadata_map) {
+        nlohmann::json tile_meta_obj = nlohmann::json::object();
+        for (const auto& [key, value] : meta_map) {
+            tile_meta_obj[key] = serialize_metadata_value(value);
+        }
+        tile_meta_json[std::to_string(tile_id)] = tile_meta_obj;
+    }
+    j["tile_metadata_map"] = tile_meta_json;
+}
+
+template <typename ItemT>
+void from_json(const nlohmann::json& j, MapSnapshot<ItemT>& snap)
+{
+    j.at("location_ids").get_to(snap.location_ids);
+    j.at("tile_ids").get_to(snap.tile_ids);
+    j.at("assignments").get_to(snap.assignments);
+    j.at("adjacency_edges").get_to(snap.adjacency_edges);
+    j.at("items_by_location").get_to(snap.items_by_location);
+
+    // Deserialize location metadata
+    snap.location_metadata_map.clear();
+    const auto& loc_meta_j = j.at("location_metadata_map");
+    for (const auto& [loc_id_str, meta_obj] : loc_meta_j.items()) {
+        LocationId loc_id = std::stoul(loc_id_str);
+        Metadata meta;
+        for (const auto& [key, value_j] : meta_obj.items()) {
+            meta[key] = deserialize_metadata_value(value_j);
+        }
+        snap.location_metadata_map[loc_id] = meta;
+    }
+
+    // Deserialize tile metadata
+    snap.tile_metadata_map.clear();
+    const auto& tile_meta_j = j.at("tile_metadata_map");
+    for (const auto& [tile_id_str, meta_obj] : tile_meta_j.items()) {
+        TileId tile_id = std::stoul(tile_id_str);
+        Metadata meta;
+        for (const auto& [key, value_j] : meta_obj.items()) {
+            meta[key] = deserialize_metadata_value(value_j);
+        }
+        snap.tile_metadata_map[tile_id] = meta;
+    }
+}
+
+// -- JSON persistence implementation -------------------------------------------
+
+template <typename ItemT>
+void gmMap<ItemT>::export_snapshot_json(const std::string& filepath) const
+{
+    // Build snapshot from current state
+    MapSnapshot<ItemT> snap;
+
+    // Collect location IDs
+    snap.location_ids = all_locations();
+
+    // Collect tile IDs
+    snap.tile_ids = all_tiles();
+
+    // Collect location-to-tile assignments
+    for (LocationId loc : snap.location_ids) {
+        std::optional<TileId> tile = tile_of(loc);
+        if (tile.has_value()) {
+            snap.assignments.push_back({loc, tile.value()});
+        }
+    }
+
+    // Collect adjacency edges (store all directed edges)
+    for (LocationId from : snap.location_ids) {
+        for (LocationId to : adjacent_to(from)) {
+            snap.adjacency_edges.push_back({from, to});
+        }
+    }
+
+    // Collect items at each location
+    for (LocationId loc : snap.location_ids) {
+        const std::vector<ItemT>& items = items_at(loc);
+        if (!items.empty()) {
+            snap.items_by_location[loc] = items;
+        }
+    }
+
+    // Collect location metadata
+    for (LocationId loc : snap.location_ids) {
+        const Metadata& meta = location_metadata(loc);
+        if (!meta.empty()) {
+            snap.location_metadata_map[loc] = meta;
+        }
+    }
+
+    // Collect tile metadata
+    for (TileId tile : snap.tile_ids) {
+        const Metadata& meta = tile_metadata(tile);
+        if (!meta.empty()) {
+            snap.tile_metadata_map[tile] = meta;
+        }
+    }
+
+    // Write versioned snapshot to file
+    GmSave::save_versioned(filepath, snap, 1U, 2);
+}
+
+template <typename ItemT>
+void gmMap<ItemT>::import_snapshot_json(const std::string& filepath)
+{
+    // Load versioned snapshot from file
+    MapSnapshot<ItemT> snap = GmSave::load_versioned<MapSnapshot<ItemT>>(filepath, 1U);
+
+    // Clear current state
+    clear();
+
+    // Recreate locations
+    for (LocationId loc : snap.location_ids) {
+        create_location(loc);
+    }
+
+    // Recreate tiles
+    for (TileId tile : snap.tile_ids) {
+        create_tile(tile);
+    }
+
+    // Restore location-to-tile assignments
+    for (const auto& [loc, tile] : snap.assignments) {
+        assign_to_tile(loc, tile);
+    }
+
+    // Restore adjacency edges
+    for (const auto& [from, to] : snap.adjacency_edges) {
+        // Only create if not already bidirectional
+        if (!are_adjacent(from, to)) {
+            set_adjacent(from, to, /*bidirectional=*/false);
+        }
+    }
+
+    // Restore items
+    for (const auto& [loc, items_list] : snap.items_by_location) {
+        for (const ItemT& item : items_list) {
+            add_item(loc, item);
+        }
+    }
+
+    // Restore location metadata
+    for (const auto& [loc, meta] : snap.location_metadata_map) {
+        for (const auto& [key, value] : meta) {
+            set_location_meta(loc, key, value);
+        }
+    }
+
+    // Restore tile metadata
+    for (const auto& [tile, meta] : snap.tile_metadata_map) {
+        for (const auto& [key, value] : meta) {
+            set_tile_meta(tile, key, value);
+        }
+    }
 }
 
 } // namespace GameMap
