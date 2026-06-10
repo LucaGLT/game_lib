@@ -27,7 +27,7 @@
  *   #define LOG_COMPILED_LEVEL LOG_LEVEL_INFO
  *   #include "macros/LogMacros.hpp"
  * @endcode
- * With @c LOG_LEVEL_INFO, every @c LOG_DEBUG call is compiled out entirely.
+ * With @c LOG_LEVEL_INFO, every @c logDebug call is compiled out entirely.
  *
  * ### Default
  * If @c LOG_COMPILED_LEVEL is not defined it defaults to @c LOG_LEVEL_DEBUG
@@ -37,11 +37,11 @@
  * @code
  *   #include "macros/LogMacros.hpp"
  *
- *   LOG_DEBUG   (logger, "Enter processRow()");
- *   LOG_INFO    (logger, "Server started on port " + std::to_string(port));
- *   LOG_WARNING (logger, "Retry attempt " + std::to_string(n));
- *   LOG_ERROR   (logger, "File not found: " + path);
- *   LOG_CRITICAL(logger, "Out of memory — aborting");
+ *   logDebug   (logger, "Enter processRow()");
+ *   logInfo    (logger, "Server started on port " + std::to_string(port));
+ *   logWarn (logger, "Retry attempt " + std::to_string(n));
+ *   logErr   (logger, "File not found: " + path);
+ *   logCritic(logger, "Out of memory — aborting");
  * @endcode
  *
  * @note @p expr is an ordinary expression (not a lambda).  The macro wraps
@@ -90,10 +90,10 @@
      * @param logger A @ref GmLog::Logger lvalue.
      * @param expr   Expression returning @c std::string; evaluated lazily.
      */
-    #define LOG_DEBUG(logger, expr) \
+    #define logDebug(logger, expr) \
         _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Debug, (expr))
 #else
-    #define LOG_DEBUG(logger, expr) do {} while (0) ///< Compiled out.
+    #define logDebug(logger, expr) do {} while (0) ///< Compiled out.
 #endif
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_INFO
@@ -105,10 +105,10 @@
      * @param logger A @ref GmLog::Logger lvalue.
      * @param expr   Expression returning @c std::string; evaluated lazily.
      */
-    #define LOG_INFO(logger, expr) \
+    #define logInfo(logger, expr) \
         _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Info, (expr))
 #else
-    #define LOG_INFO(logger, expr) do {} while (0) ///< Compiled out.
+    #define logInfo(logger, expr) do {} while (0) ///< Compiled out.
 #endif
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_WARNING
@@ -120,10 +120,10 @@
      * @param logger A @ref GmLog::Logger lvalue.
      * @param expr   Expression returning @c std::string; evaluated lazily.
      */
-    #define LOG_WARNING(logger, expr) \
+    #define logWarn(logger, expr) \
         _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Warning, (expr))
 #else
-    #define LOG_WARNING(logger, expr) do {} while (0) ///< Compiled out.
+    #define logWarn(logger, expr) do {} while (0) ///< Compiled out.
 #endif
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_ERROR
@@ -135,10 +135,10 @@
      * @param logger A @ref GmLog::Logger lvalue.
      * @param expr   Expression returning @c std::string; evaluated lazily.
      */
-    #define LOG_ERROR(logger, expr) \
+    #define logErr(logger, expr) \
         _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Error, (expr))
 #else
-    #define LOG_ERROR(logger, expr) do {} while (0) ///< Compiled out.
+    #define logErr(logger, expr) do {} while (0) ///< Compiled out.
 #endif
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_CRITICAL
@@ -153,7 +153,7 @@
      * @param logger A @ref GmLog::Logger lvalue.
      * @param expr   Expression returning @c std::string; evaluated lazily.
      */
-    #define LOG_CRITICAL(logger, expr)                                        \
+    #define logCritic(logger, expr)                                        \
         do {                                                                  \
             if ((logger).isEnabled(::GmLog::LogLevel::Critical)) {            \
                 (logger).log(::GmLog::LogLevel::Critical, (expr),             \
@@ -162,7 +162,7 @@
             }                                                                 \
         } while (0)
 #else
-    #define LOG_CRITICAL(logger, expr) do {} while (0) ///< Compiled out.
+    #define logCritic(logger, expr) do {} while (0) ///< Compiled out.
 #endif
 
 #endif // GMLOG_LOGMACROS_HPP
