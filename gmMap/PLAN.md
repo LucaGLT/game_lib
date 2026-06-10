@@ -83,16 +83,16 @@
 ---
 
 ## Phase 11 – Unit Testing
-- [ ] Tests for location CRUD + invariants
-- [ ] Tests for tile CRUD + invariants
-- [ ] Tests for location ↔ tile assignment (including re-assignment)
-- [ ] Tests for adjacency (directed / bidirectional / self-loop guard)
-- [ ] Tests for items (add / remove / out-of-range)
-- [ ] Tests for location metadata
-- [ ] Tests for tile metadata
-- [ ] Tests for `clear()` (verifies full reset)
-- [ ] Tests for `remove_location` cascade (tile + neighbors cleanup)
-- [ ] Tests for `remove_tile` cascade (location unassignment)
+- [x] Tests for location CRUD + invariants
+- [x] Tests for tile CRUD + invariants
+- [x] Tests for location ↔ tile assignment (including re-assignment)
+- [x] Tests for adjacency (directed / bidirectional / self-loop guard)
+- [x] Tests for items (add / remove / out-of-range)
+- [x] Tests for location metadata
+- [x] Tests for tile metadata
+- [x] Tests for `clear()` (verifies full reset)
+- [x] Tests for `remove_location` cascade (tile + neighbors cleanup)
+- [x] Tests for `remove_tile` cascade (location unassignment)
 
 ---
 
