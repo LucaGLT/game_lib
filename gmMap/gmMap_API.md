@@ -25,6 +25,7 @@
     - [Items](#items)
     - [Location Metadata](#location-metadata)
     - [Tile Metadata](#tile-metadata)
+    - [JSON Persistence](#json-persistence)
   - [Private Internals](#private-internals)
 - [Class Invariants](#class-invariants)
 - [Usage Examples](#usage-examples)
@@ -51,7 +52,7 @@ metadata.
 |---|---|
 | **Topology-agnostic** | No grid forced; topology expressed via adjacency edges |
 | **Generic items** | `ItemT` template parameter; no constraint on the item domain |
-| **Heterogeneous metadata** | `std::unordered_map<std::string, std::any>` on every node and tile |
+| **Serializable metadata** | `std::unordered_map<std::string, MetadataValue>` on every node and tile |
 | **Grouped locations** | Locations can be grouped into named *Tiles* (zones, floors, regions) |
 | **Directed adjacency** | Edges can be unidirectional or bidirectional |
 | **Safe by default** | Dedicated exception hierarchy; all invariants actively enforced |
@@ -65,8 +66,8 @@ metadata.
   rules live in the application layer, not in this library.
 - **IDs are plain `uint32_t`.**  Cheap to copy, O(1) to compare, cache-friendly
   in hash maps.
-- **Metadata is heterogeneous.**  Any value can be stored with `std::any`; the
-  caller is responsible for `std::any_cast` and key conventions.
+- **Metadata is persistence-safe.**  Values are schema-constrained via
+  `MetadataValue` (serializable scalar types + UID references).
 - **Adjacency is explicit.**  There is no implicit neighbor calculation from
   coordinates; all edges are set by the caller.  This supports irregular maps,
   portal connections, one-way passages, etc.
@@ -76,8 +77,9 @@ metadata.
 ## Requirements
 
 - C++17-compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
-- Standard library headers: `<any>`, `<cstdint>`, `<optional>`,
+- Standard library headers: `<cstdint>`, `<optional>`,
   `<stdexcept>`, `<string>`, `<unordered_map>`, `<unordered_set>`, `<vector>`
+  and `<variant>`
 
 ---
 
@@ -110,12 +112,20 @@ Unique numeric identifier for a Tile (named group of locations).
 #### `Metadata`
 
 ```cpp
-using Metadata = std::unordered_map<std::string, std::any>;
+using EntityUid = uint64_t;
+
+struct UidRef {
+  EntityUid value;
+};
+
+using UidList = std::vector<UidRef>;
+using MetadataValue = std::variant<std::nullptr_t, bool, int64_t, double, std::string, UidRef, UidList>;
+using Metadata = std::unordered_map<std::string, MetadataValue>;
 ```
 
-Heterogeneous key-value store attached to both locations and tiles.  Keys are
-`std::string`; values are `std::any` and must be retrieved via
-`std::any_cast<T>()` by the caller.
+Serializable key-value store attached to both locations and tiles. Keys are
+`std::string`; values are `MetadataValue` and can represent scalar values,
+single UID references (`UidRef`) or UID lists (`UidList`).
 
 ---
 
@@ -639,7 +649,7 @@ Removes all items from a location.
 ##### `set_location_meta()`
 
 ```cpp
-void set_location_meta(LocationId id, const std::string& key, const std::any& value);
+void set_location_meta(LocationId id, const std::string& key, const MetadataValue& value);
 ```
 
 Sets (or overwrites) a metadata key on a location.
@@ -648,7 +658,7 @@ Sets (or overwrites) a metadata key on a location.
 |---|---|
 | `id` | Target location. |
 | `key` | Metadata key string. |
-| `value` | Value to store; any type accepted via `std::any`. |
+| `value` | Serializable metadata value (`MetadataValue`). |
 
 **Throws:** `UnknownLocationError` if `id` does not exist.
 
@@ -657,7 +667,7 @@ Sets (or overwrites) a metadata key on a location.
 ##### `get_location_meta()`
 
 ```cpp
-const std::any& get_location_meta(LocationId id, const std::string& key) const;
+const MetadataValue& get_location_meta(LocationId id, const std::string& key) const;
 ```
 
 | Parameter | Description |
@@ -665,7 +675,7 @@ const std::any& get_location_meta(LocationId id, const std::string& key) const;
 | `id` | Target location. |
 | `key` | Metadata key string. |
 
-**Returns:** Const reference to the stored `std::any` value.
+**Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
 - `UnknownLocationError` if `id` does not exist.
@@ -728,7 +738,7 @@ const Metadata& location_metadata(LocationId id) const;
 ##### `set_tile_meta()`
 
 ```cpp
-void set_tile_meta(TileId id, const std::string& key, const std::any& value);
+void set_tile_meta(TileId id, const std::string& key, const MetadataValue& value);
 ```
 
 Sets (or overwrites) a metadata key on a tile.
@@ -737,7 +747,7 @@ Sets (or overwrites) a metadata key on a tile.
 |---|---|
 | `id` | Target tile. |
 | `key` | Metadata key string. |
-| `value` | Value to store; any type accepted via `std::any`. |
+| `value` | Serializable metadata value (`MetadataValue`). |
 
 **Throws:** `UnknownTileError` if `id` does not exist.
 
@@ -746,7 +756,7 @@ Sets (or overwrites) a metadata key on a tile.
 ##### `get_tile_meta()`
 
 ```cpp
-const std::any& get_tile_meta(TileId id, const std::string& key) const;
+const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
 ```
 
 | Parameter | Description |
@@ -754,7 +764,7 @@ const std::any& get_tile_meta(TileId id, const std::string& key) const;
 | `id` | Target tile. |
 | `key` | Metadata key string. |
 
-**Returns:** Const reference to the stored `std::any` value.
+**Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
 - `UnknownTileError` if `id` does not exist.
@@ -809,6 +819,96 @@ const Metadata& tile_metadata(TileId id) const;
 **Returns:** Const reference to the full `Metadata` map of the tile.
 
 **Throws:** `UnknownTileError` if `id` does not exist.
+
+---
+
+### JSON Persistence
+
+gmMap provides versioned JSON serialization and deserialization via the **gmSave** library, enabling complete round-trip persistence of map state including all locations, tiles, assignments, adjacency relationships, items, and metadata.
+
+#### `export_snapshot_json()`
+
+```cpp
+void export_snapshot_json(const std::string& filepath) const;
+```
+
+Exports the complete map state to a versioned JSON file. The JSON envelope contains:
+- All location IDs
+- All tile IDs
+- Location-to-tile assignments
+- Adjacency edges (stored as directed pairs)
+- Items at each location
+- Location metadata (serialized with type discriminators)
+- Tile metadata (serialized with type discriminators)
+
+| Parameter | Description |
+|---|---|
+| `filepath` | Output JSON file path. Created or overwritten. |
+
+**Throws:** `GmSave::FileWriteError` if the file cannot be written.
+
+**Example:**
+```cpp
+gmMap<int> game_map;
+// ... populate map ...
+game_map.export_snapshot_json("game_state.json");  // Saved with version envelope
+```
+
+#### `import_snapshot_json()`
+
+```cpp
+void import_snapshot_json(const std::string& filepath);
+```
+
+Imports a complete map state from a versioned JSON file (created by `export_snapshot_json()`).
+The current map state is cleared and replaced with the loaded snapshot.
+
+| Parameter | Description |
+|---|---|
+| `filepath` | Input JSON file path (must be versioned gmSave format). |
+
+**Throws:**
+- `GmSave::FileReadError` if the file cannot be read.
+- `GmSave::JsonParseError` if the JSON is malformed.
+- `GmSave::VersionMismatchError` if the version field does not match the expected version (currently v1).
+
+**Example:**
+```cpp
+gmMap<int> restored_map;
+restored_map.import_snapshot_json("game_state.json");
+// Map now contains all state from the saved file
+```
+
+#### Metadata Serialization Details
+
+Metadata values (`MetadataValue` variant) are serialized with explicit type discriminators to ensure type safety during deserialization:
+
+```json
+{
+  "location_id": 1,
+  "metadata": {
+    "name": { "_type": "string", "_value": "Central Chamber" },
+    "owner_id": { "_type": "uid_ref", "_value": 5001 },
+    "occupants": { "_type": "uid_list", "_value": [5001, 5002, 5003] },
+    "level": { "_type": "int64", "_value": 2 },
+    "danger": { "_type": "double", "_value": 7.5 },
+    "discovered": { "_type": "bool", "_value": true }
+  }
+}
+```
+
+Supported metadata types:
+- `null`: `nullptr_t`
+- `bool`: Boolean flag
+- `int64`: 64-bit signed integer
+- `double`: Floating-point number
+- `string`: Text value
+- `uid_ref`: Single external entity UID reference
+- `uid_list`: List of external entity UIDs
+
+**Note:** The `uid_ref` and `uid_list` types store stable `EntityUid` identifiers for external objects.
+The runtime pointer cache (`register_runtime_entity()`, etc.) is **not** persisted and must be
+repopulated by the application after loading.
 
 ---
 
@@ -928,13 +1028,13 @@ dungeon.set_location_meta(101, "visited", false);
 dungeon.set_tile_meta    (1,   "level",   1);
 ```
 
-### Reading metadata with any_cast
+### Reading metadata with std::get
 
 ```cpp
-const std::any& raw = dungeon.get_location_meta(101, "name");
-std::string room_name = std::any_cast<std::string>(raw);
+const GameMap::MetadataValue& raw = dungeon.get_location_meta(101, "name");
+std::string room_name = std::get<std::string>(raw);
 
-bool visited = std::any_cast<bool>(dungeon.get_location_meta(101, "visited"));
+bool visited = std::get<bool>(dungeon.get_location_meta(101, "visited"));
 ```
 
 ### Querying adjacency
@@ -965,11 +1065,79 @@ try {
 }
 
 try {
-    const std::any& v = dungeon.get_location_meta(101, "missing_key");
+  const GameMap::MetadataValue& v = dungeon.get_location_meta(101, "missing_key");
+  (void)v;
 } catch (const GameMap::UnknownMetaKeyError& e) {
     // handle missing key
 }
 ```
+
+### Integrazione con gmLog (tracing operazioni mappa)
+
+```cpp
+#include "gmMap.hpp"
+#include "gmLog/LoggerFactory.hpp"
+#include "gmLog/macros/LogMacros.hpp"
+
+GameMap::gmMap<std::string> world;
+GmLog::Logger log = GmLog::LoggerFactory::createFileLogger(
+  "gmMapFlow", "gmMap_flow.log", GmLog::LogLevel::Info, true);
+
+world.create_tile(1);
+LOG_INFO(log, "Creato tile 1");
+
+world.create_location(1001);
+world.assign_to_tile(1001, 1);
+LOG_INFO(log, "Assegnata location 1001 a tile 1");
+
+world.set_location_meta(1001, "name", std::string("Bridge"));
+LOG_INFO(log, "Metadata aggiornati per location 1001");
+```
+
+### Integrazione con gmSave (snapshot JSON dello stato)
+
+`gmMap` usa metadata serializzabili (`MetadataValue`) con supporto a UID.
+Per snapshot completi e versionabili e' comunque consigliato usare un DTO
+esplicito, separando la persistenza dalla cache runtime UID -> puntatore.
+
+```cpp
+#include "gmMap.hpp"
+#include "gmSave/gmSave.hpp"
+#include <string>
+#include <vector>
+
+struct MapSnapshot {
+  std::vector<GameMap::LocationId> locations;
+  std::vector<GameMap::TileId> tiles;
+};
+
+inline void to_json(nlohmann::json& j, const MapSnapshot& s) {
+  j = nlohmann::json{{"locations", s.locations}, {"tiles", s.tiles}};
+}
+
+inline void from_json(const nlohmann::json& j, MapSnapshot& s) {
+  j.at("locations").get_to(s.locations);
+  j.at("tiles").get_to(s.tiles);
+}
+
+GameMap::gmMap<std::string> world;
+world.create_location(1);
+world.create_location(2);
+world.create_tile(10);
+
+MapSnapshot out;
+out.locations = world.all_locations();
+out.tiles = world.all_tiles();
+
+GmSave::save_versioned("gmMap_snapshot.json", out, 1);
+
+MapSnapshot loaded = GmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 1);
+```
+
+Note:
+- Per persistere anche items e adjacency in modo completo, estendi il DTO con:
+  liste di edge, item per location e metadati `MetadataValue`/UID.
+- `gmSave::peek_version()` e' utile per migrazioni di formato degli snapshot.
 
 ---
 
@@ -997,11 +1165,12 @@ point-to-point war-game maps, node networks, etc.  If coordinates are needed
 for rendering they can be stored as metadata (e.g.
 `set_location_meta(id, "x", 3); set_location_meta(id, "y", 7);`).
 
-### Why `std::any` for metadata?
+### Why MetadataValue + UID for metadata?
 
-`std::any` imposes no schema on metadata, which is intentional.  Each
-application layer defines its own key conventions and value types.  The trade-off is that callers must use `std::any_cast<T>()` and handle `std::bad_any_cast`
-if the stored type is unexpected.
+`MetadataValue` keeps metadata serializable by design and supports stable
+cross-object references via UID (`UidRef` / `UidList`).
+Pointers remain runtime-only concerns and should stay in a transient cache,
+not in persisted map state.
 
 ### Template header-only implementation
 
