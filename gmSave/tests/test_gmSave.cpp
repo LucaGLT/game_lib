@@ -191,10 +191,10 @@ struct TestRunner {
     {
         if (condition) {
             ++passed;
-            LOG_INFO(log, "[PASS] " + testName);
+            logInfo(log, "[PASS] " + testName);
         } else {
             ++failed;
-            LOG_ERROR(log, "[FAIL] " + testName);
+            logErr(log, "[FAIL] " + testName);
         }
     }
 
@@ -206,15 +206,15 @@ struct TestRunner {
         try {
             fn();
             ++failed;
-            LOG_ERROR(log, "[FAIL] " + testName + " — expected exception not thrown");
+            logErr(log, "[FAIL] " + testName + " — expected exception not thrown");
         }
         catch (const ExcType&) {
             ++passed;
-            LOG_INFO(log, "[PASS] " + testName);
+            logInfo(log, "[PASS] " + testName);
         }
         catch (const std::exception& e) {
             ++failed;
-            LOG_ERROR(log, "[FAIL] " + testName
+            logErr(log, "[FAIL] " + testName
                       + " — wrong exception type: " + e.what());
         }
     }
@@ -227,11 +227,11 @@ struct TestRunner {
         try {
             fn();
             ++passed;
-            LOG_INFO(log, "[PASS] " + testName);
+            logInfo(log, "[PASS] " + testName);
         }
         catch (const std::exception& e) {
             ++failed;
-            LOG_ERROR(log, "[FAIL] " + testName
+            logErr(log, "[FAIL] " + testName
                       + " — unexpected exception: " + e.what());
         }
     }
@@ -248,9 +248,9 @@ struct TestRunner {
             oss << "  *** " << failed << " FAILED ***";
 
         if (failed == 0)
-            LOG_INFO(log, oss.str());
+            logInfo(log, oss.str());
         else
-            LOG_ERROR(log, oss.str());
+            logErr(log, oss.str());
     }
 };
 
@@ -518,9 +518,9 @@ int main()
         GmLog::LogLevel::Debug
     );
 
-    LOG_INFO(log, "======================================================");
-    LOG_INFO(log, "  gmSave Unit Tests — Phase 11");
-    LOG_INFO(log, "======================================================");
+    logInfo(log, "======================================================");
+    logInfo(log, "  gmSave Unit Tests — Phase 11");
+    logInfo(log, "======================================================");
 
     TestRunner tr{log};
 
@@ -546,7 +546,7 @@ int main()
     // --- summary -------------------------------------------------------------
     tr.summary();
 
-    LOG_INFO(log, "======================================================");
+    logInfo(log, "======================================================");
 
     return (tr.failed == 0) ? 0 : 1;
 }

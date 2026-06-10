@@ -51,8 +51,8 @@ namespace GmLog {
  *
  * ### Logging via macros (recommended — includes source location)
  * @code
- *   LOG_INFO (db, "Connection established");
- *   LOG_ERROR(db, "Query failed: " + query);
+ *   logInfo (db, "Connection established");
+ *   logErr(db, "Query failed: " + query);
  * @endcode
  *
  * ### Logging via convenience methods (no source location)

@@ -66,7 +66,7 @@ dispatch.
 ```
 Codice applicativo
       ↓
-LOG_INFO(db, "Messaggio")
+logInfo(db, "Messaggio")
       ↓
 Logger          ← filtra livello, crea LogRecord
       ↓
@@ -135,7 +135,7 @@ gmLog/
 ┌─────────────────────────────────────────────────────────┐
 │  Application code                                       │
 │                                                         │
-│  LOG_INFO(db, "msg")   db.info("msg")                   │
+│  logInfo(db, "msg")   db.info("msg")                   │
 └────────────────────┬────────────────────────────────────┘
                      │ log(level, msg, file, line, func)
                      ▼
@@ -452,18 +452,18 @@ opened.
 Include `macros/LogMacros.hpp` to use the macros.
 
 ```cpp
-LOG_DEBUG   (logger, expr)
-LOG_INFO    (logger, expr)
-LOG_WARNING (logger, expr)
-LOG_ERROR   (logger, expr)
-LOG_CRITICAL(logger, expr)
+logDebug   (logger, expr)
+logInfo    (logger, expr)
+logWarn (logger, expr)
+logErr   (logger, expr)
+logCritic(logger, expr)
 ```
 
 - `logger` — a `GmLog::Logger` lvalue.
 - `expr` — any expression returning `std::string`; evaluated only when the
   level is active at runtime.
 - `__FILE__`, `__LINE__`, `__func__` are injected automatically.
-- `LOG_CRITICAL` calls `logger.flush()` after writing.
+- `logCritic` calls `logger.flush()` after writing.
 
 #### Compile-time constants
 
@@ -515,10 +515,10 @@ LOG_CRITICAL(logger, expr)
 int main() {
     auto log = GmLog::LoggerFactory::createStdoutLogger("App");
 
-    LOG_INFO (log, "Application started");
-    LOG_DEBUG(log, "Initialising subsystems");
-    LOG_ERROR(log, "Config file not found");
-    LOG_CRITICAL(log, "Fatal: cannot allocate memory");
+    logInfo (log, "Application started");
+    logDebug(log, "Initialising subsystems");
+    logErr(log, "Config file not found");
+    logCritic(log, "Fatal: cannot allocate memory");
 }
 ```
 
@@ -539,10 +539,10 @@ auto net = GmLog::LoggerFactory::createFileLogger(
 auto ui  = GmLog::LoggerFactory::createStdoutLogger(
     "UI",                      GmLog::LogLevel::Warning);
 
-LOG_DEBUG  (db,  "Opening connection");   // written to db.log
-LOG_INFO   (net, "Packet received");      // written to network.log
-LOG_WARNING(ui,  "Render lag detected");  // written to stdout
-LOG_DEBUG  (ui,  "Frame rendered");       // suppressed — UI level is Warning
+logDebug  (db,  "Opening connection");   // written to db.log
+logInfo   (net, "Packet received");      // written to network.log
+logWarn(ui,  "Render lag detected");  // written to stdout
+logDebug  (ui,  "Frame rendered");       // suppressed — UI level is Warning
 ```
 
 ---
@@ -599,7 +599,7 @@ log.debug([&]{
 });
 
 // Macro version (also lazy + injects source location)
-LOG_DEBUG(log, "Entity positions: " + serializeAllEntities(world));
+logDebug(log, "Entity positions: " + serializeAllEntities(world));
 ```
 
 ---
@@ -632,7 +632,7 @@ log.flush();  // ensure all buffered data is written before the process exits
 ```cpp
 Config cfg;
 if (!GmSave::try_load("config.json", cfg)) {
-    LOG_WARNING(log, "Config not found — using defaults");
+    logWarn(log, "Config not found — using defaults");
     cfg = Config{"default_map", 2};
 }
 ```
@@ -666,7 +666,7 @@ target_compile_definitions(myapp PRIVATE
 )
 ```
 
-Result: every `LOG_DEBUG` and `LOG_INFO` call is replaced by
+Result: every `logDebug` and `logInfo` call is replaced by
 `do{}while(0)` — zero runtime overhead, zero binary size impact.
 
 | `LOG_COMPILED_LEVEL` | Compiled in |
