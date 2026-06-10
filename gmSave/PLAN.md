@@ -76,6 +76,7 @@
 ---
 
 ## Phase 10 – `peek_version()`
+
 - [x] Implement `peek_version(filepath)`
   - Reads and parses file (no deserialization of payload)
   - Returns `_version` as `std::optional<uint32_t>`
@@ -84,6 +85,7 @@
 ---
 
 ## Phase 11 – Unit Testing
+
 - [ ] Test `save` + `load` round-trip on flat struct
 - [ ] Test `save` + `load` round-trip on nested struct
 - [ ] Test `save` + `load` round-trip with `std::vector<T>` field
@@ -104,6 +106,7 @@
 ---
 
 ## Phase 12 – Documentation
+
 - [ ] Configure `Doxyfile` for `gmSave`
 - [ ] Generate Doxygen HTML docs
 - [ ] Write `gmSave_API.md` (usage examples)
