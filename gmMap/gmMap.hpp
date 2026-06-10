@@ -511,13 +511,17 @@ private:
 template <typename ItemT>
 void gmMap<ItemT>::_require_location(LocationId id) const
 {
-    // TODO
+    if (_locations.find(id) == _locations.end()) {
+        throw UnknownLocationError("Location " + std::to_string(id) + " does not exist");
+    }
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::_require_tile(TileId id) const
 {
-    // TODO
+    if (_tiles.find(id) == _tiles.end()) {
+        throw UnknownTileError("Tile " + std::to_string(id) + " does not exist");
+    }
 }
 
 // -- Construction / reset ------------------------------------------------------
@@ -525,7 +529,8 @@ void gmMap<ItemT>::_require_tile(TileId id) const
 template <typename ItemT>
 void gmMap<ItemT>::clear()
 {
-    // TODO
+    _locations.clear();
+    _tiles.clear();
 }
 
 // -- Location management -------------------------------------------------------
@@ -533,31 +538,63 @@ void gmMap<ItemT>::clear()
 template <typename ItemT>
 void gmMap<ItemT>::create_location(LocationId id)
 {
-    // TODO
+    if (_locations.find(id) != _locations.end()) {
+        throw DuplicateLocationError("Location " + std::to_string(id) + " already exists");
+    }
+    _locations[id] = LocationRecord{};
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::remove_location(LocationId id)
 {
-    // TODO
+    _require_location(id);
+
+    LocationRecord& rec = _locations[id];
+
+    // Unassign from tile if assigned
+    if (rec.tile_id.has_value()) {
+        TileId tile_id = rec.tile_id.value();
+        _tiles[tile_id].locations.erase(id);
+    }
+
+    // Remove this location from all neighbor lists of adjacent locations
+    for (LocationId neighbor : rec.neighbors) {
+        if (_locations.find(neighbor) != _locations.end()) {
+            _locations[neighbor].neighbors.erase(id);
+        }
+    }
+
+    // Also remove reverse edges: iterate all locations and remove id from their neighbor lists
+    for (auto& [other_id, other_rec] : _locations) {
+        if (other_id != id) {
+            other_rec.neighbors.erase(id);
+        }
+    }
+
+    _locations.erase(id);
 }
 
 template <typename ItemT>
 bool gmMap<ItemT>::has_location(LocationId id) const
 {
-    return false; // TODO
+    return _locations.find(id) != _locations.end();
 }
 
 template <typename ItemT>
 std::vector<LocationId> gmMap<ItemT>::all_locations() const
 {
-    return {}; // TODO
+    std::vector<LocationId> result;
+    result.reserve(_locations.size());
+    for (const auto& [id, _] : _locations) {
+        result.push_back(id);
+    }
+    return result;
 }
 
 template <typename ItemT>
 std::size_t gmMap<ItemT>::location_count() const
 {
-    return 0; // TODO
+    return _locations.size();
 }
 
 // -- Tile management -----------------------------------------------------------

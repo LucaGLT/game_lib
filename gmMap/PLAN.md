@@ -12,23 +12,23 @@
 ---
 
 ## Phase 2 – Private Helpers
-- [ ] Implement `_require_location(LocationId)` — throws `UnknownLocationError`
-- [ ] Implement `_require_tile(TileId)` — throws `UnknownTileError`
 
+- [x] Implement `_require_location(LocationId)` — throws `UnknownLocationError`
+- [x] Implement `_require_tile(TileId)` — throws `UnknownTileError`
 ---
 
 ## Phase 3 – Construction / Reset
-- [ ] Implement `clear()` — empties `_locations` and `_tiles`
 
+- [x] Implement `clear()` — empties `_locations` and `_tiles`
 ---
 
 ## Phase 4 – Location Management
-- [ ] Implement `create_location(id)` — inserts into `_locations`, throws on duplicate
-- [ ] Implement `remove_location(id)` — cleans tile membership + neighbor lists
-- [ ] Implement `has_location(id)`
-- [ ] Implement `all_locations()`
-- [ ] Implement `location_count()`
 
+- [x] Implement `create_location(id)` — inserts into `_locations`, throws on duplicate
+- [x] Implement `remove_location(id)` — cleans tile membership + neighbor lists
+- [x] Implement `has_location(id)`
+- [x] Implement `all_locations()`
+- [x] Implement `location_count()`
 ---
 
 ## Phase 5 – Tile Management
