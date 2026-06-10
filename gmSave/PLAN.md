@@ -11,10 +11,10 @@
 ---
 
 ## Phase 2 – Dependency Setup
-- [ ] Download `json.hpp` (nlohmann/json single-header, >= 3.11)
+- [x] Download `json.hpp` (nlohmann/json single-header, >= 3.11)
   - Source: https://github.com/nlohmann/json/releases → `single_include/nlohmann/json.hpp`
-- [ ] Place `json.hpp` in `gmSave/` alongside `gmSave.hpp`
-- [ ] Verify `#include "json.hpp"` compiles without errors
+- [x] Place `json.hpp` in `gmSave/` alongside `gmSave.hpp`
+- [x] Verify `#include "json.hpp"` compiles without errors
 
 ---
 
@@ -86,22 +86,22 @@
 
 ## Phase 11 – Unit Testing
 
-- [ ] Test `save` + `load` round-trip on flat struct
-- [ ] Test `save` + `load` round-trip on nested struct
-- [ ] Test `save` + `load` round-trip with `std::vector<T>` field
-- [ ] Test `save` + `load` round-trip with `std::optional<T>` field (present)
-- [ ] Test `save` + `load` round-trip with `std::optional<T>` field (absent)
-- [ ] Test `try_load` returns `false` on missing file (no throw)
-- [ ] Test `try_load` returns `false` on malformed JSON (no throw)
-- [ ] Test `save_versioned` + `load_versioned` round-trip (correct version)
-- [ ] Test `load_versioned` throws `VersionMismatchError` on wrong version
-- [ ] Test `load_versioned` throws `JsonParseError` on missing `_version` field
-- [ ] Test `peek_version` returns correct version
-- [ ] Test `peek_version` returns `nullopt` on plain (non-versioned) file
-- [ ] Test `FileReadError` thrown on non-existent file
-- [ ] Test `FileWriteError` thrown on unwritable path
-- [ ] Test `JsonParseError` thrown on invalid JSON content
-- [ ] Test compact output with `indent = -1`
+- [x] Test `save` + `load` round-trip on flat struct
+- [x] Test `save` + `load` round-trip on nested struct
+- [x] Test `save` + `load` round-trip with `std::vector<T>` field
+- [x] Test `save` + `load` round-trip with `std::optional<T>` field (present)
+- [x] Test `save` + `load` round-trip with `std::optional<T>` field (absent)
+- [x] Test `try_load` returns `false` on missing file (no throw)
+- [x] Test `try_load` returns `false` on malformed JSON (no throw)
+- [x] Test `save_versioned` + `load_versioned` round-trip (correct version)
+- [x] Test `load_versioned` throws `VersionMismatchError` on wrong version
+- [x] Test `load_versioned` throws `JsonParseError` on missing `_version` field
+- [x] Test `peek_version` returns correct version
+- [x] Test `peek_version` returns `nullopt` on plain (non-versioned) file
+- [x] Test `FileReadError` thrown on non-existent file
+- [x] Test `FileWriteError` thrown on unwritable path
+- [x] Test `JsonParseError` thrown on invalid JSON content
+- [x] Test compact output with `indent = -1`
 
 ---
 
