@@ -12,13 +12,14 @@
  *       phases (see PLAN.md).
  */
 
-#include <any>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 namespace GameMap {
@@ -31,8 +32,22 @@ using LocationId = uint32_t;
 /// @brief Unique identifier for a Tile (named group of locations).
 using TileId = uint32_t;
 
-/// @brief Heterogeneous key-value store used for metadata on locations and tiles.
-using Metadata = std::unordered_map<std::string, std::any>;
+/// @brief Stable identifier used to reference entities stored externally.
+using EntityUid = uint64_t;
+
+/// @brief Explicit UID reference for serializable metadata fields.
+struct UidRef {
+    EntityUid value;
+};
+
+/// @brief List of UID references (e.g. links to multiple external entities).
+using UidList = std::vector<UidRef>;
+
+/// @brief Serializable metadata value used by gmMap for persistence-safe fields.
+using MetadataValue = std::variant<std::nullptr_t, bool, int64_t, double, std::string, UidRef, UidList>;
+
+/// @brief Key-value store used for metadata on locations and tiles.
+using Metadata = std::unordered_map<std::string, MetadataValue>;
 
 // --- Exceptions ---------------------------------------------------------------
 
@@ -128,8 +143,8 @@ public:
  * - **Tile**     – A named group of locations (zone, floor, region…).
  * - **Adjacency**– A directed or bidirectional edge between two locations.
  * - **Item**     – A typed game object placed at a location.
- * - **Metadata** – A heterogeneous `string → any` key-value store attached
- *                  to either a location or a tile.
+ * - **Metadata** – A serializable `string → MetadataValue` key-value store
+ *                  attached to either a location or a tile.
  *
  * ### Invariants
  * - A location belongs to at most one tile at a time.
@@ -363,23 +378,23 @@ public:
      * @brief Sets (or overwrites) a metadata key on a location.
      * @param id    Target location.
      * @param key   Metadata key string.
-     * @param value Value to store; any type is accepted via `std::any`.
+    * @param value Serializable metadata value.
      * @throws UnknownLocationError if @p id does not exist.
      */
     void set_location_meta(LocationId id,
                            const std::string& key,
-                           const std::any& value);
+                      const MetadataValue& value);
 
     /**
      * @brief Retrieves a metadata value from a location.
      * @param id  Target location.
      * @param key Metadata key string.
-     * @return Const reference to the stored `std::any` value.
+    * @return Const reference to the stored metadata value.
      * @throws UnknownLocationError if @p id does not exist.
      * @throws UnknownMetaKeyError  if @p key is not present.
      */
-    const std::any& get_location_meta(LocationId id,
-                                      const std::string& key) const;
+    const MetadataValue& get_location_meta(LocationId id,
+                                   const std::string& key) const;
 
     /**
      * @brief Checks whether a metadata key is present on a location.
@@ -414,22 +429,47 @@ public:
      * @brief Sets (or overwrites) a metadata key on a tile.
      * @param id    Target tile.
      * @param key   Metadata key string.
-     * @param value Value to store; any type is accepted via `std::any`.
+    * @param value Serializable metadata value.
      * @throws UnknownTileError if @p id does not exist.
      */
     void set_tile_meta(TileId id,
                        const std::string& key,
-                       const std::any& value);
+                   const MetadataValue& value);
 
     /**
      * @brief Retrieves a metadata value from a tile.
      * @param id  Target tile.
      * @param key Metadata key string.
-     * @return Const reference to the stored `std::any` value.
+    * @return Const reference to the stored metadata value.
      * @throws UnknownTileError    if @p id does not exist.
      * @throws UnknownMetaKeyError if @p key is not present.
      */
-    const std::any& get_tile_meta(TileId id, const std::string& key) const;
+    const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
+
+    // -- Runtime entity cache (transient, non-persistent) ---------------------
+
+    /**
+    * @brief Registers or updates a transient runtime pointer for an external UID.
+    *
+    * This cache is not part of gmMap persistent state and is intentionally
+    * excluded from save/load flows.
+    */
+    void register_runtime_entity(EntityUid uid, const void* ptr);
+
+    /**
+    * @brief Removes a runtime pointer mapping for an external UID.
+    */
+    void unregister_runtime_entity(EntityUid uid);
+
+    /**
+    * @brief Returns the transient runtime pointer for an external UID, if present.
+    */
+    const void* runtime_entity(EntityUid uid) const;
+
+    /**
+    * @brief Clears all transient UID -> pointer runtime mappings.
+    */
+    void clear_runtime_entity_cache();
 
     /**
      * @brief Checks whether a metadata key is present on a tile.
@@ -498,6 +538,7 @@ private:
 
     std::unordered_map<LocationId, LocationRecord>  _locations; ///< All location records.
     std::unordered_map<TileId,     TileRecord>      _tiles;     ///< All tile records.
+    std::unordered_map<EntityUid, const void*>      _runtime_entities; ///< Transient UID->pointer cache.
 };
 
 
@@ -531,6 +572,7 @@ void gmMap<ItemT>::clear()
 {
     _locations.clear();
     _tiles.clear();
+    _runtime_entities.clear();
 }
 
 // -- Location management -------------------------------------------------------
@@ -805,15 +847,15 @@ void gmMap<ItemT>::clear_items(LocationId id)
 template <typename ItemT>
 void gmMap<ItemT>::set_location_meta(LocationId id,
                                      const std::string& key,
-                                     const std::any& value)
+                                     const MetadataValue& value)
 {
     _require_location(id);
     _locations[id].meta[key] = value;
 }
 
 template <typename ItemT>
-const std::any& gmMap<ItemT>::get_location_meta(LocationId id,
-                                                const std::string& key) const
+const MetadataValue& gmMap<ItemT>::get_location_meta(LocationId id,
+                                                     const std::string& key) const
 {
     _require_location(id);
 
@@ -853,15 +895,15 @@ const Metadata& gmMap<ItemT>::location_metadata(LocationId id) const
 template <typename ItemT>
 void gmMap<ItemT>::set_tile_meta(TileId id,
                                  const std::string& key,
-                                 const std::any& value)
+                                 const MetadataValue& value)
 {
     _require_tile(id);
     _tiles[id].meta[key] = value;
 }
 
 template <typename ItemT>
-const std::any& gmMap<ItemT>::get_tile_meta(TileId id,
-                                            const std::string& key) const
+const MetadataValue& gmMap<ItemT>::get_tile_meta(TileId id,
+                                                 const std::string& key) const
 {
     _require_tile(id);
 
@@ -894,6 +936,36 @@ const Metadata& gmMap<ItemT>::tile_metadata(TileId id) const
 {
     _require_tile(id);
     return _tiles.at(id).meta;
+}
+
+// -- Runtime entity cache (transient, non-persistent) -------------------------
+
+template <typename ItemT>
+void gmMap<ItemT>::register_runtime_entity(EntityUid uid, const void* ptr)
+{
+    _runtime_entities[uid] = ptr;
+}
+
+template <typename ItemT>
+void gmMap<ItemT>::unregister_runtime_entity(EntityUid uid)
+{
+    _runtime_entities.erase(uid);
+}
+
+template <typename ItemT>
+const void* gmMap<ItemT>::runtime_entity(EntityUid uid) const
+{
+    auto it = _runtime_entities.find(uid);
+    if (it == _runtime_entities.end()) {
+        return nullptr;
+    }
+    return it->second;
+}
+
+template <typename ItemT>
+void gmMap<ItemT>::clear_runtime_entity_cache()
+{
+    _runtime_entities.clear();
 }
 
 } // namespace GameMap

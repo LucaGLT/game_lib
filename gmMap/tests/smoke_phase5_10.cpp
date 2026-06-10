@@ -1,6 +1,5 @@
 #include <gmMap/gmMap.hpp>
 
-#include <any>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -37,18 +36,20 @@ int main() {
     map.clear_items(1);
 
     map.set_location_meta(1, "name", std::string("Bridge"));
+    map.set_location_meta(1, "owner_uid", GameMap::UidRef{42U});
     bool has_lm = map.has_location_meta(1, "name");
     (void)has_lm;
-    const std::any& lm = map.get_location_meta(1, "name");
+    const GameMap::MetadataValue& lm = map.get_location_meta(1, "name");
     (void)lm;
     const GameMap::Metadata& lmeta = map.location_metadata(1);
     (void)lmeta;
     map.remove_location_meta(1, "name");
 
-    map.set_tile_meta(10, "floor", static_cast<std::uint32_t>(1));
+    map.set_tile_meta(10, "floor", static_cast<int64_t>(1));
+    map.set_tile_meta(10, "uids", GameMap::UidList{GameMap::UidRef{10U}, GameMap::UidRef{11U}});
     bool has_tm = map.has_tile_meta(10, "floor");
     (void)has_tm;
-    const std::any& tm = map.get_tile_meta(10, "floor");
+    const GameMap::MetadataValue& tm = map.get_tile_meta(10, "floor");
     (void)tm;
     const GameMap::Metadata& tmeta = map.tile_metadata(10);
     (void)tmeta;

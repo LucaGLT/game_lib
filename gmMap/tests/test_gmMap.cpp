@@ -9,12 +9,12 @@
 #include <gmLog/LoggerFactory.hpp>
 
 #include <algorithm>
-#include <any>
 #include <cstdint>
 #include <functional>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace {
@@ -212,19 +212,23 @@ bool testLocationMetadata()
     m.create_location(50);
 
     m.set_location_meta(50, "name", std::string("Gate"));
-    m.set_location_meta(50, "danger", 3);
+    m.set_location_meta(50, "danger", static_cast<int64_t>(3));
+    m.set_location_meta(50, "owner_uid", GameMap::UidRef{5001U});
 
     if (!m.has_location_meta(50, "name")) return false;
     if (!m.has_location_meta(50, "danger")) return false;
+    if (!m.has_location_meta(50, "owner_uid")) return false;
 
-    const std::any& n = m.get_location_meta(50, "name");
-    const std::any& d = m.get_location_meta(50, "danger");
+    const GameMap::MetadataValue& n = m.get_location_meta(50, "name");
+    const GameMap::MetadataValue& d = m.get_location_meta(50, "danger");
+    const GameMap::MetadataValue& u = m.get_location_meta(50, "owner_uid");
 
-    if (std::any_cast<std::string>(n) != "Gate") return false;
-    if (std::any_cast<int>(d) != 3) return false;
+    if (std::get<std::string>(n) != "Gate") return false;
+    if (std::get<int64_t>(d) != 3) return false;
+    if (std::get<GameMap::UidRef>(u).value != 5001U) return false;
 
     const GameMap::Metadata& meta = m.location_metadata(50);
-    if (meta.size() != 2) return false;
+    if (meta.size() != 3) return false;
 
     m.remove_location_meta(50, "danger");
     if (m.has_location_meta(50, "danger")) return false;
@@ -241,19 +245,25 @@ bool testTileMetadata()
     m.create_tile(99);
 
     m.set_tile_meta(99, "zone", std::string("North"));
-    m.set_tile_meta(99, "level", static_cast<std::uint32_t>(2));
+    m.set_tile_meta(99, "level", static_cast<int64_t>(2));
+    m.set_tile_meta(99, "occupants", GameMap::UidList{GameMap::UidRef{77U}, GameMap::UidRef{88U}});
 
     if (!m.has_tile_meta(99, "zone")) return false;
     if (!m.has_tile_meta(99, "level")) return false;
+    if (!m.has_tile_meta(99, "occupants")) return false;
 
-    const std::any& z = m.get_tile_meta(99, "zone");
-    const std::any& l = m.get_tile_meta(99, "level");
+    const GameMap::MetadataValue& z = m.get_tile_meta(99, "zone");
+    const GameMap::MetadataValue& l = m.get_tile_meta(99, "level");
+    const GameMap::MetadataValue& o = m.get_tile_meta(99, "occupants");
 
-    if (std::any_cast<std::string>(z) != "North") return false;
-    if (std::any_cast<std::uint32_t>(l) != 2U) return false;
+    if (std::get<std::string>(z) != "North") return false;
+    if (std::get<int64_t>(l) != 2) return false;
+    const GameMap::UidList& list = std::get<GameMap::UidList>(o);
+    if (list.size() != 2U) return false;
+    if (list[0].value != 77U || list[1].value != 88U) return false;
 
     const GameMap::Metadata& meta = m.tile_metadata(99);
-    if (meta.size() != 2) return false;
+    if (meta.size() != 3) return false;
 
     m.remove_tile_meta(99, "zone");
     if (m.has_tile_meta(99, "zone")) return false;

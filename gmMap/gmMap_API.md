@@ -51,7 +51,7 @@ metadata.
 |---|---|
 | **Topology-agnostic** | No grid forced; topology expressed via adjacency edges |
 | **Generic items** | `ItemT` template parameter; no constraint on the item domain |
-| **Heterogeneous metadata** | `std::unordered_map<std::string, std::any>` on every node and tile |
+| **Serializable metadata** | `std::unordered_map<std::string, MetadataValue>` on every node and tile |
 | **Grouped locations** | Locations can be grouped into named *Tiles* (zones, floors, regions) |
 | **Directed adjacency** | Edges can be unidirectional or bidirectional |
 | **Safe by default** | Dedicated exception hierarchy; all invariants actively enforced |
@@ -65,8 +65,8 @@ metadata.
   rules live in the application layer, not in this library.
 - **IDs are plain `uint32_t`.**  Cheap to copy, O(1) to compare, cache-friendly
   in hash maps.
-- **Metadata is heterogeneous.**  Any value can be stored with `std::any`; the
-  caller is responsible for `std::any_cast` and key conventions.
+- **Metadata is persistence-safe.**  Values are schema-constrained via
+  `MetadataValue` (serializable scalar types + UID references).
 - **Adjacency is explicit.**  There is no implicit neighbor calculation from
   coordinates; all edges are set by the caller.  This supports irregular maps,
   portal connections, one-way passages, etc.
@@ -76,8 +76,9 @@ metadata.
 ## Requirements
 
 - C++17-compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
-- Standard library headers: `<any>`, `<cstdint>`, `<optional>`,
+- Standard library headers: `<cstdint>`, `<optional>`,
   `<stdexcept>`, `<string>`, `<unordered_map>`, `<unordered_set>`, `<vector>`
+  and `<variant>`
 
 ---
 
@@ -110,12 +111,20 @@ Unique numeric identifier for a Tile (named group of locations).
 #### `Metadata`
 
 ```cpp
-using Metadata = std::unordered_map<std::string, std::any>;
+using EntityUid = uint64_t;
+
+struct UidRef {
+  EntityUid value;
+};
+
+using UidList = std::vector<UidRef>;
+using MetadataValue = std::variant<std::nullptr_t, bool, int64_t, double, std::string, UidRef, UidList>;
+using Metadata = std::unordered_map<std::string, MetadataValue>;
 ```
 
-Heterogeneous key-value store attached to both locations and tiles.  Keys are
-`std::string`; values are `std::any` and must be retrieved via
-`std::any_cast<T>()` by the caller.
+Serializable key-value store attached to both locations and tiles. Keys are
+`std::string`; values are `MetadataValue` and can represent scalar values,
+single UID references (`UidRef`) or UID lists (`UidList`).
 
 ---
 
@@ -639,7 +648,7 @@ Removes all items from a location.
 ##### `set_location_meta()`
 
 ```cpp
-void set_location_meta(LocationId id, const std::string& key, const std::any& value);
+void set_location_meta(LocationId id, const std::string& key, const MetadataValue& value);
 ```
 
 Sets (or overwrites) a metadata key on a location.
@@ -648,7 +657,7 @@ Sets (or overwrites) a metadata key on a location.
 |---|---|
 | `id` | Target location. |
 | `key` | Metadata key string. |
-| `value` | Value to store; any type accepted via `std::any`. |
+| `value` | Serializable metadata value (`MetadataValue`). |
 
 **Throws:** `UnknownLocationError` if `id` does not exist.
 
@@ -657,7 +666,7 @@ Sets (or overwrites) a metadata key on a location.
 ##### `get_location_meta()`
 
 ```cpp
-const std::any& get_location_meta(LocationId id, const std::string& key) const;
+const MetadataValue& get_location_meta(LocationId id, const std::string& key) const;
 ```
 
 | Parameter | Description |
@@ -665,7 +674,7 @@ const std::any& get_location_meta(LocationId id, const std::string& key) const;
 | `id` | Target location. |
 | `key` | Metadata key string. |
 
-**Returns:** Const reference to the stored `std::any` value.
+**Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
 - `UnknownLocationError` if `id` does not exist.
@@ -728,7 +737,7 @@ const Metadata& location_metadata(LocationId id) const;
 ##### `set_tile_meta()`
 
 ```cpp
-void set_tile_meta(TileId id, const std::string& key, const std::any& value);
+void set_tile_meta(TileId id, const std::string& key, const MetadataValue& value);
 ```
 
 Sets (or overwrites) a metadata key on a tile.
@@ -737,7 +746,7 @@ Sets (or overwrites) a metadata key on a tile.
 |---|---|
 | `id` | Target tile. |
 | `key` | Metadata key string. |
-| `value` | Value to store; any type accepted via `std::any`. |
+| `value` | Serializable metadata value (`MetadataValue`). |
 
 **Throws:** `UnknownTileError` if `id` does not exist.
 
@@ -746,7 +755,7 @@ Sets (or overwrites) a metadata key on a tile.
 ##### `get_tile_meta()`
 
 ```cpp
-const std::any& get_tile_meta(TileId id, const std::string& key) const;
+const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
 ```
 
 | Parameter | Description |
@@ -754,7 +763,7 @@ const std::any& get_tile_meta(TileId id, const std::string& key) const;
 | `id` | Target tile. |
 | `key` | Metadata key string. |
 
-**Returns:** Const reference to the stored `std::any` value.
+**Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
 - `UnknownTileError` if `id` does not exist.
@@ -928,13 +937,13 @@ dungeon.set_location_meta(101, "visited", false);
 dungeon.set_tile_meta    (1,   "level",   1);
 ```
 
-### Reading metadata with any_cast
+### Reading metadata with std::get
 
 ```cpp
-const std::any& raw = dungeon.get_location_meta(101, "name");
-std::string room_name = std::any_cast<std::string>(raw);
+const GameMap::MetadataValue& raw = dungeon.get_location_meta(101, "name");
+std::string room_name = std::get<std::string>(raw);
 
-bool visited = std::any_cast<bool>(dungeon.get_location_meta(101, "visited"));
+bool visited = std::get<bool>(dungeon.get_location_meta(101, "visited"));
 ```
 
 ### Querying adjacency
@@ -965,7 +974,8 @@ try {
 }
 
 try {
-    const std::any& v = dungeon.get_location_meta(101, "missing_key");
+  const GameMap::MetadataValue& v = dungeon.get_location_meta(101, "missing_key");
+  (void)v;
 } catch (const GameMap::UnknownMetaKeyError& e) {
     // handle missing key
 }
@@ -995,9 +1005,9 @@ LOG_INFO(log, "Metadata aggiornati per location 1001");
 
 ### Integrazione con gmSave (snapshot JSON dello stato)
 
-`gmMap` usa internamente `std::any` per i metadata, quindi il salvataggio
-diretto dell'intera mappa richiede un DTO serializzabile. Una strategia
-pratica e stabile e' esportare uno snapshot tipizzato.
+`gmMap` usa metadata serializzabili (`MetadataValue`) con supporto a UID.
+Per snapshot completi e versionabili e' comunque consigliato usare un DTO
+esplicito, separando la persistenza dalla cache runtime UID -> puntatore.
 
 ```cpp
 #include "gmMap.hpp"
@@ -1035,7 +1045,7 @@ MapSnapshot loaded = GmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 
 
 Note:
 - Per persistere anche items e adjacency in modo completo, estendi il DTO con:
-  liste di edge, item per location e metadati in formato tipizzato (non `std::any`).
+  liste di edge, item per location e metadati `MetadataValue`/UID.
 - `gmSave::peek_version()` e' utile per migrazioni di formato degli snapshot.
 
 ---
@@ -1064,11 +1074,12 @@ point-to-point war-game maps, node networks, etc.  If coordinates are needed
 for rendering they can be stored as metadata (e.g.
 `set_location_meta(id, "x", 3); set_location_meta(id, "y", 7);`).
 
-### Why `std::any` for metadata?
+### Why MetadataValue + UID for metadata?
 
-`std::any` imposes no schema on metadata, which is intentional.  Each
-application layer defines its own key conventions and value types.  The trade-off is that callers must use `std::any_cast<T>()` and handle `std::bad_any_cast`
-if the stored type is unexpected.
+`MetadataValue` keeps metadata serializable by design and supports stable
+cross-object references via UID (`UidRef` / `UidList`).
+Pointers remain runtime-only concerns and should stay in a transient cache,
+not in persisted map state.
 
 ### Template header-only implementation
 
