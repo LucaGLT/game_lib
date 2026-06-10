@@ -1,0 +1,93 @@
+/**
+ * @file formatters/JsonFormatter.cpp
+ * @brief Implementation of JsonFormatter.
+ */
+
+#include "JsonFormatter.hpp"
+
+#include "../LogLevel.hpp"
+
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <sstream>
+
+namespace GmLog {
+
+std::string JsonFormatter::format(const LogRecord& record)
+{
+    std::ostringstream oss;
+
+    oss << '{'
+        << "\"time\":"    << '"' << formatTimestamp(record.timestamp)        << '"'
+        << ",\"logger\":" << '"' << escapeJsonString(record.loggerName)      << '"'
+        << ",\"level\":"  << '"' << levelToString(record.level)              << '"';
+
+    if (record.file && record.line > 0) {
+        oss << ",\"file\":"     << '"' << escapeJsonString(record.file) << '"'
+            << ",\"line\":"     << record.line;
+    }
+
+    if (record.function) {
+        oss << ",\"function\":" << '"' << escapeJsonString(record.function) << '"';
+    }
+
+    oss << ",\"message\":" << '"' << escapeJsonString(record.message) << '"'
+        << '}';
+
+    return oss.str();
+}
+
+std::string JsonFormatter::escapeJsonString(const std::string& value)
+{
+    std::string result;
+    result.reserve(value.size() + 8);
+
+    for (unsigned char c : value) {
+        switch (c) {
+            case '"':  result += "\\\""; break;
+            case '\\': result += "\\\\"; break;
+            case '\n': result += "\\n";  break;
+            case '\r': result += "\\r";  break;
+            case '\t': result += "\\t";  break;
+            default:
+                if (c < 0x20) {
+                    char buf[7];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    result += buf;
+                } else {
+                    result += static_cast<char>(c);
+                }
+                break;
+        }
+    }
+
+    return result;
+}
+
+std::string JsonFormatter::formatTimestamp(
+    const std::chrono::system_clock::time_point& tp)
+{
+    using namespace std::chrono;
+
+    const std::time_t tt = system_clock::to_time_t(tp);
+
+    // std::gmtime uses a static buffer; copying immediately is safe because
+    // SyncDispatcher serialises all format() calls via its mutex.
+    std::tm tm_utc{};
+    const std::tm* tmp = std::gmtime(&tt);
+    if (tmp) tm_utc = *tmp;
+
+    const auto ms = duration_cast<milliseconds>(tp.time_since_epoch()) % 1000;
+
+    char date_buf[24];
+    std::strftime(date_buf, sizeof(date_buf), "%Y-%m-%dT%H:%M:%S", &tm_utc);
+
+    char result[32];
+    std::snprintf(result, sizeof(result), "%s.%03d",
+                  date_buf, static_cast<int>(ms.count()));
+
+    return result;
+}
+
+} // namespace GmLog
