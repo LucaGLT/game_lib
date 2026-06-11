@@ -38,10 +38,18 @@ namespace GmDispatch {
  * @c std::unique_ptr<IDispatcher>, the change is confined to the construction
  * site (or the @ref DispatcherFactory helper).
  *
+ * ### Re-entrant dispatch (request-response pattern)
+ * When a channel handler calls @c dispatch() on the same @ref Dispatcher
+ * (e.g. a CoreEngine responding to a UI request), the same thread re-enters
+ * @c SyncDispatcher::dispatch().  This is safe because @c mutex_  is a
+ * @c std::recursive_mutex — the same thread may acquire it multiple times.
+ *
  * ### Deadlock warning
- * Do not call any method of the same @ref Dispatcher from within a channel's
- * @c send() implementation or an @ref EventBusChannel handler — the mutex is
- * already held and a recursive lock will deadlock.
+ * Do **not** call @c subscribe() or @c unsubscribe() from within a channel
+ * handler on the same @c Dispatcher — those operations also acquire the
+ * recursive mutex and are therefore safe to re-enter, but doing so while
+ * iterating the routing table may corrupt it.  If dynamic subscription
+ * management from within a callback is required, use @ref AsyncDispatcher.
  */
 class SyncDispatcher : public IDispatcher {
 public:
@@ -85,8 +93,8 @@ public:
     void flush() override;
 
 private:
-    std::unique_ptr<IRouter> router_;
-    mutable std::mutex       mutex_;
+    std::unique_ptr<IRouter>    router_;
+    mutable std::recursive_mutex mutex_;
 };
 
 } // namespace GmDispatch

@@ -19,7 +19,7 @@ La sua architettura riprende deliberatamente lo schema di `gmLog`
 
 | Aspetto              | gmLog              | gmDispatch                      |
 |----------------------|--------------------|---------------------------------|
-| Non toccare gmLog    | ✔ rimane invariato | questa lib è indipendente        |
+| Non toccare gmLog    | [OK] rimane invariato | questa lib è indipendente        |
 | Bridge opzionale     | —                  | `LogDispatchBridge` (Phase 4)   |
 
 ---
