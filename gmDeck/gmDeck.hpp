@@ -1,5 +1,5 @@
-#ifndef LIBDECK_HPP
-#define LIBDECK_HPP
+#ifndef FATEBAG_GMDECK_HPP
+#define FATEBAG_GMDECK_HPP
 
 #include <cstdint>
 #include <vector>
@@ -36,6 +36,12 @@ public:
         : DeckAdapterError(message) {}
 };
 
+class TokenNotFoundError : public DeckAdapterError {
+public:
+    explicit TokenNotFoundError(const std::string& message)
+        : DeckAdapterError(message) {}
+};
+
 /**
  * @class gmDeck
  * @brief Deterministic in-memory token deck adapter (optimized with uint32_t IDs).
@@ -56,8 +62,9 @@ public:
      * @param seed Optional random seed for deterministic shuffling (null = random)
      * @throws DuplicateTokenIdError if token_ids contains duplicates
      */
-    explicit gmDeck(const std::vector<uint32_t>& token_ids, 
-                      std::optional<unsigned int> seed = std::nullopt);
+    explicit gmDeck(const std::vector<uint32_t>& token_ids,
+                     std::optional<unsigned int> seed = std::nullopt,
+                     bool auto_shuffle = true);
 
     /**
      * @brief Shuffles the deck using the stored RNG.
@@ -118,6 +125,28 @@ public:
      */
     bool contains(uint32_t token_id) const;
 
+    /**
+     * @brief Appends a token at the back of the deck (no shuffle).
+     * @param token_id Token to add
+     * @throws DuplicateTokenIdError if token_id is already in the deck
+     */
+    void push_back(uint32_t token_id);
+
+    /**
+     * @brief Prepends a token at the front of the deck (no shuffle).
+     * @param token_id Token to add
+     * @throws DuplicateTokenIdError if token_id is already in the deck
+     */
+    void push_front(uint32_t token_id);
+
+    /**
+     * @brief Finds, removes, and returns a specific token by ID.
+     * @param token_id Token to draw
+     * @return token_id (for convenience)
+     * @throws TokenNotFoundError if token_id is not in the deck
+     */
+    uint32_t draw_specific(uint32_t token_id);
+
 private:
     /**
      * @brief Validates that token_ids contains no duplicates.
@@ -134,4 +163,4 @@ private:
 
 } // namespace FateBag
 
-#endif // LIBDECK_HPP
+#endif // FATEBAG_GMDECK_HPP

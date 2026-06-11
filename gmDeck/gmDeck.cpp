@@ -1,11 +1,12 @@
-#include "libDeck.hpp"
+#include "gmDeck.hpp"
 #include <algorithm>
 #include <sstream>
 
 namespace FateBag {
 
-gmDeck::gmDeck(const std::vector<uint32_t>& token_ids, 
-                     std::optional<unsigned int> seed)
+gmDeck::gmDeck(const std::vector<uint32_t>& token_ids,
+               std::optional<unsigned int> seed,
+               bool auto_shuffle)
     : _initial_token_ids(token_ids), _seed(seed) {
     _validate_token_ids(token_ids);
     
@@ -18,7 +19,9 @@ gmDeck::gmDeck(const std::vector<uint32_t>& token_ids,
         _rng.seed(rd());
     }
     
-    shuffle();
+    if (auto_shuffle) {
+        shuffle();
+    }
 }
 
 void gmDeck::_validate_token_ids(const std::vector<uint32_t>& token_ids) {
@@ -114,6 +117,31 @@ void gmDeck::remove(uint32_t token_id) {
 
 bool gmDeck::contains(uint32_t token_id) const {
     return std::find(_deck.begin(), _deck.end(), token_id) != _deck.end();
+}
+
+void gmDeck::push_back(uint32_t token_id) {
+    if (contains(token_id)) {
+        throw DuplicateTokenIdError(
+            "Token " + std::to_string(token_id) + " already exists in deck");
+    }
+    _deck.push_back(token_id);
+}
+
+void gmDeck::push_front(uint32_t token_id) {
+    if (contains(token_id)) {
+        throw DuplicateTokenIdError(
+            "Token " + std::to_string(token_id) + " already exists in deck");
+    }
+    _deck.insert(_deck.begin(), token_id);
+}
+
+uint32_t gmDeck::draw_specific(uint32_t token_id) {
+    if (!contains(token_id)) {
+        throw TokenNotFoundError(
+            "Token " + std::to_string(token_id) + " not found in deck");
+    }
+    remove(token_id);
+    return token_id;
 }
 
 } // namespace FateBag
