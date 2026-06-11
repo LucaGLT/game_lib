@@ -25,9 +25,12 @@
 #include "gmFlow/core/Ids.hpp"
 #include "gmFlow/core/Result.hpp"
 
+#include <memory>
+
 // Forward declarations.
 namespace gmFlow {
     class GameContext;
+    class IAction;
 }
 
 namespace gmFlow {
@@ -90,6 +93,23 @@ public:
      */
     virtual void on_action_completed(GameContext&         ctx,
                                      const ActionResult&  result) = 0;
+
+    /**
+     * @brief Routes a validated action to the controller's current ActionWindow.
+     *
+     * Called by @ref GameSession::submit_action() after both eligibility and
+     * game-rule validation have passed.  The controller takes ownership of the
+     * action and delivers it to the appropriate @ref ActionWindow.
+     *
+     * @param ctx    Mutable session context.
+     * @param actor  The actor submitting the action.
+     * @param action The validated action; ownership is transferred.
+     * @return ValidationResult::ok() if accepted by the window,
+     *         ValidationResult::fail(...) if the window rejects it.
+     */
+    virtual ValidationResult accept_action(GameContext&              ctx,
+                                           const ActorId&            actor,
+                                           std::unique_ptr<IAction>  action) = 0;
 
     /**
      * @brief Returns true when the session's victory/loss/end condition is met.

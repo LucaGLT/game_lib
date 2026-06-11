@@ -40,8 +40,11 @@ void Actor::set_display_name(std::string name)
 
 void ActorRegistry::add(Actor actor)
 {
-    // TODO: Phase 4.2 — consider emitting a log warning if ID already exists
-    actors_.emplace(actor.id(), std::move(actor));
+    const ActorId id = actor.id();
+    if (actors_.count(id) == 0) {
+        insertion_order_.push_back(id);
+    }
+    actors_.emplace(id, std::move(actor));
 }
 
 bool ActorRegistry::has(const ActorId& actor_id) const
@@ -60,12 +63,7 @@ const Actor& ActorRegistry::get(const ActorId& actor_id) const
 
 std::vector<ActorId> ActorRegistry::all_ids() const
 {
-    std::vector<ActorId> ids;
-    ids.reserve(actors_.size());
-    for (const auto& pair : actors_) {
-        ids.push_back(pair.first);
-    }
-    return ids;
+    return insertion_order_;
 }
 
 std::size_t ActorRegistry::count() const

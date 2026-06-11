@@ -6,6 +6,8 @@
 #include "gmFlow/actions/ActionWindow.hpp"
 #include "gmFlow/core/GameContext.hpp"
 #include "gmFlow/core/Result.hpp"
+#include "gmFlow/events/EventBus.hpp"
+#include "gmFlow/events/FlowEvents.hpp"
 
 #include <algorithm>
 #include <stdexcept>
@@ -55,8 +57,17 @@ ValidationResult ActionWindow::submit(const ActorId& actor_id,
 
 void ActionWindow::pass(const ActorId& actor_id)
 {
-    // TODO: Phase 4.4 — validate actor is eligible before recording pass
-    passed_actors_.push_back(actor_id);
+    const bool eligible = std::find(
+        eligible_actors_.begin(), eligible_actors_.end(), actor_id)
+        != eligible_actors_.end();
+    if (!eligible) return;
+
+    const bool already_passed = std::find(
+        passed_actors_.begin(), passed_actors_.end(), actor_id)
+        != passed_actors_.end();
+    if (!already_passed) {
+        passed_actors_.push_back(actor_id);
+    }
 }
 
 bool ActionWindow::is_complete(const GameContext& /*ctx*/) const
@@ -90,9 +101,46 @@ void ActionWindow::resolve(GameContext& ctx)
     }
     closed_ = true;
 
-    // TODO: Phase 4.4 — sort submissions by action priority, then call execute()
-    //   on each action in order.  Emit EVT_WINDOW_CLOSED event via ctx.event_bus().
-    (void)ctx;
+    // Execute all stored actions in submission order.
+    // PRIORITY_RESOLVED: a future version should sort submissions by priority here.
+    for (Submission& sub : submissions_) {
+        if (!sub.action) continue;
+
+        ActionStartedEvent asev;
+        asev.action_id = sub.action->id();
+        asev.actor_id  = sub.actor_id;
+        ctx.event_bus().publish(asev);
+
+        // Safety re-validation before execute.
+        const ValidationResult vr = sub.action->validate(ctx);
+        if (!vr.valid()) {
+            ActionFailedEvent afev;
+            afev.action_id = sub.action->id();
+            afev.actor_id  = sub.actor_id;
+            afev.reason    = vr.message();
+            ctx.event_bus().publish(afev);
+            continue;
+        }
+
+        const ActionResult result = sub.action->execute(ctx);
+
+        if (result.succeeded()) {
+            ActionCompletedEvent acev;
+            acev.action_id = sub.action->id();
+            acev.actor_id  = sub.actor_id;
+            ctx.event_bus().publish(acev);
+        } else {
+            ActionFailedEvent afev;
+            afev.action_id = sub.action->id();
+            afev.actor_id  = sub.actor_id;
+            afev.reason    = result.reason();
+            ctx.event_bus().publish(afev);
+        }
+    }
+    submissions_.clear();
+
+    WindowClosedEvent wcev;
+    ctx.event_bus().publish(wcev);
 }
 
 void ActionWindow::force_close()

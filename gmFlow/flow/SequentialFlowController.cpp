@@ -14,8 +14,12 @@
 namespace gmFlow {
 
 SequentialFlowController::SequentialFlowController(
-    std::vector<std::unique_ptr<IPhase>> phases)
+    std::vector<std::unique_ptr<IPhase>> phases,
+    TurnPolicy                           turn_policy,
+    RoundPolicy                          round_policy)
     : phases_(std::move(phases))
+    , turn_policy_(turn_policy)
+    , round_policy_(round_policy)
 {
     if (phases_.empty()) {
         throw std::invalid_argument(
@@ -23,47 +27,104 @@ SequentialFlowController::SequentialFlowController(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 void SequentialFlowController::start(GameContext& ctx)
 {
-    // TODO: Phase 4.6 — full implementation; stubs below preserve compile-ability.
     current_phase_index_ = 0;
     current_actor_index_ = 0;
     round_index_         = 1;
     session_complete_    = false;
+    rounds_exhausted_    = false;
 
-    ctx.set_current_phase_id(phases_[0]->id());
+    // Enter first phase.
+    const PhaseId first_id = phases_[0]->id();
+    ctx.set_current_phase_id(first_id);
     phases_[0]->on_enter(ctx);
 
-    SessionStartedEvent ev;
-    ev.session_id = ctx.session_id();
-    ctx.event_bus().publish(ev);
+    PhaseEnteredEvent pev;
+    pev.phase_id    = first_id;
+    pev.previous_id = "";
+    ctx.event_bus().publish(pev);
+
+    // Start first round.
+    if (round_policy_.enabled) {
+        const RoundId rid = "round_" + std::to_string(round_index_);
+        ctx.set_current_round_id(rid);
+
+        RoundStartedEvent rev;
+        rev.round_id = rid;
+        rev.index    = round_index_;
+        ctx.event_bus().publish(rev);
+    }
+
+    // Announce session start.
+    SessionStartedEvent sev;
+    sev.session_id = ctx.session_id();
+    ctx.event_bus().publish(sev);
 
     open_next_turn(ctx);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 void SequentialFlowController::process(GameContext& ctx)
 {
-    // TODO: Phase 4.6 — process action queue, advance window/turn/phase/round.
-    if (session_complete_) return;
+    if (session_complete_ || rounds_exhausted_) return;
+    if (!current_window_)                       return;
+    if (!current_window_->is_complete(ctx))     return;
 
-    if (!current_window_) return;
-
-    if (!current_window_->is_complete(ctx)) return;
-
+    // Resolve window: executes stored actions and emits WindowClosed.
     current_window_->resolve(ctx);
+    current_window_.reset();
 
-    IPhase& phase = *phases_[current_phase_index_];
-    if (phase.is_complete(ctx)) {
+    // Emit TurnEnded.
+    TurnEndedEvent tev;
+    tev.turn_id = ctx.current_turn_id();
+    ctx.event_bus().publish(tev);
+
+    // Advance turn counter.
+    const std::vector<ActorId> order = determine_turn_order(ctx);
+    const std::size_t n = order.size();
+    ++current_actor_index_;
+
+    // Check if we completed one full actor cycle (= one round).
+    if (n > 0 && current_actor_index_ % n == 0) {
+        if (round_policy_.enabled) {
+            RoundEndedEvent rev;
+            rev.round_id = ctx.current_round_id();
+            rev.index    = round_index_;
+            ctx.event_bus().publish(rev);
+
+            if (round_policy_.max_rounds > 0 && round_index_ >= round_policy_.max_rounds) {
+                rounds_exhausted_ = true;
+                return;  // is_session_complete() will now return true.
+            }
+
+            ++round_index_;
+            const RoundId new_rid = "round_" + std::to_string(round_index_);
+            ctx.set_current_round_id(new_rid);
+
+            RoundStartedEvent rsev;
+            rsev.round_id = new_rid;
+            rsev.index    = round_index_;
+            ctx.event_bus().publish(rsev);
+        }
+    }
+
+    // Check if the current phase is complete.
+    if (phases_[current_phase_index_]->is_complete(ctx)) {
         advance_phase(ctx);
     } else {
         open_next_turn(ctx);
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 bool SequentialFlowController::can_actor_act(const GameContext& /*ctx*/,
                                              const ActorId& actor) const
 {
-    // TODO: Phase 4.6 — check if actor is in the current window's eligible list.
     if (!current_window_ || current_window_->is_closed()) return false;
     return current_window_->can_submit(actor);
 }
@@ -71,66 +132,112 @@ bool SequentialFlowController::can_actor_act(const GameContext& /*ctx*/,
 void SequentialFlowController::on_action_completed(GameContext& /*ctx*/,
                                                    const ActionResult& /*result*/)
 {
-    // TODO: Phase 4.6 — react to action completion (trigger follow-ups, etc.).
+    // ActionWindow::resolve() already handles execution and events.
+    // For MANUAL_CLOSE windows (allow_multiple_actions_per_turn), the flow
+    // controller would force_close() here when a PASS action arrives.
+    // For standard ANY_SUBMITTED windows this is a no-op.
+}
+
+ValidationResult SequentialFlowController::accept_action(
+    GameContext& /*ctx*/,
+    const ActorId& actor,
+    std::unique_ptr<IAction> action)
+{
+    if (!current_window_) {
+        return ValidationResult::fail(
+            ValidationError::ACTION_WINDOW_CLOSED,
+            "No active action window.");
+    }
+    return current_window_->submit(actor, std::move(action));
 }
 
 bool SequentialFlowController::is_session_complete(const GameContext& /*ctx*/) const
 {
-    return session_complete_;
+    return session_complete_ || rounds_exhausted_;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 std::vector<ActorId> SequentialFlowController::determine_turn_order(
     const GameContext& ctx) const
 {
-    // Default: registry insertion order.
     return ctx.actor_registry().all_ids();
 }
 
 void SequentialFlowController::advance_phase(GameContext& ctx)
 {
-    // TODO: Phase 4.6 — emit phase exit/enter events, handle round wrapping.
-    phases_[current_phase_index_]->on_exit(ctx);
+    const PhaseId exiting_id = phases_[current_phase_index_]->id();
+    const std::size_t next_idx = current_phase_index_ + 1;
+    const PhaseId next_id = (next_idx < phases_.size())
+                             ? phases_[next_idx]->id()
+                             : "";
 
+    // Announce phase exit before calling on_exit().
+    PhaseExitedEvent pxev;
+    pxev.phase_id = exiting_id;
+    pxev.next_id  = next_id;
+    ctx.event_bus().publish(pxev);
+
+    phases_[current_phase_index_]->on_exit(ctx);
     ++current_phase_index_;
     current_actor_index_ = 0;
 
     if (current_phase_index_ >= phases_.size()) {
         session_complete_ = true;
-        SessionCompletedEvent ev;
-        ev.session_id = ctx.session_id();
-        ctx.event_bus().publish(ev);
+        SessionCompletedEvent sev;
+        sev.session_id = ctx.session_id();
+        ctx.event_bus().publish(sev);
         return;
     }
 
-    ctx.set_current_phase_id(phases_[current_phase_index_]->id());
+    // Enter the next phase.
+    ctx.set_current_phase_id(next_id);
     phases_[current_phase_index_]->on_enter(ctx);
+
+    PhaseEnteredEvent penev;
+    penev.phase_id    = next_id;
+    penev.previous_id = exiting_id;
+    ctx.event_bus().publish(penev);
+
     open_next_turn(ctx);
 }
 
 void SequentialFlowController::open_next_turn(GameContext& ctx)
 {
-    // TODO: Phase 4.6 — use TurnPolicy to decide window type (simultaneous vs sequential).
     const std::vector<ActorId> order = determine_turn_order(ctx);
     if (order.empty()) return;
 
-    const ActorId& actor = order[current_actor_index_ % order.size()];
-    const TurnId   tid   = "round_" + std::to_string(round_index_)
-                         + "_turn_" + std::to_string(current_actor_index_ + 1);
+    CompletionPolicy     policy;
+    std::vector<ActorId> eligible;
 
+    if (turn_policy_.allow_simultaneous_turns) {
+        eligible = order;
+        policy = turn_policy_.require_all_actors_to_pass
+                    ? CompletionPolicy::UNTIL_ALL_PASSED
+                    : CompletionPolicy::ALL_SUBMITTED;
+    } else {
+        const ActorId& actor = order[current_actor_index_ % order.size()];
+        eligible = {actor};
+        policy = turn_policy_.allow_multiple_actions_per_turn
+                    ? CompletionPolicy::MANUAL_CLOSE
+                    : CompletionPolicy::ANY_SUBMITTED;
+    }
+
+    const TurnId tid = "round_" + std::to_string(round_index_)
+                     + "_turn_" + std::to_string(current_actor_index_ + 1);
     ctx.set_current_turn_id(tid);
 
     TurnStartedEvent tev;
     tev.turn_id       = tid;
-    tev.active_actors = {actor};
+    tev.active_actors = eligible;
     ctx.event_bus().publish(tev);
 
-    current_window_ = std::make_unique<ActionWindow>(
-        std::vector<ActorId>{actor},
-        CompletionPolicy::MANUAL_CLOSE);
+    current_window_ = std::make_unique<ActionWindow>(eligible, policy);
 
     WindowOpenedEvent wev;
-    wev.eligible_actors = {actor};
+    wev.eligible_actors = eligible;
     ctx.event_bus().publish(wev);
 }
 
 } // namespace gmFlow
+

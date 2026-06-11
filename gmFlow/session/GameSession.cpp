@@ -67,7 +67,17 @@ void GameSession::tick()
         throw GameSessionError("tick() called on a session that is not RUNNING");
     }
 
-    // TODO: Phase 4.7 — drain ActionQueue, call execute() on each action.
+    // Drain the deferred/reaction action queue.
+    // Normal turn actions are stored inside the ActionWindow and executed
+    // by ActionWindow::resolve() which is called from process() below.
+    while (!action_queue_.empty()) {
+        IAction& action = action_queue_.front();
+        const ActionResult result = action.execute(context_);
+        action_queue_.pop();
+        flow_controller_->on_action_completed(context_, result);
+    }
+
+    // Advance flow state (checks window completion, advances turn/phase/round).
     flow_controller_->process(context_);
 
     if (flow_controller_->is_session_complete(context_)) {
@@ -130,15 +140,14 @@ ValidationResult GameSession::submit_action(const ActorId&           actor,
         return vr;
     }
 
-    // Accepted — enqueue.
+    // Accepted: publish event and delegate to the flow controller's ActionWindow.
     ActionSubmittedEvent ev;
     ev.action_id = action->id();
     ev.actor_id  = actor;
     event_bus_.publish(ev);
 
-    action_queue_.push(std::move(action),
-                       action ? ActionPriority::NORMAL : ActionPriority::NORMAL);
-    return ValidationResult::ok();
+    // The flow controller routes the action to the current ActionWindow.
+    return flow_controller_->accept_action(context_, actor, std::move(action));
 }
 
 bool GameSession::is_finished() const

@@ -43,10 +43,13 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 // Forward declarations — avoid pulling in full gmDispatch headers here.
 namespace GmDispatch {
     class Dispatcher;
+    class IChannel;   ///< Stored as type-erased base for unsubscription in ~EventBus.
 }
 
 namespace gmFlow {
@@ -107,7 +110,8 @@ public:
     void publish(const IEvent& event);
 
 private:
-    std::shared_ptr<GmDispatch::Dispatcher> dispatcher_;
+    std::shared_ptr<GmDispatch::Dispatcher>                                       dispatcher_;
+    std::vector<std::pair<EventType, std::shared_ptr<GmDispatch::IChannel>>>    subscriptions_;
 };
 
 } // namespace gmFlow

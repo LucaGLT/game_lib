@@ -57,22 +57,29 @@ namespace gmFlow {
 class SequentialFlowController : public IFlowController {
 public:
     /**
-     * @brief Constructs the controller with an ordered list of phases.
+     * @brief Constructs the controller with phases, turn policy and round policy.
      *
-     * @param phases Phases to execute in order; must not be empty.
+     * @param phases      Phases to execute in order; must not be empty.
+     * @param turn_policy Turn management flags (default: sequential, single action).
+     * @param round_policy Round management flags (default: enabled, unlimited).
      * @throws std::invalid_argument if `phases` is empty.
      */
     explicit SequentialFlowController(
-        std::vector<std::unique_ptr<IPhase>> phases);
+        std::vector<std::unique_ptr<IPhase>> phases,
+        TurnPolicy                           turn_policy  = {},
+        RoundPolicy                          round_policy = {});
 
     // IFlowController interface.
-    void start(GameContext& ctx) override;
-    void process(GameContext& ctx) override;
-    bool can_actor_act(const GameContext& ctx,
-                       const ActorId& actor) const override;
-    void on_action_completed(GameContext& ctx,
-                             const ActionResult& result) override;
-    bool is_session_complete(const GameContext& ctx) const override;
+    void             start(GameContext& ctx) override;
+    void             process(GameContext& ctx) override;
+    bool             can_actor_act(const GameContext& ctx,
+                                   const ActorId& actor) const override;
+    void             on_action_completed(GameContext& ctx,
+                                         const ActionResult& result) override;
+    ValidationResult accept_action(GameContext& ctx,
+                                   const ActorId& actor,
+                                   std::unique_ptr<IAction> action) override;
+    bool             is_session_complete(const GameContext& ctx) const override;
 
 protected:
     /**
@@ -94,10 +101,13 @@ private:
     void open_next_turn(GameContext& ctx);
 
     std::vector<std::unique_ptr<IPhase>> phases_;
+    TurnPolicy                           turn_policy_;
+    RoundPolicy                          round_policy_;
     std::size_t                          current_phase_index_ = 0;
     std::size_t                          current_actor_index_ = 0;
     int                                  round_index_         = 0;
     bool                                 session_complete_    = false;
+    bool                                 rounds_exhausted_    = false;
 
     std::unique_ptr<ActionWindow>        current_window_;
 };

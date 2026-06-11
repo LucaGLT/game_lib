@@ -94,6 +94,7 @@ public:
 
 private:
     std::unordered_map<ActorId, Actor> actors_;
+    std::vector<ActorId>               insertion_order_; ///< Preserves add() order for turn sequencing.
 };
 
 } // namespace gmFlow
