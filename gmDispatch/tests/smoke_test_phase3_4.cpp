@@ -93,6 +93,7 @@ static void test_fileChannel()
     int lines = 0;
     std::string line;
     while (std::getline(f, line)) { ++lines; }
+    f.close();                     // must close before std::remove on Windows
     std::remove(TMPFILE.c_str());
 
     if (lines == 2) pass(TEST);
