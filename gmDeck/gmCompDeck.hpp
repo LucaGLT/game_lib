@@ -1,5 +1,5 @@
-#ifndef FATEBAG_GMCOMPDECK_HPP
-#define FATEBAG_GMCOMPDECK_HPP
+#ifndef GMFATE_GMCOMPDECK_HPP
+#define GMFATE_GMCOMPDECK_HPP
 
 /**
  * @file gmCompDeck.hpp
@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-namespace FateBag {
+namespace gmFate {
 
 /**
  * @class gmCompDeck
@@ -46,7 +46,7 @@ namespace FateBag {
  *
  * ## Typical game flow
  * @code
- *   FateBag::gmCompDeck player("Alice", {101, 102, 103, 104, 105, 106, 107});
+ *   gmFate::gmCompDeck player("Alice", {101, 102, 103, 104, 105, 106, 107});
  *
  *   player.draw_to_hand(3);            // Main Deck → Hand
  *   player.play_card(102);             // Hand → Play Area
@@ -54,7 +54,7 @@ namespace FateBag {
  *   player.take_from_discard(102);     // Discard → Hand
  *   player.banish(102);                // Hand → Banish (permanent)
  *
- *   FateBag::ZoneId loc = player.locate(102); // → ZoneId::BANISHED
+ *   gmFate::ZoneId loc = player.locate(102); // → ZoneId::BANISHED
  * @endcode
  */
 class gmCompDeck {
@@ -254,6 +254,6 @@ private:
     BanishZone    banish_zone_;
 };
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // FATEBAG_GMCOMPDECK_HPP
+#endif // GMFATE_GMCOMPDECK_HPP

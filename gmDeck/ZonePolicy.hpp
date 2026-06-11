@@ -1,5 +1,5 @@
-#ifndef FATEBAG_ZONEPOLICY_HPP
-#define FATEBAG_ZONEPOLICY_HPP
+#ifndef GMFATE_ZONEPOLICY_HPP
+#define GMFATE_ZONEPOLICY_HPP
 
 /**
  * @file ZonePolicy.hpp
@@ -21,11 +21,11 @@
  *       static constexpr bool can_direct_access = true;
  *       static constexpr bool is_insert_only    = false;
  *   };
- *   using MyZone = FateBag::PolicyBasedDeck<MyZonePolicy>;
+ *   using MyZone = gmFate::PolicyBasedDeck<MyZonePolicy>;
  * @endcode
  */
 
-namespace FateBag {
+namespace gmFate {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Built-in zone policies
@@ -94,6 +94,6 @@ struct BanishPolicy {
     static constexpr bool is_insert_only    = true;    ///< Add-only
 };
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // FATEBAG_ZONEPOLICY_HPP
+#endif // GMFATE_ZONEPOLICY_HPP

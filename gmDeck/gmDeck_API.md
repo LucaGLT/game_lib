@@ -83,7 +83,7 @@ This design ensures:
 3. Use in your code:
 
 ```cpp
-using namespace FateBag;
+using namespace gmFate;
 ```
 
 ---
@@ -92,7 +92,7 @@ using namespace FateBag;
 
 ### Exceptions
 
-All exceptions inherit from `std::runtime_error` and live in the `FateBag` namespace.
+All exceptions inherit from `std::runtime_error` and live in the `gmFate` namespace.
 
 #### `DeckAdapterError`
 
@@ -192,7 +192,7 @@ try {
 Main class for managing token decks.
 
 ```cpp
-namespace FateBag {
+namespace gmFate {
     class gmDeck {
     public:
         explicit gmDeck(const std::vector<uint32_t>& token_ids, 
@@ -519,7 +519,7 @@ if (deck.contains(102)) {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace FateBag;
+using namespace gmFate;
 
 int main() {
     // Create deck with deterministic shuffle
@@ -560,7 +560,7 @@ int main() {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace FateBag;
+using namespace gmFate;
 
 int main() {
     try {
@@ -601,7 +601,7 @@ int main() {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace FateBag;
+using namespace gmFate;
 
 int main() {
     std::vector<uint32_t> tokens = {10, 20, 30, 40, 50};
@@ -679,7 +679,7 @@ The library does not use synchronization primitives (mutexes, atomics). If you n
 
 class ThreadSafeDeck {
 private:
-    FateBag::gmDeck deck;
+    gmFate::gmDeck deck;
     mutable std::mutex mutex;
     
 public:
@@ -766,7 +766,7 @@ lib libDeck.obj /OUT:libDeck.lib
 
 ## License and Attribution
 
-**libDeck** is part of the **FateBag** project.
+**libDeck** is part of the **gmFate** project.
 
 For questions, issues, or contributions, refer to the main project repository.
 

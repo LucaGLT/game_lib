@@ -26,11 +26,11 @@ It provides two layers:
 # 2. Code Style
 
 - Follow the same style as `gmDispatch`: `#ifndef` guards, Doxygen `@brief/@param/@return`
-- **Namespace:** `FateBag`
+- **Namespace:** `gmFate`
 - **No `auto` as return type** in public prototypes (user preference)
 - **No external dependencies** — only C++17 stdlib
 - **English only** for all comments, doc strings, and error messages
-- Include guards pattern: `FATEBAG_<FILENAME>_HPP` (uppercase, underscores)
+- Include guards pattern: `GMFATE_<FILENAME>_HPP` (uppercase, underscores)
 - TODO comments in stubs: `// TODO: Phase N — description`
 
 ---

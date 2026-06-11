@@ -1,5 +1,5 @@
-#ifndef FATEBAG_CARDLOCATION_HPP
-#define FATEBAG_CARDLOCATION_HPP
+#ifndef GMFATE_CARDLOCATION_HPP
+#define GMFATE_CARDLOCATION_HPP
 
 /**
  * @file CardLocation.hpp
@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace FateBag {
+namespace gmFate {
 
 /**
  * @enum ZoneId
@@ -45,6 +45,6 @@ inline std::string zone_name(ZoneId zone) {
     return "UNKNOWN";
 }
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // FATEBAG_CARDLOCATION_HPP
+#endif // GMFATE_CARDLOCATION_HPP

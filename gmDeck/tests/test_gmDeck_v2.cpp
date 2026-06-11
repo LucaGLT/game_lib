@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-using namespace FateBag;
+using namespace gmFate;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

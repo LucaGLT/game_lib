@@ -3,7 +3,7 @@
 **Version:** 2.0
 **Status:** Phase 3 – In Progress
 **Language:** C++17 Standard
-**Namespace:** `FateBag`
+**Namespace:** `gmFate`
 
 ---
 
@@ -146,4 +146,4 @@ g++ -std=c++17 -I. gmDeck/gmDeck.cpp gmDeck/gmCompDeck.cpp \
 ---
 
 **Created:** 2026-06-11
-**Namespace:** `FateBag`
+**Namespace:** `gmFate`

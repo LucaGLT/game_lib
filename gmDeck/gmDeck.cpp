@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <sstream>
 
-namespace FateBag {
+namespace gmFate {
 
 gmDeck::gmDeck(const std::vector<uint32_t>& token_ids,
                std::optional<unsigned int> seed,
@@ -144,4 +144,4 @@ uint32_t gmDeck::draw_specific(uint32_t token_id) {
     return token_id;
 }
 
-} // namespace FateBag
+} // namespace gmFate

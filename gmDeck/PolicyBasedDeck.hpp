@@ -1,5 +1,5 @@
-#ifndef FATEBAG_POLICYBASEDDECK_HPP
-#define FATEBAG_POLICYBASEDDECK_HPP
+#ifndef GMFATE_POLICYBASEDDECK_HPP
+#define GMFATE_POLICYBASEDDECK_HPP
 
 /**
  * @file PolicyBasedDeck.hpp
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace FateBag {
+namespace gmFate {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zone-specific exception
@@ -57,7 +57,7 @@ public:
  *
  * ### Example
  * @code
- *   FateBag::DiscardPile discard("DISCARD");
+ *   gmFate::DiscardPile discard("DISCARD");
  *   discard.add(42);
  *   discard.add(17);
  *   // discard.shuffle();         ← compile error: DiscardPolicy::can_shuffle == false
@@ -243,6 +243,6 @@ using DiscardPile = PolicyBasedDeck<DiscardPolicy>;
 /** @brief Banish zone — insert-only, tokens permanently out of play. */
 using BanishZone  = PolicyBasedDeck<BanishPolicy>;
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // FATEBAG_POLICYBASEDDECK_HPP
+#endif // GMFATE_POLICYBASEDDECK_HPP

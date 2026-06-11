@@ -1,5 +1,5 @@
-#ifndef FATEBAG_GMDECK_HPP
-#define FATEBAG_GMDECK_HPP
+#ifndef GMFATE_GMDECK_HPP
+#define GMFATE_GMDECK_HPP
 
 #include <cstdint>
 #include <vector>
@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <string>
 
-namespace FateBag {
+namespace gmFate {
 
 // Exception classes
 class DeckAdapterError : public std::runtime_error {
@@ -161,6 +161,6 @@ private:
     std::mt19937 _rng;
 };
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // FATEBAG_GMDECK_HPP
+#endif // GMFATE_GMDECK_HPP

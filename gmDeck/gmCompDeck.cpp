@@ -7,7 +7,7 @@
 
 #include <sstream>
 
-namespace FateBag {
+namespace gmFate {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Construction
@@ -161,4 +161,4 @@ void gmCompDeck::_remove_from_zone(ZoneId zone, uint32_t token_id) {
     }
 }
 
-} // namespace FateBag
+} // namespace gmFate

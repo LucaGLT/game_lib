@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** Production
 **Language:** C++17 Standard
-**Namespace:** `FateBag`
+**Namespace:** `gmFate`
 **License:** Project License
 
 ---
@@ -162,7 +162,7 @@ enum class ZoneId {
 Returns a human-readable uppercase string for a zone:
 
 ```cpp
-FateBag::zone_name(FateBag::ZoneId::DISCARD);  // → "DISCARD"
+gmFate::zone_name(gmFate::ZoneId::DISCARD);  // → "DISCARD"
 ```
 
 ---
@@ -187,7 +187,7 @@ struct EventQueuePolicy {
     static constexpr bool can_direct_access = false;
     static constexpr bool is_insert_only    = false;
 };
-using EventQueue = FateBag::PolicyBasedDeck<EventQueuePolicy>;
+using EventQueue = gmFate::PolicyBasedDeck<EventQueuePolicy>;
 ```
 
 ---
@@ -236,7 +236,7 @@ using BanishZone  = PolicyBasedDeck<BanishPolicy>;
 These aliases can be used standalone, independently of `gmCompDeck`:
 
 ```cpp
-FateBag::DiscardPile discard("Shared Graveyard");
+gmFate::DiscardPile discard("Shared Graveyard");
 discard.add(202);
 discard.add(305);
 // discard.shuffle();  ← compile error
@@ -318,8 +318,8 @@ explicit gmCompDeck(std::string owner_name,
 Returns the zone currently holding the token, or `ZoneId::NOT_FOUND`.
 
 ```cpp
-FateBag::ZoneId loc = player.locate(102);
-std::cout << FateBag::zone_name(loc);  // e.g. "HAND"
+gmFate::ZoneId loc = player.locate(102);
+std::cout << gmFate::zone_name(loc);  // e.g. "HAND"
 ```
 
 ---
@@ -327,7 +327,7 @@ std::cout << FateBag::zone_name(loc);  // e.g. "HAND"
 #### `count_in(ZoneId zone) → int`
 
 ```cpp
-int in_hand = player.count_in(FateBag::ZoneId::HAND);
+int in_hand = player.count_in(gmFate::ZoneId::HAND);
 ```
 
 ---
@@ -349,13 +349,13 @@ Sum of all zones.  Should remain constant over a play session (except when
 
 int main() {
     std::vector<uint32_t> cards = {101, 102, 103, 104, 105, 106, 107, 108};
-    FateBag::gmCompDeck player("Alice", cards, /*seed=*/42);
+    gmFate::gmCompDeck player("Alice", cards, /*seed=*/42);
 
-    std::cout << "Deck size: " << player.count_in(FateBag::ZoneId::MAIN_DECK) << "\n"; // 8
+    std::cout << "Deck size: " << player.count_in(gmFate::ZoneId::MAIN_DECK) << "\n"; // 8
 
     // Alice draws 3 cards
     player.draw_to_hand(3);
-    std::cout << "Hand size: " << player.count_in(FateBag::ZoneId::HAND) << "\n";      // 3
+    std::cout << "Hand size: " << player.count_in(gmFate::ZoneId::HAND) << "\n";      // 3
 
     // Alice plays the first card in her hand
     uint32_t played = player.hand().peek_all().front();
@@ -376,11 +376,11 @@ int main() {
 
     // Banish a card permanently
     player.banish(played);
-    std::cout << "Banished: " << player.count_in(FateBag::ZoneId::BANISHED) << "\n";  // 1
+    std::cout << "Banished: " << player.count_in(gmFate::ZoneId::BANISHED) << "\n";  // 1
 
     // Locate where a card is
-    FateBag::ZoneId loc = player.locate(discarded);
-    std::cout << FateBag::zone_name(loc) << "\n";  // "DISCARD"
+    gmFate::ZoneId loc = player.locate(discarded);
+    std::cout << gmFate::zone_name(loc) << "\n";  // "DISCARD"
 
     return 0;
 }
@@ -391,15 +391,15 @@ int main() {
 ### Reshuffle discard into deck
 
 ```cpp
-FateBag::gmCompDeck player("Bob", {1, 2, 3, 4, 5});
+gmFate::gmCompDeck player("Bob", {1, 2, 3, 4, 5});
 player.draw_to_hand(5);  // draw all
 for (uint32_t id : player.hand().peek_all()) {
     player.discard_from_hand(id);  // discard all — original order: 5,4,3,2,1 (LIFO)
 }
 
 player.reshuffle_discard_into_deck();  // discard → main deck, reshuffled
-std::cout << player.count_in(FateBag::ZoneId::MAIN_DECK) << "\n";  // 5
-std::cout << player.count_in(FateBag::ZoneId::DISCARD) << "\n";    // 0
+std::cout << player.count_in(gmFate::ZoneId::MAIN_DECK) << "\n";  // 5
+std::cout << player.count_in(gmFate::ZoneId::DISCARD) << "\n";    // 0
 ```
 
 ---
@@ -408,10 +408,10 @@ std::cout << player.count_in(FateBag::ZoneId::DISCARD) << "\n";    // 0
 
 ```cpp
 // Use PolicyBasedDeck independently for a shared game deck
-FateBag::MainDeck event_deck("Events", {201, 202, 203, 204}, /*seed=*/7);
+gmFate::MainDeck event_deck("Events", {201, 202, 203, 204}, /*seed=*/7);
 uint32_t next_event = event_deck.draw();
 
-FateBag::DiscardPile graveyard("Graveyard");
+gmFate::DiscardPile graveyard("Graveyard");
 graveyard.add(next_event);
 // graveyard.shuffle();  ← compile error: DiscardPolicy::can_shuffle == false
 ```
@@ -424,11 +424,11 @@ graveyard.add(next_event);
 misuse at compile time:
 
 ```cpp
-FateBag::DiscardPile discard("pile");
+gmFate::DiscardPile discard("pile");
 discard.shuffle();
 // error: static_assert failed "shuffle() is not allowed on this zone type..."
 
-FateBag::BanishZone banish("out");
+gmFate::BanishZone banish("out");
 banish.draw();
 // error: static_assert failed "draw() is not allowed on insert-only zones..."
 
