@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace GmDispatch {
@@ -75,6 +76,14 @@ public:
      * @param envelope The event to route.
      */
     void route(const Envelope& envelope) override;
+
+    /**
+     * @brief Flushes every unique channel registered in the router.
+     *
+     * Each channel instance is flushed exactly once, even if it is
+     * subscribed to multiple typeId keys.
+     */
+    void flush() override;
 
 private:
     /// Subscription map: typeId key → ordered list of subscribed channels.

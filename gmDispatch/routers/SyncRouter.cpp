@@ -4,30 +4,63 @@
 
 namespace GmDispatch {
 
-void SyncRouter::subscribe(const std::string&        /*typeId*/,
-                           std::shared_ptr<IChannel> /*channel*/)
+void SyncRouter::subscribe(const std::string&        typeId,
+                           std::shared_ptr<IChannel> channel)
 {
-    // TODO: Phase 2 — routes_[typeId].push_back(std::move(channel));
+    routes_[typeId].push_back(std::move(channel));
 }
 
-void SyncRouter::unsubscribe(const std::string&        /*typeId*/,
-                             std::shared_ptr<IChannel> /*channel*/)
+void SyncRouter::unsubscribe(const std::string&        typeId,
+                             std::shared_ptr<IChannel> channel)
 {
-    // TODO: Phase 2 —
-    //   auto it = routes_.find(typeId);
-    //   if (it == routes_.end()) return;
-    //   auto& vec = it->second;
-    //   vec.erase(std::remove(vec.begin(), vec.end(), channel), vec.end());
-    //   if (vec.empty()) routes_.erase(it);
+    std::map<std::string,
+             std::vector<std::shared_ptr<IChannel>>>::iterator it = routes_.find(typeId);
+    if (it == routes_.end()) return;
+
+    std::vector<std::shared_ptr<IChannel>>& vec = it->second;
+    vec.erase(std::remove(vec.begin(), vec.end(), channel), vec.end());
+    if (vec.empty()) routes_.erase(it);
 }
 
-void SyncRouter::route(const Envelope& /*envelope*/)
+void SyncRouter::route(const Envelope& envelope)
 {
-    // TODO: Phase 2 —
-    //   1. Find routes_[envelope.typeId] — call send() on each channel.
-    //   2. Find routes_["*"]            — call send() on each channel.
-    //   (No duplicate-call suppression in V1: if a channel is in both lists
-    //    it will receive two calls.  Document as expected behaviour.)
+    // Exact-match subscribers
+    std::map<std::string,
+             std::vector<std::shared_ptr<IChannel>>>::iterator it =
+        routes_.find(envelope.typeId);
+
+    if (it != routes_.end()) {
+        for (std::shared_ptr<IChannel>& ch : it->second) {
+            ch->send(envelope);
+        }
+    }
+
+    // Wildcard "*" subscribers — skip if typeId already is "*" to avoid
+    // a double send for channels subscribed only to "*".
+    if (envelope.typeId != "*") {
+        std::map<std::string,
+                 std::vector<std::shared_ptr<IChannel>>>::iterator wild =
+            routes_.find("*");
+        if (wild != routes_.end()) {
+            for (std::shared_ptr<IChannel>& ch : wild->second) {
+                ch->send(envelope);
+            }
+        }
+    }
+}
+
+void SyncRouter::flush()
+{
+    // Flush each unique channel exactly once, even if subscribed to multiple keys.
+    std::unordered_set<IChannel*> seen;
+    for (std::pair<const std::string,
+                   std::vector<std::shared_ptr<IChannel>>>& kv : routes_) {
+        for (std::shared_ptr<IChannel>& ch : kv.second) {
+            if (seen.insert(ch.get()).second) {
+                ch->flush();
+            }
+        }
+    }
 }
 
 } // namespace GmDispatch

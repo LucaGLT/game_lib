@@ -1,7 +1,7 @@
 # gmDispatch – Development Plan
 
 **Version:** 1.0
-**Status:** Phase 1 – Interfaces & Stubs
+**Status:** Phase 2 – Core Implementation ✅
 **Language:** C++17 Standard
 **Namespace:** `GmDispatch`
 
@@ -93,16 +93,23 @@ gmDispatch/
 - [x] `routers/SyncRouter.hpp` / `.cpp` (stub)
 - [x] `dispatchers/SyncDispatcher.hpp` / `.cpp` (stub)
 
-### Phase 2 — Core Implementation
+### Phase 2 — Core Implementation ✅
 
-- [ ] `SyncRouter` — exact-match + wildcard `"*"` routing
-- [ ] `SyncDispatcher` — mutex lock, route, flush
-- [ ] `EventBusChannel` — invoke registered `std::function` callbacks
-- [ ] `StdoutChannel` — serialize + write to `std::cout`
-- [ ] `JsonSerializer` — JSON Lines: timestamp, source, typeId, messageId, targets, payload
-- [ ] `Dispatcher` facade — auto-timestamp, delegate all calls
-- [ ] `DispatcherFactory` — assemble ready-to-use Dispatcher instances
-- [ ] Smoke test
+- [x] `SyncRouter` — exact-match + wildcard `"*"` routing
+- [x] `SyncDispatcher` — mutex lock, route, flush
+- [x] `EventBusChannel` — invoke registered `std::function` callbacks
+- [x] `StdoutChannel` — serialize + write to `std::cout`
+- [x] `JsonSerializer` — JSON Lines: timestamp, source, typeId, messageId, targets, payload
+- [x] `Dispatcher` facade — auto-timestamp, delegate all calls
+- [x] `DispatcherFactory` — assemble ready-to-use Dispatcher instances
+- [x] Smoke test (6/6 PASS) — `tests/smoke_test.cpp`
+
+**Notes:**
+- `gmtime_s` (Windows) / `gmtime_r` (POSIX) used in `JsonSerializer` for safety.
+- `IRouter::flush()` added to interface to allow `SyncDispatcher` to flush all
+  channels without exposing the internal subscription map.
+- `payload` field in JSON output shows the compiler-mangled type name (RTTI).
+  Phase 3 will add per-type payload serializer registration.
 
 ### Phase 3 — Additional Channels
 

@@ -80,7 +80,14 @@ public:
      * @param envelope The envelope to route.
      */
     virtual void route(const Envelope& envelope) = 0;
-};
+    /**
+     * @brief Flushes all registered channels.
+     *
+     * Iterates every unique channel across all subscriptions and calls
+     * @c IChannel::flush() exactly once per channel instance.
+     * Called by the owning dispatcher inside its mutex lock.
+     */
+    virtual void flush() = 0;};
 
 } // namespace GmDispatch
 

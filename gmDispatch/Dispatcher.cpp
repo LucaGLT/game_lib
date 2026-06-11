@@ -1,5 +1,7 @@
 #include "Dispatcher.hpp"
 
+#include <chrono>
+
 namespace GmDispatch {
 
 Dispatcher::Dispatcher(DispatcherConfig             config,
@@ -10,7 +12,9 @@ Dispatcher::Dispatcher(DispatcherConfig             config,
 
 Dispatcher::~Dispatcher()
 {
-    // TODO: Phase 2 — call flush() before releasing dispatcher_
+    if (dispatcher_) {
+        dispatcher_->flush();
+    }
 }
 
 const std::string& Dispatcher::name() const
@@ -18,28 +22,41 @@ const std::string& Dispatcher::name() const
     return config_.name;
 }
 
-void Dispatcher::dispatch(const Envelope& /*envelope*/)
+void Dispatcher::dispatch(const Envelope& envelope)
 {
-    // TODO: Phase 2 — if autoTimestamp and envelope.timestamp == time_point{},
-    //                  set timestamp = std::chrono::system_clock::now() on a copy;
-    //                  then delegate to dispatcher_->dispatch(copy).
+    if (!dispatcher_) return;
+
+    if (config_.autoTimestamp &&
+        envelope.timestamp == std::chrono::system_clock::time_point{}) {
+        Envelope stamped   = envelope;
+        stamped.timestamp  = std::chrono::system_clock::now();
+        dispatcher_->dispatch(stamped);
+    } else {
+        dispatcher_->dispatch(envelope);
+    }
 }
 
-void Dispatcher::subscribe(const std::string& /*typeId*/,
-                           std::shared_ptr<IChannel> /*channel*/)
+void Dispatcher::subscribe(const std::string&        typeId,
+                           std::shared_ptr<IChannel> channel)
 {
-    // TODO: Phase 2 — delegate to dispatcher_->subscribe(typeId, channel)
+    if (dispatcher_) {
+        dispatcher_->subscribe(typeId, std::move(channel));
+    }
 }
 
-void Dispatcher::unsubscribe(const std::string& /*typeId*/,
-                             std::shared_ptr<IChannel> /*channel*/)
+void Dispatcher::unsubscribe(const std::string&        typeId,
+                             std::shared_ptr<IChannel> channel)
 {
-    // TODO: Phase 2 — delegate to dispatcher_->unsubscribe(typeId, channel)
+    if (dispatcher_) {
+        dispatcher_->unsubscribe(typeId, channel);
+    }
 }
 
 void Dispatcher::flush()
 {
-    // TODO: Phase 2 — delegate to dispatcher_->flush()
+    if (dispatcher_) {
+        dispatcher_->flush();
+    }
 }
 
 } // namespace GmDispatch

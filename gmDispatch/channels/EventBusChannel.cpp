@@ -2,14 +2,16 @@
 
 namespace GmDispatch {
 
-void EventBusChannel::addHandler(Handler /*handler*/)
+void EventBusChannel::addHandler(Handler handler)
 {
-    // TODO: Phase 2 — handlers_.push_back(std::move(handler));
+    handlers_.push_back(std::move(handler));
 }
 
-void EventBusChannel::send(const Envelope& /*envelope*/)
+void EventBusChannel::send(const Envelope& envelope)
 {
-    // TODO: Phase 2 — for (const Handler& h : handlers_) { h(envelope); }
+    for (const Handler& h : handlers_) {
+        h(envelope);
+    }
 }
 
 void EventBusChannel::flush()
