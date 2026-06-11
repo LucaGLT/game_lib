@@ -6,9 +6,12 @@ namespace gmFate {
 
 gmDeck::gmDeck(const std::vector<uint32_t>& token_ids,
                std::optional<unsigned int> seed,
-               bool auto_shuffle)
-    : _initial_token_ids(token_ids), _seed(seed) {
-    _validate_token_ids(token_ids);
+               bool auto_shuffle,
+               bool allow_duplicates)
+    : _initial_token_ids(token_ids), _seed(seed), _allow_duplicates(allow_duplicates) {
+    if (!allow_duplicates) {
+        _validate_token_ids(token_ids);
+    }
     
     _deck = std::vector<uint32_t>(token_ids);
     
@@ -88,7 +91,9 @@ bool gmDeck::is_empty() const {
 
 void gmDeck::reset(const std::optional<std::vector<uint32_t>>& token_ids) {
     if (token_ids.has_value()) {
-        _validate_token_ids(token_ids.value());
+        if (!_allow_duplicates) {
+            _validate_token_ids(token_ids.value());
+        }
         _initial_token_ids = token_ids.value();
     }
     
@@ -120,7 +125,7 @@ bool gmDeck::contains(uint32_t token_id) const {
 }
 
 void gmDeck::push_back(uint32_t token_id) {
-    if (contains(token_id)) {
+    if (!_allow_duplicates && contains(token_id)) {
         throw DuplicateTokenIdError(
             "Token " + std::to_string(token_id) + " already exists in deck");
     }
@@ -128,7 +133,7 @@ void gmDeck::push_back(uint32_t token_id) {
 }
 
 void gmDeck::push_front(uint32_t token_id) {
-    if (contains(token_id)) {
+    if (!_allow_duplicates && contains(token_id)) {
         throw DuplicateTokenIdError(
             "Token " + std::to_string(token_id) + " already exists in deck");
     }

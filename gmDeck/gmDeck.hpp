@@ -58,13 +58,22 @@ class gmDeck {
 public:
     /**
      * @brief Constructor - creates a new gmDeck with initial token IDs.
-     * @param token_ids List of token IDs (uint32_t) to populate the deck
-     * @param seed Optional random seed for deterministic shuffling (null = random)
-     * @throws DuplicateTokenIdError if token_ids contains duplicates
+     *
+     * @param token_ids       List of token IDs (uint32_t) to populate the deck.
+     * @param seed            Optional random seed for deterministic shuffling.
+     * @param auto_shuffle    If true, shuffle the deck after construction.
+     * @param allow_duplicates If false (default), throws DuplicateTokenIdError
+     *                        when the same ID appears more than once.  Set to
+     *                        true for probability decks where the same card type
+     *                        must appear multiple times (e.g. 8× Success, 2× Failure).
+     *
+     * @throws DuplicateTokenIdError if @p allow_duplicates is false and @p token_ids
+     *         contains duplicate IDs.
      */
     explicit gmDeck(const std::vector<uint32_t>& token_ids,
                      std::optional<unsigned int> seed = std::nullopt,
-                     bool auto_shuffle = true);
+                     bool auto_shuffle      = true,
+                     bool allow_duplicates  = false);
 
     /**
      * @brief Shuffles the deck using the stored RNG.
@@ -101,8 +110,9 @@ public:
 
     /**
      * @brief Resets the deck to its initial state or new token IDs.
-     * @param token_ids Optional new list of token IDs; if null, uses initial IDs
-     * @throws DuplicateTokenIdError if new token_ids contains duplicates
+     * @param token_ids Optional new list of token IDs; if null, uses initial IDs.
+     * @throws DuplicateTokenIdError if the deck was constructed with
+     *         allow_duplicates=false and the new token_ids contain duplicates.
      */
     void reset(const std::optional<std::vector<uint32_t>>& token_ids = std::nullopt);
 
@@ -127,15 +137,17 @@ public:
 
     /**
      * @brief Appends a token at the back of the deck (no shuffle).
-     * @param token_id Token to add
-     * @throws DuplicateTokenIdError if token_id is already in the deck
+     * @param token_id Token to add.
+     * @throws DuplicateTokenIdError if allow_duplicates is false and token_id
+     *         is already in the deck.
      */
     void push_back(uint32_t token_id);
 
     /**
-     * @brief Prepends a token at the front of the deck (no shuffle).
-     * @param token_id Token to add
-     * @throws DuplicateTokenIdError if token_id is already in the deck
+     * @brief Prepends a token at the front (top) of the deck (no shuffle).
+     * @param token_id Token to add.
+     * @throws DuplicateTokenIdError if allow_duplicates is false and token_id
+     *         is already in the deck.
      */
     void push_front(uint32_t token_id);
 
@@ -158,6 +170,7 @@ private:
     std::vector<uint32_t> _deck;
     std::vector<uint32_t> _initial_token_ids;
     std::optional<unsigned int> _seed;
+    bool _allow_duplicates;
     std::mt19937 _rng;
 };
 
