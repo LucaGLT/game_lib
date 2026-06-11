@@ -2,6 +2,15 @@
 
 namespace GmDispatch {
 
+EventBusChannel::EventBusChannel(const std::string& channelName)
+    : name_(channelName)
+{}
+
+std::string EventBusChannel::name() const
+{
+    return name_;
+}
+
 void EventBusChannel::addHandler(Handler handler)
 {
     handlers_.push_back(std::move(handler));

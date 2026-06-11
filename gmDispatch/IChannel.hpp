@@ -42,6 +42,18 @@ public:
     virtual ~IChannel() = default;
 
     /**
+     * @brief Optional channel name used by @ref PatternRouter for targeted delivery.
+     *
+     * When @c Envelope::targets is non-empty, only channels whose @c name()
+     * appears in the list receive the message.  Return an empty string (the
+     * default) to opt out of targeting — anonymous channels always receive
+     * messages regardless of @c Envelope::targets.
+     *
+     * @return Channel name, or @c "" for anonymous channels.
+     */
+    virtual std::string name() const { return ""; }
+
+    /**
      * @brief Delivers a single envelope to the underlying output medium.
      *
      * Called by @ref IRouter once per matching subscription.  The envelope

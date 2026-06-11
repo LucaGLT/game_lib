@@ -1,7 +1,7 @@
 # gmDispatch – Development Plan
 
 **Version:** 1.0
-**Status:** Phase 2 – Core Implementation ✅
+**Status:** Phase 4 – Complete ✅
 **Language:** C++17 Standard
 **Namespace:** `GmDispatch`
 
@@ -111,17 +111,28 @@ gmDispatch/
 - `payload` field in JSON output shows the compiler-mangled type name (RTTI).
   Phase 3 will add per-type payload serializer registration.
 
-### Phase 3 — Additional Channels
+### Phase 3 — Additional Channels ✅
 
-- [ ] `FileChannel` — append serialized envelopes to a file
-- [ ] `IpSocketChannel` — TCP send (platform-agnostic interface; OS impl separate)
+- [x] `FileChannel` — append serialized envelopes to a file
+- [x] `IpSocketChannel` — TCP client; length-prefixed frames; `_WIN32`/POSIX
 
-### Phase 4 — Advanced Features
+### Phase 4 — Advanced Features ✅
 
-- [ ] `AsyncDispatcher` — lock-free queue + worker thread
-- [ ] Pattern-matching router — `"engine.*"`, `"input.key.*"` via wildcard matching
-- [ ] Targeted delivery — route only to channels whose `name()` appears in `Envelope::targets`
-- [ ] `LogDispatchBridge` — adapter `LogRecord → Envelope` to feed gmLog into the bus
+- [x] `IChannel::name()` — virtual, default `""` (backward compatible)
+- [x] `PatternRouter` — exact-match + `"engine.*"` prefix wildcard + `"*"` broadcast
+- [x] Targeted delivery — `Envelope::targets` + `IChannel::name()` in `PatternRouter`
+- [x] `AsyncDispatcher` — `std::queue` + worker thread + `condition_variable`; `flush()` blocks until drained
+- [x] `LogDispatchBridge` — `GmLog::ILogDispatcher` adapter; `LogRecord → Envelope`; no modification to gmLog
+- [x] `DispatcherFactory::createAsyncDispatcher()`
+- [x] `DispatcherFactory::createPatternDispatcher()`
+- [x] Smoke test Phase 3+4 (9/9 PASS) — `tests/smoke_test_phase3_4.cpp`
+
+**Notes:**
+- `IChannel::name()` has a non-pure default `""` — all existing channels remain compilable without changes.
+- Anonymous channels (name == `""`) bypass targeted delivery — they always receive.
+- `AsyncDispatcher` uses two mutexes: `queueMutex_` (queue + drain CV) and `routeMutex_` (router ops) to avoid deadlock between dispatch and subscribe.
+- `LogDispatchBridge` lives in `gmDispatch/bridges/` — it depends on both libs but neither lib depends on the other.
+- `IpSocketChannel` is fully implemented (Winsock2 / BSD sockets, length-prefixed TCP frames).  Link with `-lws2_32` on Windows.
 
 ---
 

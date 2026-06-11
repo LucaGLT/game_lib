@@ -5,12 +5,19 @@
 
 namespace GmDispatch {
 
-StdoutChannel::StdoutChannel(std::unique_ptr<ISerializer> serializer)
-    : serializer_(std::move(serializer))
+StdoutChannel::StdoutChannel(const std::string&           channelName,
+                             std::unique_ptr<ISerializer> serializer)
+    : name_(channelName)
+    , serializer_(std::move(serializer))
 {
     if (!serializer_) {
         serializer_ = std::make_unique<JsonSerializer>();
     }
+}
+
+std::string StdoutChannel::name() const
+{
+    return name_;
 }
 
 void StdoutChannel::send(const Envelope& envelope)

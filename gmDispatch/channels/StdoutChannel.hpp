@@ -40,13 +40,18 @@ namespace GmDispatch {
 class StdoutChannel : public IChannel {
 public:
     /**
-     * @brief Constructs a StdoutChannel with the given serializer.
+     * @brief Constructs a StdoutChannel with an optional name and serializer.
      *
-     * @param serializer Optional serializer.  When @c nullptr (default),
-     *                   a @ref JsonSerializer is created automatically in
-     *                   Phase 2.
+     * @param channelName Identifies this channel for targeted delivery.
+     *                    Empty = anonymous.
+     * @param serializer  Optional serializer.  When @c nullptr, a default
+     *                    @ref JsonSerializer is created automatically.
      */
-    explicit StdoutChannel(std::unique_ptr<ISerializer> serializer = nullptr);
+    explicit StdoutChannel(const std::string&           channelName = "",
+                           std::unique_ptr<ISerializer> serializer  = nullptr);
+
+    /// @brief Returns the channel name provided at construction.
+    std::string name() const override;
 
     /**
      * @brief Serialises @p envelope and writes the result to @c std::cout.
@@ -61,6 +66,7 @@ public:
     void flush() override;
 
 private:
+    std::string                  name_;
     std::unique_ptr<ISerializer> serializer_;
 };
 

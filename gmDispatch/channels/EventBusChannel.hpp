@@ -56,7 +56,17 @@ public:
      */
     using Handler = std::function<void(const Envelope&)>;
 
-    EventBusChannel() = default;
+    /**
+     * @brief Constructs an EventBusChannel with an optional name.
+     *
+     * @param channelName Identifies this channel for targeted delivery
+     *                    via @ref PatternRouter.  Empty = anonymous (always
+     *                    receives, regardless of @c Envelope::targets).
+     */
+    explicit EventBusChannel(const std::string& channelName = "");
+
+    /// @brief Returns the channel name provided at construction.
+    std::string name() const override;
 
     /**
      * @brief Registers a callback to be invoked on every @ref send() call.
@@ -81,6 +91,7 @@ public:
     void flush() override;
 
 private:
+    std::string          name_;
     std::vector<Handler> handlers_;
 };
 
