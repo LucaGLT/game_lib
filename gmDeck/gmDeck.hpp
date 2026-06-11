@@ -1,5 +1,5 @@
-#ifndef LIBDECK_HPP
-#define LIBDECK_HPP
+#ifndef GMFATE_GMDECK_HPP
+#define GMFATE_GMDECK_HPP
 
 #include <cstdint>
 #include <vector>
@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <string>
 
-namespace FateBag {
+namespace gmFate {
 
 // Exception classes
 class DeckAdapterError : public std::runtime_error {
@@ -36,6 +36,12 @@ public:
         : DeckAdapterError(message) {}
 };
 
+class TokenNotFoundError : public DeckAdapterError {
+public:
+    explicit TokenNotFoundError(const std::string& message)
+        : DeckAdapterError(message) {}
+};
+
 /**
  * @class gmDeck
  * @brief Deterministic in-memory token deck adapter (optimized with uint32_t IDs).
@@ -52,12 +58,22 @@ class gmDeck {
 public:
     /**
      * @brief Constructor - creates a new gmDeck with initial token IDs.
-     * @param token_ids List of token IDs (uint32_t) to populate the deck
-     * @param seed Optional random seed for deterministic shuffling (null = random)
-     * @throws DuplicateTokenIdError if token_ids contains duplicates
+     *
+     * @param token_ids       List of token IDs (uint32_t) to populate the deck.
+     * @param seed            Optional random seed for deterministic shuffling.
+     * @param auto_shuffle    If true, shuffle the deck after construction.
+     * @param allow_duplicates If false (default), throws DuplicateTokenIdError
+     *                        when the same ID appears more than once.  Set to
+     *                        true for probability decks where the same card type
+     *                        must appear multiple times (e.g. 8× Success, 2× Failure).
+     *
+     * @throws DuplicateTokenIdError if @p allow_duplicates is false and @p token_ids
+     *         contains duplicate IDs.
      */
-    explicit gmDeck(const std::vector<uint32_t>& token_ids, 
-                      std::optional<unsigned int> seed = std::nullopt);
+    explicit gmDeck(const std::vector<uint32_t>& token_ids,
+                     std::optional<unsigned int> seed = std::nullopt,
+                     bool auto_shuffle      = true,
+                     bool allow_duplicates  = false);
 
     /**
      * @brief Shuffles the deck using the stored RNG.
@@ -94,8 +110,9 @@ public:
 
     /**
      * @brief Resets the deck to its initial state or new token IDs.
-     * @param token_ids Optional new list of token IDs; if null, uses initial IDs
-     * @throws DuplicateTokenIdError if new token_ids contains duplicates
+     * @param token_ids Optional new list of token IDs; if null, uses initial IDs.
+     * @throws DuplicateTokenIdError if the deck was constructed with
+     *         allow_duplicates=false and the new token_ids contain duplicates.
      */
     void reset(const std::optional<std::vector<uint32_t>>& token_ids = std::nullopt);
 
@@ -118,6 +135,30 @@ public:
      */
     bool contains(uint32_t token_id) const;
 
+    /**
+     * @brief Appends a token at the back of the deck (no shuffle).
+     * @param token_id Token to add.
+     * @throws DuplicateTokenIdError if allow_duplicates is false and token_id
+     *         is already in the deck.
+     */
+    void push_back(uint32_t token_id);
+
+    /**
+     * @brief Prepends a token at the front (top) of the deck (no shuffle).
+     * @param token_id Token to add.
+     * @throws DuplicateTokenIdError if allow_duplicates is false and token_id
+     *         is already in the deck.
+     */
+    void push_front(uint32_t token_id);
+
+    /**
+     * @brief Finds, removes, and returns a specific token by ID.
+     * @param token_id Token to draw
+     * @return token_id (for convenience)
+     * @throws TokenNotFoundError if token_id is not in the deck
+     */
+    uint32_t draw_specific(uint32_t token_id);
+
 private:
     /**
      * @brief Validates that token_ids contains no duplicates.
@@ -129,9 +170,10 @@ private:
     std::vector<uint32_t> _deck;
     std::vector<uint32_t> _initial_token_ids;
     std::optional<unsigned int> _seed;
+    bool _allow_duplicates;
     std::mt19937 _rng;
 };
 
-} // namespace FateBag
+} // namespace gmFate
 
-#endif // LIBDECK_HPP
+#endif // GMFATE_GMDECK_HPP
