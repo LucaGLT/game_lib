@@ -25,7 +25,7 @@ namespace gmFate {
  * @brief Multi-zone deck manager for a single game entity (player, faction, event source).
  *
  * @invariant Every token registered with this `gmCompDeck` exists in **exactly
- *            one** of its five zones at any point in time.
+ *            one** of its six zones at any point in time.
  *
  * ## Zones
  *
@@ -34,12 +34,13 @@ namespace gmFate {
  * | Main Deck   | `MainDeck`   | Shufflable; draw from top; pick by ID        |
  * | Hand        | `CardHand`   | No shuffle; pick any card by ID              |
  * | Play Area   | `PlayArea`   | No shuffle; order preserved; pick by ID      |
+ * | Memory      | `MemoryZone` | No shuffle; no sequential draw; pick by ID   |
  * | Discard     | `DiscardPile`| Order **sacred** (no shuffle); pick by ID   |
  * | Banish Zone | `BanishZone` | Insert-only; no retrieval                    |
  *
  * ## Ownership model
  *
- * `gmCompDeck` owns all five zone objects.  External code may **read** them
+ * `gmCompDeck` owns all six zone objects.  External code may **read** them
  * via the `const` accessors (`main_deck()`, `hand()`, …).  All **writes**
  * (card movements) must go through `gmCompDeck` methods to preserve the
  * uniqueness invariant.
@@ -182,6 +183,68 @@ public:
     void reshuffle_discard_into_deck();
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Memory zone moves
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Moves a card from hand to memory.
+     *
+     * @param token_id Token to remember.
+     * @throws TokenNotFoundError if `token_id` is not in hand.
+     */
+    void remember_from_hand(uint32_t token_id);
+
+    /**
+     * @brief Moves a card from the play area to memory.
+     *
+     * @param token_id Token to remember.
+     * @throws TokenNotFoundError if `token_id` is not in the play area.
+     */
+    void remember_from_play_area(uint32_t token_id);
+
+    /**
+     * @brief Moves a card from the discard pile to memory.
+     *
+     * @param token_id Token to remember.
+     * @throws TokenNotFoundError if `token_id` is not in the discard pile.
+     */
+    void remember_from_discard(uint32_t token_id);
+
+    /**
+     * @brief Moves a card from memory to the play area.
+     *
+     * The card enters play directly without passing through hand.
+     *
+     * @param token_id Token to play.
+     * @throws TokenNotFoundError if `token_id` is not in memory.
+     */
+    void play_from_memory(uint32_t token_id);
+
+    /**
+     * @brief Moves a card from memory back to hand.
+     *
+     * @param token_id Token to return.
+     * @throws TokenNotFoundError if `token_id` is not in memory.
+     */
+    void return_memory_to_hand(uint32_t token_id);
+
+    /**
+     * @brief Discards a card from memory to the discard pile.
+     *
+     * @param token_id Token to discard.
+     * @throws TokenNotFoundError if `token_id` is not in memory.
+     */
+    void discard_from_memory(uint32_t token_id);
+
+    /**
+     * @brief Permanently banishes a card from memory.
+     *
+     * @param token_id Token to banish.
+     * @throws TokenNotFoundError if `token_id` is not in memory.
+     */
+    void banish_from_memory(uint32_t token_id);
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Query
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -204,7 +267,7 @@ public:
     /**
      * @brief Returns the total number of tokens tracked across all zones.
      *
-     * Sum of main_deck + hand + play_area + discard + banish.
+     * Sum of main_deck + hand + play_area + memory + discard + banish.
      */
     int total_count() const;
 
@@ -232,6 +295,15 @@ public:
     /** @brief Read-only access to the banish zone. */
     const BanishZone&  banish_zone() const { return banish_zone_; }
 
+    /** @brief Read-only access to the memory zone. */
+    const MemoryZone&  memory()      const { return memory_;      }
+
+    /** @brief Returns the number of cards currently in memory. */
+    int memory_size() const { return memory_.count(); }
+
+    /** @brief Returns true if the given token is currently in memory. */
+    bool is_in_memory(uint32_t token_id) const { return memory_.contains(token_id); }
+
 private:
     /**
      * @brief Removes a token from the specified zone.
@@ -250,6 +322,7 @@ private:
     MainDeck      main_deck_;
     CardHand      hand_;
     PlayArea      play_area_;
+    MemoryZone    memory_;
     DiscardPile   discard_;
     BanishZone    banish_zone_;
 };

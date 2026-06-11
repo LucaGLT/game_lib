@@ -20,6 +20,7 @@ gmCompDeck::gmCompDeck(std::string                  owner_name,
     , main_deck_("MAIN_DECK", deck_tokens, seed)  // shuffled if MainDeckPolicy::can_shuffle
     , hand_("HAND")
     , play_area_("PLAY_AREA")
+    , memory_("MEMORY")
     , discard_("DISCARD")
     , banish_zone_("BANISHED")
 {}
@@ -105,6 +106,45 @@ void gmCompDeck::reshuffle_discard_into_deck() {
     main_deck_.shuffle();
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Memory zone moves
+// ───────────────────────────────────────────────────────────────────────────
+
+void gmCompDeck::remember_from_hand(uint32_t token_id) {
+    uint32_t card = hand_.take_specific(token_id);  // throws TokenNotFoundError
+    memory_.add(card);
+}
+
+void gmCompDeck::remember_from_play_area(uint32_t token_id) {
+    uint32_t card = play_area_.take_specific(token_id);  // throws TokenNotFoundError
+    memory_.add(card);
+}
+
+void gmCompDeck::remember_from_discard(uint32_t token_id) {
+    uint32_t card = discard_.take_specific(token_id);  // throws TokenNotFoundError
+    memory_.add(card);
+}
+
+void gmCompDeck::play_from_memory(uint32_t token_id) {
+    uint32_t card = memory_.take_specific(token_id);  // throws TokenNotFoundError
+    play_area_.add(card);
+}
+
+void gmCompDeck::return_memory_to_hand(uint32_t token_id) {
+    uint32_t card = memory_.take_specific(token_id);  // throws TokenNotFoundError
+    hand_.add(card);
+}
+
+void gmCompDeck::discard_from_memory(uint32_t token_id) {
+    uint32_t card = memory_.take_specific(token_id);  // throws TokenNotFoundError
+    discard_.add(card);
+}
+
+void gmCompDeck::banish_from_memory(uint32_t token_id) {
+    uint32_t card = memory_.take_specific(token_id);  // throws TokenNotFoundError
+    banish_zone_.add(card);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Query
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +153,7 @@ ZoneId gmCompDeck::locate(uint32_t token_id) const {
     if (main_deck_.contains(token_id))   return ZoneId::MAIN_DECK;
     if (hand_.contains(token_id))        return ZoneId::HAND;
     if (play_area_.contains(token_id))   return ZoneId::PLAY_AREA;
+    if (memory_.contains(token_id))      return ZoneId::MEMORY;
     if (discard_.contains(token_id))     return ZoneId::DISCARD;
     if (banish_zone_.contains(token_id)) return ZoneId::BANISHED;
     return ZoneId::NOT_FOUND;
@@ -123,6 +164,7 @@ int gmCompDeck::count_in(ZoneId zone) const {
         case ZoneId::MAIN_DECK:  return main_deck_.count();
         case ZoneId::HAND:       return hand_.count();
         case ZoneId::PLAY_AREA:  return play_area_.count();
+        case ZoneId::MEMORY:     return memory_.count();
         case ZoneId::DISCARD:    return discard_.count();
         case ZoneId::BANISHED:   return banish_zone_.count();
         case ZoneId::NOT_FOUND:  return 0;
@@ -134,6 +176,7 @@ int gmCompDeck::total_count() const {
     return main_deck_.count()
          + hand_.count()
          + play_area_.count()
+         + memory_.count()
          + discard_.count()
          + banish_zone_.count();
 }
@@ -151,6 +194,7 @@ void gmCompDeck::_remove_from_zone(ZoneId zone, uint32_t token_id) {
         case ZoneId::MAIN_DECK:  main_deck_.take_specific(token_id);  return;
         case ZoneId::HAND:       hand_.take_specific(token_id);       return;
         case ZoneId::PLAY_AREA:  play_area_.take_specific(token_id);  return;
+        case ZoneId::MEMORY:     memory_.take_specific(token_id);     return;
         case ZoneId::DISCARD:    discard_.take_specific(token_id);    return;
         case ZoneId::BANISHED:
         case ZoneId::NOT_FOUND:
