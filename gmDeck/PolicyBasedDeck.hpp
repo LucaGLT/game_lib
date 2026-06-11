@@ -133,8 +133,9 @@ public:
      */
     uint32_t draw() {
         static_assert(
-            !Policy::is_insert_only,
-            "draw() is not allowed on insert-only zones (e.g. BanishZone).");
+            Policy::can_draw,
+            "draw() is not allowed on this zone type.  "
+            "Check Policy::can_draw (MemoryZone and BanishZone forbid sequential draw).");
         return deck_.draw_one();
     }
 
@@ -242,6 +243,9 @@ using DiscardPile = PolicyBasedDeck<DiscardPolicy>;
 
 /** @brief Banish zone — insert-only, tokens permanently out of play. */
 using BanishZone  = PolicyBasedDeck<BanishPolicy>;
+
+/** @brief Memory zone — ordered list; no sequential draw; removal by ID only. */
+using MemoryZone  = PolicyBasedDeck<MemoryPolicy>;
 
 } // namespace gmFate
 
