@@ -6,8 +6,8 @@
  * @brief Adapter that feeds GmLog log records into the GmDispatch event bus.
  *
  * ### Overview
- * LogDispatchBridge implements @c GmLog::ILogDispatcher so it can be plugged
- * directly into any @c GmLog::Logger as its dispatcher.  Every log record
+ * LogDispatchBridge implements @c gmLog::ILogDispatcher so it can be plugged
+ * directly into any @c gmLog::GmLogger as its dispatcher.  Every log record
  * that reaches the bridge is converted to a @ref GmDispatch::Envelope and
  * dispatched on the provided @ref GmDispatch::Dispatcher.
  *
@@ -15,7 +15,7 @@
  * | LogRecord field          | Envelope field          | Notes                          |
  * |--------------------------|-------------------------|--------------------------------|
  * | @c record.timestamp      | @c env.timestamp        | Direct copy                    |
- * | @c record.loggerName     | @c env.source           | e.g. @c "Database"             |
+ * | @c record.logger_name     | @c env.source           | e.g. @c "Database"             |
  * | @c "log." + levelString  | @c env.typeId           | e.g. @c "log.ERROR"            |
  * | @c record.message        | @c env.payload          | stored as @c std::string       |
  * | @c record.function       | @c env.messageId        | empty when source loc disabled |
@@ -37,7 +37,7 @@
  *   bus.subscribe("log.*", logCh);  // requires PatternRouter
  *
  *   // Wire the bridge as the gmLog dispatcher
- *   GmLog::Logger db(
+ *   gmLog::GmLogger db(
  *       cfg,
  *       std::make_unique<GmDispatch::LogDispatchBridge>(bus));
  *
@@ -57,10 +57,10 @@
 namespace GmDispatch {
 
 /**
- * @brief Implements @c GmLog::ILogDispatcher and forwards records to a
+ * @brief Implements @c gmLog::ILogDispatcher and forwards records to a
  *        @ref GmDispatch::Dispatcher.
  */
-class LogDispatchBridge : public GmLog::ILogDispatcher {
+class LogDispatchBridge : public gmLog::ILogDispatcher {
 public:
     /**
      * @brief Constructs a bridge that dispatches to @p bus.
@@ -74,15 +74,15 @@ public:
      * @brief Converts @p record to an @ref Envelope and dispatches it.
      *
      * Mapping:
-     * - @c env.typeId   = @c "log." + levelToString(record.level)
-     * - @c env.source   = @c record.loggerName
+     * - @c env.typeId   = @c "log." + level_to_string(record.level)
+     * - @c env.source   = @c record.logger_name
      * - @c env.payload  = @c record.message (as @c std::string)
      * - @c env.messageId = @c record.function (empty when not set)
      * - @c env.timestamp = @c record.timestamp
      *
      * @param record The log event to forward.
      */
-    void dispatch(const GmLog::LogRecord& record) override;
+    void dispatch(const gmLog::LogRecord& record) override;
 
     /**
      * @brief Flushes the underlying @ref Dispatcher.

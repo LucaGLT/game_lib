@@ -18,12 +18,12 @@ using namespace GameMap;
 
 // Simple test runner
 struct TestRunner {
-    GmLog::Logger logger;
+    gmLog::GmLogger logger;
     int total = 0;
     int passed = 0;
 
     explicit TestRunner(const std::string& logFile)
-        : logger(GmLog::LoggerFactory::createFileLogger("gmMapTest", logFile, GmLog::LogLevel::Debug, true))
+        : logger(gmLog::LoggerFactory::create_file_logger("gmMapTest", logFile, gmLog::LogLevel::DEBUG, true))
     {
     }
 
@@ -31,9 +31,9 @@ struct TestRunner {
         ++total;
         if (condition) {
             ++passed;
-            logger.log(GmLog::LogLevel::Info, "[PASS] " + testName);
+            logger.log(gmLog::LogLevel::INFO, "[PASS] " + testName);
         } else {
-            logger.log(GmLog::LogLevel::Error, "[FAIL] " + testName);
+            logger.log(gmLog::LogLevel::ERROR, "[FAIL] " + testName);
         }
     }
 
@@ -41,16 +41,16 @@ struct TestRunner {
         ++total;
         try {
             fn();
-            logger.log(GmLog::LogLevel::Error, "[FAIL] " + testName + " (expected exception, none thrown)");
+            logger.log(gmLog::LogLevel::ERROR, "[FAIL] " + testName + " (expected exception, none thrown)");
         } catch (const std::exception& e) {
             ++passed;
-            logger.log(GmLog::LogLevel::Info, "[PASS] " + testName + " (exception: " + std::string(e.what()) + ")");
+            logger.log(gmLog::LogLevel::INFO, "[PASS] " + testName + " (exception: " + std::string(e.what()) + ")");
         }
     }
 
     void summary() {
         std::string msg = "=== gmMap Phases 2-4 test summary: " + std::to_string(passed) + "/" + std::to_string(total) + " passed";
-        logger.log(GmLog::LogLevel::Info, msg);
+        logger.log(gmLog::LogLevel::INFO, msg);
         std::cout << msg << std::endl;
     }
 

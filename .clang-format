@@ -1,0 +1,38 @@
+---
+BasedOnStyle: LLVM
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 100
+
+BreakBeforeBraces: Allman
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+
+BinPackParameters: false
+BinPackArguments: false
+AlignAfterOpenBracket: Align
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInCStyleCastParentheses: false
+Cpp11BracedListStyle: true
+
+IndentCaseLabels: true
+IndentCaseBlocks: false
+IndentPPDirectives: None
+
+IncludeBlocks: Regroup
+SortIncludes: true
+
+MaxEmptyLinesToKeep: 1
+ReflowComments: false
+...
