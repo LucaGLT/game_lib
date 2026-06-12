@@ -1,4 +1,4 @@
-﻿# libDeck - Token Deck Library
+﻿# gmAlea - Alea factor, Dice and Token Deck Library
 
 **Version:** 1.0  
 **Status:** Production  
@@ -24,7 +24,7 @@
 
 ## Overview
 
-**libDeck** is a high-performance, deterministic in-memory token deck management library written in C++17. It provides efficient shuffling, drawing, and manipulation of token collections using `uint32_t` identifiers for maximum performance.
+**gmAlea** is a high-performance, deterministic in-memory token deck management library written in C++17. It provides efficient shuffling, drawing, and manipulation of token collections using `uint32_t` identifiers for maximum performance.
 
 ### Key Features
 
@@ -73,11 +73,11 @@ This design ensures:
 
 ### Basic Integration
 
-1. Copy `libDeck.hpp` and `libDeck.cpp` to your project
+1. Copy `gmAlea.hpp` and `gmAlea.cpp` to your project
 2. Include the header:
 
 ```cpp
-#include "libDeck.hpp"
+#include "gmAlea.hpp"
 ```
 
 3. Use in your code:
@@ -516,7 +516,7 @@ if (deck.contains(102)) {
 ### Basic Game Flow
 
 ```cpp
-#include "libDeck.hpp"
+#include "gmAlea.hpp"
 #include <iostream>
 
 using namespace gmAlea;
@@ -557,7 +557,7 @@ int main() {
 ### Error Handling
 
 ```cpp
-#include "libDeck.hpp"
+#include "gmAlea.hpp"
 #include <iostream>
 
 using namespace gmAlea;
@@ -598,7 +598,7 @@ int main() {
 ### Reset and Replay
 
 ```cpp
-#include "libDeck.hpp"
+#include "gmAlea.hpp"
 #include <iostream>
 
 using namespace gmAlea;
@@ -667,7 +667,7 @@ For 1000 tokens:
 
 ## Thread Safety
 
-**libDeck is NOT thread-safe by default.**
+**gmAlea is NOT thread-safe by default.**
 
 The library does not use synchronization primitives (mutexes, atomics). If you need multi-threaded access:
 
@@ -675,7 +675,7 @@ The library does not use synchronization primitives (mutexes, atomics). If you n
 
 ```cpp
 #include <mutex>
-#include "libDeck.hpp"
+#include "gmAlea.hpp"
 
 class ThreadSafeDeck {
 private:
@@ -743,30 +743,30 @@ Trade-off: shuffle would become O(n log n) for deque.
 ### With GCC/Clang
 
 ```bash
-g++ -std=c++17 -O3 -c libDeck.cpp -o libDeck.o
-ar rcs libDeck.a libDeck.o
+g++ -std=c++17 -O3 -c gmAlea.cpp -o gmAlea.o
+ar rcs gmAlea.a gmAlea.o
 ```
 
 ### With CMake
 
 ```cmake
-add_library(libDeck libDeck.cpp libDeck.hpp)
-target_compile_features(libDeck PUBLIC cxx_std_17)
-target_compile_options(libDeck PRIVATE -O3)
+add_library(gmAlea gmAlea.cpp gmAlea.hpp)
+target_compile_features(gmAlea PUBLIC cxx_std_17)
+target_compile_options(gmAlea PRIVATE -O3)
 ```
 
 ### With MSVC
 
 ```bash
-cl /std:latest /O2 /c libDeck.cpp
-lib libDeck.obj /OUT:libDeck.lib
+cl /std:latest /O2 /c gmAlea.cpp
+lib gmAlea.obj /OUT:gmAlea.lib
 ```
 
 ---
 
 ## License and Attribution
 
-**libDeck** is part of the **gmAlea** project.
+**gmAlea** is part of the **gmAlea** project.
 
 For questions, issues, or contributions, refer to the main project repository.
 
