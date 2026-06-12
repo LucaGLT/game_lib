@@ -3,7 +3,7 @@
 **Version:** 1.0 (stub)
 **Status:** In Development
 **Language:** C++17 Standard
-**Namespace:** `GameMap`
+**Namespace:** `gmMap`
 **Header:** `gmMap.hpp`
 
 ---
@@ -87,7 +87,7 @@ metadata.
 
 ### Type Aliases
 
-Defined in namespace `GameMap`.
+Defined in namespace `gmMap`.
 
 #### `LocationId`
 
@@ -135,77 +135,77 @@ All exceptions derive from `std::runtime_error`.
 
 ```text
 std::runtime_error
-└-- MapError                    Base class for all gmMap errors
-    ├-- DuplicateLocationError  create_location() called with existing ID
-    ├-- UnknownLocationError    LocationId not found in the map
-    ├-- DuplicateTileError      create_tile() called with existing ID
-    ├-- UnknownTileError        TileId not found in the map
-    ├-- InvalidAdjacencyError   Self-loop or adjacency invariant violation
-    ├-- UnknownMetaKeyError     Metadata key not present
-    └-- InvalidItemIndexError   Item index out of range
+└-- EMapError                    Base class for all gmMap errors
+    ├-- EDuplicateLocationError  create_location() called with existing ID
+    ├-- EUnknownLocationError    LocationId not found in the map
+    ├-- EDuplicateTileError      create_tile() called with existing ID
+    ├-- EUnknownTileError        TileId not found in the map
+    ├-- EInvalidAdjacencyError   Self-loop or adjacency invariant violation
+    ├-- EUnknownMetaKeyError     Metadata key not present
+    └-- EInvalidItemIndexError   Item index out of range
 ```
 
-#### `MapError`
+#### `EMapError`
 
 ```cpp
-class MapError : public std::runtime_error;
-explicit MapError(const std::string& message);
+class EMapError : public std::runtime_error;
+explicit EMapError(const std::string& message);
 ```
 
-Base class for all gmMap errors.  The string prefix `"MapError: "` is
+Base class for all gmMap errors.  The string prefix `"EMapError: "` is
 prepended to every message.
 
 ---
 
-#### `DuplicateLocationError`
+#### `EDuplicateLocationError`
 
 ```cpp
-class DuplicateLocationError : public MapError;
-explicit DuplicateLocationError(const std::string& message);
+class EDuplicateLocationError : public EMapError;
+explicit EDuplicateLocationError(const std::string& message);
 ```
 
 Thrown by `create_location()` when the given `LocationId` already exists.
 
 ---
 
-#### `UnknownLocationError`
+#### `EUnknownLocationError`
 
 ```cpp
-class UnknownLocationError : public MapError;
-explicit UnknownLocationError(const std::string& message);
+class EUnknownLocationError : public EMapError;
+explicit EUnknownLocationError(const std::string& message);
 ```
 
 Thrown whenever a `LocationId` is referenced that is not present in the map.
 
 ---
 
-#### `DuplicateTileError`
+#### `EDuplicateTileError`
 
 ```cpp
-class DuplicateTileError : public MapError;
-explicit DuplicateTileError(const std::string& message);
+class EDuplicateTileError : public EMapError;
+explicit EDuplicateTileError(const std::string& message);
 ```
 
 Thrown by `create_tile()` when the given `TileId` already exists.
 
 ---
 
-#### `UnknownTileError`
+#### `EUnknownTileError`
 
 ```cpp
-class UnknownTileError : public MapError;
-explicit UnknownTileError(const std::string& message);
+class EUnknownTileError : public EMapError;
+explicit EUnknownTileError(const std::string& message);
 ```
 
 Thrown whenever a `TileId` is referenced that is not present in the map.
 
 ---
 
-#### `InvalidAdjacencyError`
+#### `EInvalidAdjacencyError`
 
 ```cpp
-class InvalidAdjacencyError : public MapError;
-explicit InvalidAdjacencyError(const std::string& message);
+class EInvalidAdjacencyError : public EMapError;
+explicit EInvalidAdjacencyError(const std::string& message);
 ```
 
 Thrown when an adjacency operation violates map invariants, such as creating a
@@ -213,11 +213,11 @@ self-loop (`a == b`).
 
 ---
 
-#### `UnknownMetaKeyError`
+#### `EUnknownMetaKeyError`
 
 ```cpp
-class UnknownMetaKeyError : public MapError;
-explicit UnknownMetaKeyError(const std::string& message);
+class EUnknownMetaKeyError : public EMapError;
+explicit EUnknownMetaKeyError(const std::string& message);
 ```
 
 Thrown by `get_location_meta()` and `get_tile_meta()` when the requested key
@@ -225,11 +225,11 @@ is not present.
 
 ---
 
-#### `InvalidItemIndexError`
+#### `EInvalidItemIndexError`
 
 ```cpp
-class InvalidItemIndexError : public MapError;
-explicit InvalidItemIndexError(const std::string& message);
+class EInvalidItemIndexError : public EMapError;
+explicit EInvalidItemIndexError(const std::string& message);
 ```
 
 Thrown by `remove_item()` when `index` is out of range.
@@ -293,7 +293,7 @@ items, no metadata, and no neighbors.
 |---|---|
 | `id` | Unique identifier for the new location. |
 
-**Throws:** `DuplicateLocationError` if `id` already exists.
+**Throws:** `EDuplicateLocationError` if `id` already exists.
 
 ---
 
@@ -311,7 +311,7 @@ adjacent location before being deleted.
 |---|---|
 | `id` | The location to remove. |
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -364,7 +364,7 @@ Creates a new empty tile (zero locations assigned).
 |---|---|
 | `id` | Unique identifier for the new tile. |
 
-**Throws:** `DuplicateTileError` if `id` already exists.
+**Throws:** `EDuplicateTileError` if `id` already exists.
 
 ---
 
@@ -381,7 +381,7 @@ are unassigned (their tile membership is cleared).
 |---|---|
 | `id` | The tile to remove. |
 
-**Throws:** `UnknownTileError` if `id` does not exist.
+**Throws:** `EUnknownTileError` if `id` does not exist.
 
 ---
 
@@ -439,8 +439,8 @@ different tile it is first unassigned from that tile before being added to
 
 **Throws:**
 
-- `UnknownLocationError` if `loc` does not exist.
-- `UnknownTileError` if `tile` does not exist.
+- `EUnknownLocationError` if `loc` does not exist.
+- `EUnknownTileError` if `tile` does not exist.
 
 ---
 
@@ -457,7 +457,7 @@ not currently assigned to any tile.
 |---|---|
 | `loc` | Location to unassign. |
 
-**Throws:** `UnknownLocationError` if `loc` does not exist.
+**Throws:** `EUnknownLocationError` if `loc` does not exist.
 
 ---
 
@@ -474,7 +474,7 @@ std::optional<TileId> tile_of(LocationId loc) const;
 **Returns:** The `TileId` if the location is assigned to a tile, or
 `std::nullopt` if not assigned.
 
-**Throws:** `UnknownLocationError` if `loc` does not exist.
+**Throws:** `EUnknownLocationError` if `loc` does not exist.
 
 ---
 
@@ -491,7 +491,7 @@ std::vector<LocationId> locations_in_tile(TileId tile) const;
 **Returns:** Vector of `LocationId` values belonging to `tile`.  Order is
 unspecified.
 
-**Throws:** `UnknownTileError` if `tile` does not exist.
+**Throws:** `EUnknownTileError` if `tile` does not exist.
 
 ---
 
@@ -513,8 +513,8 @@ Creates a directed or bidirectional edge between two locations.
 
 **Throws:**
 
-- `UnknownLocationError` if either `a` or `b` does not exist.
-- `InvalidAdjacencyError` if `a == b` (self-loops are not allowed).
+- `EUnknownLocationError` if either `a` or `b` does not exist.
+- `EInvalidAdjacencyError` if `a == b` (self-loops are not allowed).
 
 ---
 
@@ -533,7 +533,7 @@ exist.
 | `b` | — | Second location. |
 | `bidirectional` | `true` | If `true`, removes both a→b and b→a.  If `false`, removes only a→b. |
 
-**Throws:** `UnknownLocationError` if either `a` or `b` does not exist.
+**Throws:** `EUnknownLocationError` if either `a` or `b` does not exist.
 
 ---
 
@@ -552,7 +552,7 @@ Checks for a directed edge from `a` to `b`.
 
 **Returns:** `true` if there is a directed edge from `a` to `b`.
 
-**Throws:** `UnknownLocationError` if either `a` or `b` does not exist.
+**Throws:** `EUnknownLocationError` if either `a` or `b` does not exist.
 
 ---
 
@@ -570,7 +570,7 @@ Returns all locations directly reachable from `id` (outgoing edges).
 
 **Returns:** Vector of neighbor `LocationId` values.  Order is unspecified.
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -589,7 +589,7 @@ Appends an item to the item list of a location (copied).
 | `id` | Target location. |
 | `item` | Item to add. |
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -609,8 +609,8 @@ shifted left by one position.
 
 **Throws:**
 
-- `UnknownLocationError` if `id` does not exist.
-- `InvalidItemIndexError` if `index` is out of range.
+- `EUnknownLocationError` if `id` does not exist.
+- `EInvalidItemIndexError` if `index` is out of range.
 
 ---
 
@@ -627,7 +627,7 @@ const std::vector<ItemT>& items_at(LocationId id) const;
 **Returns:** Const reference to the internal item list.  The reference is
 invalidated by any call that modifies the map.
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -643,7 +643,7 @@ Removes all items from a location.
 |---|---|
 | `id` | Target location. |
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -663,7 +663,7 @@ Sets (or overwrites) a metadata key on a location.
 | `key` | Metadata key string. |
 | `value` | Serializable metadata value (`MetadataValue`). |
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -682,8 +682,8 @@ const MetadataValue& get_location_meta(LocationId id, const std::string& key) co
 
 **Throws:**
 
-- `UnknownLocationError` if `id` does not exist.
-- `UnknownMetaKeyError` if `key` is not present.
+- `EUnknownLocationError` if `id` does not exist.
+- `EUnknownMetaKeyError` if `key` is not present.
 
 ---
 
@@ -700,7 +700,7 @@ bool has_location_meta(LocationId id, const std::string& key) const;
 
 **Returns:** `true` if the key exists, `false` otherwise.
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -717,7 +717,7 @@ Removes a metadata key from a location.  No-op if the key does not exist.
 | `id` | Target location. |
 | `key` | Metadata key string to remove. |
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -733,7 +733,7 @@ const Metadata& location_metadata(LocationId id) const;
 
 **Returns:** Const reference to the full `Metadata` map of the location.
 
-**Throws:** `UnknownLocationError` if `id` does not exist.
+**Throws:** `EUnknownLocationError` if `id` does not exist.
 
 ---
 
@@ -753,7 +753,7 @@ Sets (or overwrites) a metadata key on a tile.
 | `key` | Metadata key string. |
 | `value` | Serializable metadata value (`MetadataValue`). |
 
-**Throws:** `UnknownTileError` if `id` does not exist.
+**Throws:** `EUnknownTileError` if `id` does not exist.
 
 ---
 
@@ -772,8 +772,8 @@ const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
 
 **Throws:**
 
-- `UnknownTileError` if `id` does not exist.
-- `UnknownMetaKeyError` if `key` is not present.
+- `EUnknownTileError` if `id` does not exist.
+- `EUnknownMetaKeyError` if `key` is not present.
 
 ---
 
@@ -790,7 +790,7 @@ bool has_tile_meta(TileId id, const std::string& key) const;
 
 **Returns:** `true` if the key exists, `false` otherwise.
 
-**Throws:** `UnknownTileError` if `id` does not exist.
+**Throws:** `EUnknownTileError` if `id` does not exist.
 
 ---
 
@@ -807,7 +807,7 @@ Removes a metadata key from a tile.  No-op if the key does not exist.
 | `id` | Target tile. |
 | `key` | Metadata key string to remove. |
 
-**Throws:** `UnknownTileError` if `id` does not exist.
+**Throws:** `EUnknownTileError` if `id` does not exist.
 
 ---
 
@@ -823,7 +823,7 @@ const Metadata& tile_metadata(TileId id) const;
 
 **Returns:** Const reference to the full `Metadata` map of the tile.
 
-**Throws:** `UnknownTileError` if `id` does not exist.
+**Throws:** `EUnknownTileError` if `id` does not exist.
 
 ---
 
@@ -953,7 +953,7 @@ Internal storage record for a tile (named group of locations).
 void _require_location(LocationId id) const;
 ```
 
-Asserts that a location ID exists; throws `UnknownLocationError` otherwise.
+Asserts that a location ID exists; throws `EUnknownLocationError` otherwise.
 Called at the top of every public method that takes a `LocationId`.
 
 #### `_require_tile(TileId)`
@@ -962,7 +962,7 @@ Called at the top of every public method that takes a `LocationId`.
 void _require_tile(TileId id) const;
 ```
 
-Asserts that a tile ID exists; throws `UnknownTileError` otherwise.
+Asserts that a tile ID exists; throws `EUnknownTileError` otherwise.
 Called at the top of every public method that takes a `TileId`.
 
 ---
@@ -998,14 +998,14 @@ The following invariants are actively enforced at all times:
 struct GameItem { std::string name; int value; };
 
 // Instantiate with GameItem as the item type
-GameMap::gmMap<GameItem> dungeon;
+gmMap::gmMap<GameItem> dungeon;
 
 // Create tiles (floors/zones)
 dungeon.create_tile(1);   // floor 1
 dungeon.create_tile(2);   // floor 2
 
 // Create locations (rooms)
-for (GameMap::LocationId id = 101; id <= 105; ++id)
+for (gmMap::LocationId id = 101; id <= 105; ++id)
     dungeon.create_location(id);
 
 // Group rooms into tiles
@@ -1037,7 +1037,7 @@ dungeon.set_tile_meta    (1,   "level",   1);
 ### Reading metadata with std::get
 
 ```cpp
-const GameMap::MetadataValue& raw = dungeon.get_location_meta(101, "name");
+const gmMap::MetadataValue& raw = dungeon.get_location_meta(101, "name");
 std::string room_name = std::get<std::string>(raw);
 
 bool visited = std::get<bool>(dungeon.get_location_meta(101, "visited"));
@@ -1046,7 +1046,7 @@ bool visited = std::get<bool>(dungeon.get_location_meta(101, "visited"));
 ### Querying adjacency
 
 ```cpp
-std::vector<GameMap::LocationId> neighbors = dungeon.adjacent_to(103);
+std::vector<gmMap::LocationId> neighbors = dungeon.adjacent_to(103);
 // neighbors == {102, 104}  (order unspecified)
 
 bool connected = dungeon.are_adjacent(105, 101);   // true (one-way)
@@ -1066,14 +1066,14 @@ for (const GameItem& item : dungeon.items_at(102)) {
 ```cpp
 try {
     dungeon.create_location(101);  // already exists
-} catch (const GameMap::DuplicateLocationError& e) {
-    // e.what() -> "MapError: ..."
+} catch (const gmMap::EDuplicateLocationError& e) {
+    // e.what() -> "EMapError: ..."
 }
 
 try {
-  const GameMap::MetadataValue& v = dungeon.get_location_meta(101, "missing_key");
+  const gmMap::MetadataValue& v = dungeon.get_location_meta(101, "missing_key");
   (void)v;
-} catch (const GameMap::UnknownMetaKeyError& e) {
+} catch (const gmMap::EUnknownMetaKeyError& e) {
     // handle missing key
 }
 ```
@@ -1085,7 +1085,7 @@ try {
 #include "gmLog/LoggerFactory.hpp"
 #include "gmLog/macros/LogMacros.hpp"
 
-GameMap::gmMap<std::string> world;
+gmMap::gmMap<std::string> world;
 GmLog::Logger log = GmLog::LoggerFactory::createFileLogger(
   "gmMapFlow", "gmMap_flow.log", GmLog::LogLevel::Info, true);
 
@@ -1113,8 +1113,8 @@ esplicito, separando la persistenza dalla cache runtime UID -> puntatore.
 #include <vector>
 
 struct MapSnapshot {
-  std::vector<GameMap::LocationId> locations;
-  std::vector<GameMap::TileId> tiles;
+  std::vector<gmMap::LocationId> locations;
+  std::vector<gmMap::TileId> tiles;
 };
 
 inline void to_json(nlohmann::json& j, const MapSnapshot& s) {
@@ -1126,7 +1126,7 @@ inline void from_json(const nlohmann::json& j, MapSnapshot& s) {
   j.at("tiles").get_to(s.tiles);
 }
 
-GameMap::gmMap<std::string> world;
+gmMap::gmMap<std::string> world;
 world.create_location(1);
 world.create_location(2);
 world.create_tile(10);
@@ -1151,13 +1151,13 @@ Note:
 
 | Situation | Exception thrown |
 |---|---|
-| `create_location` with existing ID | `DuplicateLocationError` |
-| Any operation on non-existent `LocationId` | `UnknownLocationError` |
-| `create_tile` with existing ID | `DuplicateTileError` |
-| Any operation on non-existent `TileId` | `UnknownTileError` |
-| `set_adjacent(a, a, ...)` self-loop | `InvalidAdjacencyError` |
-| `get_*_meta` with missing key | `UnknownMetaKeyError` |
-| `remove_item` with out-of-range index | `InvalidItemIndexError` |
+| `create_location` with existing ID | `EDuplicateLocationError` |
+| Any operation on non-existent `LocationId` | `EUnknownLocationError` |
+| `create_tile` with existing ID | `EDuplicateTileError` |
+| Any operation on non-existent `TileId` | `EUnknownTileError` |
+| `set_adjacent(a, a, ...)` self-loop | `EInvalidAdjacencyError` |
+| `get_*_meta` with missing key | `EUnknownMetaKeyError` |
+| `remove_item` with out-of-range index | `EInvalidItemIndexError` |
 
 ---
 
