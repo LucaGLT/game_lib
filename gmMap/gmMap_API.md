@@ -133,7 +133,7 @@ single UID references (`UidRef`) or UID lists (`UidList`).
 
 All exceptions derive from `std::runtime_error`.
 
-```
+```text
 std::runtime_error
 └-- MapError                    Base class for all gmMap errors
     ├-- DuplicateLocationError  create_location() called with existing ID
@@ -243,7 +243,7 @@ template <typename ItemT>
 class gmMap;
 ```
 
-**Template parameter**
+#### Template Parameter
 
 | Parameter | Description |
 |---|---|
@@ -438,6 +438,7 @@ different tile it is first unassigned from that tile before being added to
 | `tile` | Target tile. |
 
 **Throws:**
+
 - `UnknownLocationError` if `loc` does not exist.
 - `UnknownTileError` if `tile` does not exist.
 
@@ -511,6 +512,7 @@ Creates a directed or bidirectional edge between two locations.
 | `bidirectional` | `true` | If `true`, creates both a→b and b→a.  If `false`, creates only a→b. |
 
 **Throws:**
+
 - `UnknownLocationError` if either `a` or `b` does not exist.
 - `InvalidAdjacencyError` if `a == b` (self-loops are not allowed).
 
@@ -606,6 +608,7 @@ shifted left by one position.
 | `index` | Zero-based index of the item to remove. |
 
 **Throws:**
+
 - `UnknownLocationError` if `id` does not exist.
 - `InvalidItemIndexError` if `index` is out of range.
 
@@ -678,6 +681,7 @@ const MetadataValue& get_location_meta(LocationId id, const std::string& key) co
 **Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
+
 - `UnknownLocationError` if `id` does not exist.
 - `UnknownMetaKeyError` if `key` is not present.
 
@@ -767,6 +771,7 @@ const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
 **Returns:** Const reference to the stored `MetadataValue`.
 
 **Throws:**
+
 - `UnknownTileError` if `id` does not exist.
 - `UnknownMetaKeyError` if `key` is not present.
 
@@ -868,6 +873,7 @@ The current map state is cleared and replaced with the loaded snapshot.
 | `filepath` | Input JSON file path (must be versioned gmSave format). |
 
 **Throws:**
+
 - `gmSave::EFileReadError` if the file cannot be read.
 - `gmSave::EJsonParseError` if the JSON is malformed.
 - `gmSave::EVersionMismatchError` if the version field does not match the expected version (currently v1).

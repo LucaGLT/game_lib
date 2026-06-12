@@ -11,49 +11,49 @@
 
 ## Table of Contents
 
-- [gmSave – Generic JSON Save/Load Library](#gmSave--generic-json-saveload-library)
-	- [Table of Contents](#table-of-contents)
-	- [Overview](#overview)
-		- [Key Features](#key-features)
-	- [Design Philosophy](#design-philosophy)
-	- [Requirements \& Setup](#requirements--setup)
-	- [User Contract](#user-contract)
-		- [Flat struct](#flat-struct)
-		- [Nested struct](#nested-struct)
-		- [std::vector\<T\>](#stdvectort)
-		- [std::optional\<T\>](#stdoptionalt)
-	- [API Reference](#api-reference)
-		- [Exception Hierarchy](#exception-hierarchy)
-			- [`ESaveError`](#ESaveError)
-			- [`EFileWriteError`](#EFileWriteError)
-			- [`EFileReadError`](#EFileReadError)
-			- [`EJsonParseError`](#EJsonParseError)
-			- [`EVersionMismatchError`](#EVersionMismatchError)
-		- [`save()`](#save)
-		- [`load()`](#load)
-		- [`try_load()`](#try_load)
-		- [`save_versioned()`](#save_versioned)
-		- [`load_versioned()`](#load_versioned)
-		- [`peek_version()`](#peek_version)
-		- [Internal Helpers (detail)](#internal-helpers-detail)
-			- [`detail::write_file()`](#detailwrite_file)
-			- [`detail::read_file()`](#detailread_file)
-			- [`detail::parse_json()`](#detailparse_json)
-	- [Versioned Envelope Format](#versioned-envelope-format)
-	- [Usage Examples](#usage-examples)
-		- [Round-trip: flat struct](#round-trip-flat-struct)
-		- [Round-trip: versioned save](#round-trip-versioned-save)
-		- [Non-throwing load at startup](#non-throwing-load-at-startup)
-		- [Version detection for migration](#version-detection-for-migration)
-		- [Nested struct + vector + optional](#nested-struct--vector--optional)
-		- [Compact output](#compact-output)
-		- [Exception handling](#exception-handling)
-	- [Error Handling](#error-handling)
-	- [Design Notes](#design-notes)
-		- [Why free functions instead of member functions?](#why-free-functions-instead-of-member-functions)
-		- [Why nlohmann/json?](#why-nlohmannjson)
-		- [Why vendor json.hpp?](#why-vendor-jsonhpp)
-		- [Template bodies in the header](#template-bodies-in-the-header)
+- [gmSave – Generic JSON Save/Load Library](#gmsave--generic-json-saveload-library)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Key Features](#key-features)
+  - [Design Philosophy](#design-philosophy)
+  - [Requirements \& Setup](#requirements--setup)
+  - [User Contract](#user-contract)
+    - [Flat struct](#flat-struct)
+    - [Nested struct](#nested-struct)
+    - [std::vector\<T\>](#stdvectort)
+    - [std::optional\<T\>](#stdoptionalt)
+  - [API Reference](#api-reference)
+    - [Exception Hierarchy](#exception-hierarchy)
+      - [`ESaveError`](#esaveerror)
+      - [`EFileWriteError`](#efilewriteerror)
+      - [`EFileReadError`](#efilereaderror)
+      - [`EJsonParseError`](#ejsonparseerror)
+      - [`EVersionMismatchError`](#eversionmismatcherror)
+    - [`save()`](#save)
+    - [`load()`](#load)
+    - [`try_load()`](#try_load)
+    - [`save_versioned()`](#save_versioned)
+    - [`load_versioned()`](#load_versioned)
+    - [`peek_version()`](#peek_version)
+    - [Internal Helpers (detail)](#internal-helpers-detail)
+      - [`detail::write_file()`](#detailwrite_file)
+      - [`detail::read_file()`](#detailread_file)
+      - [`detail::parse_json()`](#detailparse_json)
+  - [Versioned Envelope Format](#versioned-envelope-format)
+  - [Usage Examples](#usage-examples)
+    - [Round-trip: flat struct](#round-trip-flat-struct)
+    - [Round-trip: versioned save](#round-trip-versioned-save)
+    - [Non-throwing load at startup](#non-throwing-load-at-startup)
+    - [Version detection for migration](#version-detection-for-migration)
+    - [Nested struct + vector + optional](#nested-struct--vector--optional)
+    - [Compact output](#compact-output)
+    - [Exception handling](#exception-handling)
+  - [Error Handling](#error-handling)
+  - [Design Notes](#design-notes)
+    - [Why free functions instead of member functions?](#why-free-functions-instead-of-member-functions)
+    - [Why nlohmann/json?](#why-nlohmannjson)
+    - [Why vendor json.hpp?](#why-vendor-jsonhpp)
+    - [Template bodies in the header](#template-bodies-in-the-header)
 
 ---
 
@@ -105,7 +105,7 @@ The library is a thin, type-safe wrapper around
 - `json.hpp` (nlohmann/json single-header) placed in the same directory as
   `gmSave.hpp`
 
-```
+```text
 gmSave/
 ├── gmSave.hpp   ← include this in your project
 ├── gmSave.cpp   ← compile this translation unit
@@ -231,7 +231,7 @@ All symbols are in namespace `gmSave`.
 
 ### Exception Hierarchy
 
-```
+```text
 std::runtime_error
 └── ESaveError                  Base class for all gmSave errors
     ├── EFileWriteError         File cannot be opened or written
@@ -305,7 +305,7 @@ match the value supplied by the caller.  Both version numbers are accessible
 as public members for programmatic handling (e.g. migration logic).
 
 **Example message:**
-```
+```text
 ESaveError: Version mismatch: expected 2, found 1
 ```
 
@@ -352,6 +352,7 @@ Reads the file, parses it, then returns `j.get<T>()` (which triggers ADL
 **Returns:** The deserialized value of type `T`.
 
 **Throws:**
+
 - `EFileReadError` if the file cannot be opened.
 - `EJsonParseError` if the content is not valid JSON.
 
@@ -436,6 +437,7 @@ Steps performed:
 **Returns:** The deserialized value of type `T`.
 
 **Throws:**
+
 - `EFileReadError` if the file cannot be opened.
 - `EJsonParseError` if the content is not valid JSON, or `_version` / `payload` fields are absent.
 - `EVersionMismatchError` if `_version != expected_version`.

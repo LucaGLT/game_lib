@@ -1,4 +1,4 @@
-﻿# libDeck - Token Deck Library
+# libDeck - Token Deck Library
 
 **Version:** 1.0  
 **Status:** Production  
@@ -56,10 +56,10 @@ The library follows a **clean separation of concerns**:
 - **Domain rules** stay in the application layer, not in the library
 
 This design ensures:
-- ✅ Reusability across different token systems
-- ✅ No coupling to specific token metadata
-- ✅ Lightweight and fast core library
-- ✅ Easy integration into larger systems
+- ? Reusability across different token systems
+- ? No coupling to specific token metadata
+- ? Lightweight and fast core library
+- ? Easy integration into larger systems
 
 ---
 
@@ -74,13 +74,13 @@ This design ensures:
 ### Basic Integration
 
 1. Copy `libDeck.hpp` and `libDeck.cpp` to your project
-2. Include the header:
+1. Include the header:
 
 ```cpp
 #include "libDeck.hpp"
 ```
 
-3. Use in your code:
+1. Use in your code:
 
 ```cpp
 using namespace gmAlea;
@@ -174,7 +174,7 @@ public:
 ```
 
 **When thrown:**
-- `draw_many(k)` called with k ≤ 0
+- `draw_many(k)` called with k = 0
 
 **Example:**
 ```cpp
@@ -228,7 +228,7 @@ explicit GmDeck(const std::vector<uint32_t>& token_ids,
 
 **Throws:** `EAleaDuplicateTokenIdError` if `token_ids` contains duplicates
 
-**Behavior:** 
+**Behavior:**
 1. Validates all token IDs are unique
 2. Stores initial token IDs
 3. Initializes RNG with provided seed or random seed
@@ -290,7 +290,7 @@ uint32_t draw_one();
 
 **Throws:** `EAleaDeckEmptyError` if deck is empty
 
-**Behavior:** 
+**Behavior:**
 1. Checks if deck is empty
 2. Removes and returns first token from deck
 3. Advances deck position
@@ -320,12 +320,13 @@ std::vector<uint32_t> draw_many(int k);
 **Returns:** Vector of k drawn token IDs
 
 **Throws:**
-- `EAleaInvalidDrawCountError` if k ≤ 0
+
+- `EAleaInvalidDrawCountError` if k = 0
 - `EAleaDeckEmptyError` if k > remaining tokens
 
 **Behavior:**
 1. Validates k > 0
-2. Validates k ≤ remaining count
+2. Validates k = remaining count
 3. Calls `draw_one()` k times
 4. Returns vector of drawn tokens
 
@@ -639,7 +640,7 @@ int main() {
 | `Constructor` | O(n) | Includes shuffle |
 | `shuffle()` | O(n) | Mersenne Twister shuffle |
 | `draw_one()` | O(n) | Front erase is O(n) |
-| `draw_many(k)` | O(k·n) | k calls to draw_one() |
+| `draw_many(k)` | O(k�n) | k calls to draw_one() |
 | `remaining_count()` | O(1) | Direct size() |
 | `is_empty()` | O(1) | Checks .empty() |
 | `reset()` | O(n) | Includes shuffle |
@@ -659,9 +660,9 @@ int main() {
 ### Memory Usage Example
 
 For 1000 tokens:
-- **With uint32_t**: ~8KB (1000 × 4 bytes × 2 copies)
+- **With uint32_t**: ~8KB (1000 � 4 bytes � 2 copies)
 - **With std::string** (50 bytes avg): ~400KB (same calculation)
-- **Savings**: ~98% reduction ✅
+- **Savings**: ~98% reduction ?
 
 ---
 
@@ -776,12 +777,12 @@ For questions, issues, or contributions, refer to the main project repository.
 
 ### Version 1.0 (Initial Release)
 
-- ✅ Core GmDeck implementation with uint32_t optimization
-- ✅ Four exception types for error handling
-- ✅ Deterministic shuffling with optional seed
-- ✅ Complete API documentation
-- ✅ Doxygen HTML/LaTeX output
-- ✅ Markdown documentation (this file)
+- ? Core GmDeck implementation with uint32_t optimization
+- ? Four exception types for error handling
+- ? Deterministic shuffling with optional seed
+- ? Complete API documentation
+- ? Doxygen HTML/LaTeX output
+- ? Markdown documentation (this file)
 
 ---
 
