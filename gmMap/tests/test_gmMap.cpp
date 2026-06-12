@@ -32,12 +32,12 @@ bool containsTileId(const std::vector<GameMap::TileId>& ids, GameMap::TileId id)
 }
 
 struct TestRunner {
-    GmLog::Logger logger;
+    gmLog::GmLogger logger;
     int passed;
     int failed;
 
     explicit TestRunner(const std::string& logPath)
-        : logger(GmLog::LoggerFactory::createFileLogger("gmMapPhase11", logPath, GmLog::LogLevel::Debug, true))
+        : logger(gmLog::LoggerFactory::create_file_logger("gmMapPhase11", logPath, gmLog::LogLevel::DEBUG, true))
         , passed(0)
         , failed(0)
     {
@@ -47,10 +47,10 @@ struct TestRunner {
     {
         if (ok) {
             ++passed;
-            logger.log(GmLog::LogLevel::Info, "[PASS] " + name);
+            logger.log(gmLog::LogLevel::INFO, "[PASS] " + name);
         } else {
             ++failed;
-            logger.log(GmLog::LogLevel::Error, "[FAIL] " + name);
+            logger.log(gmLog::LogLevel::ERROR, "[FAIL] " + name);
         }
     }
 
@@ -60,13 +60,13 @@ struct TestRunner {
         try {
             fn();
             ++failed;
-            logger.log(GmLog::LogLevel::Error, "[FAIL] " + name + " (expected exception)");
+            logger.log(gmLog::LogLevel::ERROR, "[FAIL] " + name + " (expected exception)");
         } catch (const Exc&) {
             ++passed;
-            logger.log(GmLog::LogLevel::Info, "[PASS] " + name);
+            logger.log(gmLog::LogLevel::INFO, "[PASS] " + name);
         } catch (const std::exception& e) {
             ++failed;
-            logger.log(GmLog::LogLevel::Error, "[FAIL] " + name + " (wrong exception: " + std::string(e.what()) + ")");
+            logger.log(gmLog::LogLevel::ERROR, "[FAIL] " + name + " (wrong exception: " + std::string(e.what()) + ")");
         }
     }
 
@@ -74,7 +74,7 @@ struct TestRunner {
     {
         const int total = passed + failed;
         const std::string msg = "=== gmMap Phase 11 summary: " + std::to_string(passed) + "/" + std::to_string(total) + " passed";
-        logger.log(GmLog::LogLevel::Info, msg);
+        logger.log(gmLog::LogLevel::INFO, msg);
         std::cout << msg << std::endl;
         return failed == 0 ? 0 : 1;
     }

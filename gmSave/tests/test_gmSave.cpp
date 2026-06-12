@@ -181,7 +181,7 @@ struct TempFile {
  * Use @ref check, @ref checkThrows, and @ref checkNoThrow to register results.
  */
 struct TestRunner {
-    GmLog::Logger& log;
+    gmLog::GmLogger& log;
     int            passed = 0;
     int            failed = 0;
 
@@ -512,10 +512,10 @@ static void test_compact_output(TestRunner& tr)
 int main()
 {
     // Create a file logger via gmLog — all test results go to this file.
-    GmLog::Logger log = GmLog::LoggerFactory::createFileLogger(
+    gmLog::GmLogger log = gmLog::LoggerFactory::create_file_logger(
         "gmSaveTest",
         "test_gmSave_out.log",
-        GmLog::LogLevel::Debug
+        gmLog::LogLevel::DEBUG
     );
 
     logInfo(log, "======================================================");

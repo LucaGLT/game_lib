@@ -340,12 +340,12 @@ static void test_logDispatchBridge()
     bus.subscribe("log.INFO", ch);
 
     // Build a Logger that uses LogDispatchBridge as its dispatcher
-    GmLog::LoggerConfig cfg;
+    gmLog::LoggerConfig cfg;
     cfg.name                 = "DB";
-    cfg.minLevel             = GmLog::LogLevel::Info;
-    cfg.enableSourceLocation = false;
+    cfg.min_level             = gmLog::LogLevel::INFO;
+    cfg.enable_source_location = false;
 
-    GmLog::Logger db(
+    gmLog::GmLogger db(
         cfg,
         std::make_unique<GmDispatch::LogDispatchBridge>(bus));
 
