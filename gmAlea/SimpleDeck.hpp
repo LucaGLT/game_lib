@@ -156,6 +156,26 @@ public:
 	void push_front(const Token& token);
 
 	/**
+	 * @brief Views the next token at the top of the deck without removing it.
+	 *
+	 * Allows inspection of the top token without modifying deck structure.
+	 *
+	 * @return The Token object at the top of the deck.
+	 * @throws EAleaDeckEmptyError if the deck is empty.
+	 */
+	Token see_top() const;
+
+	/**
+	 * @brief Views the token at the bottom of the deck without removing it.
+	 *
+	 * Allows inspection of the bottom token without modifying deck structure.
+	 *
+	 * @return The Token object at the bottom of the deck.
+	 * @throws EAleaDeckEmptyError if the deck is empty.
+	 */
+	Token see_bottom() const;
+
+	/**
 	 * @brief Finds, removes, and returns a specific token by ID.
 	 *
 	 * @param token_id The token ID to draw.

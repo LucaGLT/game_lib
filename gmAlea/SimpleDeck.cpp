@@ -1,7 +1,5 @@
 #include "SimpleDeck.hpp"
 
-#include <algorithm>
-
 namespace gmAlea
 {
 
@@ -121,6 +119,18 @@ void SimpleDeck::push_front(const Token& token)
 	_deck.push_front(token.id);
 }
 
+Token SimpleDeck::see_top() const
+{
+	uint32_t id = _deck.see_top();
+	return _token_db.at(id);
+}
+
+Token SimpleDeck::see_bottom() const
+{
+	uint32_t id = _deck.see_bottom();
+	return _token_db.at(id);
+}
+
 Token SimpleDeck::draw_specific(uint32_t token_id)
 {
 	_deck.draw_specific(token_id);
@@ -128,3 +138,4 @@ Token SimpleDeck::draw_specific(uint32_t token_id)
 }
 
 } // namespace gmAlea
+

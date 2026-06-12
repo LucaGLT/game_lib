@@ -1,4 +1,4 @@
-﻿#ifndef GMALEA_GMDECK_HPP
+#ifndef GMALEA_GMDECK_HPP
 #define GMALEA_GMDECK_HPP
 
 #include <cstdint>
@@ -6,7 +6,6 @@
 #include <random>
 #include <optional>
 #include <stdexcept>
-#include <unordered_map>
 #include <string>
 
 namespace gmAlea
@@ -72,7 +71,7 @@ public:
 	 * @param allow_duplicates If false (default), throws EAleaDuplicateTokenIdError
 	 *                        when the same ID appears more than once.  Set to
 	 *                        true for probability decks where the same card type
-	 *                        must appear multiple times (e.g. 8× Success, 2× Failure).
+	 *                        must appear multiple times (e.g. 8� Success, 2� Failure).
 	 *
 	 * @throws EAleaDuplicateTokenIdError if @p allow_duplicates is false and @p token_ids
 	 *         contains duplicate IDs.
@@ -157,6 +156,27 @@ public:
 	 *         is already in the deck.
 	 */
 	void push_front(uint32_t token_id);
+
+	/**
+	 * @brief Views the next token at the top of the deck without removing it.
+	 *
+	 * Allows inspection of the top token without modifying deck structure.
+	 * Useful for conditional logic: "if I draw this token, then...".
+	 *
+	 * @return The token ID at the top of the deck.
+	 * @throws EAleaDeckEmptyError if the deck is empty.
+	 */
+	uint32_t see_top() const;
+
+	/**
+	 * @brief Views the token at the bottom of the deck without removing it.
+	 *
+	 * Allows inspection of the bottom token without modifying deck structure.
+	 *
+	 * @return The token ID at the bottom of the deck.
+	 * @throws EAleaDeckEmptyError if the deck is empty.
+	 */
+	uint32_t see_bottom() const;
 
 	/**
 	 * @brief Finds, removes, and returns a specific token by ID.
