@@ -2,7 +2,7 @@
  * @file events/EventBus.cpp
  * @brief Implementation of gmFlow::EventBus.
  *
- * publish() wraps the IEvent in a GmDispatch::Envelope using
+ * publish() wraps the IEvent in a gmDispatch::Envelope using
  * std::reference_wrapper<const IEvent> as payload.  This is safe because
  * SyncDispatcher invokes all handlers synchronously within dispatch(), so the
  * event reference is always valid during the call chain.
@@ -21,7 +21,7 @@
 
 namespace gmFlow {
 
-EventBus::EventBus(std::shared_ptr<GmDispatch::Dispatcher> dispatcher)
+EventBus::EventBus(std::shared_ptr<gmDispatch::GmDispatcher> dispatcher)
     : dispatcher_(std::move(dispatcher))
 {
     if (!dispatcher_) {
@@ -38,11 +38,12 @@ EventBus::~EventBus()
 
 void EventBus::subscribe(const EventType& event_type, Handler handler)
 {
-    // Wrap the gmFlow handler in a GmDispatch::EventBusChannel.
+    // Wrap the gmFlow handler in a gmDispatch::EventBusChannel.
     // The channel extracts the IEvent from the envelope payload and forwards
     // it to the user's handler.
-    auto channel = std::make_shared<GmDispatch::EventBusChannel>();
-    channel->addHandler([h = std::move(handler)](const GmDispatch::Envelope& env) {
+    std::shared_ptr<gmDispatch::EventBusChannel> channel =
+        std::make_shared<gmDispatch::EventBusChannel>();
+    channel->add_handler([h = std::move(handler)](const gmDispatch::Envelope& env) {
         // The payload was stored as std::cref(event) in publish().
         const IEvent& ev =
             std::any_cast<std::reference_wrapper<const IEvent>>(env.payload).get();
@@ -54,7 +55,7 @@ void EventBus::subscribe(const EventType& event_type, Handler handler)
 
 void EventBus::publish(const IEvent& event)
 {
-    GmDispatch::Envelope env;
+	gmDispatch::Envelope env;
     env.typeId  = event.type();
     env.source  = "gmFlow";
     // std::cref is safe: SyncDispatcher calls all handlers before returning.

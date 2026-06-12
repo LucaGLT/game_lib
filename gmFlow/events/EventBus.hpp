@@ -5,9 +5,9 @@
  * @file events/EventBus.hpp
  * @brief Publish/subscribe bus for gmFlow lifecycle events.
  *
- * EventBus is a thin façade over `GmDispatch::Dispatcher` and
- * `GmDispatch::EventBusChannel`.  It translates `gmFlow::IEvent` objects
- * into `GmDispatch::Envelope` messages and routes them to registered
+ * EventBus is a thin facade over `gmDispatch::GmDispatcher` and
+ * `gmDispatch::EventBusChannel`.  It translates `gmFlow::IEvent` objects
+ * into `gmDispatch::Envelope` messages and routes them to registered
  * subscribers.
  *
  * ### Subscribing to an event
@@ -29,11 +29,11 @@
  *
  * ### Thread safety
  * Inherits the thread safety guarantees of the underlying
- * `GmDispatch::SyncDispatcher`: handlers are invoked synchronously on the
+ * `gmDispatch::SyncDispatcher`: handlers are invoked synchronously on the
  * calling thread.  Handlers must not call `publish()` or `subscribe()` on
  * the same EventBus instance (potential deadlock).
  *
- * @note This class wraps `GmDispatch::EventBusChannel` — it never
+ * @note This class wraps `gmDispatch::EventBusChannel` and never
  *       implements its own pub/sub mechanism.
  */
 
@@ -47,16 +47,16 @@
 #include <vector>
 
 // Forward declarations — avoid pulling in full gmDispatch headers here.
-namespace GmDispatch {
-    class Dispatcher;
-    class IChannel;   ///< Stored as type-erased base for unsubscription in ~EventBus.
+namespace gmDispatch {
+	class GmDispatcher;
+	class IChannel;   ///< Stored as type-erased base for unsubscription in ~EventBus.
 }
 
 namespace gmFlow {
 
 /**
  * @class EventBus
- * @brief Thin pub/sub façade over `GmDispatch::Dispatcher`.
+ * @brief Thin pub/sub facade over `gmDispatch::GmDispatcher`.
  *
  * One EventBus instance is owned by each @ref GameSession.  Access it via
  * `GameSession::event_bus()` or `GameContext::event_bus()`.
@@ -67,13 +67,13 @@ public:
     using Handler = std::function<void(const IEvent&)>;
 
     /**
-     * @brief Constructs an EventBus backed by the provided GmDispatch Dispatcher.
+    * @brief Constructs an EventBus backed by the provided gmDispatch dispatcher.
      *
      * @param dispatcher Shared dispatcher (e.g. created via
-     *                   `GmDispatch::DispatcherFactory::createSyncDispatcher()`).
+    *                   `gmDispatch::DispatcherFactory::create_sync_dispatcher()`).
      *                   Must outlive this EventBus.
      */
-    explicit EventBus(std::shared_ptr<GmDispatch::Dispatcher> dispatcher);
+	explicit EventBus(std::shared_ptr<gmDispatch::GmDispatcher> dispatcher);
 
     /// @brief Destructor — unregisters all internally created channels.
     ~EventBus();
@@ -100,9 +100,9 @@ public:
     /**
      * @brief Publishes an event to all subscribers registered for its type.
      *
-     * Creates a `GmDispatch::Envelope` with `typeId = event.type()` and
+    * Creates a `gmDispatch::Envelope` with `typeId = event.type()` and
      * `payload = std::cref(event)`, then dispatches it synchronously through
-     * the underlying `GmDispatch::Dispatcher`.
+    * the underlying `gmDispatch::GmDispatcher`.
      *
      * @param event The event to publish. Must remain valid for the duration
      *              of the call (handlers receive a const reference).
@@ -110,8 +110,8 @@ public:
     void publish(const IEvent& event);
 
 private:
-    std::shared_ptr<GmDispatch::Dispatcher>                                       dispatcher_;
-    std::vector<std::pair<EventType, std::shared_ptr<GmDispatch::IChannel>>>    subscriptions_;
+	std::shared_ptr<gmDispatch::GmDispatcher>                                      dispatcher_;
+	std::vector<std::pair<EventType, std::shared_ptr<gmDispatch::IChannel>>>      subscriptions_;
 };
 
 } // namespace gmFlow
