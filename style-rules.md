@@ -1,25 +1,8 @@
 # game_lib — Naming and Style Rules
 
-**Version:** 1.0  
-**Date:** 2026-06-11  
-**Scope:** All C++ libraries in this workspace (`gmLog`, `gmSave`, `gmMap`, `gmDispatch`, `gmDeck`, `gmCompDeck`)
-
----
-
-## Background — Current Inconsistencies
-
-A quick audit of the codebase reveals three different namespace conventions in active use:
-
-| Library | Current namespace | Style used |
-| ------- | ----------------- | ---------- |
-| `gmLog` | `GmLog` | PascalCase with `Gm` prefix |
-| `gmSave` | `GmSave` | PascalCase with `Gm` prefix |
-| `gmDispatch` | `GmDispatch` | PascalCase with `Gm` prefix |
-| `gmMap` | `GameMap` | PascalCase, no `gm` prefix, full word |
-| `gmDeck` | `gmFate` | camelCase, lowercase `gm`, thematic name |
-| `gmCompDeck` | `gmFate` | camelCase, lowercase `gm`, thematic name |
-
-These rules establish a single canonical style to be applied to all **new** code and progressively to refactors.
+**Version:** 1.1  
+**Date:** 2026-06-12  
+**Scope:** All C++ libraries in this workspace
 
 ---
 
@@ -33,25 +16,15 @@ All namespaces use the `gm` prefix in **lowercase**, followed by a short **Pasca
 gm<Descriptor>
 ```
 
-| Library | Correct namespace | Old (to migrate) |
-| ------- | ----------------- | ---------------- |
-| `gmLog` | `gmLog` | `GmLog` |
-| `gmSave` | `gmSave` | `GmSave` |
-| `gmDispatch` | `gmDispatch` | `GmDispatch` |
-| `gmMap` | `gmMap` | `GameMap` |
-| `gmDeck` | `gmDeck` | `gmFate` |
-| `gmCompDeck` | `gmDeck` (same library) | `gmFate` |
-
-> **Migration note:** existing libraries keep their current namespace until a dedicated refactor is planned. Do not rename in the middle of a feature branch.
 
 ### Rule NS-2 — No nested namespaces for public API
 
-Nested namespaces (e.g. `gm::detail`) are allowed only for internal implementation helpers, never for public-facing types.
+Nested namespaces (e.g. `gm::detail` , `gm::helper`) are allowed only for internal implementation helpers, never for public-facing types.
 
 ```cpp
 namespace gmSave {
 
-namespace detail {          // OK — internal only
+namespace helper {          // OK — internal only
     // ...
 }
 
@@ -83,15 +56,15 @@ class TLogRecord { };       // Hungarian T-prefix
 
 ### Rule CL-2 — Library prefix on the main façade class only
 
-The primary user-facing class of each library carries the `gm` prefix to avoid collisions when used without `using namespace`:
+The primary user-facing class of each library carries the `Gm` prefix to avoid collisions when used without `using namespace`:
 
 ```cpp
-gmLog::gmLogger    // main façade
+gmLog::GmLogger    // main façade
 gmLog::LogRecord   // supporting type — no gm prefix
 gmLog::LogLevel    // supporting type — no gm prefix
 ```
 
-> Current examples that already follow this: `gmDeck`, `gmCompDeck`, `gmMap`.
+> Examples : `GmDeck`, `GmCompDeck`, `GmMap`.
 
 ---
 
@@ -121,8 +94,8 @@ bool can_shuffle() const;
 ### Rule FN-3 — Factory free-functions and static factories use `create_` prefix
 
 ```cpp
-static gmLogger create_file_logger(const LoggerConfig& cfg);
-static gmLogger create_stdout_logger(const std::string& name);
+static GmLogger create_file_logger(const LoggerConfig& cfg);
+static GmLogger create_stdout_logger(const std::string& name);
 ```
 
 ---
@@ -136,10 +109,10 @@ int remaining_count = deck.remaining_count();
 const std::string& owner_name = player.owner_name();
 ```
 
-### Rule VAR-2 — Private member variables use `_` suffix
+### Rule VAR-2 — Private member variables use `_` prefix
 
 ```cpp
-class gmDeck {
+class GmDeck {
 private:
     std::vector<uint32_t> _deck;
     std::optional<unsigned int> _seed;
@@ -147,7 +120,7 @@ private:
 };
 ```
 
-> **Not** `m_deck`, `mDeck`, or `deck_` — the suffix `_` is the project standard.
+> **Not** `m_deck`, `mDeck`, or `deck_` — the prefix `_` is the project standard.
 
 ---
 
@@ -157,7 +130,7 @@ private:
 
 ```cpp
 static constexpr int MAX_HAND_SIZE = 10;
-static constexpr bool can_shuffle = false;   // exception: policy flags are property-style
+static constexpr bool CAN_SHUFFLE = false;   
 ```
 
 ### Rule CONST-2 — `enum class` enumerators use SCREAMING_SNAKE_CASE
@@ -180,9 +153,9 @@ enum class ZoneId {
 ### Rule FILE-1 — File names match the primary class they define, PascalCase
 
 ```
-Dispatcher.hpp / Dispatcher.cpp     → class Dispatcher
-EventBusChannel.hpp                 → class EventBusChannel
-PolicyBasedDeck.hpp                 → template class PolicyBasedDeck<Policy>
+GmDispatcher.hpp / GMDispatcher.cpp     → class Dispatcher
+EventBusChannel.hpp                     → class EventBusChannel
+PolicyBasedDeck.hpp                     → template class PolicyBasedDeck<Policy>
 ```
 
 ### Rule FILE-2 — Library-named files use lowercase `gm` prefix
@@ -208,10 +181,10 @@ IRouter.hpp         → interface IRouter
 ### Rule IG-1 — Pattern `GMLIBNAME_CLASSNAME_HPP`, all uppercase
 
 ```cpp
-#ifndef GMFATE_GMDECK_HPP
-#define GMFATE_GMDECK_HPP
+#ifndef GMALEA_GMDECK_HPP
+#define GMALEA_GMDECK_HPP
 // ...
-#endif // GMFATE_GMDECK_HPP
+#endif // GMALEA_GMDECK_HPP
 ```
 
 Format: `<NAMESPACE_UPPERCASE>_<FILENAME_UPPERCASE>_HPP`
@@ -220,29 +193,31 @@ Format: `<NAMESPACE_UPPERCASE>_<FILENAME_UPPERCASE>_HPP`
 
 ## 8. Exception Classes
 
-### Rule EX-1 — Exception names end with `Error`, PascalCase
+### Rule EX-1 — Exception names have prefix 'E' and, if not clear, end with `Error`, PascalCase
 
 ```cpp
-class DeckEmptyError      : public DeckAdapterError { };
-class TokenNotFoundError  : public DeckAdapterError { };
-class VersionMismatchError: public SaveError        { };
+class EDeckEmptyError  : public EDeckAdapterError { };
+class ETokenNotFound   : public EDeckAdapterError { };
+class EVersionMismatch : public ESaveError        { };
 ```
 
-### Rule EX-2 — Each library has one base exception class
+### Rule EX-2 — Each library has one only base exception class that end with `Error`, PascalCase
+
+Format: `<libName without 'gm'><Error>`
 
 ```
-gmLog     → LogError  (base)
-gmSave    → SaveError (base)
-gmMap     → MapError  (base)
-gmDispatch→ DispatchError (base)
-gmDeck    → DeckAdapterError (base)
+gmLog     → ELogError  (base)
+gmSave    → ESaveError (base)
+gmMap     → EMapError  (base)
+gmDispatch→ EDispatchError (base)
+gmDeck    → EDeckAdapterError (base)
 ```
 
 ---
 
 ## 9. Documentation Comments
 
-### Rule DOC-1 — Doxygen for all public API symbols
+### Rule DOC-1 — Doxygen style for all public API symbols
 
 ```cpp
 /**
@@ -252,7 +227,7 @@ gmDeck    → DeckAdapterError (base)
  *
  * @param token_id  The token to remove.
  * @return          The removed token ID.
- * @throws TokenNotFoundError if the token is not present.
+ * @throws ETokenNotFound if the token is not present.
  */
 uint32_t draw_specific(uint32_t token_id);
 ```
@@ -261,22 +236,3 @@ uint32_t draw_specific(uint32_t token_id);
 
 All comments, docstrings, and error messages must be written in English.
 
----
-
-## 10. Summary Quick-Reference
-
-| Element | Convention | Example |
-| ------- | ---------- | ------- |
-| Namespace | `gm` + PascalCase | `gmLog`, `gmDeck` |
-| Façade class | `gm` + PascalCase | `gmDeck`, `gmMap` |
-| Supporting class | PascalCase | `LogRecord`, `Envelope` |
-| Method / function | snake_case | `draw_to_hand()` |
-| Private member | snake_case + `_` suffix | `_allow_duplicates` |
-| Parameter / local | snake_case | `token_id`, `owner_name` |
-| `enum class` value | SCREAMING_SNAKE_CASE | `MAIN_DECK`, `NOT_FOUND` |
-| `constexpr` constant | SCREAMING_SNAKE_CASE | `MAX_HAND_SIZE` |
-| File (class) | PascalCase | `EventBusChannel.hpp` |
-| File (library entry) | `gm` lowercase + PascalCase | `gmDeck.hpp` |
-| Interface file | `I` + PascalCase | `IChannel.hpp` |
-| Include guard | NAMESPACE\_FILE\_HPP | `GMFATE_GMDECK_HPP` |
-| Exception class | PascalCase + `Error` | `TokenNotFoundError` |
