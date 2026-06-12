@@ -6,9 +6,9 @@
  * @brief Wildcard pattern-matching router with targeted delivery — Phase 4.
  */
 
-#include "../IRouter.hpp"
-#include "../IChannel.hpp"
-#include "../Envelope.hpp"
+#include "IRouter.hpp"
+#include "IChannel.hpp"
+#include "Envelope.hpp"
 
 #include <map>
 #include <memory>
@@ -16,7 +16,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Router supporting wildcard subscription patterns and targeted delivery.
@@ -50,8 +50,8 @@ namespace GmDispatch {
  *
  * @par Example
  * @code
- *   std::unique_ptr<GmDispatch::PatternRouter> router =
- *       std::make_unique<GmDispatch::PatternRouter>();
+ *   std::unique_ptr<gmDispatch::PatternRouter> router =
+ *       std::make_unique<gmDispatch::PatternRouter>();
  *
  *   // Subscribe to all engine subsystem events
  *   router->subscribe("engine.*", uiChannel);
@@ -62,63 +62,63 @@ namespace GmDispatch {
  */
 class PatternRouter : public IRouter {
 public:
-    PatternRouter() = default;
+	PatternRouter() = default;
 
-    /**
-     * @brief Registers @p channel for envelopes matching @p pattern.
-     *
-     * @param pattern Subscription pattern: exact, prefix wildcard, or @c "*".
-     * @param channel Channel to register.
-     */
-    void subscribe(const std::string&        pattern,
-                   std::shared_ptr<IChannel> channel) override;
+	/**
+	 * @brief Registers @p channel for envelopes matching @p pattern.
+	 *
+	 * @param pattern Subscription pattern: exact, prefix wildcard, or @c "*".
+	 * @param channel Channel to register.
+	 */
+	void subscribe(const std::string&        pattern,
+				   std::shared_ptr<IChannel> channel) override;
 
-    /**
-     * @brief Removes the first occurrence of @p channel under @p pattern.
-     *
-     * @param pattern The pattern used at subscription time.
-     * @param channel The channel to remove.
-     */
-    void unsubscribe(const std::string&        pattern,
-                     std::shared_ptr<IChannel> channel) override;
+	/**
+	 * @brief Removes the first occurrence of @p channel under @p pattern.
+	 *
+	 * @param pattern The pattern used at subscription time.
+	 * @param channel The channel to remove.
+	 */
+	void unsubscribe(const std::string&        pattern,
+					 std::shared_ptr<IChannel> channel) override;
 
-    /**
-     * @brief Routes @p envelope to all channels matching both pattern and targets.
-     *
-     * @param envelope The event to route.
-     */
-    void route(const Envelope& envelope) override;
+	/**
+	 * @brief Routes @p envelope to all channels matching both pattern and targets.
+	 *
+	 * @param envelope The event to route.
+	 */
+	void route(const Envelope& envelope) override;
 
-    /**
-     * @brief Flushes every unique registered channel exactly once.
-     */
-    void flush() override;
+	/**
+	 * @brief Flushes every unique registered channel exactly once.
+	 */
+	void flush() override;
 
 private:
-    /**
-     * @brief Returns @c true if @p pattern matches @p typeId.
-     *
-     * @param pattern Subscription pattern.
-     * @param typeId  Envelope typeId to test.
-     */
-    static bool matchPattern(const std::string& pattern,
-                              const std::string& typeId);
+	/**
+	 * @brief Returns @c true if @p pattern matches @p typeId.
+	 *
+	 * @param pattern Subscription pattern.
+	 * @param typeId  Envelope typeId to test.
+	 */
+	static bool match_pattern(const std::string& pattern,
+							  const std::string& typeId);
 
-    /**
-     * @brief Returns @c true if @p channel should receive @p envelope.
-     *
-     * Applies targeted-delivery logic:
-     * - If @c envelope.targets is empty → always true (broadcast).
-     * - If @c channel.name() is empty   → always true (anonymous).
-     * - Otherwise: true iff @c channel.name() is in @c envelope.targets.
-     */
-    static bool isTargeted(const std::shared_ptr<IChannel>& channel,
-                            const Envelope&                  envelope);
+	/**
+	 * @brief Returns @c true if @p channel should receive @p envelope.
+	 *
+	 * Applies targeted-delivery logic:
+	 * - If @c envelope.targets is empty → always true (broadcast).
+	 * - If @c channel.name() is empty   → always true (anonymous).
+	 * - Otherwise: true iff @c channel.name() is in @c envelope.targets.
+	 */
+	static bool is_targeted(const std::shared_ptr<IChannel>& channel,
+							const Envelope&                  envelope);
 
-    /// Subscription map: pattern → ordered list of subscribed channels.
-    std::map<std::string, std::vector<std::shared_ptr<IChannel>>> routes_;
+	/// Subscription map: pattern → ordered list of subscribed channels.
+	std::map<std::string, std::vector<std::shared_ptr<IChannel>>> _routes;
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_PATTERNROUTER_HPP

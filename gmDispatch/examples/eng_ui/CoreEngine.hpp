@@ -29,43 +29,43 @@
 
 class CoreEngine {
 public:
-    /**
-     * @brief Costruisce il motore e si iscrive a "ui.*" sul ui_eng_bus fornito.
-     *
-     * @param ui_eng_bus Dispatcher condiviso con la UI.  Deve essere costruito
-     *            con createPatternDispatcher() per supportare "ui.*".
-     */
-    explicit CoreEngine(GmDispatch::Dispatcher& ui_eng_bus);
+	/**
+	 * @brief Costruisce il motore e si iscrive a "ui.*" sul ui_eng_bus fornito.
+	 *
+	 * @param ui_eng_bus GmDispatcher condiviso con la UI.  Deve essere costruito
+	 *            con create_pattern_dispatcher() per supportare "ui.*".
+	 */
+	explicit CoreEngine(gmDispatch::GmDispatcher& ui_eng_bus);
 
-    ~CoreEngine() = default;
+	~CoreEngine() = default;
 
-    CoreEngine(const CoreEngine&)            = delete;
-    CoreEngine& operator=(const CoreEngine&) = delete;
+	CoreEngine(const CoreEngine&)            = delete;
+	CoreEngine& operator=(const CoreEngine&) = delete;
 
 private:
-    // ── Routing interno ───────────────────────────────────────────────────
-    void onEnvelope        (const GmDispatch::Envelope& env);
+	// ── Routing interno ───────────────────────────────────────────────────
+	void onEnvelope        (const gmDispatch::Envelope& env);
 
-    // ── Handler per ogni richiesta ────────────────────────────────────────
-    void handleLoadGame     (const GmDispatch::Envelope& env);
-    void handleSaveGame     (const GmDispatch::Envelope& env);
-    void handleStartGame    (const GmDispatch::Envelope& env);
-    void handleGetGameState (const GmDispatch::Envelope& env);
-    void handleGetPlayerInfo(const GmDispatch::Envelope& env);
+	// ── Handler per ogni richiesta ────────────────────────────────────────
+	void handleLoadGame     (const gmDispatch::Envelope& env);
+	void handleSaveGame     (const gmDispatch::Envelope& env);
+	void handleStartGame    (const gmDispatch::Envelope& env);
+	void handleGetGameState (const gmDispatch::Envelope& env);
+	void handleGetPlayerInfo(const gmDispatch::Envelope& env);
 
-    // ── Helper di risposta ────────────────────────────────────────────────
-    /** Imposta source="CoreEngine", targets={request.source}, poi dispatcha. */
-    void reply(GmDispatch::Envelope& resp, const GmDispatch::Envelope& request);
+	// ── Helper di risposta ────────────────────────────────────────────────
+	/** Imposta source="CoreEngine", targets={request.source}, poi dispatcha. */
+	void reply(gmDispatch::Envelope& resp, const gmDispatch::Envelope& request);
 
-    // ── Infrastruttura ────────────────────────────────────────────────────
-    GmDispatch::Dispatcher&                      bus_;
-    std::shared_ptr<GmDispatch::EventBusChannel> channel_;
+	// ── Infrastruttura ────────────────────────────────────────────────────
+	gmDispatch::GmDispatcher&                      _bus;
+	std::shared_ptr<gmDispatch::EventBusChannel> channel_;
 
-    // ── Stato interno del gioco ───────────────────────────────────────────
-    bool        gameStarted_{ false };
-    std::string currentFile_;
-    GameState   state_;
-    std::map<std::string, PlayerInfo> players_;
+	// ── Stato interno del gioco ───────────────────────────────────────────
+	bool        gameStarted_{ false };
+	std::string currentFile_;
+	GameState   state_;
+	std::map<std::string, PlayerInfo> players_;
 };
 
 #endif // EXAMPLE_ENGUI_COREENGINE_HPP

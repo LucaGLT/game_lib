@@ -4,50 +4,52 @@
  */
 
 #include "FileChannel.hpp"
-#include "../serializers/JsonSerializer.hpp"
+#include "serializers/JsonSerializer.hpp"
+#include "GmDispatchError.hpp"
 
-#include <stdexcept>
-
-namespace GmDispatch {
+namespace gmDispatch {
 
 FileChannel::FileChannel(const std::string&           filePath,
-                         const std::string&           channelName,
-                         std::unique_ptr<ISerializer> serializer)
-    : name_(channelName)
-    , filePath_(filePath)
-    , serializer_(std::move(serializer))
+						 const std::string&           channelName,
+						 std::unique_ptr<ISerializer> serializer)
+	: _name(channelName)
+	, _file_path(filePath)
+	, _serializer(std::move(serializer))
 {
-    if (!serializer_) {
-        serializer_ = std::make_unique<JsonSerializer>();
-    }
+	if (!_serializer)
+	{
+		_serializer = std::make_unique<JsonSerializer>();
+	}
 
-    file_.open(filePath_, std::ios::out | std::ios::app);
-    if (!file_.is_open()) {
-        throw std::runtime_error("FileChannel: cannot open file: " + filePath_);
-    }
+	_file.open(_file_path, std::ios::out | std::ios::app);
+	if (!_file.is_open())
+	{
+		throw EDispatchError("FileChannel: cannot open file: " + _file_path);
+	}
 }
 
 FileChannel::~FileChannel()
 {
-    if (file_.is_open()) {
-        file_.flush();
-        file_.close();
-    }
+	if (_file.is_open())
+	{
+		_file.flush();
+		_file.close();
+	}
 }
 
 std::string FileChannel::name() const
 {
-    return name_;
+	return _name;
 }
 
 void FileChannel::send(const Envelope& envelope)
 {
-    file_ << serializer_->serialize(envelope) << '\n';
+	_file << _serializer->serialize(envelope) << '\n';
 }
 
 void FileChannel::flush()
 {
-    file_.flush();
+	_file.flush();
 }
 
-} // namespace GmDispatch
+} // namespace gmDispatch
