@@ -1,0 +1,145 @@
+# .github/specs/library-structure.yml
+# Expected folder and file layout for every library in game_lib.
+# AI agents must follow this layout when creating new files or new libraries.
+
+---
+library:
+  root: "<libName>/"                        # e.g. gmDispatch/
+
+  # ── Mandatory files ────────────────────────────────────────────────────────
+  required_files:
+    - name: "PLAN.md"
+      role: development_roadmap
+      schema: ".github/specs/plan-schema.yml"
+
+    - name: "<libName>.hpp"
+      role: library_entry_header
+      naming_rule: FILE-2                   # lowercase gm prefix
+      note: "Includes all public headers; may be the facade header itself"
+
+    - name: "<libName>.cpp"
+      role: library_entry_source
+      naming_rule: FILE-2
+
+    - name: "ai-instructions.md"
+      role: ai_context
+      note: "Library-specific context for AI agents: architecture notes,
+             include chain, threading rules, current phase constraints"
+
+  # ── Optional but standard files ────────────────────────────────────────────
+  optional_files:
+    - name: "<libName>_API.md"
+      role: public_api_reference
+      note: "Human-readable API doc; mirrors Doxygen but easier to skim"
+
+    - name: "Doxyfile"
+      role: doxygen_config
+
+  # ── Standard subfolders ────────────────────────────────────────────────────
+  subfolders:
+    tests:
+      required: true
+      contains:
+        - pattern: "*_test.cpp"
+          role: unit_or_smoke_test
+        - pattern: "smoke_test*.cpp"
+          role: smoke_test
+
+    bridges:
+      required: false
+      note: "Adapters that link this library to another; may include headers
+             from both libraries — nowhere else is cross-library include allowed"
+      naming_rule: FILE-1                   # PascalCase filenames
+
+    # ── Domain-specific subfolders (use only what applies) ──────────────────
+    channels:
+      required: false
+      applies_to: [gmDispatch]
+      contains: IChannel implementations
+
+    dispatchers:
+      required: false
+      applies_to: [gmDispatch]
+      contains: IDispatcher implementations
+
+    routers:
+      required: false
+      applies_to: [gmDispatch]
+      contains: IRouter implementations
+
+    serializers:
+      required: false
+      applies_to: [gmDispatch]
+      contains: ISerializer implementations
+
+    sinks:
+      required: false
+      applies_to: [gmLog]
+      contains: ILogSink implementations
+
+    formatters:
+      required: false
+      applies_to: [gmLog]
+      contains: ILogFormatter implementations
+
+    dispatchers_log:
+      required: false
+      applies_to: [gmLog]
+      contains: ILogDispatcher implementations
+
+    macros:
+      required: false
+      applies_to: [gmLog]
+      contains: helper macros (LOG_INFO, LOG_WARN, etc.)
+
+    actions:
+      required: false
+      applies_to: [gmFlow]
+      contains: IAction implementations
+
+    actors:
+      required: false
+      applies_to: [gmFlow]
+      contains: IActor implementations
+
+    core:
+      required: false
+      applies_to: [gmFlow]
+      contains: core types and engine classes
+
+    flow:
+      required: false
+      applies_to: [gmFlow]
+      contains: flow controller implementations
+
+  # ── File naming rules ──────────────────────────────────────────────────────
+  file_naming:
+    interface:
+      prefix: "I"
+      style: PascalCase
+      example: "IChannel.hpp"
+      rule_ref: FILE-3
+
+    implementation_class:
+      style: PascalCase
+      example: "SyncRouter.hpp"
+      rule_ref: FILE-1
+
+    library_entry:
+      prefix: lowercase_gm
+      example: "gmDispatch.hpp"
+      rule_ref: FILE-2
+
+    test_file:
+      suffix: "_test"
+      example: "SyncRouter_test.cpp"
+
+  # ── Invariants ─────────────────────────────────────────────────────────────
+  invariants:
+    - "No library folder may include headers from another library folder
+       except inside a bridges/ subfolder."
+    - "Every interface class lives in its own header file with I prefix."
+    - "Every library must have exactly one base exception class
+       placed in the library root (not in a subfolder)."
+    - "The facade class (Gm-prefixed) is always in the library root,
+       never inside a subfolder."
