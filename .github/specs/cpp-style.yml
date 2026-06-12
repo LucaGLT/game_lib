@@ -1,0 +1,183 @@
+# .github/specs/cpp-style.yml
+# Machine-readable C++ style rules for game_lib.
+# AI agents must check generated/reviewed code against these rules.
+# Human-readable version: style-rules.md
+
+---
+language: C++17
+enforce_from: ".clang-format"
+
+# ── Naming ────────────────────────────────────────────────────────────────────
+naming:
+  namespace:
+    pattern: "^gm[A-Z][a-zA-Z]+"
+    examples: ["gmLog", "gmDispatch", "gmMap"]
+    rule_ref: NS-1
+
+  class_struct_enum_alias:
+    pattern: "^[A-Z][a-zA-Z0-9]+"           # PascalCase, no prefix
+    exceptions:
+      - pattern: "^Gm[A-Z][a-zA-Z0-9]+"     # facade class only
+        applies_to: main_facade_class
+      - pattern: "^I[A-Z][a-zA-Z0-9]+"      # interface only
+        applies_to: interface_class
+      - pattern: "^E[A-Z][a-zA-Z0-9]+"      # exception only
+        applies_to: exception_class
+    rule_ref: CL-1
+
+  function_method:
+    pattern: "^[a-z][a-z0-9_]*$"            # snake_case
+    rule_ref: FN-1
+
+  boolean_query:
+    prefix: ["is_", "has_", "can_"]
+    applies_to: methods_returning_bool
+    rule_ref: FN-2
+
+  factory:
+    prefix: "create_"
+    applies_to: [factory_free_function, static_factory_method]
+    rule_ref: FN-3
+
+  variable_parameter:
+    pattern: "^[a-z][a-z0-9_]*$"            # snake_case
+    rule_ref: VAR-1
+
+  private_member:
+    prefix: "_"
+    forbidden_prefixes: ["m_", "m"]
+    rule_ref: VAR-2
+
+  constexpr_constant:
+    pattern: "^[A-Z][A-Z0-9_]+$"            # SCREAMING_SNAKE_CASE
+    rule_ref: CONST-1
+
+  enum_enumerator:
+    pattern: "^[A-Z][A-Z0-9_]+$"            # SCREAMING_SNAKE_CASE
+    rule_ref: CONST-2
+
+  exception_class:
+    prefix: "E"
+    base_exception_pattern: "^E[A-Z][a-zA-Z]+Error$"
+    rule_ref: EX-1
+
+  include_guard:
+    pattern: "^[A-Z0-9_]+_HPP$"
+    format: "<NAMESPACE_UPPER>_<FILENAME_UPPER>_HPP"
+    forbidden: ["#pragma once"]
+    rule_ref: IG-1
+
+# ── Formatting ────────────────────────────────────────────────────────────────
+formatting:
+  indentation:
+    style: tab
+    tab_width: 4
+    mix_tabs_spaces: forbidden
+    rule_ref: FMT-1
+
+  braces:
+    style: Allman
+    applies_to: [function, method, class, struct, enum, namespace,
+                 if, else, for, while, do, switch]
+    rule_ref: FMT-2
+
+  line_length:
+    max_columns: 100
+    rule_ref: FMT-3
+
+  pointer_reference:
+    style: left                              # Type* ptr, Type& ref
+    rule_ref: FMT-4
+
+  single_statement_block:
+    braces_optional: true
+    condition: "trivially simple only"
+    rule_ref: FMT-5
+
+  vertical_alignment:
+    allowed: true
+    rule_ref: FMT-6
+
+# ── Spacing ───────────────────────────────────────────────────────────────────
+spacing:
+  binary_operators:
+    space_before: 1
+    space_after: 1
+    applies_to: ["=","+=","-=","*=","/=","%=","+","-","*","/","%",
+                 "==","!=","<","<=",">",">=","&&","||","&","|","^","<<",">>"]
+    rule_ref: SPC-1
+
+  unary_operators:
+    space_between_operator_and_operand: 0
+    applies_to: ["!", "++", "--", "*", "&", "~", "-"]
+    rule_ref: SPC-2
+
+  comma:
+    space_after: 1
+    space_before: 0
+    rule_ref: SPC-3
+
+  semicolon:
+    space_before: 0
+    rule_ref: SPC-3
+
+  parentheses:
+    control_statement_space_before: 1       # if (x), while (x), for (x)
+    function_call_space_before: 0           # f(x)
+    rule_ref: SPC-4
+
+# ── Switch / Case ─────────────────────────────────────────────────────────────
+switch_case:
+  case_indentation: 1                       # one level inside switch
+  statement_indentation: 2                  # two levels inside switch
+  implicit_fallthrough: forbidden
+  explicit_fallthrough: "[[fallthrough]];"
+  rule_ref: [SW-1, SW-2, SW-3]
+
+# ── Signatures ────────────────────────────────────────────────────────────────
+signatures:
+  wrap_threshold_columns: 100
+  multiline_style: one_param_per_line
+  alignment: under_opening_paren
+  closing_paren: own_line
+  opening_brace: next_line_allman
+  rule_ref: [SIG-1, SIG-2, SIG-3, SIG-4]
+
+# ── Includes ──────────────────────────────────────────────────────────────────
+includes:
+  order:
+    - corresponding_header
+    - cpp_stdlib
+    - third_party
+    - project_headers
+  separator: blank_line
+  sort_within_group: alphabetical
+  project_style: quoted                     # #include "..."
+  stdlib_style: angled                      # #include <...>
+  no_relative_dotdot: true
+  rule_ref: [INC-1, INC-2]
+
+# ── Preprocessor ──────────────────────────────────────────────────────────────
+preprocessor:
+  directive_indentation: none               # always at column 1
+  endif_comment: required_for_complex       # #endif // GUARD_NAME
+  rule_ref: [PP-1, PP-2]
+
+# ── Language constraints ──────────────────────────────────────────────────────
+constraints:
+  cpp_standard: 17
+  forbidden_features:
+    - std::span                             # C++20
+    - std::ranges                           # C++20
+    - concepts                              # C++20
+    - coroutines                            # C++20
+    - std::format                           # C++20
+  auto_return_in_public_prototype: forbidden
+  external_dependencies: forbidden
+  cross_library_include_in_lib_header: forbidden
+
+# ── TODO markers ──────────────────────────────────────────────────────────────
+todo_format:
+  pattern: "// TODO: Phase {N} — {description}"
+  phase_number: required
+  example: "// TODO: Phase 3 — add FileChannel support"

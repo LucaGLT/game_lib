@@ -56,9 +56,9 @@
 - [ ] `Logger::log` populates `LogRecord` source location correctly
 - [ ] `Logger::critical` flushes dispatcher after writing
 - [ ] Lazy-evaluation template methods do not evaluate factory when level is off
-- [ ] `LOG_DEBUG` injects `__FILE__`, `__LINE__`, `__func__`
-- [ ] `LOG_DEBUG` compiled out when `LOG_COMPILED_LEVEL > LOG_LEVEL_DEBUG`
-- [ ] `LOG_CRITICAL` calls `flush()` after logging
+- [ ] `logDebug` injects `__FILE__`, `__LINE__`, `__func__`
+- [ ] `logDebug` compiled out when `LOG_COMPILED_LEVEL > LOG_LEVEL_DEBUG`
+- [ ] `logCritic` calls `flush()` after logging
 - [ ] Two independent loggers writing to two different files simultaneously
 - [ ] Two threads writing to the same logger produce non-interleaved output
 

@@ -3,7 +3,7 @@
 
 /**
  * @file macros/LogMacros.hpp
- * @brief Compile-time-filterable logging macros for the GmLog library.
+ * @brief Compile-time-filterable logging macros for the gmLog library.
  *
  * These macros are the **recommended** way to emit log messages from
  * application code.  They provide:
@@ -27,7 +27,7 @@
  *   #define LOG_COMPILED_LEVEL LOG_LEVEL_INFO
  *   #include "macros/LogMacros.hpp"
  * @endcode
- * With @c LOG_LEVEL_INFO, every @c LOG_DEBUG call is compiled out entirely.
+ * With @c LOG_LEVEL_INFO, every @c logDebug call is compiled out entirely.
  *
  * ### Default
  * If @c LOG_COMPILED_LEVEL is not defined it defaults to @c LOG_LEVEL_DEBUG
@@ -37,11 +37,11 @@
  * @code
  *   #include "macros/LogMacros.hpp"
  *
- *   LOG_DEBUG   (logger, "Enter processRow()");
- *   LOG_INFO    (logger, "Server started on port " + std::to_string(port));
- *   LOG_WARNING (logger, "Retry attempt " + std::to_string(n));
- *   LOG_ERROR   (logger, "File not found: " + path);
- *   LOG_CRITICAL(logger, "Out of memory — aborting");
+ *   logDebug   (logger, "Enter processRow()");
+ *   logInfo    (logger, "Server started on port " + std::to_string(port));
+ *   logWarn (logger, "Retry attempt " + std::to_string(n));
+ *   logErr   (logger, "File not found: " + path);
+ *   logCritic(logger, "Out of memory — aborting");
  * @endcode
  *
  * @note @p expr is an ordinary expression (not a lambda).  The macro wraps
@@ -61,108 +61,108 @@
 // ─── Default compiled level ───────────────────────────────────────────────────
 
 #ifndef LOG_COMPILED_LEVEL
-    /**
-     * @brief Compiled log level — override via build system or before including
-     *        this header.  Defaults to @c LOG_LEVEL_DEBUG (all levels active).
-     */
-    #define LOG_COMPILED_LEVEL LOG_LEVEL_DEBUG
-#endif
+	/**
+	 * @brief Compiled log level — override via build system or before including
+	 *        this header.  Defaults to @c LOG_LEVEL_DEBUG (all levels active).
+	 */
+#define LOG_COMPILED_LEVEL LOG_LEVEL_DEBUG
+#endif // LOG_COMPILED_LEVEL
 
 // ─── Internal helper ──────────────────────────────────────────────────────────
 
 /// @cond INTERNAL
 #define _GMLOG_DO_LOG(logger, gmLevel, expr)                                  \
-    do {                                                                      \
-        if ((logger).isEnabled(gmLevel)) {                                    \
-            (logger).log((gmLevel), (expr), __FILE__, __LINE__, __func__);    \
-        }                                                                     \
-    } while (0)
+	do {                                                                      \
+		if ((logger).is_enabled(gmLevel)) {                                    \
+			(logger).log((gmLevel), (expr), __FILE__, __LINE__, __func__);    \
+		}                                                                     \
+	} while (0)
 /// @endcond
 
 // ─── Public macros ────────────────────────────────────────────────────────────
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_DEBUG
-    /**
-     * @brief Logs @p expr at @ref GmLog::LogLevel::Debug with source location.
-     *
-     * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_DEBUG.
-     *
-     * @param logger A @ref GmLog::Logger lvalue.
-     * @param expr   Expression returning @c std::string; evaluated lazily.
-     */
-    #define LOG_DEBUG(logger, expr) \
-        _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Debug, (expr))
+	/**
+	 * @brief Logs @p expr at @ref gmLog::LogLevel::DEBUG with source location.
+	 *
+	 * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_DEBUG.
+	 *
+	 * @param logger A @ref gmLog::GmLogger lvalue.
+	 * @param expr   Expression returning @c std::string; evaluated lazily.
+	 */
+#define logDebug(logger, expr) \
+	_GMLOG_DO_LOG((logger), ::gmLog::LogLevel::DEBUG, (expr))
 #else
-    #define LOG_DEBUG(logger, expr) do {} while (0) ///< Compiled out.
-#endif
+#define logDebug(logger, expr) do {} while (0) ///< Compiled out.
+#endif // LOG_COMPILED_LEVEL <= LOG_LEVEL_DEBUG
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_INFO
-    /**
-     * @brief Logs @p expr at @ref GmLog::LogLevel::Info with source location.
-     *
-     * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_INFO.
-     *
-     * @param logger A @ref GmLog::Logger lvalue.
-     * @param expr   Expression returning @c std::string; evaluated lazily.
-     */
-    #define LOG_INFO(logger, expr) \
-        _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Info, (expr))
+	/**
+	 * @brief Logs @p expr at @ref gmLog::LogLevel::INFO with source location.
+	 *
+	 * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_INFO.
+	 *
+	 * @param logger A @ref gmLog::GmLogger lvalue.
+	 * @param expr   Expression returning @c std::string; evaluated lazily.
+	 */
+#define logInfo(logger, expr) \
+	_GMLOG_DO_LOG((logger), ::gmLog::LogLevel::INFO, (expr))
 #else
-    #define LOG_INFO(logger, expr) do {} while (0) ///< Compiled out.
-#endif
+#define logInfo(logger, expr) do {} while (0) ///< Compiled out.
+#endif // LOG_COMPILED_LEVEL <= LOG_LEVEL_INFO
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_WARNING
-    /**
-     * @brief Logs @p expr at @ref GmLog::LogLevel::Warning with source location.
-     *
-     * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_WARNING.
-     *
-     * @param logger A @ref GmLog::Logger lvalue.
-     * @param expr   Expression returning @c std::string; evaluated lazily.
-     */
-    #define LOG_WARNING(logger, expr) \
-        _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Warning, (expr))
+	/**
+	 * @brief Logs @p expr at @ref gmLog::LogLevel::WARNING with source location.
+	 *
+	 * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_WARNING.
+	 *
+	 * @param logger A @ref gmLog::GmLogger lvalue.
+	 * @param expr   Expression returning @c std::string; evaluated lazily.
+	 */
+#define logWarn(logger, expr) \
+	_GMLOG_DO_LOG((logger), ::gmLog::LogLevel::WARNING, (expr))
 #else
-    #define LOG_WARNING(logger, expr) do {} while (0) ///< Compiled out.
-#endif
+#define logWarn(logger, expr) do {} while (0) ///< Compiled out.
+#endif // LOG_COMPILED_LEVEL <= LOG_LEVEL_WARNING
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_ERROR
-    /**
-     * @brief Logs @p expr at @ref GmLog::LogLevel::Error with source location.
-     *
-     * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_ERROR.
-     *
-     * @param logger A @ref GmLog::Logger lvalue.
-     * @param expr   Expression returning @c std::string; evaluated lazily.
-     */
-    #define LOG_ERROR(logger, expr) \
-        _GMLOG_DO_LOG((logger), ::GmLog::LogLevel::Error, (expr))
+	/**
+	 * @brief Logs @p expr at @ref gmLog::LogLevel::ERROR with source location.
+	 *
+	 * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_ERROR.
+	 *
+	 * @param logger A @ref gmLog::GmLogger lvalue.
+	 * @param expr   Expression returning @c std::string; evaluated lazily.
+	 */
+#define logErr(logger, expr) \
+	_GMLOG_DO_LOG((logger), ::gmLog::LogLevel::ERROR, (expr))
 #else
-    #define LOG_ERROR(logger, expr) do {} while (0) ///< Compiled out.
-#endif
+#define logErr(logger, expr) do {} while (0) ///< Compiled out.
+#endif // LOG_COMPILED_LEVEL <= LOG_LEVEL_ERROR
 
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_CRITICAL
-    /**
-     * @brief Logs @p expr at @ref GmLog::LogLevel::Critical with source location.
-     *
-     * After writing, the dispatcher is flushed immediately to minimise the
-     * risk of data loss on fatal events.
-     *
-     * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_CRITICAL.
-     *
-     * @param logger A @ref GmLog::Logger lvalue.
-     * @param expr   Expression returning @c std::string; evaluated lazily.
-     */
-    #define LOG_CRITICAL(logger, expr)                                        \
-        do {                                                                  \
-            if ((logger).isEnabled(::GmLog::LogLevel::Critical)) {            \
-                (logger).log(::GmLog::LogLevel::Critical, (expr),             \
-                             __FILE__, __LINE__, __func__);                   \
-                (logger).flush();                                             \
-            }                                                                 \
-        } while (0)
+	/**
+	 * @brief Logs @p expr at @ref gmLog::LogLevel::CRITICAL with source location.
+	 *
+	 * After writing, the dispatcher is flushed immediately to minimise the
+	 * risk of data loss on fatal events.
+	 *
+	 * Compiled out entirely when @c LOG_COMPILED_LEVEL > @c LOG_LEVEL_CRITICAL.
+	 *
+	 * @param logger A @ref gmLog::GmLogger lvalue.
+	 * @param expr   Expression returning @c std::string; evaluated lazily.
+	 */
+#define logCritic(logger, expr)                                        \
+	do {                                                                  \
+		if ((logger).is_enabled(::gmLog::LogLevel::CRITICAL)) {            \
+			(logger).log(::gmLog::LogLevel::CRITICAL, (expr),             \
+						 __FILE__, __LINE__, __func__);                   \
+			(logger).flush();                                             \
+		}                                                                 \
+	} while (0)
 #else
-    #define LOG_CRITICAL(logger, expr) do {} while (0) ///< Compiled out.
-#endif
+#define logCritic(logger, expr) do {} while (0) ///< Compiled out.
+#endif // LOG_COMPILED_LEVEL <= LOG_LEVEL_CRITICAL
 
 #endif // GMLOG_LOGMACROS_HPP

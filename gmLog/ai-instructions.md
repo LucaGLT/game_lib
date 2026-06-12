@@ -574,14 +574,14 @@ In C++17 non hai `std::source_location`, quindi per file, riga e funzione usi ma
 Esempio:
 
 ```cpp
-#define LOG_INFO(logger, msg) \
+#define logInfo(logger, msg) \
     (logger).log(LogLevel::Info, (msg), __FILE__, __LINE__, __func__)
 ```
 
 Ma per evitare il costo del messaggio, meglio macro lazy:
 
 ```cpp
-#define LOG_DEBUG(logger, expr) \
+#define logDebug(logger, expr) \
     do { \
         if ((logger).isEnabled(LogLevel::Debug)) { \
             (logger).log(LogLevel::Debug, (expr), __FILE__, __LINE__, __func__); \
@@ -592,7 +592,7 @@ Ma per evitare il costo del messaggio, meglio macro lazy:
 Uso:
 
 ```cpp
-LOG_DEBUG(dbLogger, "Record count: " + std::to_string(count));
+logDebug(dbLogger, "Record count: " + std::to_string(count));
 ```
 
 La macro controlla prima il livello.
@@ -626,14 +626,14 @@ Macro:
 
 ```cpp
 #if LOG_COMPILED_LEVEL <= LOG_LEVEL_DEBUG
-    #define LOG_DEBUG(logger, expr) \
+    #define logDebug(logger, expr) \
         do { \
             if ((logger).isEnabled(LogLevel::Debug)) { \
                 (logger).log(LogLevel::Debug, (expr), __FILE__, __LINE__, __func__); \
             } \
         } while (0)
 #else
-    #define LOG_DEBUG(logger, expr) do {} while (0)
+    #define logDebug(logger, expr) do {} while (0)
 #endif
 ```
 
@@ -646,7 +646,7 @@ In release:
 Risultato:
 
 ```cpp
-LOG_DEBUG(logger, expensiveFunction());
+logDebug(logger, expensiveFunction());
 ```
 
 viene rimosso a compile-time.
@@ -952,11 +952,11 @@ Questo è il punto dove mettere la thread safety.
 Macro minime:
 
 ```cpp
-LOG_DEBUG(logger, expr)
-LOG_INFO(logger, expr)
-LOG_WARNING(logger, expr)
-LOG_ERROR(logger, expr)
-LOG_CRITICAL(logger, expr)
+logDebug(logger, expr)
+logInfo(logger, expr)
+logWarn(logger, expr)
+logErr(logger, expr)
+logCritic(logger, expr)
 ```
 
 Con:
@@ -1074,7 +1074,7 @@ codice applicativo
 L’API rimane uguale:
 
 ```cpp
-LOG_INFO(logger, "Messaggio");
+logInfo(logger, "Messaggio");
 ```
 
 Cambia solo la costruzione:
@@ -1225,7 +1225,7 @@ Schema finale:
 ```text
 Codice applicativo
       ↓
-LOG_INFO(dbLogger, "Messaggio")
+logInfo(dbLogger, "Messaggio")
       ↓
 Logger
       ↓
@@ -1241,7 +1241,7 @@ In futuro:
 ```text
 Codice applicativo
       ↓
-LOG_INFO(dbLogger, "Messaggio")
+logInfo(dbLogger, "Messaggio")
       ↓
 Logger
       ↓

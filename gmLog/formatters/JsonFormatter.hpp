@@ -3,15 +3,15 @@
 
 /**
  * @file formatters/JsonFormatter.hpp
- * @brief JSON Lines formatter for the GmLog library.
+ * @brief JSON Lines formatter for the gmLog library.
  */
 
-#include "../ILogFormatter.hpp"
+#include "ILogFormatter.hpp"
 
 #include <chrono>
 #include <string>
 
-namespace GmLog {
+namespace gmLog {
 
 /**
  * @brief Formats a log record as a single-line JSON object (JSON Lines format).
@@ -31,7 +31,7 @@ namespace GmLog {
  * @endcode
  *
  * ### String escaping
- * All string fields are escaped via @ref escapeJsonString to correctly handle
+ * All string fields are escaped via @ref escape_json_string to correctly handle
  * embedded quotes, backslashes, and control characters.
  *
  * ### Extending output formats
@@ -40,47 +40,47 @@ namespace GmLog {
  */
 class JsonFormatter : public ILogFormatter {
 public:
-    JsonFormatter()  = default;
-    ~JsonFormatter() = default;
+	JsonFormatter()  = default;
+	~JsonFormatter() = default;
 
-    /**
-     * @brief Formats @p record as a JSON Lines object.
-     * @param record The log event to format.
-     * @return Single-line JSON string without a trailing newline.
-     */
-    std::string format(const LogRecord& record) override;
+	/**
+	 * @brief Formats @p record as a JSON Lines object.
+	 * @param record The log event to format.
+	 * @return Single-line JSON string without a trailing newline.
+	 */
+	std::string format(const LogRecord& record) override;
 
-    /**
-     * @brief Escapes a string value for safe embedding inside a JSON string.
-     *
-     * Characters replaced:
-     * | Input   | Output   |
-     * |---|---|
-     * | @c \\   | @c \\\\  |
-     * | @c "    | @c \\"   |
-     * | @c \\n  | @c \\n   |
-     * | @c \\r  | @c \\r   |
-     * | @c \\t  | @c \\t   |
-     * | @c < 0x20 (other) | @c \\uXXXX |
-     *
-     * @param value Raw string to escape.
-     * @return JSON-safe string (without surrounding quotes).
-     */
-    static std::string escapeJsonString(const std::string& value);
+	/**
+	 * @brief Escapes a string value for safe embedding inside a JSON string.
+	 *
+	 * Characters replaced:
+	 * | Input   | Output   |
+	 * |---|---|
+	 * | @c \\   | @c \\\\  |
+	 * | @c "    | @c \\"   |
+	 * | @c \\n  | @c \\n   |
+	 * | @c \\r  | @c \\r   |
+	 * | @c \\t  | @c \\t   |
+	 * | @c < 0x20 (other) | @c \\uXXXX |
+	 *
+	 * @param value Raw string to escape.
+	 * @return JSON-safe string (without surrounding quotes).
+	 */
+	static std::string escape_json_string(const std::string& value);
 
 private:
-    /**
-     * @brief Formats a time point as an ISO-8601 UTC string with milliseconds.
-     *
-     * Output pattern: @c YYYY-MM-DDTHH:MM:SS.mmm
-     *
-     * @param tp Time point to format.
-     * @return Formatted timestamp string.
-     */
-    static std::string formatTimestamp(
-        const std::chrono::system_clock::time_point& tp);
+	/**
+	 * @brief Formats a time point as an ISO-8601 UTC string with milliseconds.
+	 *
+	 * Output pattern: @c YYYY-MM-DDTHH:MM:SS.mmm
+	 *
+	 * @param tp Time point to format.
+	 * @return Formatted timestamp string.
+	 */
+	static std::string format_timestamp(
+		const std::chrono::system_clock::time_point& tp);
 };
 
-} // namespace GmLog
+} // namespace gmLog
 
 #endif // GMLOG_JSONFORMATTER_HPP
