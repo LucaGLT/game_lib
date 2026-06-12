@@ -7,16 +7,16 @@
 
 #include <iostream>
 
-namespace GmLog {
+namespace gmLog {
 
 void StdoutSink::write(const std::string& message)
 {
-    std::cout << message << std::endl;
+	std::cout << message << std::endl;
 }
 
 void StdoutSink::flush()
 {
-    std::cout.flush();
+	std::cout.flush();
 }
 
-} // namespace GmLog
+} // namespace gmLog

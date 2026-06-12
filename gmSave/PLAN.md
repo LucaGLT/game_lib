@@ -1,7 +1,7 @@
 # gmSave – Development Plan
 
 ## Phase 1 – Structure & API Design
-- [x] Define exception hierarchy (`SaveError` and subclasses)
+- [x] Define exception hierarchy (`ESaveError` and subclasses)
 - [x] Design free function template API (`save`, `load`, `try_load`, `save_versioned`, `load_versioned`, `peek_version`)
 - [x] Write Doxygen comments on all declarations
 - [x] Create `gmSave.hpp` (declarations + inline stub bodies)
@@ -19,19 +19,19 @@
 ---
 
 ## Phase 3 – Exception Bodies
-- [x] Implement `VersionMismatchError(uint32_t expected, uint32_t found)`
+- [x] Implement `EVersionMismatchError(uint32_t expected, uint32_t found)`
   - Build message: `"Version mismatch: expected X, found Y"`
   - Store `expected_version` and `found_version` fields
 
 ---
 
 ## Phase 4 – Core I/O Helpers (internal, non-template)
-> Defined in `gmSave.cpp` under `namespace GmSave::detail`;
-> declared in `gmSave.hpp` under `namespace GmSave::detail`.
+> Defined in `gmSave.cpp` under `namespace gmSave::detail`;
+> declared in `gmSave.hpp` under `namespace gmSave::detail`.
 
-- [x] Implement `detail::write_file(filepath, content)` — opens file, writes string, throws `FileWriteError`
-- [x] Implement `detail::read_file(filepath)` — opens file, reads full content, throws `FileReadError`
-- [x] Implement `detail::parse_json(content, filepath)` — parses string to `nlohmann::json`, throws `JsonParseError`
+- [x] Implement `detail::write_file(filepath, content)` — opens file, writes string, throws `EFileWriteError`
+- [x] Implement `detail::read_file(filepath)` — opens file, reads full content, throws `EFileReadError`
+- [x] Implement `detail::parse_json(content, filepath)` — parses string to `nlohmann::json`, throws `EJsonParseError`
 
 ---
 
@@ -69,8 +69,8 @@
 ## Phase 9 – `load_versioned()`
 - [x] Implement `load_versioned<T>(filepath, expected_version)`
   - Reads and parses file
-  - Validates `_version` field presence → throws `JsonParseError` if missing
-  - Compares version → throws `VersionMismatchError` if mismatch
+  - Validates `_version` field presence → throws `EJsonParseError` if missing
+  - Compares version → throws `EVersionMismatchError` if mismatch
   - Deserializes `"payload"` field into `T`
 
 ---
@@ -94,13 +94,13 @@
 - [x] Test `try_load` returns `false` on missing file (no throw)
 - [x] Test `try_load` returns `false` on malformed JSON (no throw)
 - [x] Test `save_versioned` + `load_versioned` round-trip (correct version)
-- [x] Test `load_versioned` throws `VersionMismatchError` on wrong version
-- [x] Test `load_versioned` throws `JsonParseError` on missing `_version` field
+- [x] Test `load_versioned` throws `EVersionMismatchError` on wrong version
+- [x] Test `load_versioned` throws `EJsonParseError` on missing `_version` field
 - [x] Test `peek_version` returns correct version
 - [x] Test `peek_version` returns `nullopt` on plain (non-versioned) file
-- [x] Test `FileReadError` thrown on non-existent file
-- [x] Test `FileWriteError` thrown on unwritable path
-- [x] Test `JsonParseError` thrown on invalid JSON content
+- [x] Test `EFileReadError` thrown on non-existent file
+- [x] Test `EFileWriteError` thrown on unwritable path
+- [x] Test `EJsonParseError` thrown on invalid JSON content
 - [x] Test compact output with `indent = -1`
 
 ---
