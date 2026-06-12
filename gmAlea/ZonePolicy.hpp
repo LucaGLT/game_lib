@@ -1,5 +1,5 @@
-#ifndef GMFATE_ZONEPOLICY_HPP
-#define GMFATE_ZONEPOLICY_HPP
+﻿#ifndef GMALEA_ZONEPOLICY_HPP
+#define GMALEA_ZONEPOLICY_HPP
 
 /**
  * @file ZonePolicy.hpp
@@ -16,16 +16,18 @@
  *
  * ### How to define a custom policy
  * @code
- *   struct MyZonePolicy {
+ *   struct MyZonePolicy
+ {
  *       static constexpr bool can_shuffle       = false;
  *       static constexpr bool can_direct_access = true;
  *       static constexpr bool is_insert_only    = false;
  *   };
- *   using MyZone = gmFate::PolicyBasedDeck<MyZonePolicy>;
+ *   using MyZone = gmAlea::PolicyBasedDeck<MyZonePolicy>;
  * @endcode
  */
 
-namespace gmFate {
+namespace gmAlea
+{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Built-in zone policies
@@ -37,12 +39,13 @@ namespace gmFate {
  * Supports shuffling and direct extraction of a specific card (e.g. a player
  * reaching into the deck to pull a specific card by ID).
  */
-struct MainDeckPolicy {
-    static constexpr bool can_shuffle       = true;
-    static constexpr bool can_draw          = true;
-    static constexpr bool can_direct_access = true;
-    static constexpr bool is_insert_only    = false;
-    static constexpr bool preserves_order   = false; ///< Shuffled — order not sacred
+struct MainDeckPolicy
+{
+	static constexpr bool can_shuffle       = true;
+	static constexpr bool can_draw          = true;
+	static constexpr bool can_direct_access = true;
+	static constexpr bool is_insert_only    = false;
+	static constexpr bool preserves_order   = false; ///< Shuffled — order not sacred
 };
 
 /**
@@ -50,12 +53,13 @@ struct MainDeckPolicy {
  *
  * Cards in hand are not shuffled.  Any card may be played or discarded by ID.
  */
-struct HandPolicy {
-    static constexpr bool can_shuffle       = false;
-    static constexpr bool can_draw          = true;
-    static constexpr bool can_direct_access = true;
-    static constexpr bool is_insert_only    = false;
-    static constexpr bool preserves_order   = false; ///< No meaningful order in hand
+struct HandPolicy
+{
+	static constexpr bool can_shuffle       = false;
+	static constexpr bool can_draw          = true;
+	static constexpr bool can_direct_access = true;
+	static constexpr bool is_insert_only    = false;
+	static constexpr bool preserves_order   = false; ///< No meaningful order in hand
 };
 
 /**
@@ -64,12 +68,13 @@ struct HandPolicy {
  * Cards on the table are visible and accessible by ID.  Order is preserved
  * (represents play order).  No shuffle.
  */
-struct PlayAreaPolicy {
-    static constexpr bool can_shuffle       = false;
-    static constexpr bool can_draw          = true;
-    static constexpr bool can_direct_access = true;
-    static constexpr bool is_insert_only    = false;
-    static constexpr bool preserves_order   = true; ///< Play order preserved
+struct PlayAreaPolicy
+{
+	static constexpr bool can_shuffle       = false;
+	static constexpr bool can_draw          = true;
+	static constexpr bool can_direct_access = true;
+	static constexpr bool is_insert_only    = false;
+	static constexpr bool preserves_order   = true; ///< Play order preserved
 };
 
 /**
@@ -81,12 +86,13 @@ struct PlayAreaPolicy {
  *
  * Direct access is allowed (a player may pick a specific card from the discard).
  */
-struct DiscardPolicy {
-    static constexpr bool can_shuffle       = false;   ///< Insertion order preserved
-    static constexpr bool can_draw          = true;
-    static constexpr bool can_direct_access = true;
-    static constexpr bool is_insert_only    = false;
-    static constexpr bool preserves_order   = true;    ///< ORDER IS SACRED
+struct DiscardPolicy
+{
+	static constexpr bool can_shuffle       = false;   ///< Insertion order preserved
+	static constexpr bool can_draw          = true;
+	static constexpr bool can_direct_access = true;
+	static constexpr bool is_insert_only    = false;
+	static constexpr bool preserves_order   = true;    ///< ORDER IS SACRED
 };
 
 /**
@@ -96,12 +102,13 @@ struct DiscardPolicy {
  * out of play.  `is_insert_only = true` prevents `draw()` and `take_specific()`
  * from even compiling on a `BanishZone`.
  */
-struct BanishPolicy {
-    static constexpr bool can_shuffle       = false;
-    static constexpr bool can_draw          = false;   ///< No sequential draw
-    static constexpr bool can_direct_access = false;   ///< No retrieval by ID
-    static constexpr bool is_insert_only    = true;    ///< Add-only
-    static constexpr bool preserves_order   = true;    ///< Insertion order preserved
+struct BanishPolicy
+{
+	static constexpr bool can_shuffle       = false;
+	static constexpr bool can_draw          = false;   ///< No sequential draw
+	static constexpr bool can_direct_access = false;   ///< No retrieval by ID
+	static constexpr bool is_insert_only    = true;    ///< Add-only
+	static constexpr bool preserves_order   = true;    ///< Insertion order preserved
 };
 
 /**
@@ -120,15 +127,16 @@ struct BanishPolicy {
  * | is_insert_only    | false | Retrieval IS allowed (unlike Banish)           |
  * | preserves_order   | true  | Insertion order is part of Memory semantics    |
  */
-struct MemoryPolicy {
-    static constexpr bool can_shuffle       = false;
-    static constexpr bool can_draw          = false;   ///< No deck-style sequential draw
-    static constexpr bool can_direct_access = true;    ///< take_specific() allowed
-    static constexpr bool can_insert        = true;    ///< Cards can be remembered
-    static constexpr bool is_insert_only    = false;   ///< Not like Banish — retrieval OK
-    static constexpr bool preserves_order   = true;    ///< Insertion order is semantic
+struct MemoryPolicy
+{
+	static constexpr bool can_shuffle       = false;
+	static constexpr bool can_draw          = false;   ///< No deck-style sequential draw
+	static constexpr bool can_direct_access = true;    ///< take_specific() allowed
+	static constexpr bool can_insert        = true;    ///< Cards can be remembered
+	static constexpr bool is_insert_only    = false;   ///< Not like Banish — retrieval OK
+	static constexpr bool preserves_order   = true;    ///< Insertion order is semantic
 };
 
-} // namespace gmFate
+} // namespace gmAlea
 
-#endif // GMFATE_ZONEPOLICY_HPP
+#endif // GMALEA_ZONEPOLICY_HPP
