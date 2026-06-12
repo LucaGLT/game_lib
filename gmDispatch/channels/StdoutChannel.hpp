@@ -6,13 +6,13 @@
  * @brief Debug channel that writes serialized envelopes to std::cout.
  */
 
-#include "../IChannel.hpp"
-#include "../ISerializer.hpp"
-#include "../Envelope.hpp"
+#include "IChannel.hpp"
+#include "ISerializer.hpp"
+#include "Envelope.hpp"
 
 #include <memory>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Debug channel that serialises envelopes and writes them to @c std::cout.
@@ -24,11 +24,11 @@ namespace GmDispatch {
  * ### Usage
  * @code
  *   // With default JsonSerializer (Phase 2 behaviour):
- *   bus.subscribe("*", std::make_shared<GmDispatch::StdoutChannel>());
+ *   bus.subscribe("*", std::make_shared<gmDispatch::StdoutChannel>());
  *
  *   // With an explicit serializer:
- *   bus.subscribe("*", std::make_shared<GmDispatch::StdoutChannel>(
- *       std::make_unique<GmDispatch::JsonSerializer>()));
+ *   bus.subscribe("*", std::make_shared<gmDispatch::StdoutChannel>(
+ *       std::make_unique<gmDispatch::JsonSerializer>()));
  * @endcode
  *
  * ### Output format (JsonSerializer default)
@@ -39,37 +39,37 @@ namespace GmDispatch {
  */
 class StdoutChannel : public IChannel {
 public:
-    /**
-     * @brief Constructs a StdoutChannel with an optional name and serializer.
-     *
-     * @param channelName Identifies this channel for targeted delivery.
-     *                    Empty = anonymous.
-     * @param serializer  Optional serializer.  When @c nullptr, a default
-     *                    @ref JsonSerializer is created automatically.
-     */
-    explicit StdoutChannel(const std::string&           channelName = "",
-                           std::unique_ptr<ISerializer> serializer  = nullptr);
+	/**
+	 * @brief Constructs a StdoutChannel with an optional name and serializer.
+	 *
+	 * @param channelName Identifies this channel for targeted delivery.
+	 *                    Empty = anonymous.
+	 * @param serializer  Optional serializer.  When @c nullptr, a default
+	 *                    @ref JsonSerializer is created automatically.
+	 */
+	explicit StdoutChannel(const std::string&           channelName = "",
+						   std::unique_ptr<ISerializer> serializer  = nullptr);
 
-    /// @brief Returns the channel name provided at construction.
-    std::string name() const override;
+	/// @brief Returns the channel name provided at construction.
+	std::string name() const override;
 
-    /**
-     * @brief Serialises @p envelope and writes the result to @c std::cout.
-     *
-     * @param envelope The dispatch event to display.
-     */
-    void send(const Envelope& envelope) override;
+	/**
+	 * @brief Serialises @p envelope and writes the result to @c std::cout.
+	 *
+	 * @param envelope The dispatch event to display.
+	 */
+	void send(const Envelope& envelope) override;
 
-    /**
-     * @brief Flushes @c std::cout.
-     */
-    void flush() override;
+	/**
+	 * @brief Flushes @c std::cout.
+	 */
+	void flush() override;
 
 private:
-    std::string                  name_;
-    std::unique_ptr<ISerializer> serializer_;
+	std::string                  _name;
+	std::unique_ptr<ISerializer> _serializer;
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_STDOUTCHANNEL_HPP
