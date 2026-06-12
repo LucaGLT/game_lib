@@ -137,5 +137,10 @@ Token SimpleDeck::draw_specific(uint32_t token_id)
 	return _token_db.at(token_id);
 }
 
+void SimpleDeck::reseed(unsigned int seed)
+{
+	_deck.reseed(seed);
+}
+
 } // namespace gmAlea
 

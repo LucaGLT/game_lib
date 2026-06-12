@@ -186,6 +186,15 @@ public:
 	 */
 	uint32_t draw_specific(uint32_t token_id);
 
+	/**
+	 * @brief Reseeds the internal RNG without altering deck contents.
+	 *
+	 * Useful for reproducible test sequences or replays.
+	 *
+	 * @param seed  New random seed.
+	 */
+	void reseed(unsigned int seed);
+
 private:
 	/**
 	 * @brief Validates that token_ids contains no duplicates.

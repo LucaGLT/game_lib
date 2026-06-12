@@ -204,5 +204,11 @@ uint32_t GmDeck::draw_specific(uint32_t token_id)
 	return token_id;
 }
 
+void GmDeck::reseed(unsigned int seed)
+{
+	_seed = seed;
+	_rng.seed(seed);
+}
+
 } // namespace gmAlea
 

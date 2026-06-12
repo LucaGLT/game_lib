@@ -184,6 +184,13 @@ public:
 	 */
 	Token draw_specific(uint32_t token_id);
 
+	/**
+	 * @brief Reseeds the internal RNG without altering deck contents.
+	 *
+	 * @param seed  New random seed.
+	 */
+	void reseed(unsigned int seed);
+
 private:
 	// Underlying ordered container (GmDeck handles shuffle, structure only)
 	GmDeck _deck;
