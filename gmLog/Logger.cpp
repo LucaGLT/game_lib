@@ -1,99 +1,105 @@
 /**
  * @file Logger.cpp
- * @brief Implementation of the Logger class.
+ * @brief Implementation of the GmLogger class.
  */
 
 #include "Logger.hpp"
 
 #include <chrono>
 
-namespace GmLog {
+namespace gmLog {
 
-Logger::Logger(LoggerConfig config, std::unique_ptr<ILogDispatcher> dispatcher)
-    : config_(std::move(config))
-    , dispatcher_(std::move(dispatcher))
+GmLogger::GmLogger(LoggerConfig config, std::unique_ptr<ILogDispatcher> dispatcher)
+	: _config(std::move(config))
+	, _dispatcher(std::move(dispatcher))
 {}
 
-Logger::~Logger()
+GmLogger::~GmLogger()
 {
-    if (dispatcher_)
-        dispatcher_->flush();
+	if (_dispatcher)
+	{
+		_dispatcher->flush();
+	}
 }
 
-const std::string& Logger::name() const
+const std::string& GmLogger::name() const
 {
-    return config_.name;
+	return _config.name;
 }
 
-LogLevel Logger::minLevel() const
+LogLevel GmLogger::min_level() const
 {
-    return config_.minLevel;
+	return _config.min_level;
 }
 
-void Logger::setLevel(LogLevel level)
+void GmLogger::set_level(LogLevel level)
 {
-    config_.minLevel = level;
+	_config.min_level = level;
 }
 
-bool Logger::isEnabled(LogLevel level) const
+bool GmLogger::is_enabled(LogLevel level) const
 {
-    return level >= config_.minLevel;
+	return level >= _config.min_level;
 }
 
-void Logger::log(LogLevel           level,
-                 const std::string& message,
-                 const char*        file,
-                 int                line,
-                 const char*        function)
+void GmLogger::log(LogLevel           level,
+				   const std::string& message,
+				   const char*        file,
+				   int                line,
+				   const char*        function
+)
 {
-    if (!isEnabled(level))
-        return;
+	if (!is_enabled(level))
+		return;
 
-    LogRecord record;
-    record.level      = level;
-    record.loggerName = config_.name;
-    record.message    = message;
-    record.timestamp  = std::chrono::system_clock::now();
+	LogRecord record;
+	record.level = level;
+	record.logger_name = _config.name;
+	record.message = message;
+	record.timestamp = std::chrono::system_clock::now();
 
-    if (config_.enableSourceLocation) {
-        record.file     = file;
-        record.line     = line;
-        record.function = function;
-    }
+	if (_config.enable_source_location)
+	{
+		record.file = file;
+		record.line = line;
+		record.function = function;
+	}
 
-    dispatcher_->dispatch(record);
+	_dispatcher->dispatch(record);
 }
 
-void Logger::debug(const std::string& message)
+void GmLogger::debug(const std::string& message)
 {
-    log(LogLevel::Debug, message);
+	log(LogLevel::DEBUG, message);
 }
 
-void Logger::info(const std::string& message)
+void GmLogger::info(const std::string& message)
 {
-    log(LogLevel::Info, message);
+	log(LogLevel::INFO, message);
 }
 
-void Logger::warning(const std::string& message)
+void GmLogger::warning(const std::string& message)
 {
-    log(LogLevel::Warning, message);
+	log(LogLevel::WARNING, message);
 }
 
-void Logger::error(const std::string& message)
+void GmLogger::error(const std::string& message)
 {
-    log(LogLevel::Error, message);
+	log(LogLevel::ERROR, message);
 }
 
-void Logger::critical(const std::string& message)
+void GmLogger::critical(const std::string& message)
 {
-    log(LogLevel::Critical, message);
-    flush();
+	log(LogLevel::CRITICAL, message);
+	flush();
 }
 
-void Logger::flush()
+void GmLogger::flush()
 {
-    if (dispatcher_)
-        dispatcher_->flush();
+	if (_dispatcher)
+	{
+		_dispatcher->flush();
+	}
 }
 
-} // namespace GmLog
+} // namespace gmLog

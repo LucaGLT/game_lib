@@ -7,24 +7,25 @@
 
 #include <mutex>
 
-namespace GmLog {
+namespace gmLog {
 
 SyncDispatcher::SyncDispatcher(std::unique_ptr<ILogSink>       sink,
-                               std::unique_ptr<ILogFormatter>  formatter)
-    : sink_(std::move(sink))
-    , formatter_(std::move(formatter))
+							   std::unique_ptr<ILogFormatter>  formatter
+)
+	: _sink(std::move(sink))
+	, _formatter(std::move(formatter))
 {}
 
 void SyncDispatcher::dispatch(const LogRecord& record)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    sink_->write(formatter_->format(record));
+	std::lock_guard<std::mutex> lock(_mutex);
+	_sink->write(_formatter->format(record));
 }
 
 void SyncDispatcher::flush()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    sink_->flush();
+	std::lock_guard<std::mutex> lock(_mutex);
+	_sink->flush();
 }
 
-} // namespace GmLog
+} // namespace gmLog
