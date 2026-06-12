@@ -1,0 +1,84 @@
+# .github/specs/plan-schema.yml
+# Schema for every PLAN.md in game_lib.
+# AI agents must validate generated PLAN.md files against this schema.
+
+plan:
+  # ── Header block ──────────────────────────────────────────────────────────
+  header:
+    library_name:
+      type: string
+      pattern: "^gm[A-Z][a-zA-Z]+"         # e.g. gmDispatch, gmLog
+      required: true
+
+    version:
+      type: semver                            # e.g. 1.0, 0.1, 2.3
+      required: true
+
+    status:
+      type: string
+      enum:
+        - "Phase {N} – Complete ✅"
+        - "Phase {N} – In progress 🔧"
+        - "Phase {N} – Planned ⏳"
+      required: true
+      note: "{N} is the current phase number"
+
+    language:
+      type: string
+      const: "C++17 Standard"
+      required: true
+
+    namespace:
+      type: string
+      pattern: "^gm[A-Z][a-zA-Z]+"
+      required: true
+
+  # ── Mandatory sections (must appear in this order) ────────────────────────
+  sections:
+    goal:
+      required: true
+      min_sentences: 2
+      may_contain: comparison_table          # allowed but not required
+
+    architecture:
+      required: true
+      format: ascii_diagram                  # fenced code block with call chain
+
+    file_structure:
+      required: true
+      format: annotated_tree                 # fenced code block with ← annotations
+
+    development_phases:
+      required: true
+      min_phases: 1
+      phase:
+        number:
+          type: integer
+          min: 1
+          note: "Phases must be sequential, no gaps"
+        title:
+          type: string
+        status_marker:
+          type: string
+          enum: ["✅", "🔧", "⏳"]
+        checklist:
+          type: list_of_checkboxes           # [ ] or [x] items
+          min_items: 1
+        notes_block:
+          required: false                    # optional; recommended for completed phases
+          type: markdown_bullet_list
+        smoke_test_item:
+          required: true                     # every phase must end with a test item
+          pattern: ".*smoke test.*|.*test.*PASS.*|.*integration test.*"
+
+    key_design_decisions:
+      required: false                        # optional section
+      format: numbered_list
+
+  # ── Phase 1 invariant ─────────────────────────────────────────────────────
+  invariants:
+    - rule: "Phase 1 must be named 'Interfaces & Stubs'"
+    - rule: "Phase numbers must not be reused or renumbered after creation"
+    - rule: "A completed phase (✅) must have all checklist items checked [x]"
+    - rule: "An in-progress phase (🔧) must have at least one unchecked item [ ]"
+    - rule: "Version must be bumped on every modification"
