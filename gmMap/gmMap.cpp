@@ -12,7 +12,7 @@
  *
  *       @code
  *       #include "gmMap.hpp"
- *       namespace GameMap {
+ *       namespace gmMap {
  *           template class gmMap<int>;
  *           template class gmMap<std::string>;
  *       }
