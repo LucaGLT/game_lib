@@ -1,6 +1,6 @@
 # game_lib — Naming and Style Rules
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** 2026-06-12  
 **Scope:** All C++ libraries in this workspace
 
@@ -24,7 +24,7 @@ Nested namespaces (e.g. `gm::detail` , `gm::helper`) are allowed only for intern
 ```cpp
 namespace gmSave {
 
-namespace helper {          // OK — internal only
+namespace helper{          // OK — internal only
     // ...
 }
 
@@ -235,4 +235,168 @@ uint32_t draw_specific(uint32_t token_id);
 ### Rule DOC-2 — Language: English only
 
 All comments, docstrings, and error messages must be written in English.
+
+---
+
+## 10. Formatting and Indentation
+
+### Rule FMT-1 — Use tabs for indentation
+
+Use real tab characters for each indentation level.
+
+- Tab width: 4 spaces (editor visualization only).
+- Do not mix tabs and spaces for indentation in the same block.
+- Spaces are allowed for alignment after indentation.
+
+### Rule FMT-2 — Allman braces
+
+Opening braces go on a new line for all control structures, functions, classes, structs, enums,
+and namespaces.
+
+```cpp
+if (is_ready())
+{
+    draw_card();
+}
+
+class Dispatcher
+{
+public:
+    void run()
+    {
+        // ...
+    }
+};
+```
+
+### Rule FMT-3 — Maximum line length
+
+Keep lines at a maximum of 100 characters when practical.
+
+- If needed, wrap function parameters and long expressions across multiple lines.
+- Prefer readability over clever compact formatting.
+
+### Rule FMT-4 — Pointer and reference style
+
+Attach `*` and `&` to the type, not to the variable name.
+
+```cpp
+Token* token = nullptr;
+const std::string& name = config.name();
+```
+
+### Rule FMT-5 — Single-statement control blocks
+
+Single-line statements without braces are allowed only for truly simple cases.
+
+```cpp
+if (is_cached()) return;
+```
+
+If there is any chance of future growth or ambiguity, use braces.
+
+### Rule FMT-6 — Vertical alignment
+
+Vertical alignment is allowed when it improves readability.
+
+```cpp
+const int         retries = 3;
+const std::string source  = "disk";
+const bool        cached  = false;
+```
+
+Avoid excessive re-alignment churn in unrelated edits.
+
+---
+
+## 11. `switch` and `case` Formatting
+
+### Rule SW-1 — `case` indentation
+
+Indent each `case`/`default` one level inside `switch`.
+Indent statements inside each case one additional level.
+
+```cpp
+switch (zone_id)
+{
+    case ZoneId::MAIN_DECK:
+        handle_main_deck();
+        break;
+
+    case ZoneId::HAND:
+        handle_hand();
+        break;
+
+    default:
+        throw EMapError("Unknown zone");
+}
+```
+
+### Rule SW-2 — Blocked cases when needed
+
+Use braces inside a `case` when declaring variables with non-trivial lifetime or to scope helpers.
+
+```cpp
+switch (event_type)
+{
+    case EventType::DRAW:
+    {
+        DrawEvent payload = parse_draw_event(raw);
+        process_draw(payload);
+        break;
+    }
+
+    default:
+        break;
+}
+```
+
+### Rule SW-3 — Fallthrough
+
+Implicit fallthrough is not allowed.
+If fallthrough is intentional, annotate explicitly with `[[fallthrough]];`.
+
+---
+
+## 12. Includes and Preprocessor Formatting
+
+### Rule INC-1 — Include order
+
+Use this include order in `.cpp` files:
+
+1. Corresponding header first
+2. C++ standard library headers
+3. Third-party headers
+4. Project headers
+
+Keep one blank line between groups and sort includes alphabetically inside each group.
+
+### Rule INC-2 — Include style
+
+- Use `#include "..."` for project headers.
+- Use `#include <...>` for standard and third-party headers.
+- Do not use relative include paths containing `..` unless unavoidable.
+
+### Rule PP-1 — Preprocessor indentation and layout
+
+Keep preprocessor directives starting at column 1.
+Do not indent `#if`, `#ifdef`, `#else`, `#elif`, `#endif`.
+
+```cpp
+#if defined(GMLOG_ENABLE_FILE_SINK)
+#include "sinks/FileSink.hpp"
+#else
+#include "sinks/NullSink.hpp"
+#endif
+```
+
+### Rule PP-2 — Closing comments for complex conditionals
+
+For long or nested preprocessor blocks, add a trailing comment on `#endif`.
+
+```cpp
+#if defined(GMLOG_USE_SYSLOG)
+// ...
+#endif // GMLOG_USE_SYSLOG
+```
 
