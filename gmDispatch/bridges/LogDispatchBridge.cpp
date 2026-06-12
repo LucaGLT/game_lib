@@ -12,12 +12,12 @@ LogDispatchBridge::LogDispatchBridge(Dispatcher& bus)
     : bus_(bus)
 {}
 
-void LogDispatchBridge::dispatch(const GmLog::LogRecord& record)
+void LogDispatchBridge::dispatch(const gmLog::LogRecord& record)
 {
     Envelope env;
 
-    env.typeId    = std::string("log.") + GmLog::levelToString(record.level);
-    env.source    = record.loggerName;
+    env.typeId    = std::string("log.") + gmLog::level_to_string(record.level);
+    env.source    = record.logger_name;
     env.timestamp = record.timestamp;
     env.messageId = (record.function != nullptr) ? std::string(record.function) : "";
     env.payload   = record.message;   // stored as std::string
