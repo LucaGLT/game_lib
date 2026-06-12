@@ -845,7 +845,7 @@ Exports the complete map state to a versioned JSON file. The JSON envelope conta
 |---|---|
 | `filepath` | Output JSON file path. Created or overwritten. |
 
-**Throws:** `GmSave::FileWriteError` if the file cannot be written.
+**Throws:** `gmSave::EFileWriteError` if the file cannot be written.
 
 **Example:**
 ```cpp
@@ -868,9 +868,9 @@ The current map state is cleared and replaced with the loaded snapshot.
 | `filepath` | Input JSON file path (must be versioned gmSave format). |
 
 **Throws:**
-- `GmSave::FileReadError` if the file cannot be read.
-- `GmSave::JsonParseError` if the JSON is malformed.
-- `GmSave::VersionMismatchError` if the version field does not match the expected version (currently v1).
+- `gmSave::EFileReadError` if the file cannot be read.
+- `gmSave::EJsonParseError` if the JSON is malformed.
+- `gmSave::EVersionMismatchError` if the version field does not match the expected version (currently v1).
 
 **Example:**
 ```cpp
@@ -1129,9 +1129,9 @@ MapSnapshot out;
 out.locations = world.all_locations();
 out.tiles = world.all_tiles();
 
-GmSave::save_versioned("gmMap_snapshot.json", out, 1);
+gmSave::save_versioned("gmMap_snapshot.json", out, 1);
 
-MapSnapshot loaded = GmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 1);
+MapSnapshot loaded = gmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 1);
 ```
 
 Note:

@@ -23,7 +23,7 @@
 #include <variant>
 #include <vector>
 
-#include "../gmSave/gmSave.hpp"
+#include "gmSave/gmSave.hpp"
 
 namespace GameMap {
 
@@ -512,7 +512,7 @@ public:
      * @brief Exports the complete map state to a versioned JSON file.
      *
      * @param filepath Path to write the snapshot to.
-     * @throws FileWriteError if the file cannot be written.
+        * @throws gmSave::EFileWriteError if the file cannot be written.
      */
     void export_snapshot_json(const std::string& filepath) const;
 
@@ -522,9 +522,9 @@ public:
      * Clears the current map and replaces it with the loaded state.
      *
      * @param filepath Path to read the snapshot from.
-     * @throws FileReadError if the file cannot be read.
-     * @throws JsonParseError if the JSON is malformed.
-     * @throws VersionMismatchError if the version does not match expected (currently v1).
+        * @throws gmSave::EFileReadError if the file cannot be read.
+        * @throws gmSave::EJsonParseError if the JSON is malformed.
+        * @throws gmSave::EVersionMismatchError if the version does not match expected (currently v1).
      */
     void import_snapshot_json(const std::string& filepath);
 
@@ -1206,14 +1206,14 @@ void gmMap<ItemT>::export_snapshot_json(const std::string& filepath) const
     }
 
     // Write versioned snapshot to file
-    GmSave::save_versioned(filepath, snap, 1U, 2);
+    gmSave::save_versioned(filepath, snap, 1U, 2);
 }
 
 template <typename ItemT>
 void gmMap<ItemT>::import_snapshot_json(const std::string& filepath)
 {
     // Load versioned snapshot from file
-    MapSnapshot<ItemT> snap = GmSave::load_versioned<MapSnapshot<ItemT>>(filepath, 1U);
+    MapSnapshot<ItemT> snap = gmSave::load_versioned<MapSnapshot<ItemT>>(filepath, 1U);
 
     // Clear current state
     clear();
