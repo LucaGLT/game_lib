@@ -1,9 +1,9 @@
-# gmCompDeck – Composite Deck Library
+﻿# GmCompDeck – Composite Deck Library
 
 **Version:** 1.0
 **Status:** Production
 **Language:** C++17 Standard
-**Namespace:** `gmFate`
+**Namespace:** `gmAlea`
 **License:** Project License
 
 ---
@@ -14,12 +14,12 @@
 - [Architecture](#architecture)
 - [Zone Reference](#zone-reference)
 - [API Reference](#api-reference)
-  - [New gmDeck v2 methods](#new-gmdeck-v2-methods)
+  - [New GmDeck v2 methods](#new-GmDeck-v2-methods)
   - [ZoneId enum](#zoneid-enum)
   - [ZonePolicy structs](#zonepolicy-structs)
   - [PolicyBasedDeck\<Policy\>](#policybaseddeckpolicy)
   - [Type aliases](#type-aliases)
-  - [gmCompDeck class](#gmcompdeck-class)
+  - [GmCompDeck class](#GmCompDeck-class)
 - [Usage Examples](#usage-examples)
 - [Compile-time Safety](#compile-time-safety)
 - [Exception Reference](#exception-reference)
@@ -30,15 +30,15 @@
 
 ## Overview
 
-**gmCompDeck** extends the base `gmDeck` library with a full multi-zone card
+**GmCompDeck** extends the base `GmDeck` library with a full multi-zone card
 lifecycle management system.  It is designed around a common board/card game
 model where each entity (player, faction, AI opponent) has its own private
 set of interconnected decks.
 
-### What gmCompDeck manages
+### What GmCompDeck manages
 
 ```
-┌────────────────────────── gmCompDeck ("Player1") ───────────────────────────┐
+┌────────────────────────── GmCompDeck ("Player1") ───────────────────────────┐
 │                                                                               │
 │  MainDeck      CardHand      PlayArea      DiscardPile    BanishZone         │
 │  (shuffled)    (private)     (on table)    (ordered)      (removed forever)  │
@@ -48,9 +48,9 @@ set of interconnected decks.
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Difference from using gmDeck directly
+### Difference from using GmDeck directly
 
-| | Raw `gmDeck` | `gmCompDeck` |
+| | Raw `GmDeck` | `GmCompDeck` |
 |---|---|---|
 | Zones | 1 | 5 (main, hand, play area, discard, banish) |
 | Policy enforcement | None | Compile-time `static_assert` |
@@ -65,11 +65,11 @@ set of interconnected decks.
 The library is structured in three layers:
 
 ```
-Layer 0  gmDeck                   raw token list (shuffle, draw, push_back, ...)
+Layer 0  GmDeck                   raw token list (shuffle, draw, push_back, ...)
            │
 Layer 1  PolicyBasedDeck<Policy>  per-zone wrapper — compile-time rules
            │
-Layer 2  gmCompDeck               multi-zone orchestrator — invariant guarantor
+Layer 2  GmCompDeck               multi-zone orchestrator — invariant guarantor
 ```
 
 ---
@@ -90,9 +90,9 @@ Layer 2  gmCompDeck               multi-zone orchestrator — invariant guaranto
 
 ## API Reference
 
-### New gmDeck v2 methods
+### New GmDeck v2 methods
 
-The following methods were added to `gmDeck` in v2 to support `PolicyBasedDeck`:
+The following methods were added to `GmDeck` in v2 to support `PolicyBasedDeck`:
 
 #### `push_back(uint32_t token_id)`
 
@@ -102,7 +102,7 @@ Appends a token at the back (bottom) of the deck without shuffling.
 deck.push_back(42);
 ```
 
-**Throws:** `DuplicateTokenIdError` if `token_id` is already present.
+**Throws:** `EAleaDuplicateTokenIdError` if `token_id` is already present.
 
 ---
 
@@ -114,7 +114,7 @@ Prepends a token at the front (top) of the deck without shuffling.
 deck.push_front(42);
 ```
 
-**Throws:** `DuplicateTokenIdError` if `token_id` is already present.
+**Throws:** `EAleaDuplicateTokenIdError` if `token_id` is already present.
 
 ---
 
@@ -126,7 +126,7 @@ Finds, removes, and returns a specific token regardless of its position.
 uint32_t card = deck.draw_specific(42);
 ```
 
-**Throws:** `TokenNotFoundError` if `token_id` is not in the deck.
+**Throws:** `EAleaTokenNotFoundError` if `token_id` is not in the deck.
 
 ---
 
@@ -136,8 +136,8 @@ The constructor now accepts a third parameter `bool auto_shuffle = true`.
 Existing code is fully backward-compatible.
 
 ```cpp
-gmDeck deck(tokens, seed);             // auto_shuffle = true (default)
-gmDeck deck(tokens, std::nullopt, false); // no initial shuffle
+GmDeck deck(tokens, seed);             // auto_shuffle = true (default)
+GmDeck deck(tokens, std::nullopt, false); // no initial shuffle
 ```
 
 ---
@@ -162,7 +162,7 @@ enum class ZoneId {
 Returns a human-readable uppercase string for a zone:
 
 ```cpp
-gmFate::zone_name(gmFate::ZoneId::DISCARD);  // → "DISCARD"
+gmAlea::zone_name(gmAlea::ZoneId::DISCARD);  // → "DISCARD"
 ```
 
 ---
@@ -187,7 +187,7 @@ struct EventQueuePolicy {
     static constexpr bool can_direct_access = false;
     static constexpr bool is_insert_only    = false;
 };
-using EventQueue = gmFate::PolicyBasedDeck<EventQueuePolicy>;
+using EventQueue = gmAlea::PolicyBasedDeck<EventQueuePolicy>;
 ```
 
 ---
@@ -233,10 +233,10 @@ using DiscardPile = PolicyBasedDeck<DiscardPolicy>;
 using BanishZone  = PolicyBasedDeck<BanishPolicy>;
 ```
 
-These aliases can be used standalone, independently of `gmCompDeck`:
+These aliases can be used standalone, independently of `GmCompDeck`:
 
 ```cpp
-gmFate::DiscardPile discard("Shared Graveyard");
+gmAlea::DiscardPile discard("Shared Graveyard");
 discard.add(202);
 discard.add(305);
 // discard.shuffle();  ← compile error
@@ -244,12 +244,12 @@ discard.add(305);
 
 ---
 
-### gmCompDeck class
+### GmCompDeck class
 
 ```cpp
-class gmCompDeck {
+class GmCompDeck {
 public:
-    explicit gmCompDeck(std::string owner_name,
+    explicit GmCompDeck(std::string owner_name,
                         const std::vector<uint32_t>& deck_tokens = {},
                         std::optional<unsigned int>  seed        = std::nullopt);
 
@@ -283,7 +283,7 @@ public:
 #### Constructor
 
 ```cpp
-explicit gmCompDeck(std::string owner_name,
+explicit GmCompDeck(std::string owner_name,
                     const std::vector<uint32_t>& deck_tokens = {},
                     std::optional<unsigned int>  seed        = std::nullopt);
 ```
@@ -292,7 +292,7 @@ explicit gmCompDeck(std::string owner_name,
 - All other zones start empty.
 - `seed` controls the deterministic shuffle.
 
-**Throws:** `DuplicateTokenIdError` if `deck_tokens` has duplicate IDs.
+**Throws:** `EAleaDuplicateTokenIdError` if `deck_tokens` has duplicate IDs.
 
 ---
 
@@ -300,15 +300,15 @@ explicit gmCompDeck(std::string owner_name,
 
 | Method | Source → Destination | Throws |
 |--------|----------------------|--------|
-| `draw_to_hand(count)` | Main Deck → Hand (top × count) | `DeckEmptyError`, `InvalidDrawCountError` |
-| `draw_specific_to_hand(id)` | Main Deck (any position) → Hand | `TokenNotFoundError` |
-| `play_card(id)` | Hand → Play Area | `TokenNotFoundError` |
-| `resolve_card(id)` | Play Area → Discard | `TokenNotFoundError` |
-| `discard_from_hand(id)` | Hand → Discard | `TokenNotFoundError` |
-| `discard_from_table(id)` | Play Area → Discard | `TokenNotFoundError` |
-| `take_from_discard(id)` | Discard → Hand | `TokenNotFoundError` |
-| `return_from_discard_to_deck(id)` | Discard → Main Deck (bottom) | `TokenNotFoundError` |
-| `banish(id)` | Any movable zone → Banish | `TokenNotFoundError` |
+| `draw_to_hand(count)` | Main Deck → Hand (top × count) | `EAleaDeckEmptyError`, `EAleaInvalidDrawCountError` |
+| `draw_specific_to_hand(id)` | Main Deck (any position) → Hand | `EAleaTokenNotFoundError` |
+| `play_card(id)` | Hand → Play Area | `EAleaTokenNotFoundError` |
+| `resolve_card(id)` | Play Area → Discard | `EAleaTokenNotFoundError` |
+| `discard_from_hand(id)` | Hand → Discard | `EAleaTokenNotFoundError` |
+| `discard_from_table(id)` | Play Area → Discard | `EAleaTokenNotFoundError` |
+| `take_from_discard(id)` | Discard → Hand | `EAleaTokenNotFoundError` |
+| `return_from_discard_to_deck(id)` | Discard → Main Deck (bottom) | `EAleaTokenNotFoundError` |
+| `banish(id)` | Any movable zone → Banish | `EAleaTokenNotFoundError` |
 | `reshuffle_discard_into_deck()` | Discard → Main Deck + shuffle | — |
 
 ---
@@ -318,8 +318,8 @@ explicit gmCompDeck(std::string owner_name,
 Returns the zone currently holding the token, or `ZoneId::NOT_FOUND`.
 
 ```cpp
-gmFate::ZoneId loc = player.locate(102);
-std::cout << gmFate::zone_name(loc);  // e.g. "HAND"
+gmAlea::ZoneId loc = player.locate(102);
+std::cout << gmAlea::zone_name(loc);  // e.g. "HAND"
 ```
 
 ---
@@ -327,7 +327,7 @@ std::cout << gmFate::zone_name(loc);  // e.g. "HAND"
 #### `count_in(ZoneId zone) → int`
 
 ```cpp
-int in_hand = player.count_in(gmFate::ZoneId::HAND);
+int in_hand = player.count_in(gmAlea::ZoneId::HAND);
 ```
 
 ---
@@ -344,18 +344,18 @@ Sum of all zones.  Should remain constant over a play session (except when
 ### Full game flow
 
 ```cpp
-#include "gmDeck/gmCompDeck.hpp"
+#include "gmDeck/GmCompDeck.hpp"
 #include <iostream>
 
 int main() {
     std::vector<uint32_t> cards = {101, 102, 103, 104, 105, 106, 107, 108};
-    gmFate::gmCompDeck player("Alice", cards, /*seed=*/42);
+    gmAlea::GmCompDeck player("Alice", cards, /*seed=*/42);
 
-    std::cout << "Deck size: " << player.count_in(gmFate::ZoneId::MAIN_DECK) << "\n"; // 8
+    std::cout << "Deck size: " << player.count_in(gmAlea::ZoneId::MAIN_DECK) << "\n"; // 8
 
     // Alice draws 3 cards
     player.draw_to_hand(3);
-    std::cout << "Hand size: " << player.count_in(gmFate::ZoneId::HAND) << "\n";      // 3
+    std::cout << "Hand size: " << player.count_in(gmAlea::ZoneId::HAND) << "\n";      // 3
 
     // Alice plays the first card in her hand
     uint32_t played = player.hand().peek_all().front();
@@ -376,11 +376,11 @@ int main() {
 
     // Banish a card permanently
     player.banish(played);
-    std::cout << "Banished: " << player.count_in(gmFate::ZoneId::BANISHED) << "\n";  // 1
+    std::cout << "Banished: " << player.count_in(gmAlea::ZoneId::BANISHED) << "\n";  // 1
 
     // Locate where a card is
-    gmFate::ZoneId loc = player.locate(discarded);
-    std::cout << gmFate::zone_name(loc) << "\n";  // "DISCARD"
+    gmAlea::ZoneId loc = player.locate(discarded);
+    std::cout << gmAlea::zone_name(loc) << "\n";  // "DISCARD"
 
     return 0;
 }
@@ -391,27 +391,27 @@ int main() {
 ### Reshuffle discard into deck
 
 ```cpp
-gmFate::gmCompDeck player("Bob", {1, 2, 3, 4, 5});
+gmAlea::GmCompDeck player("Bob", {1, 2, 3, 4, 5});
 player.draw_to_hand(5);  // draw all
 for (uint32_t id : player.hand().peek_all()) {
     player.discard_from_hand(id);  // discard all — original order: 5,4,3,2,1 (LIFO)
 }
 
 player.reshuffle_discard_into_deck();  // discard → main deck, reshuffled
-std::cout << player.count_in(gmFate::ZoneId::MAIN_DECK) << "\n";  // 5
-std::cout << player.count_in(gmFate::ZoneId::DISCARD) << "\n";    // 0
+std::cout << player.count_in(gmAlea::ZoneId::MAIN_DECK) << "\n";  // 5
+std::cout << player.count_in(gmAlea::ZoneId::DISCARD) << "\n";    // 0
 ```
 
 ---
 
-### Custom zone standalone (without gmCompDeck)
+### Custom zone standalone (without GmCompDeck)
 
 ```cpp
 // Use PolicyBasedDeck independently for a shared game deck
-gmFate::MainDeck event_deck("Events", {201, 202, 203, 204}, /*seed=*/7);
+gmAlea::MainDeck event_deck("Events", {201, 202, 203, 204}, /*seed=*/7);
 uint32_t next_event = event_deck.draw();
 
-gmFate::DiscardPile graveyard("Graveyard");
+gmAlea::DiscardPile graveyard("Graveyard");
 graveyard.add(next_event);
 // graveyard.shuffle();  ← compile error: DiscardPolicy::can_shuffle == false
 ```
@@ -424,11 +424,11 @@ graveyard.add(next_event);
 misuse at compile time:
 
 ```cpp
-gmFate::DiscardPile discard("pile");
+gmAlea::DiscardPile discard("pile");
 discard.shuffle();
 // error: static_assert failed "shuffle() is not allowed on this zone type..."
 
-gmFate::BanishZone banish("out");
+gmAlea::BanishZone banish("out");
 banish.draw();
 // error: static_assert failed "draw() is not allowed on insert-only zones..."
 
@@ -443,12 +443,12 @@ banish.take_specific(42);
 
 | Exception                | Header              | When thrown                                     |
 |--------------------------|---------------------|-------------------------------------------------|
-| `DeckAdapterError`       | `gmDeck.hpp`        | Base class; catch subclasses                    |
-| `DeckEmptyError`         | `gmDeck.hpp`        | `draw_to_hand()` when main deck is empty        |
-| `DuplicateTokenIdError`  | `gmDeck.hpp`        | Constructor or `add()` with duplicate ID        |
-| `InvalidDrawCountError`  | `gmDeck.hpp`        | `draw_to_hand(count)` with `count <= 0`         |
-| `TokenNotFoundError`     | `gmDeck.hpp`        | `draw_specific`, `take_specific`, move methods  |
-| `ZonePolicyViolation`    | `PolicyBasedDeck.hpp` | Runtime policy violation (future use)         |
+| `EAleaError`       | `GmDeck.hpp`        | Base class; catch subclasses                    |
+| `EAleaDeckEmptyError`         | `GmDeck.hpp`        | `draw_to_hand()` when main deck is empty        |
+| `EAleaDuplicateTokenIdError`  | `GmDeck.hpp`        | Constructor or `add()` with duplicate ID        |
+| `EAleaInvalidDrawCountError`  | `GmDeck.hpp`        | `draw_to_hand(count)` with `count <= 0`         |
+| `EAleaTokenNotFoundError`     | `GmDeck.hpp`        | `draw_specific`, `take_specific`, move methods  |
+| `EAleaZonePolicyViolationError`    | `PolicyBasedDeck.hpp` | Runtime policy violation (future use)         |
 
 ---
 
@@ -456,15 +456,15 @@ banish.take_specific(42);
 
 Compile from the `game_lib` root directory:
 
-### gmDeck v2 tests
+### GmDeck v2 tests
 ```bash
-g++ -std=c++17 -I. gmDeck/gmDeck.cpp gmDeck/tests/test_gmDeck_v2.cpp \
+g++ -std=c++17 -I. gmDeck/GmDeck.cpp gmDeck/tests/test_gmDeck_v2.cpp \
     -o test_gmDeck_v2 && ./test_gmDeck_v2
 ```
 
-### gmCompDeck tests
+### GmCompDeck tests
 ```bash
-g++ -std=c++17 -I. gmDeck/gmDeck.cpp gmDeck/gmCompDeck.cpp \
+g++ -std=c++17 -I. gmDeck/GmDeck.cpp gmDeck/GmCompDeck.cpp \
     gmDeck/tests/test_gmCompDeck.cpp -o test_gmCompDeck && ./test_gmCompDeck
 ```
 
@@ -481,13 +481,13 @@ g++ -std=c++17 -I. gmDeck/gmDeck.cpp gmDeck/gmCompDeck.cpp \
 gmDeck/
 ├── PLAN.md
 ├── ai-instructions.md
-├── gmDeck.hpp / gmDeck.cpp        ← base deck v2
+├── GmDeck.hpp / GmDeck.cpp        ← base deck v2
 ├── gmDeck_API.md
 ├── CardLocation.hpp               ← ZoneId enum + zone_name()
 ├── ZonePolicy.hpp                 ← 5 policy structs
 ├── PolicyBasedDeck.hpp            ← template zone wrapper (bodies inline)
-├── gmCompDeck.hpp                 ← CompositeDeck declaration
-├── gmCompDeck.cpp                 ← CompositeDeck implementation
+├── GmCompDeck.hpp                 ← CompositeDeck declaration
+├── GmCompDeck.cpp                 ← CompositeDeck implementation
 ├── gmCompDeck_API.md              ← this file
 └── tests/
     ├── test_gmDeck_v2.cpp

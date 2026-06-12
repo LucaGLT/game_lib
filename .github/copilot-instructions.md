@@ -10,7 +10,7 @@
 
 | Library       | Namespace      | Purpose                                        |
 |---------------|----------------|------------------------------------------------|
-| `gmDeck`      | `gmDeck`       | Token-based deck management                    |
+| `gmAlea`      | `gmAlea`       | Token deck management (GmDeck, GmCompDeck, GmDice) |
 | `gmDispatch`  | `gmDispatch`   | Generic message/event dispatch (sync + async)  |
 | `gmFlow`      | `gmFlow`       | Flow controller and timeline engine            |
 | `gmLog`       | `gmLog`        | Structured logging                             |

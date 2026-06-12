@@ -1,15 +1,15 @@
-# gmCompDeck — Implementation Instructions for NON_USABLE Zone
+﻿# GmCompDeck — Implementation Instructions for NON_USABLE Zone
 
-**Target library:** `gmDeck / gmCompDeck`  
+**Target library:** `gmAlea / GmCompDeck`  
 **Language:** C++17  
-**Namespace:** `gmFate`  
+**Namespace:** `gmAlea`  
 **Purpose:** Extend the existing composite deck lifecycle model with an additional zone for cards/tokens that exist in the collection but are not currently usable in the active game/session/scenario.
 
 ---
 
 ## 1. Goal
 
-Implement a new zone in `gmCompDeck` named:
+Implement a new zone in `GmCompDeck` named:
 
 ```cpp
 NON_USABLE
@@ -38,7 +38,7 @@ The zone must remain generic. Do **not** hardcode mission, character, RPG, campa
 
 ## 2. Existing Context
 
-`gmCompDeck` currently models a complete card/token lifecycle across several zones. The current known zones are:
+`GmCompDeck` currently models a complete card/token lifecycle across several zones. The current known zones are:
 
 ```text
 MAIN_DECK
@@ -209,7 +209,7 @@ If `MEMORY` has not yet been implemented in the branch, still design this change
 
 ## 8. Required Public API Additions
 
-Add explicit methods to `gmCompDeck`.
+Add explicit methods to `GmCompDeck`.
 
 ### Move cards into NON_USABLE
 
@@ -265,13 +265,13 @@ Optional, but useful:
 void set_active_main_deck_from_non_usable(const std::vector<TokenId>& selected_ids);
 ```
 
-However, avoid embedding deckbuilding-specific assumptions into `gmCompDeck`. If this method becomes too opinionated, keep it outside `gmCompDeck` in a game-specific layer.
+However, avoid embedding deckbuilding-specific assumptions into `GmCompDeck`. If this method becomes too opinionated, keep it outside `GmCompDeck` in a game-specific layer.
 
 ---
 
 ## 9. Initial Construction Support
 
-Support initializing `gmCompDeck` with some tokens in `NON_USABLE`.
+Support initializing `GmCompDeck` with some tokens in `NON_USABLE`.
 
 Example conceptual constructor input:
 
@@ -303,7 +303,7 @@ struct gmCompDeckConfig {
 If this is too large for the current design, add only:
 
 ```cpp
-gmCompDeck(std::vector<TokenId> main_deck_tokens,
+GmCompDeck(std::vector<TokenId> main_deck_tokens,
            std::vector<TokenId> non_usable_tokens,
            std::optional<uint32_t> seed = std::nullopt);
 ```
@@ -350,13 +350,13 @@ Atomicity is required. If a move fails halfway, the previous state must be resto
 
 ## 12. Error Handling
 
-Reuse the existing exception style of `gmDeck` / `gmCompDeck`.
+Reuse the existing exception style of `GmDeck` / `GmCompDeck`.
 
 Potential errors:
 
 ```text
-TokenNotFoundError
-DuplicateTokenIdError
+EAleaTokenNotFoundError
+EAleaDuplicateTokenIdError
 InvalidZoneOperationError
 DeckInvariantError
 ```
@@ -369,15 +369,15 @@ Examples:
 
 ```text
 Trying to draw from NON_USABLE → invalid operation.
-Trying to move an unknown token from NON_USABLE → TokenNotFoundError.
-Initializing a token in both MAIN_DECK and NON_USABLE → DuplicateTokenIdError.
+Trying to move an unknown token from NON_USABLE → EAleaTokenNotFoundError.
+Initializing a token in both MAIN_DECK and NON_USABLE → EAleaDuplicateTokenIdError.
 ```
 
 ---
 
 ## 13. Serialization
 
-If `gmCompDeck` supports serialization or is used through `gmSave`, update `to_json` / `from_json` support.
+If `GmCompDeck` supports serialization or is used through `gmSave`, update `to_json` / `from_json` support.
 
 The serialized form must include:
 
@@ -410,9 +410,9 @@ If versioned save migration exists, add a migration rule. Otherwise, make `non_u
 Update:
 
 ```text
-gmDeck/gmCompDeck_API.md
+gmAlea/gmCompDeck_API.md
 Game-Lib_readme.md if library overview lists zones
-any README section that describes gmCompDeck zones
+any README section that describes GmCompDeck zones
 ```
 
 Document clearly:
@@ -427,7 +427,7 @@ Include a short example:
 
 ```cpp
 // Player owns 20 cards but brings only 10.
-gmCompDeck deck({/* selected */ 1,2,3,4,5,6,7,8,9,10},
+GmCompDeck deck({/* selected */ 1,2,3,4,5,6,7,8,9,10},
                 {/* not selected */ 11,12,13,14,15,16,17,18,19,20});
 
 // Later, a rule unlocks card 12.
@@ -441,7 +441,7 @@ deck.move_from_non_usable_to_discard(12);
 Add or update tests under:
 
 ```text
-gmDeck/tests/
+GmDeck/tests/
 ```
 
 Suggested file:
@@ -502,7 +502,7 @@ Verify locate(id) returns BANISH_ZONE.
 
 ```text
 Attempt to initialize token 5 in both MAIN_DECK and NON_USABLE.
-Expect DuplicateTokenIdError.
+Expect EAleaDuplicateTokenIdError.
 ```
 
 8. **Cannot draw from NON_USABLE**
@@ -547,7 +547,7 @@ Verify NON_USABLE exists and is empty.
 Follow the project convention used in the other `gmXxx` libraries:
 
 ```text
-1. Inspect existing gmDeck / gmCompDeck style, naming, exceptions, tests.
+1. Inspect existing GmDeck / GmCompDeck style, naming, exceptions, tests.
 2. Add declarations and stubs first.
 3. Update API documentation to describe expected behavior.
 4. Implement methods progressively.
@@ -555,7 +555,7 @@ Follow the project convention used in the other `gmXxx` libraries:
 6. Run existing tests to ensure no regression.
 ```
 
-Do not rewrite `gmCompDeck` from scratch.
+Do not rewrite `GmCompDeck` from scratch.
 
 This task is an extension, not a redesign.
 
@@ -571,8 +571,8 @@ The implementation must:
 - Add NON_USABLE without changing existing zone semantics.
 - Remain C++17 only.
 - Avoid external dependencies.
-- Follow existing namespace gmFate.
-- Follow existing naming/style conventions from gmDeck and gmCompDeck.
+- Follow existing namespace gmAlea.
+- Follow existing naming/style conventions from GmDeck and GmCompDeck.
 - Keep error behavior consistent with current library.
 ```
 
@@ -592,7 +592,7 @@ Do not implement:
 - Scripting.
 ```
 
-`gmCompDeck` must only provide the storage/lifecycle mechanics.
+`GmCompDeck` must only provide the storage/lifecycle mechanics.
 
 Game-specific systems decide why a card is non-usable and when it may become usable.
 
@@ -600,7 +600,7 @@ Game-specific systems decide why a card is non-usable and when it may become usa
 
 ## 19. Final Expected Result
 
-After implementation, `gmCompDeck` should support this lifecycle:
+After implementation, `GmCompDeck` should support this lifecycle:
 
 ```text
 NON_USABLE → MAIN_DECK

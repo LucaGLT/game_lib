@@ -1,4 +1,4 @@
-# libDeck - Token Deck Library
+﻿# libDeck - Token Deck Library
 
 **Version:** 1.0  
 **Status:** Production  
@@ -14,7 +14,7 @@
 - [Installation](#installation)
 - [API Reference](#api-reference)
   - [Exceptions](#exceptions)
-  - [gmDeck Class](#tokendeck-class)
+  - [GmDeck Class](#tokendeck-class)
 - [Usage Examples](#usage-examples)
 - [Performance Characteristics](#performance-characteristics)
 - [Thread Safety](#thread-safety)
@@ -51,7 +51,7 @@
 
 The library follows a **clean separation of concerns**:
 
-- **gmDeck** manages **only** the deck structure (ordering, state, operations)
+- **GmDeck** manages **only** the deck structure (ordering, state, operations)
 - **Token details** (name, type, properties) are managed externally
 - **Domain rules** stay in the application layer, not in the library
 
@@ -83,7 +83,7 @@ This design ensures:
 3. Use in your code:
 
 ```cpp
-using namespace gmFate;
+using namespace gmAlea;
 ```
 
 ---
@@ -92,16 +92,16 @@ using namespace gmFate;
 
 ### Exceptions
 
-All exceptions inherit from `std::runtime_error` and live in the `gmFate` namespace.
+All exceptions inherit from `std::runtime_error` and live in the `gmAlea` namespace.
 
-#### `DeckAdapterError`
+#### `EAleaError`
 
 Base exception class for all deck-related errors.
 
 ```cpp
-class DeckAdapterError : public std::runtime_error {
+class EAleaError : public std::runtime_error {
 public:
-    explicit DeckAdapterError(const std::string& message);
+    explicit EAleaError(const std::string& message);
 };
 ```
 
@@ -109,14 +109,14 @@ public:
 
 ---
 
-#### `DeckEmptyError`
+#### `EAleaDeckEmptyError`
 
 Thrown when attempting to draw from an empty deck.
 
 ```cpp
-class DeckEmptyError : public DeckAdapterError {
+class EAleaDeckEmptyError : public EAleaError {
 public:
-    explicit DeckEmptyError(const std::string& message);
+    explicit EAleaDeckEmptyError(const std::string& message);
 };
 ```
 
@@ -128,21 +128,21 @@ public:
 ```cpp
 try {
     deck.draw_one();
-} catch (const DeckEmptyError& e) {
+} catch (const EAleaDeckEmptyError& e) {
     std::cerr << e.what() << std::endl;
 }
 ```
 
 ---
 
-#### `DuplicateTokenIdError`
+#### `EAleaDuplicateTokenIdError`
 
 Thrown when token IDs are not unique.
 
 ```cpp
-class DuplicateTokenIdError : public DeckAdapterError {
+class EAleaDuplicateTokenIdError : public EAleaError {
 public:
-    explicit DuplicateTokenIdError(const std::string& message);
+    explicit EAleaDuplicateTokenIdError(const std::string& message);
 };
 ```
 
@@ -154,22 +154,22 @@ public:
 ```cpp
 try {
     std::vector<uint32_t> tokens = {1, 2, 2, 3};  // Duplicate 2!
-    gmDeck deck(tokens);
-} catch (const DuplicateTokenIdError& e) {
+    GmDeck deck(tokens);
+} catch (const EAleaDuplicateTokenIdError& e) {
     std::cerr << "Duplicates found: " << e.what() << std::endl;
 }
 ```
 
 ---
 
-#### `InvalidDrawCountError`
+#### `EAleaInvalidDrawCountError`
 
 Thrown when an invalid draw count is requested.
 
 ```cpp
-class InvalidDrawCountError : public DeckAdapterError {
+class EAleaInvalidDrawCountError : public EAleaError {
 public:
-    explicit InvalidDrawCountError(const std::string& message);
+    explicit EAleaInvalidDrawCountError(const std::string& message);
 };
 ```
 
@@ -180,22 +180,22 @@ public:
 ```cpp
 try {
     deck.draw_many(-1);  // Invalid!
-} catch (const InvalidDrawCountError& e) {
+} catch (const EAleaInvalidDrawCountError& e) {
     std::cerr << e.what() << std::endl;
 }
 ```
 
 ---
 
-### gmDeck Class
+### GmDeck Class
 
 Main class for managing token decks.
 
 ```cpp
-namespace gmFate {
-    class gmDeck {
+namespace gmAlea {
+    class GmDeck {
     public:
-        explicit gmDeck(const std::vector<uint32_t>& token_ids, 
+        explicit GmDeck(const std::vector<uint32_t>& token_ids, 
                           std::optional<unsigned int> seed = std::nullopt);
         
         void shuffle();
@@ -216,7 +216,7 @@ namespace gmFate {
 #### Constructor
 
 ```cpp
-explicit gmDeck(const std::vector<uint32_t>& token_ids, 
+explicit GmDeck(const std::vector<uint32_t>& token_ids, 
                   std::optional<unsigned int> seed = std::nullopt);
 ```
 
@@ -226,7 +226,7 @@ explicit gmDeck(const std::vector<uint32_t>& token_ids,
   - If provided: shuffle is reproducible (same seed = same shuffle)
   - If not provided: uses `std::random_device` for true randomness
 
-**Throws:** `DuplicateTokenIdError` if `token_ids` contains duplicates
+**Throws:** `EAleaDuplicateTokenIdError` if `token_ids` contains duplicates
 
 **Behavior:** 
 1. Validates all token IDs are unique
@@ -240,13 +240,13 @@ explicit gmDeck(const std::vector<uint32_t>& token_ids,
 ```cpp
 // Non-deterministic shuffle
 std::vector<uint32_t> tokens = {101, 102, 103, 104, 105};
-gmDeck deck(tokens);
+GmDeck deck(tokens);
 
 // Deterministic shuffle (seed=42)
-gmDeck deck2(tokens, 42);
+GmDeck deck2(tokens, 42);
 
 // Reproduce exact shuffle
-gmDeck deck3(tokens, 42);  // Same order as deck2
+GmDeck deck3(tokens, 42);  // Same order as deck2
 ```
 
 ---
@@ -271,7 +271,7 @@ void shuffle();
 
 **Example:**
 ```cpp
-gmDeck deck(tokens, 42);
+GmDeck deck(tokens, 42);
 auto drawn = deck.draw_one();  // Deck is now different
 deck.shuffle();                 // Re-shuffle remaining tokens
 ```
@@ -288,7 +288,7 @@ uint32_t draw_one();
 
 **Returns:** Single token ID (uint32_t)
 
-**Throws:** `DeckEmptyError` if deck is empty
+**Throws:** `EAleaDeckEmptyError` if deck is empty
 
 **Behavior:** 
 1. Checks if deck is empty
@@ -299,7 +299,7 @@ uint32_t draw_one();
 
 **Example:**
 ```cpp
-gmDeck deck(tokens);
+GmDeck deck(tokens);
 while (!deck.is_empty()) {
     uint32_t card = deck.draw_one();
     std::cout << "Drew: " << card << std::endl;
@@ -320,8 +320,8 @@ std::vector<uint32_t> draw_many(int k);
 **Returns:** Vector of k drawn token IDs
 
 **Throws:**
-- `InvalidDrawCountError` if k ≤ 0
-- `DeckEmptyError` if k > remaining tokens
+- `EAleaInvalidDrawCountError` if k ≤ 0
+- `EAleaDeckEmptyError` if k > remaining tokens
 
 **Behavior:**
 1. Validates k > 0
@@ -333,7 +333,7 @@ std::vector<uint32_t> draw_many(int k);
 
 **Example:**
 ```cpp
-gmDeck deck(tokens);
+GmDeck deck(tokens);
 auto drawn = deck.draw_many(3);  // Draw 3 tokens
 for (auto token : drawn) {
     std::cout << token << " ";
@@ -358,7 +358,7 @@ int remaining_count() const;
 
 **Example:**
 ```cpp
-gmDeck deck(tokens);
+GmDeck deck(tokens);
 std::cout << "Remaining: " << deck.remaining_count() << std::endl;
 deck.draw_one();
 std::cout << "Remaining: " << deck.remaining_count() << std::endl;
@@ -405,7 +405,7 @@ void reset(const std::optional<std::vector<uint32_t>>& token_ids = std::nullopt)
 
 **Returns:** void
 
-**Throws:** `DuplicateTokenIdError` if new token_ids contains duplicates
+**Throws:** `EAleaDuplicateTokenIdError` if new token_ids contains duplicates
 
 **Behavior:**
 1. If `token_ids` provided: validates and stores as new initial tokens
@@ -417,7 +417,7 @@ void reset(const std::optional<std::vector<uint32_t>>& token_ids = std::nullopt)
 
 **Example:**
 ```cpp
-gmDeck deck(tokens1);
+GmDeck deck(tokens1);
 deck.draw_one();
 deck.draw_one();
 
@@ -519,7 +519,7 @@ if (deck.contains(102)) {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace gmFate;
+using namespace gmAlea;
 
 int main() {
     // Create deck with deterministic shuffle
@@ -527,7 +527,7 @@ int main() {
         1001, 1002, 1003, 1004, 1005,
         1006, 1007, 1008, 1009, 1010
     };
-    gmDeck deck(card_ids, 42);  // seed=42 for reproducible tests
+    GmDeck deck(card_ids, 42);  // seed=42 for reproducible tests
     
     // Draw initial hand
     auto hand = deck.draw_many(5);
@@ -560,32 +560,32 @@ int main() {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace gmFate;
+using namespace gmAlea;
 
 int main() {
     try {
         // Attempt to create deck with duplicates
         std::vector<uint32_t> bad_tokens = {1, 2, 2, 3};
-        gmDeck deck(bad_tokens);
-    } catch (const DuplicateTokenIdError& e) {
+        GmDeck deck(bad_tokens);
+    } catch (const EAleaDuplicateTokenIdError& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
     try {
         // Attempt to draw from empty deck
         std::vector<uint32_t> tokens = {1, 2, 3};
-        gmDeck deck(tokens);
+        GmDeck deck(tokens);
         deck.draw_many(3);  // Draw all
         deck.draw_one();    // ERROR: empty!
-    } catch (const DeckEmptyError& e) {
+    } catch (const EAleaDeckEmptyError& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
     try {
         // Invalid draw count
-        gmDeck deck(tokens);
+        GmDeck deck(tokens);
         deck.draw_many(0);  // ERROR: invalid count
-    } catch (const InvalidDrawCountError& e) {
+    } catch (const EAleaInvalidDrawCountError& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
@@ -601,11 +601,11 @@ int main() {
 #include "libDeck.hpp"
 #include <iostream>
 
-using namespace gmFate;
+using namespace gmAlea;
 
 int main() {
     std::vector<uint32_t> tokens = {10, 20, 30, 40, 50};
-    gmDeck deck(tokens, 123);  // Fixed seed
+    GmDeck deck(tokens, 123);  // Fixed seed
     
     // First game
     std::cout << "Game 1:" << std::endl;
@@ -679,7 +679,7 @@ The library does not use synchronization primitives (mutexes, atomics). If you n
 
 class ThreadSafeDeck {
 private:
-    gmFate::gmDeck deck;
+    gmAlea::GmDeck deck;
     mutable std::mutex mutex;
     
 public:
@@ -699,7 +699,7 @@ public:
 
 ### Option 2: Thread-Per-Deck
 
-Each thread creates its own `gmDeck` instance (no contention).
+Each thread creates its own `GmDeck` instance (no contention).
 
 ---
 
@@ -766,7 +766,7 @@ lib libDeck.obj /OUT:libDeck.lib
 
 ## License and Attribution
 
-**libDeck** is part of the **gmFate** project.
+**libDeck** is part of the **gmAlea** project.
 
 For questions, issues, or contributions, refer to the main project repository.
 
@@ -776,7 +776,7 @@ For questions, issues, or contributions, refer to the main project repository.
 
 ### Version 1.0 (Initial Release)
 
-- ✅ Core gmDeck implementation with uint32_t optimization
+- ✅ Core GmDeck implementation with uint32_t optimization
 - ✅ Four exception types for error handling
 - ✅ Deterministic shuffling with optional seed
 - ✅ Complete API documentation
