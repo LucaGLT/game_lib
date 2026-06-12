@@ -1,6 +1,6 @@
 # game_lib — Naming and Style Rules
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Date:** 2026-06-12  
 **Scope:** All C++ libraries in this workspace
 
@@ -399,4 +399,118 @@ For long or nested preprocessor blocks, add a trailing comment on `#endif`.
 // ...
 #endif // GMLOG_USE_SYSLOG
 ```
+
+---
+
+## 13. Operator, Comma, and Token Spacing
+
+### Rule SPC-1 — Binary operators
+
+Put exactly one space around binary operators.
+
+```cpp
+int total = left + right;
+bool ok = is_ready && has_tokens;
+```
+
+Applies to: `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`,
+`<`, `<=`, `>`, `>=`, `&&`, `||`, `&`, `|`, `^`, `<<`, `>>`.
+
+### Rule SPC-2 — Unary operators
+
+Do not put spaces between unary operator and operand.
+
+```cpp
+if (!is_valid) return;
+++index;
+Token* ptr = &token;
+```
+
+### Rule SPC-3 — Commas and semicolons
+
+- Put one space after each comma.
+- Never put a space before commas.
+- Never put a space before semicolons.
+
+```cpp
+draw_to_hand(player_id, count, seed);
+```
+
+### Rule SPC-4 — Parentheses spacing
+
+- Control statements: one space before `(`.
+- Function calls: no space before `(`.
+
+```cpp
+if (can_shuffle())
+{
+    shuffle_now();
+}
+
+process_turn(turn_id, actor_id);
+```
+
+---
+
+## 14. Multiline Function Signature Wrapping
+
+### Rule SIG-1 — Wrap threshold and parameter layout
+
+Keep single-line signatures only when they fit within 100 columns.
+If a signature exceeds 100 columns, use one parameter per line.
+
+### Rule SIG-2 — Alignment in multiline signatures
+
+In multiline signatures, align parameters under the opening `(`.
+
+```cpp
+Result dispatch_event(const Envelope& envelope,
+                  const std::shared_ptr<IChannel>& channel,
+                  const std::shared_ptr<ISerializer>& serializer,
+                  const std::shared_ptr<IRouter>& router);
+```
+
+### Rule SIG-3 — Closing `)` and opening brace style
+
+For multiline function definitions:
+
+- Put the closing `)` on its own line.
+- Keep opening `{` on the next line (Allman).
+
+```cpp
+void process_batch(const std::vector<Event>& events,
+               const DispatcherConfig& config,
+               bool fail_fast
+)
+{
+    // ...
+}
+```
+
+### Rule SIG-4 — Trailing qualifiers and `noexcept`
+
+Keep trailing qualifiers (`const`, `noexcept`, `override`, `final`) on the same line as
+the closing `)` when possible; if wrapping is needed, keep them with the closing `)` line.
+
+```cpp
+bool has_route(const RouteKey& key,
+               const Context& ctx
+) const noexcept;
+```
+
+---
+
+## 15. Formatting Tooling Policy
+
+### Rule TOOL-1 — Official formatter configuration
+
+The repository formatter policy is defined by:
+
+- `.editorconfig` (workspace-wide editor basics)
+- `.clang-format` (authoritative C/C++ formatting rules)
+
+### Rule TOOL-2 — Enforcement level
+
+`.clang-format` is the official enforcement source for C/C++ formatting.
+If a manual formatting choice conflicts with `.clang-format`, the formatter configuration wins.
 
