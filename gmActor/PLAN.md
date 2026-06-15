@@ -1,7 +1,7 @@
 # gmActor — Development Plan
 
-**Version:** 0.1.0  
-**Status:** Phase 1 — Planning ✅  
+**Version:** 0.4.0  
+**Status:** Phase 4 — Implementation ✅  
 **Language:** C++17 Standard  
 **Namespace:** `gmActor`
 
@@ -176,27 +176,28 @@ class InvalidEquipmentSlotError : public ActorError {};
 - [x] Confirm integration boundaries
 - [x] Confirm exceptions
 
-### Phase 2 — Headers and stubs
-- [ ] Create all headers (Ids, Enums, Tags, stats, modifiers, statuses, items, actors, adapters, events, serialization)
-- [ ] Create `.cpp` stubs for StatusContainer, InventoryState, EquipmentState, ActorStore, ActorJson
-- [ ] Add Doxygen comments on all public symbols
-- [ ] Compile cleanly with no implementation logic (safe placeholders only)
+### Phase 2 — Headers and stubs ✅
+- [x] Create all headers (Ids, Enums, Tags, stats, modifiers, statuses, items, actors, adapters, events, serialization)
+- [x] Create `.cpp` stubs for StatusContainer, InventoryState, EquipmentState, ActorStore, ActorJson
+- [x] Add Doxygen comments on all public symbols
+- [x] Compile cleanly with no implementation logic (safe placeholders only)
 
-### Phase 3 — API documentation
-- [ ] Write `gmActor_API.md` covering overview, architecture, class reference, examples, integration notes
+### Phase 3 — API documentation ✅
+- [x] Write `gmActor_API.md` covering overview, architecture, class reference, examples, integration notes
 
-### Phase 4 — Implementation (ordered)
-1. [ ] `core/` — Ids, Enums, Tags (trivial)
-2. [ ] `stats/` — StatBlock, Health helpers, TimelineStats
-3. [ ] `modifiers/` — Modifier structs + apply_modifiers evaluator
-4. [ ] `statuses/` — StatusDefinition, StatusInstance, StatusContainer
-5. [ ] `items/` — ItemDefinition, ItemState, InventoryState, EquipmentState
-6. [ ] `actors/` — ActorStateCommon, all concrete state structs
-7. [ ] `actors/ActorStore` — storage, accessors, timeline/area queries
-8. [ ] `actors/ActorQueries` — pure free-function query helpers
-9. [ ] `adapters/GmFlowActorAdapter` — gmFlow bridge
-10. [ ] `events/ActorEvents` — event payloads
-11. [ ] `serialization/` — to_json/from_json for all types + ActorSaveEnvelope
+### Phase 4 — Implementation ✅
+1. [x] `core/` — Ids, Enums, Tags (trivial)
+2. [x] `stats/` — StatBlock, Health helpers, TimelineStats
+3. [x] `modifiers/` — Modifier structs + apply_modifiers evaluator
+4. [x] `statuses/` — StatusDefinition, StatusInstance, StatusContainer
+5. [x] `items/` — ItemDefinition, ItemState, InventoryState, EquipmentState
+6. [x] `actors/` — ActorStateCommon, all concrete state structs
+7. [x] `actors/ActorStore` — storage, accessors, timeline/area queries, collection getters
+8. [x] `actors/ActorQueries` — pure free-function query helpers
+9. [x] `adapters/GmFlowActorAdapter` — gmFlow bridge (populate_flow_registry)
+10. [x] `events/ActorEvents` — event payloads
+11. [x] `serialization/` — minimal round-trip to_json/from_json (common + ActorStore)
+12. [x] `CMakeLists.txt` — static library build file
 
 ### Phase 5 — Tests (one file per subsystem)
 - [ ] test_actor_common.cpp

@@ -198,6 +198,29 @@ public:
      */
     std::vector<ActorId> targetable_actors_in_area(const AreaId& area) const;
 
+    // ── Collection accessors (for serialisation) ──────────────────────────────
+
+    /** @brief Read-only access to all hero states (for serialisation). */
+    const std::unordered_map<ActorId, HeroState>& heroes() const;
+
+    /** @brief Read-only access to all ally states (for serialisation). */
+    const std::unordered_map<ActorId, AllyState>& allies() const;
+
+    /** @brief Read-only access to all monster instance states (for serialisation). */
+    const std::unordered_map<MonsterInstanceId, MonsterInstanceState>& monster_instances() const;
+
+    /** @brief Read-only access to all monster group states (for serialisation). */
+    const std::unordered_map<ActorId, MonsterGroupState>& monster_groups() const;
+
+    /** @brief Read-only access to all boss states (for serialisation). */
+    const std::unordered_map<ActorId, BossState>& bosses() const;
+
+    /**
+     * @brief Read-only access to the optional mission system state (for serialisation).
+     * @return Reference to the optional; check `.has_value()` before dereferencing.
+     */
+    const std::optional<MissionSystemState>& mission_system_opt() const;
+
 private:
     std::unordered_map<ActorId, HeroState>             heroes_;
     std::unordered_map<ActorId, AllyState>             allies_;
