@@ -199,14 +199,14 @@ class InvalidEquipmentSlotError : public ActorError {};
 11. [x] `serialization/` — minimal round-trip to_json/from_json (common + ActorStore)
 12. [x] `CMakeLists.txt` — static library build file
 
-### Phase 5 — Tests (one file per subsystem)
-- [ ] test_actor_common.cpp
-- [ ] test_health.cpp
-- [ ] test_status_container.cpp
-- [ ] test_modifier_container.cpp
-- [ ] test_inventory_equipment.cpp
-- [ ] test_actor_store.cpp
-- [ ] test_serialization.cpp
+### Phase 5 — Tests ✅
+- [x] test_actor_common.cpp
+- [x] test_health.cpp
+- [x] test_status_container.cpp
+- [x] test_modifier_container.cpp
+- [x] test_inventory_equipment.cpp
+- [x] test_actor_store.cpp
+- [x] test_serialization.cpp
 
 ---
 
