@@ -1,4 +1,4 @@
-# GRS — Game Rule Script v0.1
+# GRS — Game Rule Script v0.2
 
 Language Specification for gmRules
 
@@ -6,11 +6,11 @@ Language Specification for gmRules
 
 ## Obiettivo
 
-GRS e un DSL testuale minimale e leggibile per descrivere regole di gioco
+GRS è un DSL testuale minimale e leggibile per descrivere regole di gioco
 senza scrivere direttamente YAML o JSON.
 
 Il testo GRS viene compilato in JSON/YAML validato contro
-`gmRules/specs/game-rules.schema.json` e poi usato per
+`gmRules/specs/game-rules.schema.json` è poi usato per
 code generation verso gmRules.
 
 ---
@@ -18,20 +18,20 @@ code generation verso gmRules.
 ## Principi di design
 
 - Leggibile come prosa strutturata.
-- Ogni blocco ha un tipo, nessun tipo e ripetuto riga per riga.
+- Ogni blocco ha un tipo, nessun tipo è ripetuto riga per riga.
 - Definizioni con `::` — distinguono dichiarazioni da valori.
 - Keyword inglesi semplici: `ON`, `IF`, `THEN`, `AND`, `OR`, `NOT`,
   `AND THEN`.
-- Parametri posizionali, senza nomi — l'ordine e fisso e documentato per tipo.
+- Parametri posizionali, senza nomi — l'ordine è fisso e documentato per tipo.
 - Ref runtime espliciti per i valori non noti a compile time.
-- Errore se un nome non e definito.
+- Errore se un nome non è definito.
 
 ---
 
 ## Struttura documento
 
-Un file `.grs` e composto da blocchi ordinati (l'ordine nei blocchi
-e libero, l'ordine dei blocchi e consigliato ma non obbligatorio):
+Un file `.grs` è composto da blocchi ordinati (l'ordine nei blocchi
+è libero, l'ordine dei blocchi è consigliato ma non obbligatorio):
 
 ```
 @meta       ... @end
@@ -43,8 +43,8 @@ e libero, l'ordine dei blocchi e consigliato ma non obbligatorio):
 @triggers   ... @end
 ```
 
-Ogni riga dentro un blocco e una definizione oppure un attributo meta.
-Il tipo dell'oggetto che si sta definendo e dato dal blocco: non si
+Ogni riga dentro un blocco è una definizione oppure un attributo meta.
+Il tipo dell'oggetto che si sta definendo è dato dal blocco: non si
 ripete mai nella riga.
 
 ---
@@ -52,7 +52,7 @@ ripete mai nella riga.
 ## Commenti
 
 ```
-# Questo e un commento — ignorato dal parser
+# Questo è un commento — ignorato dal parser
 ```
 
 ---
@@ -181,7 +181,7 @@ Ogni riga definisce un effetto nominato.
 Name :: EffectType(TargetRef, ValueArg)
 ```
 
-Argomenti posizionali per tipo di effetto:
+### Tabella argomenti posizionali (riferimento rapido)
 
 | Tipo | Arg1 | Arg2 |
 |---|---|---|
@@ -192,24 +192,181 @@ Argomenti posizionali per tipo di effetto:
 | `REMOVE_STATUS` | target_ref | status_id |
 | `ADD_TAG` | target_ref | tag |
 | `REMOVE_TAG` | target_ref | tag |
-| `DRAW_CARDS` | target_ref | deck_ref |
+| `DRAW_CARDS` | target_ref | deck_ref (+ opz. amount) |
 | `MOVE_CARD_TO_ZONE` | target_ref | zone_name |
 | `EMIT_EVENT` | target_ref | event_name |
 | `MANUAL_EFFECT` | — | event_name |
 
-Modificatori (suffissi sulla riga):
+### Modificatori (suffissi sulla riga)
 
-- `[optional]` — fallimento diventa warning
-- `[stop]` — stop_on_failure: true (default)
-- `[continue]` — stop_on_failure: false
+- `[optional]` — fallimento diventa warning, la catena prosegue
+- `[stop]` — stop_on_failure: true (default implicito)
+- `[continue]` — stop_on_failure: false, la catena prosegue anche su errore
+
+---
+
+### `MOVE_ACTOR(target, destination_ref)`
+
+Sposta l'attore target nella location indicata da `destination_ref`.
+Il ref puo essere un ref runtime (`input.destination`) oppure un literal (`sq_17`).
 
 ```grs
 @effects
-E_Move      :: MOVE_ACTOR(Target_Piece, input.destination)
-E_Damage_1  :: DEAL_DAMAGE(Target_Enemy, 1)
-E_Captured  :: APPLY_STATUS(Target_Enemy, captured)   [stop]
-E_AddKing   :: ADD_TAG(Target_Piece, king)
-E_LogMove   :: MANUAL_EFFECT(checkers.move.applied)   [optional]
+E_Move :: MOVE_ACTOR(Target_Piece, input.destination)
+# Sposta la pedina selezionata nella casella scelta dal giocatore.
+@end
+```
+
+---
+
+### `DEAL_DAMAGE(target, amount)`
+
+Riduce i punti vita del target del valore `amount`.
+Amount e un intero positivo. Il contesto (RuleContext) applica il
+clamping a zero e le transizioni di stato (KO, DEAD).
+
+```grs
+@effects
+E_Veleno_Danno :: DEAL_DAMAGE(Target_Self, 2)
+# Infligge 2 danni all'attore che porta il veleno (usato in ON_TURN_END).
+@end
+```
+
+---
+
+### `HEAL(target, amount)`
+
+Aumenta i punti vita del target del valore `amount`.
+Non supera il massimo HP. Amount e un intero positivo.
+
+```grs
+@effects
+E_Cura :: HEAL(Target_Piece, 3)
+# Recupera 3 HP all'attore selezionato.
+@end
+```
+
+---
+
+### `APPLY_STATUS(target, status_id)`
+
+Applica lo status con id `status_id` al target.
+Lo stacking e governato dalla `StackingMode` dichiarata nel blocco
+`@statuses`. Scatena automaticamente gli hook `ON_APPLY`.
+
+```grs
+@effects
+E_Captured  :: APPLY_STATUS(Target_Enemy, captured)  [stop]
+# Marca la pedina nemica come catturata. Se fallisce blocca la catena.
+
+E_Avvelena  :: APPLY_STATUS(Target_Enemy, poisoned)  [optional]
+# Tenta di avvelenare il nemico; se fallisce la catena continua.
+@end
+```
+
+---
+
+### `REMOVE_STATUS(target, status_id)`
+
+Rimuove dal target tutte le istanze dello status con id `status_id`.
+Scatena automaticamente gli hook `ON_REMOVE`.
+
+```grs
+@effects
+E_CuraVeleno :: REMOVE_STATUS(Target_Piece, poisoned)
+# Rimuove il veleno dall'attore selezionato.
+@end
+```
+
+---
+
+### `ADD_TAG(target, tag)`
+
+Aggiunge un tag classificatorio all'attore target.
+I tag sono stringe libere usate come flag semantici (es. `king`,
+`stunned`, `visible`, `elite`).
+
+```grs
+@effects
+E_AddKing :: ADD_TAG(Target_Piece, king)
+# Promuove la pedina a dama aggiungendo il tag king.
+@end
+```
+
+---
+
+### `REMOVE_TAG(target, tag)`
+
+Rimuove un tag dall'attore target. Nessun effetto se il tag non e presente.
+
+```grs
+@effects
+E_RimuoviStordito :: REMOVE_TAG(Target_Piece, stunned)
+# Fine stordimento: rimuove il tag stunned.
+@end
+```
+
+---
+
+### `DRAW_CARDS(target, deck_ref)`
+
+Fa pescare `amount` carte dal mazzo `deck_ref` per il target.
+Il ref puo essere un ID mazzo fisso o un ref runtime.
+`amount` si specifica con il modificatore implicito posizionale.
+
+Nota: in GRS Arg1 e il target, Arg2 e il deck_ref; la quantita
+e un terzo argomento opzionale (default 1).
+
+```grs
+@effects
+E_PescaCarta :: DRAW_CARDS(Target_Piece, input.deck_id, 2)
+# Il giocatore pesca 2 carte dal mazzo indicato a runtime.
+@end
+```
+
+---
+
+### `MOVE_CARD_TO_ZONE(target, zone_name)`
+
+Sposta una carta (il target e di tipo CARD) nella zona `zone_name`
+all'interno del mazzo da cui proviene.
+Typical zones: `hand`, `discard`, `banish`, `play`.
+
+```grs
+@effects
+E_ScartaCarta :: MOVE_CARD_TO_ZONE(Target_Card, discard)
+# Manda la carta selezionata negli scarti.
+@end
+```
+
+---
+
+### `EMIT_EVENT(target, event_name)`
+
+Emette un evento nominato verso il bus eventi del gioco (gmDispatch o
+equivalente), con il target come soggetto.
+Non muta lo stato — serve per notifiche, logging, reaction chain.
+
+```grs
+@effects
+E_NotificaDanno :: EMIT_EVENT(Target_Enemy, checkers.piece.damaged)
+# Notifica che la pedina nemica ha subito danno, senza mutare stato.
+@end
+```
+
+---
+
+### `MANUAL_EFFECT(event_name)`
+
+Escape hatch: emette un evento ma non muta nulla.
+Usato per azioni game-specific che il runtime gestisce fuori da gmRules,
+o per log/debug/hook personalizzati.
+Non ha target (Arg1 assente).
+
+```grs
+@effects
+E_LogMove :: MANUAL_EFFECT(checkers.move.applied)  [optional]
+# Segnala al game loop che e avvenuta una mossa. Non fa nulla di concreto.
 @end
 ```
 
@@ -286,26 +443,171 @@ Ogni status usa sotto-blocchi inline indentati.
 
 ```
 Name :: StackingMode DurationType [amount N] [value V]
-    ON_APPLY     EffectRef [AND THEN EffectRef ...]
-    ON_REMOVE    EffectRef
-    ON_TURN_START  EffectRef
-    ON_TURN_END  EffectRef
+    ON_APPLY      EffectRef [AND THEN EffectRef ...]
+    ON_REMOVE     EffectRef
+    ON_TURN_START EffectRef
+    ON_TURN_END   EffectRef
 ```
 
-`StackingMode`: `REFRESH`, `ADD_STACK`, `IGNORE_NEW`, `REPLACE`,
-`UNIQUE_BY_SOURCE`
+---
 
-`DurationType`: `PERMANENT`, `UNTIL_REMOVED`, `FOR_N amount N`,
-`UNTIL_NEXT_TURN`, `WHILE_IN_LOCATION value V`
+### StackingMode — cosa succede se lo stesso status viene applicato due volte
+
+#### `REFRESH`
+
+Se il target ha gia lo status, la durata viene azzerata e ripartita
+dall'inizio. Gli stack rimangono a 1. Il blocco `ON_APPLY` non viene
+rieseguito.
+
+```grs
+@statuses
+burnig :: REFRESH FOR_N amount 3
+    ON_TURN_END DEAL_DAMAGE(Target_Self, 1) [optional]
+# Una seconda applicazione di burning azzera il conto a 3 turni,
+# senza aggiungere danno doppio.
+@end
+```
+
+#### `ADD_STACK`
+
+Ogni applicazione aggiunge uno stack fino al massimo (`max_stacks`).
+Usato per effetti che si intensificano: piu stack = piu danno/effetto.
+Se si raggiunge il massimo, si comporta come `REFRESH`.
+
+```grs
+@statuses
+frenzy :: ADD_STACK UNTIL_REMOVED
+    ON_APPLY ADD_TAG(Target_Piece, frenzy)
+# Prima applicazione: 1 stack. Seconda: 2 stack. Effetto scala con gli stack.
+# Limite di stack dichiarato nel compilatore (es. max_stacks=3).
+@end
+```
+
+#### `IGNORE_NEW`
+
+Se lo status e gia presente, la nuova applicazione viene scartata.
+Lo status esistente rimane immutato. Utile per stati "una tantum" che
+non devono essere resettati.
 
 ```grs
 @statuses
 captured :: IGNORE_NEW UNTIL_REMOVED
     ON_APPLY ADD_TAG(Target_Piece, captured)
+# Una pedina gia catturata non puo essere catturata una seconda volta.
+@end
+```
 
+#### `REPLACE`
+
+L'istanza esistente viene rimossa (con `ON_REMOVE`) e sostituita da
+una nuova istanza fresca (con `ON_APPLY`). Usato quando la nuova
+applicazione deve resettare completamente lo status.
+
+```grs
+@statuses
+shield :: REPLACE FOR_N amount 2
+    ON_APPLY   ADD_TAG(Target_Piece, shielded)
+    ON_REMOVE  REMOVE_TAG(Target_Piece, shielded)
+# Applicare uno scudo mentre e gia attivo cancella il vecchio
+# e ricomincia da 2 turni.
+@end
+```
+
+#### `UNIQUE_BY_SOURCE`
+
+Permette al massimo una istanza per sorgente (`source_id`).
+Se la stessa sorgente riapplica lo status, fa REFRESH.
+Se una sorgente diversa applica lo status, aggiunge una seconda istanza.
+Usato per effetti come maledizioni che piu attori possono applicare
+indipendentemente.
+
+```grs
+@statuses
+curse :: UNIQUE_BY_SOURCE FOR_N amount 5
+    ON_TURN_START DEAL_DAMAGE(Target_Self, 1) [optional]
+# Strega A e Strega B possono entrambe maledire lo stesso bersaglio:
+# il bersaglio subisce danno due volte per turno.
+# Se Strega A maledice di nuovo, la sua istanza viene rinnovata.
+@end
+```
+
+---
+
+### DurationType — quando scade lo status
+
+#### `PERMANENT`
+
+Lo status non scade mai automaticamente.
+Puo essere rimosso solo da `REMOVE_STATUS` esplicito o da `ON_REMOVE`
+triggerato da altra regola.
+
+```grs
+@statuses
+blind :: IGNORE_NEW PERMANENT
+    ON_APPLY  ADD_TAG(Target_Piece, blind)
+    ON_REMOVE REMOVE_TAG(Target_Piece, blind)
+# Cecita permanente: rimane finche una cura specifica non la rimuove.
+@end
+```
+
+#### `UNTIL_REMOVED`
+
+Come PERMANENT, ma il nome segnala esplicitamente l'intento:
+lo status dura finche non viene rimosso da una regola esplicita.
+Semantica identica a PERMANENT nel runtime; differisce solo
+nell'intenzione del designer.
+
+```grs
+@statuses
+captured :: IGNORE_NEW UNTIL_REMOVED
+    ON_APPLY ADD_TAG(Target_Piece, captured)
+# La pedina resta catturata finche il game loop non chiama REMOVE_STATUS.
+@end
+```
+
+#### `FOR_N amount N`
+
+Lo status dura `N` attivazioni dell'attore che lo porta.
+Ogni volta che scatta `ON_TURN_END` per quell'attore,
+il contatore decresce. A zero lo status scade e scatta `ON_REMOVE`.
+
+```grs
+@statuses
 poisoned :: REFRESH FOR_N amount 3
     ON_TURN_END DEAL_DAMAGE(Target_Self, 1) [optional]
     ON_REMOVE   REMOVE_TAG(Target_Self, poisoned)
+# Il veleno dura 3 turni dell'attore avvelenato,
+# poi si rimuove automaticamente.
+@end
+```
+
+#### `UNTIL_NEXT_TURN`
+
+Lo status scade alla fine del turno corrente dell'attore che lo porta
+(alla prima occorrenza di `ON_TURN_END` dopo l'applicazione).
+Usato per buff/debuff di un solo turno.
+
+```grs
+@statuses
+haste :: REFRESH UNTIL_NEXT_TURN
+    ON_APPLY  ADD_TAG(Target_Piece, haste)
+    ON_REMOVE REMOVE_TAG(Target_Piece, haste)
+# Celerità dura solo fino alla fine del turno corrente.
+@end
+```
+
+#### `WHILE_IN_LOCATION value V`
+
+Lo status e attivo finche l'attore rimane nella location `V`.
+Appena l'attore lascia quella location (rilevato da `ACTOR_MOVED`
+oppure da check esplicito nel game loop), lo status scade.
+
+```grs
+@statuses
+high_ground :: REFRESH WHILE_IN_LOCATION value sq_15
+    ON_APPLY  ADD_TAG(Target_Piece, elevated)
+    ON_REMOVE REMOVE_TAG(Target_Piece, elevated)
+# Il bonus altura dura solo mentre la pedina e sulla casella sq_15.
 @end
 ```
 
@@ -322,20 +624,166 @@ Name [priority=N] [disabled] ::
     THEN EffectChain
 ```
 
-`EventType`: `ACTION_SUBMITTED`, `ACTION_COMPLETED`, `CARD_PLAYED`,
-`ACTOR_DAMAGED`, `ACTOR_MOVED`, `STATUS_APPLIED`, `TIME_REACHED`,
-`LOCATION_ENTERED`
+I ref disponibili negli `@triggers` sono `event.xxx` (non `input.xxx`).
+I campi tipici dell'evento sono:
+
+| Campo evento | Contenuto |
+|---|---|
+| `event.actor_id` | Attore che ha generato l'evento |
+| `event.target_id` | Attore/oggetto bersaglio dell'evento |
+| `event.from_location` | Casella di partenza (per MOVED/ENTERED) |
+| `event.to_location` | Casella di arrivo (per MOVED/ENTERED) |
+| `event.source_id` | Chi ha causato l'evento (effetto/sorgente) |
+| `event.status_id` | Status coinvolto (per STATUS_APPLIED) |
+| `event.amount` | Quantita numerica (per DAMAGED) |
+
+---
+
+### `ACTION_SUBMITTED`
+
+L'evento scatta nel momento in cui un'azione e stata inviata al
+flow controller, **prima** della sua esecuzione. Utile per intercettare
+e annullare o modificare azioni (es. blocco per stordimento).
 
 ```grs
 @triggers
-T_PostMove_Cleanup [priority=100] ::
+T_BlockIfStunned [priority=50] ::
+    ON_EVENT ACTION_SUBMITTED
+    IF ACTOR_HAS_TAG(event.actor_id, stunned)
+    THEN MANUAL_EFFECT(game.action.blocked)
+# Se l'attore e stordito, l'azione viene intercettata
+# e il game loop riceve l'evento di blocco.
+@end
+```
+
+---
+
+### `ACTION_COMPLETED`
+
+L'evento scatta dopo che un'azione e stata eseguita completamente.
+Usato per cleanup di fine azione (rimuovere status temporanei,
+aggregare punteggi, avanzare fase).
+
+```grs
+@triggers
+T_CleanupCaptured [priority=100] ::
     ON_EVENT ACTION_COMPLETED
     THEN MANUAL_EFFECT(checkers.cleanup.captured) [optional]
+# Dopo ogni azione, notifica il game loop che deve rimuovere
+# le pedine con status captured dalla scacchiera.
+@end
+```
 
-T_PostMove_Promotion [priority=200] ::
+---
+
+### `CARD_PLAYED`
+
+L'evento scatta quando un attore gioca una carta dalla mano.
+Disponibili `event.actor_id` (chi ha giocato) e `event.target_id`
+(la carta giocata).
+
+```grs
+@triggers
+T_OnAttackCard [priority=100] ::
+    ON_EVENT CARD_PLAYED
+    IF TARGET_HAS_TAG(attack_card)
+    THEN EMIT_EVENT(Target_Enemy, game.attack_card.played)
+# Ogni volta che viene giocata una carta con tag attack_card,
+# notifica il bus eventi.
+@end
+```
+
+---
+
+### `ACTOR_DAMAGED`
+
+L'evento scatta dopo che un attore ha subito danno.
+Disponibili `event.actor_id` (chi ha subito) e `event.amount`
+(quantita di danno ricevuto).
+
+```grs
+@triggers
+T_RageSpark [priority=100] ::
+    ON_EVENT ACTOR_DAMAGED
+    IF ACTOR_HAS_TAG(event.actor_id, berserker)
+    THEN ADD_TAG(Target_Self, enraged) [optional]
+# Un berserker che subisce danno guadagna il tag enraged.
+@end
+```
+
+---
+
+### `ACTOR_MOVED`
+
+L'evento scatta dopo che un attore si e spostato.
+Disponibili `event.actor_id`, `event.from_location`, `event.to_location`.
+Usato per promozioni, trappole, effetti geografici.
+
+```grs
+@triggers
+T_Promotion [priority=200] ::
     ON_EVENT ACTOR_MOVED
     IF ACTOR_EXISTS(event.actor_id) AND LOCATION_EXISTS(event.to_location)
     THEN MANUAL_EFFECT(checkers.trigger.promotion) [optional]
+# Dopo ogni spostamento, notifica il game loop che deve
+# controllare se la pedina va promossa.
+@end
+```
+
+---
+
+### `STATUS_APPLIED`
+
+L'evento scatta dopo che uno status e stato applicato a un attore.
+Disponibili `event.actor_id` (chi ha ricevuto) e `event.status_id`
+(quale status e stato applicato).
+
+```grs
+@triggers
+T_NotifyCapture [priority=100] ::
+    ON_EVENT STATUS_APPLIED
+    IF TARGET_HAS_STATUS(captured)
+    THEN MANUAL_EFFECT(checkers.piece.capture.confirmed)
+# Ogni volta che uno status captured viene applicato,
+# informa il sistema di scoring.
+@end
+```
+
+---
+
+### `TIME_REACHED`
+
+L'evento scatta quando il clock interno del gioco raggiunge
+un valore specifico (tick, round, fase). Disponibile `event.amount`
+(il valore di tempo raggiunto).
+
+```grs
+@triggers
+T_EndGame [priority=999] ::
+    ON_EVENT TIME_REACHED
+    IF ALWAYS
+    THEN MANUAL_EFFECT(game.end_of_round)
+# Alla fine di ogni round, avvia la procedura di fine round.
+@end
+```
+
+---
+
+### `LOCATION_ENTERED`
+
+L'evento scatta nel momento in cui un attore entra in una location.
+Differisce da `ACTOR_MOVED`: MOVED scatta dopo lo spostamento completo,
+ENTERED scatta nel momento dell'ingresso, utile per trappole e
+checks geografici immediati.
+Disponibili `event.actor_id` e `event.to_location`.
+
+```grs
+@triggers
+T_TrapSquare [priority=100] ::
+    ON_EVENT LOCATION_ENTERED
+    IF LOCATION_HAS_TAG(event.to_location, trapped)
+    THEN DEAL_DAMAGE(Target_Self, 2)
+# Entrare in una casella con tag trapped infligge 2 danno immediatamente.
 @end
 ```
 
