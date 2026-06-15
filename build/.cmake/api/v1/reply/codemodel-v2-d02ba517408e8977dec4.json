@@ -8,7 +8,8 @@
 					"build" : ".",
 					"childIndexes" : 
 					[
-						1
+						1,
+						2
 					],
 					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
 					"minimumCMakeVersion" : 
@@ -32,10 +33,31 @@
 					[
 						0,
 						1,
+						4,
+						5,
+						6,
+						12
+					]
+				},
+				{
+					"build" : "gmRules",
+					"jsonFile" : "directory-gmRules-Debug-54df7899aec3391b89cd.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "gmRules",
+					"targetIndexes" : 
+					[
 						2,
 						3,
-						4,
-						5
+						7,
+						8,
+						9,
+						10,
+						11
 					]
 				}
 			],
@@ -46,7 +68,8 @@
 					"directoryIndexes" : 
 					[
 						0,
-						1
+						1,
+						2
 					],
 					"name" : "game_lib",
 					"targetIndexes" : 
@@ -56,7 +79,14 @@
 						2,
 						3,
 						4,
-						5
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12
 					]
 				}
 			],
@@ -74,6 +104,20 @@
 					"id" : "gmAlea_all_tests::@f84d063891cd2db68551",
 					"jsonFile" : "target-gmAlea_all_tests-Debug-e53750367260877c2cf2.json",
 					"name" : "gmAlea_all_tests",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "gmRules::@299625f486f42b2943d8",
+					"jsonFile" : "target-gmRules-Debug-f7f10d59ecd5117f230a.json",
+					"name" : "gmRules",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "gmRules_all_tests::@299625f486f42b2943d8",
+					"jsonFile" : "target-gmRules_all_tests-Debug-af2d1756a681b127f207.json",
+					"name" : "gmRules_all_tests",
 					"projectIndex" : 0
 				},
 				{
@@ -95,6 +139,41 @@
 					"id" : "test_gmDice::@f84d063891cd2db68551",
 					"jsonFile" : "target-test_gmDice-Debug-c2fe24f20a7ba88855f9.json",
 					"name" : "test_gmDice",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_gmRules_condition_evaluator::@299625f486f42b2943d8",
+					"jsonFile" : "target-test_gmRules_condition_evaluator-Debug-da244ce199b247d75204.json",
+					"name" : "test_gmRules_condition_evaluator",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_gmRules_effect_resolver::@299625f486f42b2943d8",
+					"jsonFile" : "target-test_gmRules_effect_resolver-Debug-cc243324f132f17df75a.json",
+					"name" : "test_gmRules_effect_resolver",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_gmRules_integration::@299625f486f42b2943d8",
+					"jsonFile" : "target-test_gmRules_integration-Debug-aa5236c99a7290ceadeb.json",
+					"name" : "test_gmRules_integration",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_gmRules_status_engine::@299625f486f42b2943d8",
+					"jsonFile" : "target-test_gmRules_status_engine-Debug-3337f8eca8eed556d17c.json",
+					"name" : "test_gmRules_status_engine",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_gmRules_target_resolver::@299625f486f42b2943d8",
+					"jsonFile" : "target-test_gmRules_target_resolver-Debug-b211d4ed4a694cd58b39.json",
+					"name" : "test_gmRules_target_resolver",
 					"projectIndex" : 0
 				},
 				{

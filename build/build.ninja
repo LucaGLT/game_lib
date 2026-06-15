@@ -355,6 +355,709 @@ build gmAlea/CMakeFiles/gmAlea_all_tests | ${cmake_ninja_workdir}gmAlea/CMakeFil
   DESC = === Running all gmAlea tests ===
 
 # =============================================================================
+# Write statements declared in CMakeLists.txt:
+# C:/_GLT_/Qt Prj/game_lib/CMakeLists.txt
+# =============================================================================
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target gmRules
+
+
+#############################################
+# Order-only phony target for gmRules
+
+build cmake_object_order_depends_target_gmRules: phony || .
+
+build gmRules/CMakeFiles/gmRules.dir/core/RuleResult.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/target/TargetResult.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+build gmRules/CMakeFiles/gmRules.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__gmRules_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_gmRules
+  DEP_FILE = gmRules\CMakeFiles\gmRules.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\gmRules.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_PDB = gmRules\gmRules.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target gmRules
+
+
+#############################################
+# Link the static library gmRules\gmRules.lib
+
+build gmRules/gmRules.lib: CXX_STATIC_LIBRARY_LINKER__gmRules_Debug gmRules/CMakeFiles/gmRules.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/gmRules.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/gmRules.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/gmRules.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/gmRules.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/gmRules.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/gmRules.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/gmRules.dir/facade/gmRulesEngine.cpp.obj
+  LANGUAGE_COMPILE_FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  OBJECT_DIR = gmRules\CMakeFiles\gmRules.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\gmRules.dir\gmRules.pdb
+  TARGET_FILE = gmRules\gmRules.lib
+  TARGET_PDB = gmRules\gmRules.pdb
+
+# =============================================================================
+# Object build statements for EXECUTABLE target test_gmRules_target_resolver
+
+
+#############################################
+# Order-only phony target for test_gmRules_target_resolver
+
+build cmake_object_order_depends_target_test_gmRules_target_resolver: phony || .
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/core/RuleResult.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/target/TargetResult.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_target_resolver.dir/tests/test_target_resolver.cpp.obj: CXX_COMPILER__test_gmRules_target_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/tests/test_target_resolver.cpp || cmake_object_order_depends_target_test_gmRules_target_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\tests\test_target_resolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\tests
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target test_gmRules_target_resolver
+
+
+#############################################
+# Link the executable gmRules\test_gmRules_target_resolver.exe
+
+build gmRules/test_gmRules_target_resolver.exe: CXX_EXECUTABLE_LINKER__test_gmRules_target_resolver_Debug gmRules/CMakeFiles/test_gmRules_target_resolver.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/facade/gmRulesEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_target_resolver.dir/tests/test_target_resolver.cpp.obj
+  FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  LINK_FLAGS = -Xlinker /subsystem:console  -fuse-ld=lld-link
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_target_resolver.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_target_resolver.dir\
+  TARGET_FILE = gmRules\test_gmRules_target_resolver.exe
+  TARGET_IMPLIB = gmRules\test_gmRules_target_resolver.lib
+  TARGET_PDB = gmRules\test_gmRules_target_resolver.pdb
+
+# =============================================================================
+# Object build statements for EXECUTABLE target test_gmRules_condition_evaluator
+
+
+#############################################
+# Order-only phony target for test_gmRules_condition_evaluator
+
+build cmake_object_order_depends_target_test_gmRules_condition_evaluator: phony || .
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/core/RuleResult.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/target/TargetResult.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+build gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/tests/test_condition_evaluator.cpp.obj: CXX_COMPILER__test_gmRules_condition_evaluator_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/tests/test_condition_evaluator.cpp || cmake_object_order_depends_target_test_gmRules_condition_evaluator
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\tests\test_condition_evaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\tests
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target test_gmRules_condition_evaluator
+
+
+#############################################
+# Link the executable gmRules\test_gmRules_condition_evaluator.exe
+
+build gmRules/test_gmRules_condition_evaluator.exe: CXX_EXECUTABLE_LINKER__test_gmRules_condition_evaluator_Debug gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/facade/gmRulesEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir/tests/test_condition_evaluator.cpp.obj
+  FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  LINK_FLAGS = -Xlinker /subsystem:console  -fuse-ld=lld-link
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_condition_evaluator.dir\
+  TARGET_FILE = gmRules\test_gmRules_condition_evaluator.exe
+  TARGET_IMPLIB = gmRules\test_gmRules_condition_evaluator.lib
+  TARGET_PDB = gmRules\test_gmRules_condition_evaluator.pdb
+
+# =============================================================================
+# Object build statements for EXECUTABLE target test_gmRules_effect_resolver
+
+
+#############################################
+# Order-only phony target for test_gmRules_effect_resolver
+
+build cmake_object_order_depends_target_test_gmRules_effect_resolver: phony || .
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/core/RuleResult.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/target/TargetResult.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+build gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/tests/test_effect_resolver.cpp.obj: CXX_COMPILER__test_gmRules_effect_resolver_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/tests/test_effect_resolver.cpp || cmake_object_order_depends_target_test_gmRules_effect_resolver
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\tests\test_effect_resolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\tests
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target test_gmRules_effect_resolver
+
+
+#############################################
+# Link the executable gmRules\test_gmRules_effect_resolver.exe
+
+build gmRules/test_gmRules_effect_resolver.exe: CXX_EXECUTABLE_LINKER__test_gmRules_effect_resolver_Debug gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/facade/gmRulesEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_effect_resolver.dir/tests/test_effect_resolver.cpp.obj
+  FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  LINK_FLAGS = -Xlinker /subsystem:console  -fuse-ld=lld-link
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_effect_resolver.dir\
+  TARGET_FILE = gmRules\test_gmRules_effect_resolver.exe
+  TARGET_IMPLIB = gmRules\test_gmRules_effect_resolver.lib
+  TARGET_PDB = gmRules\test_gmRules_effect_resolver.pdb
+
+# =============================================================================
+# Object build statements for EXECUTABLE target test_gmRules_status_engine
+
+
+#############################################
+# Order-only phony target for test_gmRules_status_engine
+
+build cmake_object_order_depends_target_test_gmRules_status_engine: phony || .
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/core/RuleResult.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/target/TargetResult.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+build gmRules/CMakeFiles/test_gmRules_status_engine.dir/tests/test_status_engine.cpp.obj: CXX_COMPILER__test_gmRules_status_engine_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/tests/test_status_engine.cpp || cmake_object_order_depends_target_test_gmRules_status_engine
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_status_engine.dir\tests\test_status_engine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir\tests
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target test_gmRules_status_engine
+
+
+#############################################
+# Link the executable gmRules\test_gmRules_status_engine.exe
+
+build gmRules/test_gmRules_status_engine.exe: CXX_EXECUTABLE_LINKER__test_gmRules_status_engine_Debug gmRules/CMakeFiles/test_gmRules_status_engine.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/facade/gmRulesEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_status_engine.dir/tests/test_status_engine.cpp.obj
+  FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  LINK_FLAGS = -Xlinker /subsystem:console  -fuse-ld=lld-link
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_status_engine.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_status_engine.dir\
+  TARGET_FILE = gmRules\test_gmRules_status_engine.exe
+  TARGET_IMPLIB = gmRules\test_gmRules_status_engine.lib
+  TARGET_PDB = gmRules\test_gmRules_status_engine.pdb
+
+# =============================================================================
+# Object build statements for EXECUTABLE target test_gmRules_integration
+
+
+#############################################
+# Order-only phony target for test_gmRules_integration
+
+build cmake_object_order_depends_target_test_gmRules_integration: phony || .
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/core/RuleResult.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/core/RuleResult.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\core\RuleResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\core
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/target/TargetResult.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResult.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\target\TargetResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/target/TargetResolver.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/target/TargetResolver.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\target\TargetResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\target
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/condition/ConditionEvaluator.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/condition/ConditionEvaluator.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\condition\ConditionEvaluator.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\condition
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/effect/EffectResult.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResult.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\effect\EffectResult.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/effect/EffectResolver.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/effect/EffectResolver.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\effect\EffectResolver.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\effect
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/status/StatusEngine.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/status/StatusEngine.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\status\StatusEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\status
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/facade/gmRulesEngine.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/facade/gmRulesEngine.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\facade\gmRulesEngine.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\facade
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+build gmRules/CMakeFiles/test_gmRules_integration.dir/tests/test_rules_integration.cpp.obj: CXX_COMPILER__test_gmRules_integration_unscanned_Debug C$:/_GLT_/Qt$ Prj/game_lib/gmRules/tests/test_rules_integration.cpp || cmake_object_order_depends_target_test_gmRules_integration
+  DEP_FILE = gmRules\CMakeFiles\test_gmRules_integration.dir\tests\test_rules_integration.cpp.obj.d
+  FLAGS = -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  INCLUDES = -I"C:/_GLT_/Qt Prj/game_lib"
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  OBJECT_FILE_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir\tests
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target test_gmRules_integration
+
+
+#############################################
+# Link the executable gmRules\test_gmRules_integration.exe
+
+build gmRules/test_gmRules_integration.exe: CXX_EXECUTABLE_LINKER__test_gmRules_integration_Debug gmRules/CMakeFiles/test_gmRules_integration.dir/core/RuleResult.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/target/TargetResult.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/target/TargetResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/condition/ConditionEvaluator.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/effect/EffectResult.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/effect/EffectResolver.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/status/StatusEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/facade/gmRulesEngine.cpp.obj gmRules/CMakeFiles/test_gmRules_integration.dir/tests/test_rules_integration.cpp.obj
+  FLAGS = -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd
+  LINK_FLAGS = -Xlinker /subsystem:console  -fuse-ld=lld-link
+  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames
+  OBJECT_DIR = gmRules\CMakeFiles\test_gmRules_integration.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = gmRules\CMakeFiles\test_gmRules_integration.dir\
+  TARGET_FILE = gmRules\test_gmRules_integration.exe
+  TARGET_IMPLIB = gmRules\test_gmRules_integration.lib
+  TARGET_PDB = gmRules\test_gmRules_integration.pdb
+
+
+#############################################
+# Utility command for gmRules_all_tests
+
+build gmRules/gmRules_all_tests: phony gmRules/CMakeFiles/gmRules_all_tests gmRules/test_gmRules_condition_evaluator.exe gmRules/test_gmRules_effect_resolver.exe gmRules/test_gmRules_integration.exe gmRules/test_gmRules_status_engine.exe gmRules/test_gmRules_target_resolver.exe
+
+
+#############################################
+# Utility command for test
+
+build gmRules/CMakeFiles/test.util: CUSTOM_COMMAND
+  COMMAND = C:\windows\system32\cmd.exe /C "cd /D "C:\_GLT_\Qt Prj\game_lib\build\gmRules" && "C:\Program Files\CMake\bin\ctest.exe" --force-new-ctest-process "
+  DESC = Running tests...
+  pool = console
+  restat = 1
+
+build gmRules/test: phony gmRules/CMakeFiles/test.util
+
+
+#############################################
+# Utility command for edit_cache
+
+build gmRules/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = C:\windows\system32\cmd.exe /C "cd /D "C:\_GLT_\Qt Prj\game_lib\build\gmRules" && "C:\Program Files\CMake\bin\cmake-gui.exe" -S"C:\_GLT_\Qt Prj\game_lib" -B"C:\_GLT_\Qt Prj\game_lib\build""
+  DESC = Running CMake cache editor...
+  pool = console
+  restat = 1
+
+build gmRules/edit_cache: phony gmRules/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build gmRules/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = C:\windows\system32\cmd.exe /C "cd /D "C:\_GLT_\Qt Prj\game_lib\build\gmRules" && "C:\Program Files\CMake\bin\cmake.exe" --regenerate-during-build -S"C:\_GLT_\Qt Prj\game_lib" -B"C:\_GLT_\Qt Prj\game_lib\build""
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build gmRules/rebuild_cache: phony gmRules/CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Custom command for gmRules\CMakeFiles\gmRules_all_tests
+
+build gmRules/CMakeFiles/gmRules_all_tests | ${cmake_ninja_workdir}gmRules/CMakeFiles/gmRules_all_tests: CUSTOM_COMMAND gmRules/test_gmRules_target_resolver.exe gmRules/test_gmRules_condition_evaluator.exe gmRules/test_gmRules_effect_resolver.exe gmRules/test_gmRules_status_engine.exe gmRules/test_gmRules_integration.exe || gmRules/test_gmRules_condition_evaluator.exe gmRules/test_gmRules_effect_resolver.exe gmRules/test_gmRules_integration.exe gmRules/test_gmRules_status_engine.exe gmRules/test_gmRules_target_resolver.exe
+  COMMAND = C:\windows\system32\cmd.exe /C "cd /D "C:\_GLT_\Qt Prj\game_lib\build" && "C:\Program Files\CMake\bin\ctest.exe" --output-on-failure"
+  DESC = === Running all gmRules tests ===
+
+# =============================================================================
 # Target aliases.
 
 build gmAlea: phony gmAlea/gmAlea.lib
@@ -362,6 +1065,12 @@ build gmAlea: phony gmAlea/gmAlea.lib
 build gmAlea.lib: phony gmAlea/gmAlea.lib
 
 build gmAlea_all_tests: phony gmAlea/gmAlea_all_tests
+
+build gmRules: phony gmRules/gmRules.lib
+
+build gmRules.lib: phony gmRules/gmRules.lib
+
+build gmRules_all_tests: phony gmRules/gmRules_all_tests
 
 build test_gmCompDeck: phony gmAlea/test_gmCompDeck.exe
 
@@ -375,6 +1084,26 @@ build test_gmDice: phony gmAlea/test_gmDice.exe
 
 build test_gmDice.exe: phony gmAlea/test_gmDice.exe
 
+build test_gmRules_condition_evaluator: phony gmRules/test_gmRules_condition_evaluator.exe
+
+build test_gmRules_condition_evaluator.exe: phony gmRules/test_gmRules_condition_evaluator.exe
+
+build test_gmRules_effect_resolver: phony gmRules/test_gmRules_effect_resolver.exe
+
+build test_gmRules_effect_resolver.exe: phony gmRules/test_gmRules_effect_resolver.exe
+
+build test_gmRules_integration: phony gmRules/test_gmRules_integration.exe
+
+build test_gmRules_integration.exe: phony gmRules/test_gmRules_integration.exe
+
+build test_gmRules_status_engine: phony gmRules/test_gmRules_status_engine.exe
+
+build test_gmRules_status_engine.exe: phony gmRules/test_gmRules_status_engine.exe
+
+build test_gmRules_target_resolver: phony gmRules/test_gmRules_target_resolver.exe
+
+build test_gmRules_target_resolver.exe: phony gmRules/test_gmRules_target_resolver.exe
+
 build test_stdDice: phony gmAlea/test_stdDice.exe
 
 build test_stdDice.exe: phony gmAlea/test_stdDice.exe
@@ -387,7 +1116,7 @@ build test_stdDice.exe: phony gmAlea/test_stdDice.exe
 #############################################
 # Folder: C:/_GLT_/Qt Prj/game_lib/build
 
-build all: phony gmAlea/all
+build all: phony gmAlea/all gmRules/all
 
 # =============================================================================
 
@@ -397,20 +1126,27 @@ build all: phony gmAlea/all
 build gmAlea/all: phony gmAlea/gmAlea.lib gmAlea/test_gmDeck_v2.exe gmAlea/test_gmCompDeck.exe gmAlea/test_gmDice.exe gmAlea/test_stdDice.exe
 
 # =============================================================================
+
+#############################################
+# Folder: C:/_GLT_/Qt Prj/game_lib/build/gmRules
+
+build gmRules/all: phony gmRules/gmRules.lib gmRules/test_gmRules_target_resolver.exe gmRules/test_gmRules_condition_evaluator.exe gmRules/test_gmRules_effect_resolver.exe gmRules/test_gmRules_status_engine.exe gmRules/test_gmRules_integration.exe
+
+# =============================================================================
 # Built-in targets
 
 
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeRCInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/GNU.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-MSVC.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/WindowsPaths.cmake C$:/_GLT_/Qt$ Prj/game_lib/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmAlea/CMakeLists.txt CMakeCache.txt CMakeFiles/3.31.5/CMakeCXXCompiler.cmake CMakeFiles/3.31.5/CMakeRCCompiler.cmake CMakeFiles/3.31.5/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeRCInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/GNU.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-MSVC.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/WindowsPaths.cmake C$:/_GLT_/Qt$ Prj/game_lib/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmAlea/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmRules/CMakeLists.txt CMakeCache.txt CMakeFiles/3.31.5/CMakeCXXCompiler.cmake CMakeFiles/3.31.5/CMakeRCCompiler.cmake CMakeFiles/3.31.5/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeRCInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/GNU.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-MSVC.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/WindowsPaths.cmake C$:/_GLT_/Qt$ Prj/game_lib/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmAlea/CMakeLists.txt CMakeCache.txt CMakeFiles/3.31.5/CMakeCXXCompiler.cmake CMakeFiles/3.31.5/CMakeRCCompiler.cmake CMakeFiles/3.31.5/CMakeSystem.cmake: phony
+build C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeRCInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Compiler/Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCXXLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Internal/CMakeCommonLinkerInformation.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/GNU.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Linker/LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-LLD.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Linker/Windows-MSVC.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang-CXX.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Clang.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows-Initialize.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/Windows.cmake C$:/Program$ Files/CMake/share/cmake-3.31/Modules/Platform/WindowsPaths.cmake C$:/_GLT_/Qt$ Prj/game_lib/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmAlea/CMakeLists.txt C$:/_GLT_/Qt$ Prj/game_lib/gmRules/CMakeLists.txt CMakeCache.txt CMakeFiles/3.31.5/CMakeCXXCompiler.cmake CMakeFiles/3.31.5/CMakeRCCompiler.cmake CMakeFiles/3.31.5/CMakeSystem.cmake: phony
 
 
 #############################################

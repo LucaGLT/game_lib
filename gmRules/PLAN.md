@@ -171,7 +171,7 @@ class EStatusError            : public ERulesError {};
 
 ### Phase 3 — API documentation
 
-- [ ] Write `gmRules_API.md`
+- [x] Write `gmRules_API.md`
 
 ### Phase 4 — Implementation ✅
 

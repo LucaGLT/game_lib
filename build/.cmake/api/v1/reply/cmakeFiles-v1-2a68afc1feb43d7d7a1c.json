@@ -138,6 +138,9 @@
 		},
 		{
 			"path" : "gmAlea/CMakeLists.txt"
+		},
+		{
+			"path" : "gmRules/CMakeLists.txt"
 		}
 	],
 	"kind" : "cmakeFiles",
