@@ -1,6 +1,6 @@
 ﻿# gmAlea — API Reference
 
-**Version:** 2.0  
+**Version:** 3.0  
 **Status:** Production  
 **Language:** C++17  
 **Namespace:** `gmAlea`
@@ -21,6 +21,7 @@
 - [Esempi d uso](#esempi-duso)
 - [Caratteristiche di performance](#caratteristiche-di-performance)
 - [Thread Safety](#thread-safety)
+- [Build e Test](#build-e-test)
 
 ---
 
@@ -128,7 +129,8 @@ classDiagram
         -int _faces_count
         +GmDice(face_values, seed)
         +roll_one() int
-        +roll(num, algo, rolled_out) int
+        +roll(num, algo, out_ptr) int
+        +roll(num, algo, out_ref) int
         +faces_count() int
         +reseed(seed) void
     }
@@ -140,7 +142,8 @@ classDiagram
         +StdDice(max, seed)
         +StdDice(min, max, seed)
         +roll_one() int
-        +roll(num, algo, rolled_out) int
+        +roll(num, algo, out_ptr) int
+        +roll(num, algo, out_ref) int
         +min_face() int
         +max_face() int
         +faces_count() int
@@ -329,7 +332,8 @@ Le facce duplicate nella lista aumentano la probabilita di quel valore:
 | Metodo | Firma | Descrizione |
 |---|---|---|
 | `roll_one` | `int roll_one()` | Singolo lancio: shuffle + `see_top().value` |
-| `roll` | `int roll(int num, DiceAlgo algo, vector<int>* out)` | N lanci con aggregazione |
+| `roll` | `int roll(int num, DiceAlgo algo, vector<int>* out)` | N lanci con aggregazione (pointer, retrocompatibile) |
+| `roll` | `int roll(int num, DiceAlgo algo, vector<int>& out)` | N lanci con aggregazione (reference, **preferito**) |
 | `faces_count` | `int faces_count() const` | Numero totale di facce (include duplicati) |
 | `reseed` | `void reseed(unsigned int seed)` | Aggiorna seed RNG |
 
@@ -364,7 +368,8 @@ StdDice(int min, int max, std::optional<unsigned int> seed = std::nullopt);
 | Metodo | Firma | Descrizione |
 |---|---|---|
 | `roll_one` | `int roll_one()` | Singolo lancio |
-| `roll` | `int roll(int num, DiceAlgo algo, vector<int>* out)` | N lanci con aggregazione |
+| `roll` | `int roll(int num, DiceAlgo algo, vector<int>* out)` | N lanci con aggregazione (pointer, retrocompatibile) |
+| `roll` | `int roll(int num, DiceAlgo algo, vector<int>& out)` | N lanci con aggregazione (reference, **preferito**) |
 | `min_face` | `int min_face() const` | Valore minimo della faccia |
 | `max_face` | `int max_face() const` | Valore massimo della faccia |
 | `faces_count` | `int faces_count() const` | Numero di facce (max - min + 1) |
@@ -410,9 +415,13 @@ int val = d6.roll_one();
 // 3d6 -> somma
 int total = d6.roll(3);
 
-// 4d6 -> tieni il minimo, con i valori singoli
+// 4d6 -> tieni il minimo, pointer (retrocompatibile)
 std::vector<int> singoli;
 int worst = d6.roll(4, DiceAlgo::ALGO_MIN, &singoli);
+
+// 4d6 -> tieni il minimo, reference (preferita per nuovo codice)
+std::vector<int> results;
+int worst2 = d6.roll(4, DiceAlgo::ALGO_MIN, results);
 
 // d100 deterministico
 StdDice d100(1, 100, 42);
@@ -514,3 +523,47 @@ int b = d6.roll(3);   // stessa serie di a: b == a
 ## Thread Safety
 
 Nessuna classe di gmAlea e thread-safe. Se si accede a una stessa istanza da thread multipli, e necessario sincronizzare esternamente con un `std::mutex`.
+
+---
+
+## Build e Test
+
+### Requisiti
+
+| Strumento | Versione minima | Note |
+|---|---|---|
+| CMake | 3.15 | |
+| Compiler | C++17 (`clang++`, `g++`, MSVC) | |
+| Ninja / Make | qualsiasi | generatore CMake |
+
+### Configurazione (prima volta)
+
+```powershell
+# Dalla root del workspace
+cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++
+```
+
+### Target disponibili
+
+| Comando | Effetto |
+|---|---|
+| `cmake --build build --target gmAlea_all_tests` | Build incrementale + esecuzione di tutti e 4 i test |
+| `cmake --build build` | Solo build (nessuna esecuzione) |
+| `ctest --test-dir build --output-on-failure` | Solo esecuzione (su binary gia compilati) |
+
+### Test registrati in CTest
+
+| Nome CTest | Suite | Sorgente |
+|---|---|---|
+| `gmDeck_v2` | GmDeck | `gmAlea/tests/test_gmDeck_v2.cpp` |
+| `gmCompDeck` | GmCompDeck | `gmAlea/tests/test_gmCompDeck.cpp` |
+| `gmDice` | GmDice | `gmAlea/tests/test_gmDice.cpp` |
+| `stdDice` | StdDice | `gmAlea/tests/test_stdDice.cpp` |
+
+### Script PowerShell alternativo
+
+Per build veloci senza configurazione CMake e disponibile anche lo script ad-hoc:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\gmAlea\tests\run_all_gmAlea_tests.ps1
+```
