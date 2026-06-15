@@ -52,17 +52,17 @@ constexpr char ENG_PLAYER_INFO[]  = "eng.player_info";
 
 /** Chiede al motore di caricare una sessione dal file indicato. */
 struct LoadGameRequest {
-    std::string filePath;   ///< Percorso del file di salvataggio.
+	std::string filePath;   ///< Percorso del file di salvataggio.
 };
 
 /** Chiede al motore di salvare la sessione corrente su file. */
 struct SaveGameRequest {
-    std::string filePath;   ///< Percorso di destinazione.
+	std::string filePath;   ///< Percorso di destinazione.
 };
 
 /** Chiede al motore di iniziare una nuova partita con la lista di giocatori. */
 struct StartGameRequest {
-    std::vector<std::string> playerIds;  ///< Es. {"player_1", "player_2", …}
+	std::vector<std::string> playerIds;  ///< Es. {"player_1", "player_2", …}
 };
 
 /** Chiede lo stato corrente del gioco (nessun campo aggiuntivo). */
@@ -70,7 +70,7 @@ struct GetGameStateRequest {};
 
 /** Chiede le informazioni di un giocatore specifico. */
 struct GetPlayerInfoRequest {
-    std::string playerId;   ///< Identificatore del giocatore.
+	std::string playerId;   ///< Identificatore del giocatore.
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,12 +79,12 @@ struct GetPlayerInfoRequest {
 
 /** Conferma che il file è stato caricato correttamente. */
 struct LoadedResponse {
-    std::string filePath;   ///< Path del file caricato.
+	std::string filePath;   ///< Path del file caricato.
 };
 
 /** Conferma che il salvataggio è andato a buon fine. */
 struct SavedResponse {
-    std::string filePath;   ///< Path del file salvato.
+	std::string filePath;   ///< Path del file salvato.
 };
 
 /**
@@ -93,8 +93,8 @@ struct SavedResponse {
  * Inviata in risposta a qualsiasi richiesta che fallisce.
  */
 struct ErrorResponse {
-    std::string originTypeId;  ///< TypeId della richiesta che ha causato l'errore.
-    std::string message;       ///< Descrizione leggibile dell'errore.
+	std::string originTypeId;  ///< TypeId della richiesta che ha causato l'errore.
+	std::string message;       ///< Descrizione leggibile dell'errore.
 };
 
 /**
@@ -103,12 +103,12 @@ struct ErrorResponse {
  * Inviato in risposta a StartGame e GetGameState.
  */
 struct GameState {
-    int         round        = 0;  ///< Numero del round corrente (1-based).
-    std::string currentTurn;       ///< playerId del giocatore di turno.
-    std::string deckId;            ///< Id del mazzo eventi attivo (es. "deck_1").
-    std::string currentEvent;      ///< Id della carta evento corrente.
-    std::string nextPlayer;        ///< playerId del prossimo giocatore.
-    std::string prevPlayer;        ///< playerId del giocatore precedente; "" al primo turno.
+	int         round        = 0;  ///< Numero del round corrente (1-based).
+	std::string currentTurn;       ///< playerId del giocatore di turno.
+	std::string deckId;            ///< Id del mazzo eventi attivo (es. "deck_1").
+	std::string currentEvent;      ///< Id della carta evento corrente.
+	std::string nextPlayer;        ///< playerId del prossimo giocatore.
+	std::string prevPlayer;        ///< playerId del giocatore precedente; "" al primo turno.
 };
 
 /**
@@ -117,11 +117,11 @@ struct GameState {
  * Inviato in risposta a GetPlayerInfo.
  */
 struct PlayerInfo {
-    std::string              playerId;           ///< Identificatore univoco.
-    std::string              name;               ///< Nome visualizzato.
-    int                      score    = 0;       ///< Punteggio corrente.
-    std::vector<std::string> hand;               ///< Id delle carte in mano.
-    bool                     isActive = true;    ///< false = eliminato / fuori gioco.
+	std::string              playerId;           ///< Identificatore univoco.
+	std::string              name;               ///< Nome visualizzato.
+	int                      score    = 0;       ///< Punteggio corrente.
+	std::vector<std::string> hand;               ///< Id delle carte in mano.
+	bool                     isActive = true;    ///< false = eliminato / fuori gioco.
 };
 
 #endif // EXAMPLE_ENGUI_MESSAGES_HPP

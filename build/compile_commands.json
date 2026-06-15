@@ -1,0 +1,56 @@
+[
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\gmAlea.dir\\GmDeck.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmDeck.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmDeck.cpp",
+  "output": "gmAlea\\CMakeFiles\\gmAlea.dir\\GmDeck.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\gmAlea.dir\\GmCompDeck.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmCompDeck.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmCompDeck.cpp",
+  "output": "gmAlea\\CMakeFiles\\gmAlea.dir\\GmCompDeck.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\gmAlea.dir\\SimpleDeck.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\SimpleDeck.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\SimpleDeck.cpp",
+  "output": "gmAlea\\CMakeFiles\\gmAlea.dir\\SimpleDeck.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\gmAlea.dir\\GmDice.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmDice.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\GmDice.cpp",
+  "output": "gmAlea\\CMakeFiles\\gmAlea.dir\\GmDice.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\gmAlea.dir\\StdDice.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\StdDice.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\StdDice.cpp",
+  "output": "gmAlea\\CMakeFiles\\gmAlea.dir\\StdDice.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\test_gmDeck_v2.dir\\tests\\test_gmDeck_v2.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmDeck_v2.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmDeck_v2.cpp",
+  "output": "gmAlea\\CMakeFiles\\test_gmDeck_v2.dir\\tests\\test_gmDeck_v2.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\test_gmCompDeck.dir\\tests\\test_gmCompDeck.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmCompDeck.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmCompDeck.cpp",
+  "output": "gmAlea\\CMakeFiles\\test_gmCompDeck.dir\\tests\\test_gmCompDeck.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\test_gmDice.dir\\tests\\test_gmDice.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmDice.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_gmDice.cpp",
+  "output": "gmAlea\\CMakeFiles\\test_gmDice.dir\\tests\\test_gmDice.cpp.obj"
+},
+{
+  "directory": "C:/_GLT_/Qt Prj/game_lib/build",
+  "command": "C:\\AppPortable\\clang+llvm-19.1.7-x86_64-pc-windows-msvc\\bin\\clang++.exe -I\"C:/_GLT_/Qt Prj/game_lib\" -O0 -g -Xclang -gcodeview -std=c++17 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -o gmAlea\\CMakeFiles\\test_stdDice.dir\\tests\\test_stdDice.cpp.obj -c \"C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_stdDice.cpp\"",
+  "file": "C:\\_GLT_\\Qt Prj\\game_lib\\gmAlea\\tests\\test_stdDice.cpp",
+  "output": "gmAlea\\CMakeFiles\\test_stdDice.dir\\tests\\test_stdDice.cpp.obj"
+}
+]

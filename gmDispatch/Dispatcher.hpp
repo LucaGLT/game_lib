@@ -14,40 +14,40 @@
 #include <memory>
 #include <string>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Core dispatcher facade — the primary application-facing class.
  *
- * Dispatcher owns a @ref DispatcherConfig and delegates all routing and
+ * GmDispatcher owns a @ref DispatcherConfig and delegates all routing and
  * subscription management to an @ref IDispatcher.  It is intentionally
  * ignorant of routing tables, serialisation formats, and thread locking.
  *
- * Dispatcher is **non-copyable** and **move-constructible**.
+ * GmDispatcher is **non-copyable** and **move-constructible**.
  *
  * ### Recommended construction (via factory)
  * @code
- *   GmDispatch::Dispatcher bus =
- *       GmDispatch::DispatcherFactory::createSyncDispatcher("GameBus");
+ *   gmDispatch::GmDispatcher bus =
+ *       gmDispatch::DispatcherFactory::create_sync_dispatcher("GameBus");
  * @endcode
  *
  * ### Direct construction
  * @code
- *   GmDispatch::DispatcherConfig cfg;
+ *   gmDispatch::DispatcherConfig cfg;
  *   cfg.name          = "GameBus";
- *   cfg.autoTimestamp = true;
+ *   cfg.auto_timestamp = true;
  *
- *   GmDispatch::Dispatcher bus(
+ *   gmDispatch::GmDispatcher bus(
  *       cfg,
- *       std::make_unique<GmDispatch::SyncDispatcher>(
- *           std::make_unique<GmDispatch::SyncRouter>()
+ *       std::make_unique<gmDispatch::SyncDispatcher>(
+ *           std::make_unique<gmDispatch::SyncRouter>()
  *       )
  *   );
  * @endcode
  *
  * ### Dispatching an event
  * @code
- *   GmDispatch::Envelope env;
+ *   gmDispatch::Envelope env;
  *   env.typeId  = "engine.tick";
  *   env.source  = "CoreEngine";
  *   env.payload = TickData{frame, dt};
@@ -56,90 +56,90 @@ namespace GmDispatch {
  *
  * ### Subscription management
  * @code
- *   std::shared_ptr<GmDispatch::EventBusChannel> ch =
- *       std::make_shared<GmDispatch::EventBusChannel>();
- *   ch->addHandler([](const GmDispatch::Envelope& e){ ... });
+ *   std::shared_ptr<gmDispatch::EventBusChannel> ch =
+ *       std::make_shared<gmDispatch::EventBusChannel>();
+ *   ch->add_handler([](const gmDispatch::Envelope& e){ ... });
  *
  *   bus.subscribe("engine.tick", ch);
  *   // ...
  *   bus.unsubscribe("engine.tick", ch);
  * @endcode
  */
-class Dispatcher {
+class GmDispatcher {
 public:
-    /**
-     * @brief Constructs a Dispatcher with a given configuration and dispatcher impl.
-     *
-     * @param config     Identity and behaviour parameters.
-     * @param dispatcher Ownership-transferred dispatcher (sync or future async).
-     */
-    Dispatcher(DispatcherConfig                config,
-               std::unique_ptr<IDispatcher>    dispatcher);
+	/**
+	 * @brief Constructs a GmDispatcher with a given configuration and dispatcher impl.
+	 *
+	 * @param config     Identity and behaviour parameters.
+	 * @param dispatcher Ownership-transferred dispatcher (sync or future async).
+	 */
+	GmDispatcher(DispatcherConfig                config,
+			   std::unique_ptr<IDispatcher>    dispatcher);
 
-    Dispatcher(const Dispatcher&)            = delete;
-    Dispatcher& operator=(const Dispatcher&) = delete;
+	GmDispatcher(const GmDispatcher&)            = delete;
+	GmDispatcher& operator=(const GmDispatcher&) = delete;
 
-    Dispatcher(Dispatcher&&)                 = default;
-    Dispatcher& operator=(Dispatcher&&)      = default;
+	GmDispatcher(GmDispatcher&&)                 = default;
+	GmDispatcher& operator=(GmDispatcher&&)      = default;
 
-    /**
-     * @brief Destructor — calls @ref flush() before releasing resources.
-     */
-    ~Dispatcher();
+	/**
+	 * @brief Destructor — calls @ref flush() before releasing resources.
+	 */
+	~GmDispatcher();
 
-    // ── Identity ──────────────────────────────────────────────────────────────
+	// ── Identity ──────────────────────────────────────────────────────────────
 
-    /// @brief Returns the dispatcher name from @ref DispatcherConfig::name.
-    const std::string& name() const;
+	/// @brief Returns the dispatcher name from @ref DispatcherConfig::name.
+	const std::string& name() const;
 
-    // ── Core dispatch ─────────────────────────────────────────────────────────
+	// ── Core dispatch ─────────────────────────────────────────────────────────
 
-    /**
-     * @brief Dispatches an envelope to all subscribed channels.
-     *
-     * If @ref DispatcherConfig::autoTimestamp is @c true and
-     * @c envelope.timestamp is at the epoch (@c time_point{}), it is set to
-     * @c std::chrono::system_clock::now() before dispatching.
-     *
-     * @param envelope The event to dispatch.  The object is not modified by
-     *                 the dispatcher (auto-timestamp acts on a local copy).
-     */
-    void dispatch(const Envelope& envelope);
+	/**
+	 * @brief Dispatches an envelope to all subscribed channels.
+	 *
+	 * If @ref DispatcherConfig::auto_timestamp is @c true and
+	 * @c envelope.timestamp is at the epoch (@c time_point{}), it is set to
+	 * @c std::chrono::system_clock::now() before dispatching.
+	 *
+	 * @param envelope The event to dispatch.  The object is not modified by
+	 *                 the dispatcher (auto-timestamp acts on a local copy).
+	 */
+	void dispatch(const Envelope& envelope);
 
-    // ── Subscription management ───────────────────────────────────────────────
+	// ── Subscription management ───────────────────────────────────────────────
 
-    /**
-     * @brief Registers a channel to receive envelopes with the given @p typeId.
-     *
-     * @param typeId  Subscription key.  Use @c "*" for a broadcast subscription.
-     * @param channel The channel to register.
-     */
-    void subscribe(const std::string&        typeId,
-                   std::shared_ptr<IChannel> channel);
+	/**
+	 * @brief Registers a channel to receive envelopes with the given @p typeId.
+	 *
+	 * @param typeId  Subscription key.  Use @c "*" for a broadcast subscription.
+	 * @param channel The channel to register.
+	 */
+	void subscribe(const std::string&        typeId,
+				   std::shared_ptr<IChannel> channel);
 
-    /**
-     * @brief Removes a subscription.
-     *
-     * @param typeId  The key used at subscription time.
-     * @param channel The channel to remove.
-     */
-    void unsubscribe(const std::string&        typeId,
-                     std::shared_ptr<IChannel> channel);
+	/**
+	 * @brief Removes a subscription.
+	 *
+	 * @param typeId  The key used at subscription time.
+	 * @param channel The channel to remove.
+	 */
+	void unsubscribe(const std::string&        typeId,
+					 std::shared_ptr<IChannel> channel);
 
-    // ── Flush ─────────────────────────────────────────────────────────────────
+	// ── Flush ─────────────────────────────────────────────────────────────────
 
-    /**
-     * @brief Flushes all registered channels via the underlying dispatcher.
-     *
-     * Called automatically by the destructor.
-     */
-    void flush();
+	/**
+	 * @brief Flushes all registered channels via the underlying dispatcher.
+	 *
+	 * Called automatically by the destructor.
+	 */
+	void flush();
 
 private:
-    DispatcherConfig             config_;
-    std::unique_ptr<IDispatcher> dispatcher_;
+	DispatcherConfig             _config;
+	std::unique_ptr<IDispatcher> _dispatcher;
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_DISPATCHER_HPP

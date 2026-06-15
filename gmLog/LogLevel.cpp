@@ -8,34 +8,59 @@
 #include <algorithm>
 #include <cctype>
 
-namespace GmLog {
+namespace gmLog {
 
-const char* levelToString(LogLevel level)
+const char* level_to_string(LogLevel level)
 {
-    switch (level) {
-        case LogLevel::Debug:    return "DEBUG";
-        case LogLevel::Info:     return "INFO";
-        case LogLevel::Warning:  return "WARNING";
-        case LogLevel::Error:    return "ERROR";
-        case LogLevel::Critical: return "CRITICAL";
-        case LogLevel::Off:      return "OFF";
-        default:                 return "UNKNOWN";
-    }
+	switch (level)
+	{
+		case LogLevel::DEBUG:    return "DEBUG";
+		case LogLevel::INFO:     return "INFO";
+		case LogLevel::WARNING:  return "WARNING";
+		case LogLevel::ERROR:    return "ERROR";
+		case LogLevel::CRITICAL: return "CRITICAL";
+		case LogLevel::OFF:      return "OFF";
+		default:                 return "UNKNOWN";
+	}
 }
 
-bool levelFromString(const std::string& str, LogLevel& out)
+bool level_from_string(const std::string& str, LogLevel& out)
 {
-    std::string lower = str;
-    std::transform(lower.begin(), lower.end(), lower.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+	std::string lower = str;
+	std::transform(lower.begin(), lower.end(), lower.begin(),
+				   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    if (lower == "debug")    { out = LogLevel::Debug;    return true; }
-    if (lower == "info")     { out = LogLevel::Info;     return true; }
-    if (lower == "warning")  { out = LogLevel::Warning;  return true; }
-    if (lower == "error")    { out = LogLevel::Error;    return true; }
-    if (lower == "critical") { out = LogLevel::Critical; return true; }
-    if (lower == "off")      { out = LogLevel::Off;      return true; }
-    return false;
+	if (lower == "debug")
+	{
+		out = LogLevel::DEBUG;
+		return true;
+	}
+	if (lower == "info")
+	{
+		out = LogLevel::INFO;
+		return true;
+	}
+	if (lower == "warning")
+	{
+		out = LogLevel::WARNING;
+		return true;
+	}
+	if (lower == "error")
+	{
+		out = LogLevel::ERROR;
+		return true;
+	}
+	if (lower == "critical")
+	{
+		out = LogLevel::CRITICAL;
+		return true;
+	}
+	if (lower == "off")
+	{
+		out = LogLevel::OFF;
+		return true;
+	}
+	return false;
 }
 
-} // namespace GmLog
+} // namespace gmLog

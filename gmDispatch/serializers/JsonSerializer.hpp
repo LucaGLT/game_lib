@@ -3,14 +3,14 @@
 
 /**
  * @file serializers/JsonSerializer.hpp
- * @brief JSON Lines serializer for GmDispatch envelopes.
+ * @brief JSON Lines serializer for gmDispatch envelopes.
  */
 
-#include "../ISerializer.hpp"
+#include "ISerializer.hpp"
 
 #include <string>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Serialises an @ref Envelope to a single-line JSON object (JSON Lines).
@@ -35,34 +35,34 @@ namespace GmDispatch {
  * | @c payload | string | @c std::any::type().name() or custom (Phase 3) |
  *
  * ### Relationship with GmLog::JsonFormatter
- * Applies the same escaping rules as @c GmLog::JsonFormatter::escapeJsonString.
+ * Applies the same escaping rules as @c GmLog::JsonFormatter::escape_json_string.
  * The two formatters are independent (no shared code) to keep the libraries
  * decoupled.
  */
 class JsonSerializer : public ISerializer {
 public:
-    JsonSerializer() = default;
+	JsonSerializer() = default;
 
-    /**
-     * @brief Converts @p envelope to a single-line JSON object.
-     *
-     * @param envelope The dispatch event to serialise.
-     * @return JSON string without trailing newline.
-     */
-    std::string serialize(const Envelope& envelope) override;
+	/**
+	 * @brief Converts @p envelope to a single-line JSON object.
+	 *
+	 * @param envelope The dispatch event to serialise.
+	 * @return JSON string without trailing newline.
+	 */
+	std::string serialize(const Envelope& envelope) override;
 
-    /**
-     * @brief Escapes a string value for safe embedding inside a JSON string.
-     *
-     * Escapes: @c \\ → @c \\\\, @c " → @c \\", newline → @c \\n,
-     * CR → @c \\r, tab → @c \\t, control chars @c < 0x20 → @c \\uXXXX.
-     *
-     * @param value Raw string to escape.
-     * @return Escaped string suitable for use between JSON double-quotes.
-     */
-    static std::string escapeJsonString(const std::string& value);
+	/**
+	 * @brief Escapes a string value for safe embedding inside a JSON string.
+	 *
+	 * Escapes: @c \\ → @c \\\\, @c " → @c \\", newline → @c \\n,
+	 * CR → @c \\r, tab → @c \\t, control chars @c < 0x20 → @c \\uXXXX.
+	 *
+	 * @param value Raw string to escape.
+	 * @return Escaped string suitable for use between JSON double-quotes.
+	 */
+	static std::string escape_json_string(const std::string& value);
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_JSONSERIALIZER_HPP

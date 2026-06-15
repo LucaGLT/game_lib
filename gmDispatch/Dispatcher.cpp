@@ -2,61 +2,67 @@
 
 #include <chrono>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
-Dispatcher::Dispatcher(DispatcherConfig             config,
-                       std::unique_ptr<IDispatcher> dispatcher)
-    : config_(std::move(config))
-    , dispatcher_(std::move(dispatcher))
+GmDispatcher::GmDispatcher(DispatcherConfig             config,
+					   std::unique_ptr<IDispatcher> dispatcher)
+	: _config(std::move(config))
+	, _dispatcher(std::move(dispatcher))
 {}
 
-Dispatcher::~Dispatcher()
+GmDispatcher::~GmDispatcher()
 {
-    if (dispatcher_) {
-        dispatcher_->flush();
-    }
+	if (_dispatcher) {
+		_dispatcher->flush();
+	}
 }
 
-const std::string& Dispatcher::name() const
+const std::string& GmDispatcher::name() const
 {
-    return config_.name;
+	return _config.name;
 }
 
-void Dispatcher::dispatch(const Envelope& envelope)
+void GmDispatcher::dispatch(const Envelope& envelope)
 {
-    if (!dispatcher_) return;
+	if (!_dispatcher) return;
 
-    if (config_.autoTimestamp &&
-        envelope.timestamp == std::chrono::system_clock::time_point{}) {
-        Envelope stamped   = envelope;
-        stamped.timestamp  = std::chrono::system_clock::now();
-        dispatcher_->dispatch(stamped);
-    } else {
-        dispatcher_->dispatch(envelope);
-    }
+	if (_config.auto_timestamp &&
+		envelope.timestamp == std::chrono::system_clock::time_point{})
+	{
+		Envelope stamped   = envelope;
+		stamped.timestamp  = std::chrono::system_clock::now();
+		_dispatcher->dispatch(stamped);
+	}
+	else
+	{
+		_dispatcher->dispatch(envelope);
+	}
 }
 
-void Dispatcher::subscribe(const std::string&        typeId,
-                           std::shared_ptr<IChannel> channel)
+void GmDispatcher::subscribe(const std::string&        typeId,
+						   std::shared_ptr<IChannel> channel)
 {
-    if (dispatcher_) {
-        dispatcher_->subscribe(typeId, std::move(channel));
-    }
+	if (_dispatcher)
+	{
+		_dispatcher->subscribe(typeId, std::move(channel));
+	}
 }
 
-void Dispatcher::unsubscribe(const std::string&        typeId,
-                             std::shared_ptr<IChannel> channel)
+void GmDispatcher::unsubscribe(const std::string&        typeId,
+							 std::shared_ptr<IChannel> channel)
 {
-    if (dispatcher_) {
-        dispatcher_->unsubscribe(typeId, channel);
-    }
+	if (_dispatcher)
+	{
+		_dispatcher->unsubscribe(typeId, channel);
+	}
 }
 
-void Dispatcher::flush()
+void GmDispatcher::flush()
 {
-    if (dispatcher_) {
-        dispatcher_->flush();
-    }
+	if (_dispatcher)
+	{
+		_dispatcher->flush();
+	}
 }
 
-} // namespace GmDispatch
+} // namespace gmDispatch

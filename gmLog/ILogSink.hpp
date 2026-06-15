@@ -3,12 +3,12 @@
 
 /**
  * @file ILogSink.hpp
- * @brief Abstract output-channel interface for the GmLog library.
+ * @brief Abstract output-channel interface for the gmLog library.
  */
 
 #include <string>
 
-namespace GmLog {
+namespace gmLog {
 
 /**
  * @brief Abstract base class for all log output channels (sinks).
@@ -17,12 +17,12 @@ namespace GmLog {
  * and writes it to the underlying output channel.  The channel may be
  * standard output, a file on disk, a serial port, a network socket, etc.
  *
- * The @ref Logger does not interact with sinks directly; it delegates to an
+ * The @ref GmLogger does not interact with sinks directly; it delegates to an
  * @ref ILogDispatcher, which owns the sink.
  *
  * ### Implementing a custom sink
  * @code
- *   class ConsoleSink : public GmLog::ILogSink {
+ *   class ConsoleSink : public gmLog::ILogSink {
  *   public:
  *       void write(const std::string& message) override { ... }
  *       void flush()                            override { ... }
@@ -37,28 +37,28 @@ namespace GmLog {
  */
 class ILogSink {
 public:
-    virtual ~ILogSink() = default;
+	virtual ~ILogSink() = default;
 
-    /**
-     * @brief Writes a single, fully-formatted log line to the output channel.
-     *
-     * The message string already contains everything needed (timestamp, level,
-     * logger name, source location, …).  The sink should simply deliver it to
-     * the underlying channel without any additional formatting.
-     *
-     * @param message Pre-formatted log line (typically a JSON object string).
-     */
-    virtual void write(const std::string& message) = 0;
+	/**
+	 * @brief Writes a single, fully-formatted log line to the output channel.
+	 *
+	 * The message string already contains everything needed (timestamp, level,
+	 * logger name, source location, …).  The sink should simply deliver it to
+	 * the underlying channel without any additional formatting.
+	 *
+	 * @param message Pre-formatted log line (typically a JSON object string).
+	 */
+	virtual void write(const std::string& message) = 0;
 
-    /**
-     * @brief Flushes any internal write buffers to the underlying channel.
-     *
-     * Must be called before application exit and whenever a
-     * @ref LogLevel::Critical event is logged to prevent data loss.
-     */
-    virtual void flush() = 0;
+	/**
+	 * @brief Flushes any internal write buffers to the underlying channel.
+	 *
+	 * Must be called before application exit and whenever a
+	 * @ref LogLevel::CRITICAL event is logged to prevent data loss.
+	 */
+	virtual void flush() = 0;
 };
 
-} // namespace GmLog
+} // namespace gmLog
 
 #endif // GMLOG_ILOGSINK_HPP

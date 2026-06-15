@@ -1,31 +1,31 @@
 #include "EventBusChannel.hpp"
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 EventBusChannel::EventBusChannel(const std::string& channelName)
-    : name_(channelName)
+	: _name(channelName)
 {}
 
 std::string EventBusChannel::name() const
 {
-    return name_;
+	return _name;
 }
 
-void EventBusChannel::addHandler(Handler handler)
+void EventBusChannel::add_handler(Handler handler)
 {
-    handlers_.push_back(std::move(handler));
+	_handlers.push_back(std::move(handler));
 }
 
 void EventBusChannel::send(const Envelope& envelope)
 {
-    for (const Handler& h : handlers_) {
-        h(envelope);
-    }
+	for (const Handler& h : _handlers) {
+		h(envelope);
+	}
 }
 
 void EventBusChannel::flush()
 {
-    // no-op — in-process channel has no buffering
+	// no-op — in-process channel has no buffering
 }
 
-} // namespace GmDispatch
+} // namespace gmDispatch

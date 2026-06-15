@@ -65,7 +65,7 @@ envelopes via callbacks, stdout, files, or network channels.
 
 ## Design Philosophy
 
-```
+```text
 Application code
       ↓
 bus.dispatch(envelope)
@@ -115,7 +115,7 @@ Include the desired headers in your source files:
 
 ## File Structure
 
-```
+```text
 gmDispatch/
 ├── Envelope.hpp
 ├── IChannel.hpp
@@ -140,7 +140,7 @@ gmDispatch/
 
 ## Architecture
 
-```
+```text
 ┌────────────────────────────────────────────────────────────┐
 │  Application code                                          │
 │                                                            │
@@ -417,6 +417,7 @@ void route(const Envelope& envelope) override;
 ```
 
 V1 routing rules:
+
 1. Channels subscribed to `envelope.typeId` (exact match) receive the call.
 2. Channels subscribed to `"*"` always receive the call.
 3. If `Envelope::targets` is non-empty, only channels whose name matches a

@@ -6,9 +6,9 @@
  * @brief Log sink that writes to standard output.
  */
 
-#include "../ILogSink.hpp"
+#include "ILogSink.hpp"
 
-namespace GmLog {
+namespace gmLog {
 
 /**
  * @brief Log sink that writes formatted log lines to @c std::cout.
@@ -24,21 +24,21 @@ namespace GmLog {
  */
 class StdoutSink : public ILogSink {
 public:
-    StdoutSink()  = default;
-    ~StdoutSink() = default;
+	StdoutSink()  = default;
+	~StdoutSink() = default;
 
-    /**
-     * @brief Writes @p message to @c std::cout followed by @c std::endl.
-     * @param message Pre-formatted log line.
-     */
-    void write(const std::string& message) override;
+	/**
+	 * @brief Writes @p message to @c std::cout followed by @c std::endl.
+	 * @param message Pre-formatted log line.
+	 */
+	void write(const std::string& message) override;
 
-    /**
-     * @brief Explicitly flushes @c std::cout.
-     */
-    void flush() override;
+	/**
+	 * @brief Explicitly flushes @c std::cout.
+	 */
+	void flush() override;
 };
 
-} // namespace GmLog
+} // namespace gmLog
 
 #endif // GMLOG_STDOUTSINK_HPP

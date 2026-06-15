@@ -139,9 +139,9 @@ private:
 
 // Factory: build a GameSession with one or two actors and the given phases.
 struct SessionBuilder {
-    std::shared_ptr<GmDispatch::Dispatcher> dispatcher =
-        std::make_shared<GmDispatch::Dispatcher>(
-            GmDispatch::DispatcherFactory::createSyncDispatcher("test"));
+	std::shared_ptr<gmDispatch::GmDispatcher> dispatcher =
+		std::make_shared<gmDispatch::GmDispatcher>(
+			gmDispatch::DispatcherFactory::create_sync_dispatcher("test"));
 
     std::unique_ptr<gmFlow::GameSession> build(
         std::vector<std::unique_ptr<gmFlow::IPhase>> phases,
