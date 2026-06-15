@@ -1,0 +1,712 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://game-lib.local/gmRules/specs/game-rules.schema.json",
+  "title": "gmRules Game Rules Schema",
+  "description": "Schema autore per descrivere regole/stati/trigger e guidare code generation verso gmRules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "rules"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "vocabulary": {
+      "$ref": "#/$defs/vocabulary"
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/statusDefinition"
+      }
+    },
+    "triggers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/triggerRule"
+      }
+    },
+    "custom_data": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$"
+    },
+    "idRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "game_id",
+        "namespace"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "game_id": {
+          "$ref": "#/$defs/id"
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_.]*$"
+        },
+        "compatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "gmRules_min": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "gmRules_max": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            }
+          }
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "factions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "string",
+                "integer"
+              ]
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "status_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "targetKind": {
+      "type": "string",
+      "enum": [
+        "ACTOR",
+        "ACTOR_GROUP",
+        "LOCATION",
+        "CARD",
+        "DECK",
+        "ITEM",
+        "INTERACTABLE",
+        "NONE"
+      ]
+    },
+    "targetSelector": {
+      "type": "string",
+      "enum": [
+        "SELF",
+        "SOURCE",
+        "SELECTED_ACTOR",
+        "SELECTED_ALLY",
+        "SELECTED_ENEMY",
+        "ALL_ACTORS_IN_LOCATION",
+        "ALL_ALLIES_IN_LOCATION",
+        "ALL_ENEMIES_IN_LOCATION",
+        "ACTORS_WITH_STATUS",
+        "LOCATION",
+        "SELECTED_CARD",
+        "SELECTED_ITEM",
+        "MANUAL"
+      ]
+    },
+    "rangeType": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "SAME_LOCATION",
+        "ADJACENT_LOCATION",
+        "WITHIN_N_LOCATIONS",
+        "ANY_VISIBLE_LOCATION",
+        "GLOBAL"
+      ]
+    },
+    "targetSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "selector"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/targetKind"
+        },
+        "selector": {
+          "$ref": "#/$defs/targetSelector"
+        },
+        "range_type": {
+          "$ref": "#/$defs/rangeType"
+        },
+        "range_value": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "required_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "forbidden_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "allow_self": {
+          "type": "boolean",
+          "default": true
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "conditionType": {
+      "type": "string",
+      "enum": [
+        "ALWAYS",
+        "NEVER",
+        "ACTOR_EXISTS",
+        "ACTOR_HAS_STATUS",
+        "ACTOR_HAS_TAG",
+        "ACTOR_HP_AT_OR_BELOW",
+        "ACTOR_HP_AT_OR_ABOVE",
+        "ACTOR_IN_LOCATION",
+        "ACTOR_IN_POSITION",
+        "TARGET_EXISTS",
+        "TARGET_HAS_STATUS",
+        "TARGET_HAS_TAG",
+        "LOCATION_EXISTS",
+        "LOCATION_HAS_TAG",
+        "LOCATION_IS_ADJACENT",
+        "DECK_HAS_AT_LEAST",
+        "CARD_IN_ZONE",
+        "RESOURCE_AT_LEAST",
+        "CUSTOM"
+      ]
+    },
+    "compositeOperator": {
+      "type": "string",
+      "enum": [
+        "ALL_OF",
+        "ANY_OF",
+        "NONE_OF",
+        "NOT"
+      ]
+    },
+    "conditionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/conditionType"
+        },
+        "subject_id": {
+          "type": "string"
+        },
+        "subject_id_ref": {
+          "$ref": "#/$defs/idRef"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_id_ref": {
+          "$ref": "#/$defs/idRef"
+        },
+        "value": {
+          "type": "string"
+        },
+        "value_ref": {
+          "$ref": "#/$defs/idRef"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "children": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/conditionSpec"
+          }
+        },
+        "op": {
+          "$ref": "#/$defs/compositeOperator"
+        },
+        "custom_data": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "children"
+            ]
+          },
+          "then": {
+            "required": [
+              "op"
+            ]
+          },
+          "else": {
+            "required": [
+              "type"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "subject_id",
+              "subject_id_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "target_id",
+              "target_id_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "value",
+              "value_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "effectType": {
+      "type": "string",
+      "enum": [
+        "DEAL_DAMAGE",
+        "HEAL",
+        "MOVE_ACTOR",
+        "SHIFT_POSITION",
+        "DRAW_CARDS",
+        "DISCARD_CARDS",
+        "MOVE_CARD_TO_ZONE",
+        "APPLY_STATUS",
+        "REMOVE_STATUS",
+        "ADD_MODIFIER",
+        "REMOVE_MODIFIER",
+        "ADD_TAG",
+        "REMOVE_TAG",
+        "SET_STATE",
+        "SPAWN_ACTOR",
+        "DESPAWN_ACTOR",
+        "EMIT_EVENT",
+        "MANUAL_EFFECT",
+        "CUSTOM"
+      ]
+    },
+    "effectSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/effectType"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "source_id_ref": {
+          "$ref": "#/$defs/idRef"
+        },
+        "target": {
+          "$ref": "#/$defs/targetSpec"
+        },
+        "amount": {
+          "type": "integer",
+          "default": 0
+        },
+        "value": {
+          "type": "string"
+        },
+        "value_ref": {
+          "$ref": "#/$defs/idRef"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditionSpec"
+          }
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        },
+        "stop_on_failure": {
+          "type": "boolean",
+          "default": true
+        },
+        "custom_data": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "source_id",
+              "source_id_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "value",
+              "value_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "target",
+        "effects"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "default": 100
+        },
+        "target": {
+          "$ref": "#/$defs/targetSpec"
+        },
+        "conditions": {
+          "$ref": "#/$defs/conditionSpec"
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "custom_data": {
+          "type": "object"
+        }
+      }
+    },
+    "durationType": {
+      "type": "string",
+      "enum": [
+        "PERMANENT",
+        "UNTIL_REMOVED",
+        "FOR_N_ACTIVATIONS",
+        "UNTIL_NEXT_ACTIVATION",
+        "UNTIL_TIME_REACHED",
+        "WHILE_IN_LOCATION",
+        "WHILE_CONDITION_TRUE",
+        "CUSTOM"
+      ]
+    },
+    "stackingMode": {
+      "type": "string",
+      "enum": [
+        "REFRESH_DURATION",
+        "ADD_STACK",
+        "IGNORE_NEW",
+        "REPLACE",
+        "UNIQUE_BY_SOURCE"
+      ]
+    },
+    "durationSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/durationType"
+        },
+        "amount": {
+          "type": "integer",
+          "default": 0
+        },
+        "value": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "stackingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/stackingMode"
+        },
+        "max_stacks": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      }
+    },
+    "modifierOp": {
+      "type": "string",
+      "enum": [
+        "ADD",
+        "SUBTRACT",
+        "MULTIPLY",
+        "SET",
+        "MIN",
+        "MAX"
+      ]
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stat_id",
+        "op",
+        "amount"
+      ],
+      "properties": {
+        "stat_id": {
+          "$ref": "#/$defs/id"
+        },
+        "op": {
+          "$ref": "#/$defs/modifierOp"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditionSpec"
+          }
+        }
+      }
+    },
+    "statusDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "stacking_policy",
+        "default_duration"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "on_apply": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "on_remove": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "on_activation_start": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "on_activation_end": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "continuous_effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/modifier"
+          }
+        },
+        "stacking_policy": {
+          "$ref": "#/$defs/stackingPolicy"
+        },
+        "default_duration": {
+          "$ref": "#/$defs/durationSpec"
+        },
+        "custom_data": {
+          "type": "object"
+        }
+      }
+    },
+    "triggerType": {
+      "type": "string",
+      "enum": [
+        "ON_ACTION_SUBMITTED",
+        "ON_ACTION_COMPLETED",
+        "ON_CARD_PLAYED",
+        "ON_ACTOR_DAMAGED",
+        "ON_ACTOR_MOVED",
+        "ON_STATUS_APPLIED",
+        "ON_TIME_REACHED",
+        "ON_LOCATION_ENTERED",
+        "CUSTOM"
+      ]
+    },
+    "triggerRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "effects"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "default": 100
+        },
+        "type": {
+          "$ref": "#/$defs/triggerType"
+        },
+        "conditions": {
+          "$ref": "#/$defs/conditionSpec"
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/effectSpec"
+          }
+        },
+        "custom_data": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
