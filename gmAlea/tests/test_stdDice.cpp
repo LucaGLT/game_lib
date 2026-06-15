@@ -128,7 +128,7 @@ static void test_roll_one_within_range()
 	const std::string test_name = "roll_one_within_range";
 	try
 	{
-		StdDice d20(20, 77);
+		StdDice d20(20, std::optional<unsigned int>(77));
 		bool in_range = true;
 		for (int i = 0; i < 40; ++i)
 		{
@@ -253,8 +253,8 @@ static void test_same_seed_same_sequence()
 	const std::string test_name = "same_seed_same_sequence";
 	try
 	{
-		StdDice d1(6, 500);
-		StdDice d2(6, 500);
+		StdDice d1(6, std::optional<unsigned int>(500));
+		StdDice d2(6, std::optional<unsigned int>(500));
 
 		bool equal = true;
 		for (int i = 0; i < 40; ++i)
