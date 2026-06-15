@@ -83,6 +83,23 @@ public:
 			 std::vector<int>* rolled_out = nullptr);
 
 	/**
+	 * @brief Rolls the die @p num_of_dices times and writes each result into @p rolled_out.
+	 *
+	 * Overload that accepts a reference instead of a pointer — preferred for new code.
+	 * @p rolled_out is cleared and replaced with the individual roll values.
+	 *
+	 * @param num_of_dices  Number of independent rolls (must be >= 1).
+	 * @param algo          Aggregation algorithm applied to all results.
+	 * @param rolled_out    Vector that receives each individual roll value.
+	 *
+	 * @return Aggregated result according to @p algo.
+	 * @throws EAleaError if @p num_of_dices < 1.
+	 */
+	int roll(int num_of_dices,
+			 DiceAlgo algo,
+			 std::vector<int>& rolled_out);
+
+	/**
 	 * @brief Returns the minimum face value.
 	 *
 	 * @return Minimum face value.

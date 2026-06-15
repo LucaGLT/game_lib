@@ -88,6 +88,11 @@ int GmDice::roll(int num_of_dices, DiceAlgo algo, std::vector<int>* rolled_out)
 	return _aggregate(results, algo);
 }
 
+int GmDice::roll(int num_of_dices, DiceAlgo algo, std::vector<int>& rolled_out)
+{
+	return roll(num_of_dices, algo, &rolled_out);
+}
+
 int GmDice::faces_count() const
 {
 	return _faces_count;

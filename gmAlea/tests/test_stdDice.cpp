@@ -309,6 +309,31 @@ static void test_reseed_same_state_same_future_sequence()
 	}
 }
 
+static void test_roll_ref_overload()
+{
+	const std::string test_name = "roll_ref_overload";
+	try
+	{
+		StdDice d12(12, std::optional<unsigned int>(600));
+		std::vector<int> rolled;
+		int result = d12.roll(6, DiceAlgo::ALGO_MAX, rolled);
+		int expected = *std::max_element(rolled.begin(), rolled.end());
+
+		if (static_cast<int>(rolled.size()) == 6 && result == expected)
+		{
+			pass(test_name);
+		}
+		else
+		{
+			fail(test_name, "ref overload: max mismatch or wrong size");
+		}
+	}
+	catch (...)
+	{
+		fail(test_name, "unexpected exception");
+	}
+}
+
 int main()
 {
 	std::cout << "=== StdDice unit tests ===\n\n";
@@ -325,6 +350,7 @@ int main()
 	test_roll_mean_round_matches_rolled_out();
 	test_same_seed_same_sequence();
 	test_reseed_same_state_same_future_sequence();
+	test_roll_ref_overload();
 
 	std::cout << "\n--- Results: " << g_pass << " passed, " << g_fail << " failed ---\n";
 	return (g_fail == 0) ? 0 : 1;

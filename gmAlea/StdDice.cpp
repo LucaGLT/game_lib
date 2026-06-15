@@ -42,6 +42,11 @@ int StdDice::roll(int num_of_dices, DiceAlgo algo, std::vector<int>* rolled_out)
 	return _die.roll(num_of_dices, algo, rolled_out);
 }
 
+int StdDice::roll(int num_of_dices, DiceAlgo algo, std::vector<int>& rolled_out)
+{
+	return _die.roll(num_of_dices, algo, rolled_out);
+}
+
 int StdDice::min_face() const
 {
 	return _min;

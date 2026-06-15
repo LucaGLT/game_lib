@@ -356,6 +356,31 @@ static void test_weighted_faces_are_representable()
 	}
 }
 
+static void test_roll_ref_overload()
+{
+	const std::string test_name = "roll_ref_overload";
+	try
+	{
+		GmDice dice({1, 2, 3, 4, 5, 6}, 500);
+		std::vector<int> rolled;
+		int result = dice.roll(8, DiceAlgo::ALGO_SUM, rolled);
+		int expected = std::accumulate(rolled.begin(), rolled.end(), 0);
+
+		if (static_cast<int>(rolled.size()) == 8 && result == expected)
+		{
+			pass(test_name);
+		}
+		else
+		{
+			fail(test_name, "ref overload: sum mismatch or wrong size");
+		}
+	}
+	catch (...)
+	{
+		fail(test_name, "unexpected exception");
+	}
+}
+
 int main()
 {
 	std::cout << "=== GmDice unit tests ===\n\n";
@@ -372,6 +397,7 @@ int main()
 	test_same_seed_same_sequence();
 	test_reseed_same_state_same_future_sequence();
 	test_weighted_faces_are_representable();
+	test_roll_ref_overload();
 
 	std::cout << "\n--- Results: " << g_pass << " passed, " << g_fail << " failed ---\n";
 	return (g_fail == 0) ? 0 : 1;
