@@ -97,7 +97,5 @@
 ---
 
 ## Phase 12 – Documentation
-- [ ] Configure `Doxyfile` for `gmMap`
-- [ ] Generate Doxygen HTML docs
 - [x] Write `gmMap_API.md` (usage examples)
 - [x] Update root `README.md`
