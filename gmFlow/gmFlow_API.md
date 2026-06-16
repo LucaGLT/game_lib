@@ -1,7 +1,7 @@
 # gmFlow — Game Flow Control Framework
 
 **Version:** 1.0
-**Status:** Phase 2 — Stubs complete, bodies pending (Phase 4)
+**Status:** Phase 3-4 — Core infrastructure complete (TimelineFlowController implemented)
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Source directory:** `gmFlow/`
@@ -10,56 +10,65 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Design Philosophy](#design-philosophy)
-- [Requirements & Setup](#requirements--setup)
-- [File Structure](#file-structure)
-- [Architecture](#architecture)
-- [Dependencies on Other Libraries](#dependencies-on-other-libraries)
-- [API Reference](#api-reference)
-  - [core/ — Identifiers and Results](#core--identifiers-and-results)
-    - [Ids.hpp](#idshpp)
-    - [Result.hpp](#resulthpp)
-    - [GameState](#gamestate)
-    - [GameContext](#gamecontext)
-  - [actors/ — Participants](#actors--participants)
-    - [Actor](#actor)
-    - [ActorRegistry](#actorregistry)
-  - [events/ — Event Bus](#events--event-bus)
-    - [IEvent](#ievent)
-    - [EventType.hpp](#eventtypehpp)
-    - [FlowEvents.hpp](#floweventshpp)
-    - [EventBus](#eventbus)
-  - [actions/ — Action Model](#actions--action-model)
-    - [ActionStatus](#actionstatus)
-    - [ActionPriority](#actionpriority)
-    - [IAction](#iaction)
-    - [IActionStep](#iactionstep)
-    - [ActionQueue](#actionqueue)
-    - [ActionWindow](#actionwindow)
-    - [StepBasedAction](#stepbasedaction)
-  - [flow/ — Flow Control](#flow--flow-control)
-    - [TurnPolicy](#turnpolicy)
-    - [RoundPolicy](#roundpolicy)
-    - [Turn](#turn)
-    - [Round](#round)
-    - [IPhase](#iphase)
-    - [IFlowController](#iflowcontroller)
-    - [SequentialFlowController](#sequentialflowcontroller)
-  - [session/ — Session Façade](#session--session-façade)
-    - [SessionConfig](#sessionconfig)
-    - [GameSession](#gamesession)
-  - [campaign/ — Campaign Layer](#campaign--campaign-layer)
-    - [CampaignState](#campaignstate)
-    - [SessionDefinition](#sessiondefinition)
-    - [Campaign](#campaign)
-- [Usage Examples](#usage-examples)
-  - [Minimal Sequential Session](#minimal-sequential-session)
-  - [Multi-step Action](#multi-step-action)
-  - [Campaign with Unlock Conditions](#campaign-with-unlock-conditions)
-- [Event Reference](#event-reference)
-- [Architectural Invariants](#architectural-invariants)
-- [Future Extensions (V2+)](#future-extensions-v2)
+- [gmFlow — Game Flow Control Framework](#gmflow--game-flow-control-framework)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Key Features](#key-features)
+  - [Design Philosophy](#design-philosophy)
+  - [Requirements \& Setup](#requirements--setup)
+  - [File Structure](#file-structure)
+  - [Architecture](#architecture)
+  - [Dependencies on Other Libraries](#dependencies-on-other-libraries)
+  - [API Reference](#api-reference)
+    - [core/ — Identifiers and Results](#core--identifiers-and-results)
+      - [Ids.hpp](#idshpp)
+      - [Result.hpp](#resulthpp)
+        - [`enum class ValidationError`](#enum-class-validationerror)
+        - [`class ValidationResult`](#class-validationresult)
+        - [`class ActionResult`](#class-actionresult)
+        - [`struct StepInput`](#struct-stepinput)
+        - [`class StepResult`](#class-stepresult)
+      - [GameState](#gamestate)
+      - [GameContext](#gamecontext)
+    - [actors/ — Participants](#actors--participants)
+      - [Actor](#actor)
+      - [ActorRegistry](#actorregistry)
+    - [events/ — Event Bus](#events--event-bus)
+      - [IEvent](#ievent)
+      - [EventType.hpp](#eventtypehpp)
+      - [FlowEvents.hpp](#floweventshpp)
+      - [EventBus](#eventbus)
+    - [actions/ — Action Model](#actions--action-model)
+      - [ActionStatus](#actionstatus)
+      - [ActionPriority](#actionpriority)
+      - [IAction](#iaction)
+      - [IActionStep](#iactionstep)
+      - [ActionQueue](#actionqueue)
+      - [ActionWindow](#actionwindow)
+      - [StepBasedAction](#stepbasedaction)
+    - [flow/ — Flow Control](#flow--flow-control)
+      - [TurnPolicy](#turnpolicy)
+      - [RoundPolicy](#roundpolicy)
+      - [Turn](#turn)
+      - [Round](#round)
+      - [IPhase](#iphase)
+      - [IFlowController](#iflowcontroller)
+      - [SequentialFlowController](#sequentialflowcontroller)
+      - [TimelineFlowController](#timelineflowcontroller)
+    - [session/ — Session Façade](#session--session-façade)
+      - [SessionConfig](#sessionconfig)
+      - [GameSession](#gamesession)
+    - [campaign/ — Campaign Layer](#campaign--campaign-layer)
+      - [CampaignState](#campaignstate)
+      - [SessionDefinition](#sessiondefinition)
+      - [Campaign](#campaign)
+  - [Usage Examples](#usage-examples)
+    - [Minimal Sequential Session](#minimal-sequential-session)
+    - [Multi-step Action](#multi-step-action)
+    - [Campaign with Unlock Conditions](#campaign-with-unlock-conditions)
+  - [Event Reference](#event-reference)
+  - [Architectural Invariants](#architectural-invariants)
+  - [Future Extensions (V2+)](#future-extensions-v2)
 
 ---
 
@@ -87,23 +96,18 @@ and *in which context* — but it knows nothing about what "attack", "move", or
 
 ## Design Philosophy
 
-```text
-┌──────────────────────────────────────────────────┐
-│  Game-specific code (plug-in layer)              │
-│  MovePawnAction, DrawCardAction, MyGamePhase…    │
-└────────────────────┬─────────────────────────────┘
-                     │ implements IAction, IPhase, IFlowController
-┌────────────────────▼─────────────────────────────┐
-│  gmFlow  (framework layer)                       │
-│  GameSession · IPhase · IAction · ActionWindow   │
-│  ActionQueue · SequentialFlowController          │
-│  EventBus · ActorRegistry · Campaign             │
-└────────────────────┬─────────────────────────────┘
-                     │ uses
-┌────────────────────▼─────────────────────────────┐
-│  game_lib support libraries                      │
-│  gmLog · gmSave · gmDispatch · gmDeck · gmMap    │
-└──────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    A["<b>Game-specific code</b><br/>(plug-in layer)<br/>MovePawnAction, DrawCardAction,<br/>MyGamePhase…"]
+    B["<b>gmFlow</b> (framework layer)<br/>GameSession · IPhase · IAction · ActionWindow<br/>ActionQueue · SequentialFlowController<br/>EventBus · ActorRegistry · Campaign"]
+    C["<b>game_lib support libraries</b><br/>gmLog · gmSave · gmDispatch · gmDeck · gmMap"]
+    
+    A -->|implements IAction,<br/>IPhase, IFlowController| B
+    B -->|uses| C
+    
+    style A fill:#f9f9f9,stroke:#666,stroke-width:2px
+    style B fill:#f0f0f0,stroke:#666,stroke-width:2px
+    style C fill:#e8e8e8,stroke:#666,stroke-width:2px
 ```
 
 - `GameSession` is the **single entry point**. Construct one per scenario/match.
@@ -208,33 +212,39 @@ gmFlow/
 
 ## Architecture
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  Game code                                                   │
-│  session.start() · session.tick() · session.submit_action()  │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
-                   ┌───────▼────────┐
-                   │  GameSession   │  owns context, queue, registry, event bus
-                   └──┬────────┬───┘
-                      │        │
-           ┌──────────▼──┐  ┌──▼────────────────┐
-           │ IFlowControl│  │  ActionQueue       │
-           │ ler         │  │  (priority-sorted) │
-           └──────┬──────┘  └───────────────────┘
-                  │
-        ┌─────────┼──────────┐
-        ▼         ▼          ▼
-    IPhase[]  Turn/Round  ActionWindow
-    (phases)  (per tick)  (per turn)
-                            │
-                        IAction[]
-                        validate() → execute()
-                            │
-                     GameContext &
-                     ┌──────┴──────┐
-                 GameState     EventBus
-                 (game data)   (wraps GmDispatch)
+```mermaid
+graph TD
+    GC["<b>Game code</b><br/>session.start() · session.tick()<br/>session.submit_action()"]
+    GS["<b>GameSession</b><br/>owns context, queue, registry, event bus"]
+    FC["<b>IFlowController</b>"]
+    AQ["<b>ActionQueue</b><br/>(priority-sorted)"]
+    PH["<b>IPhase[]</b><br/>(phases)"]
+    TR["<b>Turn/Round</b><br/>(per tick)"]
+    AW["<b>ActionWindow</b><br/>(per turn)"]
+    ACT["<b>IAction[]</b><br/>validate() → execute()"]
+    CTX["<b>GameContext</b> &"]
+    ST["<b>GameState</b><br/>(game data)"]
+    EB["<b>EventBus</b><br/>(wraps GmDispatch)"]
+    
+    GC --> GS
+    GS --> FC
+    GS --> AQ
+    FC --> PH
+    FC --> TR
+    AQ --> ACT
+    TR --> AW
+    AW --> ACT
+    ACT --> CTX
+    CTX --> ST
+    CTX --> EB
+    
+    style GC fill:#f9f9f9,stroke:#666,stroke-width:2px
+    style GS fill:#f0f0f0,stroke:#666,stroke-width:2px
+    style FC fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style AQ fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style CTX fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style ST fill:#ddd,stroke:#666,stroke-width:2px
+    style EB fill:#ddd,stroke:#666,stroke-width:2px
 ```
 
 ---
@@ -872,6 +882,71 @@ Supported game archetypes without subclassing:
 | HeroQuest / Dungeon Crawler | Default sequential, `TurnPolicy` defaults |
 | Risiko! / Wargame | Default sequential, `RoundPolicy::max_rounds` set |
 | Game of Thrones board game | Multiple phases with sequential per-actor turns |
+
+---
+
+#### TimelineFlowController
+
+Continuous-timeline turn selection.  The actor with the **lowest timeline position**
+acts next.  Ties are broken by a secondary rank, then by insertion order (stable sort).
+
+Suitable for games with individual initiative/action-economy (Gloomhaven, solo roguelike,
+real-time tactical).
+
+```cpp
+class TimelineFlowController : public IFlowController {
+public:
+    explicit TimelineFlowController(
+        std::unique_ptr<ITimelineAdapter> adapter,
+        const TimelinePolicy&             policy);
+
+    // IFlowController interface — see above.
+    void start(GameContext& ctx) override;
+    void process(GameContext& ctx) override;
+    bool can_actor_act(const GameContext& ctx, const ActorId& actor) const override;
+    void on_action_completed(GameContext& ctx, const ActionResult& result) override;
+    ValidationResult accept_action(GameContext& ctx, const ActorId& actor,
+                                   std::unique_ptr<IAction> action) override;
+    bool is_session_complete(const GameContext& ctx) const override;
+
+    // Accessors.
+    const std::optional<ActorId>& active_actor() const;
+    TimelineValue                 current_time() const;
+    bool                          has_action_window() const;
+    void                          force_close_action_window();
+    void                          open_reaction_window(const std::vector<ActorId>& eligible);
+};
+```
+
+**Timeline selection algorithm:**
+
+1. Collect all enabled actors from `ITimelineAdapter::timeline_actors()`.
+2. Sort stably by:
+   - PRIMARY: `timeline_position()` ASC (lowest first)
+   - SECONDARY: `tie_break_rank()` ASC (lowest rank breaks ties)
+   - TERTIARY: Insertion order (stable sort preserves original order for exact ties)
+3. Select first actor in sorted order.
+4. Open main `ActionWindow` with `_policy.open_main_action_window`.
+5. On action completion:
+   - If `actor_keeps_control()` → reopen main window for same actor.
+   - Else → clear actor, auto-select next if `auto_select_next_actor`.
+6. Detect time advance → publish `TimelineTimeAdvancedEvent`.
+7. Detect tie (multiple actors at lowest position) → publish `TimelineTieDetectedEvent`.
+
+**Key interfaces:**
+
+- `ITimelineAdapter` — Maps game actors to timeline values (position, rank, enabled status).
+- `TimelinePolicy` — Configures auto-selection, reaction windows, event publishing.
+- `TimelineEvents.hpp` — Event structs (ActorSelected, TimeAdvanced, TieDetected, NoActorAvailable).
+
+Supported game archetypes without subclassing:
+
+| Archetype | Configuration |
+| --------- | ------------- |
+| Solo roguelike | Single actor (player), `auto_select_next_actor = false` |
+| Gloomhaven-style | 1–4 actors, variable action economy (position ~= remaining actions) |
+| Real-time tactical | Position ~= cooldown timer, rank ~= priority |
+| Simultaneous planning + sequential resolution | Position ~= action cost, phases separate planning vs execution |
 
 ---
 
