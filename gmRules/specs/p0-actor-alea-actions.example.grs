@@ -1,0 +1,124 @@
+@meta
+# Id gioco di esempio per copertura azioni actor+alea P0
+game        grs_p0_actor_alea_actions
+# Namespace logico delle regole
+ns          grs.p0.actions.actor_alea
+# Versione dello script
+version     1.0.0
+# Versione minima di runtime gmRules
+min_gmrules 0.5.0
+@end
+
+@targets
+# Source actor corrente
+Target_Self      :: ACTOR SELF required
+# Nemico selezionato dal chiamante
+Target_Enemy     :: ACTOR SELECTED_ENEMY required
+# Alleato selezionato (puo mancare in alcuni scenari)
+Target_Ally      :: ACTOR SELECTED_ALLY optional
+# Carta selezionata dal chiamante
+Target_AnyCard   :: CARD SELECTED_CARD optional
+@end
+
+@conditions
+# Verifica esistenza attore sorgente
+C_ActorExists    :: ACTOR_EXISTS(input.actor_id)
+# Verifica esistenza nemico
+C_EnemyExists    :: ACTOR_EXISTS(input.enemy_id)
+# Verifica che il deck abbia almeno una carta
+C_DeckReady      :: DECK_HAS_AT_LEAST(input.deck_id, 1)
+@end
+
+@effects
+# Actor extended actions
+# Consuma 2 mana al source actor
+E_ModifyResource  :: MODIFY_RESOURCE(Target_Self, -2, mana)
+# Imposta cap massimo mana a 10
+E_SetResourceMax  :: SET_RESOURCE_MAX(Target_Self, 10, mana)
+# Equip oggetto arma sul source actor
+E_EquipItem       :: EQUIP_ITEM(Target_Self, item.sword_iron)
+# Rimuove equip dallo slot arma
+E_UnequipItem     :: UNEQUIP_ITEM(Target_Self, slot.weapon)
+# Spawna un alleato evocato
+E_SpawnActor      :: SPAWN_ACTOR(Target_Ally, actor.minion_wolf)
+# Rimuove un nemico specifico dal gioco
+E_DespawnActor    :: DESPAWN_ACTOR(Target_Enemy, actor.enemy_orc)
+# Rianima l'alleato target
+E_ReviveActor     :: REVIVE_ACTOR(Target_Ally)
+# Cambia fazione del nemico a neutrale
+E_ChangeTeam      :: CHANGE_TEAM(Target_Enemy, team.neutral)
+
+# Alea extended actions
+# Mescola zona discard del deck associato al source_id runtime
+E_ShuffleZone     :: SHUFFLE_ZONE(Target_Self, discard)
+# Peek delle prime 3 carte
+E_LookTopCard     :: LOOK_TOP_CARD(Target_Self, 3)
+# Peek delle ultime 2 carte
+E_LookBottomCard  :: LOOK_BOTTOM_CARD(Target_Self, 2)
+# Seleziona una carta specifica per id
+E_SelectCard      :: SELECT_SPECIFIC_CARD(Target_AnyCard, card.fireball)
+# Scarta 1 carta casuale
+E_DiscardRandom   :: DISCARD_RANDOM(Target_Self, 1)
+# Posiziona carta in cima al deck
+E_PlaceOnTop      :: PLACE_ON_TOP(Target_AnyCard, card.fireball)
+# Posiziona carta in fondo al deck
+E_PlaceOnBottom   :: PLACE_ON_BOTTOM(Target_AnyCard, card.heal)
+# Esegue un tiro di dado 1d20
+E_RollDice        :: ROLL_DICE(Target_Self, 1d20)
+
+# Evento di log finale (non bloccante)
+E_Log             :: MANUAL_EFFECT(grs.p0.actions.actor_alea.executed) [optional]
+@end
+
+@rules
+# Regola di scenario: esercita il gruppo azioni actor estese
+R_ActorActions [priority=100] ::
+    # La regola parte solo se l'attore sorgente esiste
+    IF C_ActorExists
+    # Applica sul source actor
+    ON Target_Self
+    # Sequenza actor estesa in ordine deterministic
+    THEN E_ModifyResource
+         AND THEN E_SetResourceMax
+         AND THEN E_EquipItem
+         AND THEN E_UnequipItem
+         AND THEN E_SpawnActor
+         AND THEN E_ReviveActor
+         AND THEN E_ChangeTeam
+         AND THEN E_Log?
+
+# Regola di scenario: esercita il gruppo azioni alea estese
+R_AleaActions [priority=110] ::
+    # Richiede deck pronto
+    IF C_DeckReady
+    # Applica nel contesto del source actor
+    ON Target_Self
+    # Sequenza alea estesa in ordine deterministic
+    THEN E_ShuffleZone
+         AND THEN E_LookTopCard
+         AND THEN E_LookBottomCard
+         AND THEN E_SelectCard
+         AND THEN E_DiscardRandom
+         AND THEN E_PlaceOnTop
+         AND THEN E_PlaceOnBottom
+         AND THEN E_RollDice
+         AND THEN E_Log?
+
+# Regola dedicata al caso di despawn nemico
+R_ActorDespawn [priority=120] ::
+    # Esegue solo con nemico valido
+    IF C_EnemyExists
+    # Applica sul target nemico
+    ON Target_Enemy
+    # Esegue despawn e log
+    THEN E_DespawnActor AND THEN E_Log?
+@end
+
+@triggers
+# Trigger post-risoluzione random per tracciare il passaggio alea
+T_OnAleaResolved [priority=300] ::
+    # Evento lifecycle alea
+    ON_EVENT ALEA_RESOLVED
+    # Solo log opzionale
+    THEN E_Log?
+@end

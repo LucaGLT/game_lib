@@ -1,0 +1,182 @@
+meta:
+  schema_version: "1.0.0"
+  game_id: "checkers"
+  namespace: "checkers.core"
+  compatibility:
+    gmRules_min: "0.5.0"
+  authors:
+    - "game_lib"
+  description: "Regole base Dama per demo codegen su gmRules"
+
+vocabulary:
+  factions:
+    - white
+    - black
+  tags:
+    - king
+    - captured
+    - promotable
+  location:
+    kind: string
+    pattern: "^sq_[0-9]+$"
+  status_ids:
+    - captured
+
+rules:
+  - id: "move.simple.diagonal"
+    enabled: true
+    priority: 100
+    target:
+      kind: ACTOR
+      selector: SELECTED_ACTOR
+      range_type: ADJACENT_LOCATION
+      allow_self: true
+      required: true
+    conditions:
+      op: ALL_OF
+      children:
+        - type: ACTOR_EXISTS
+          subject_id_ref: "input.piece_id"
+        - type: LOCATION_EXISTS
+          subject_id_ref: "input.destination_sq"
+        - type: ACTOR_IN_LOCATION
+          subject_id_ref: "input.piece_id"
+          value_ref: "input.source_sq"
+    effects:
+      - type: MOVE_ACTOR
+        source_id_ref: "input.piece_id"
+        target:
+          kind: ACTOR
+          selector: SELECTED_ACTOR
+          required: true
+        value_ref: "input.destination_sq"
+        optional: false
+        stop_on_failure: true
+
+  - id: "capture.jump_and_mark"
+    enabled: true
+    priority: 200
+    target:
+      kind: ACTOR
+      selector: SELECTED_ACTOR
+      range_type: ADJACENT_LOCATION
+      allow_self: true
+      required: true
+    conditions:
+      op: ALL_OF
+      children:
+        - type: ACTOR_EXISTS
+          subject_id_ref: "input.piece_id"
+        - type: ACTOR_EXISTS
+          subject_id_ref: "input.enemy_piece_id"
+        - type: LOCATION_EXISTS
+          subject_id_ref: "input.landing_sq"
+    effects:
+      - type: MOVE_ACTOR
+        source_id_ref: "input.piece_id"
+        target:
+          kind: ACTOR
+          selector: SELECTED_ACTOR
+          required: true
+        value_ref: "input.landing_sq"
+        optional: false
+        stop_on_failure: true
+
+      - type: APPLY_STATUS
+        source_id_ref: "input.piece_id"
+        target:
+          kind: ACTOR
+          selector: SELECTED_ENEMY
+          required: true
+        value: "captured"
+        optional: false
+        stop_on_failure: true
+
+  - id: "promotion.add_king_tag"
+    enabled: true
+    priority: 300
+    target:
+      kind: ACTOR
+      selector: SELECTED_ACTOR
+      required: true
+    conditions:
+      op: ANY_OF
+      children:
+        - op: ALL_OF
+          children:
+            - type: ACTOR_HAS_TAG
+              subject_id_ref: "input.piece_id"
+              value: "white"
+            - type: LOCATION_HAS_TAG
+              subject_id_ref: "input.destination_sq"
+              value: "promotion_white"
+        - op: ALL_OF
+          children:
+            - type: ACTOR_HAS_TAG
+              subject_id_ref: "input.piece_id"
+              value: "black"
+            - type: LOCATION_HAS_TAG
+              subject_id_ref: "input.destination_sq"
+              value: "promotion_black"
+    effects:
+      - type: ADD_TAG
+        source_id_ref: "input.piece_id"
+        target:
+          kind: ACTOR
+          selector: SELECTED_ACTOR
+          required: true
+        value: "king"
+        optional: false
+        stop_on_failure: true
+
+statuses:
+  - id: "captured"
+    name: "Captured Piece"
+    enabled: true
+    tags:
+      - captured
+    on_apply:
+      - type: EMIT_EVENT
+        source_id_ref: "event.source_id"
+        target:
+          kind: ACTOR
+          selector: SELECTED_ACTOR
+          required: false
+        value: "checkers.piece.captured"
+        optional: true
+        stop_on_failure: false
+    on_remove: []
+    on_activation_start: []
+    on_activation_end: []
+    continuous_effects: []
+    modifiers: []
+    stacking_policy:
+      mode: ONE_ONLY
+      max_stacks: 1
+    default_duration:
+      type: UNTIL_REMOVED
+      amount: 0
+      value: ""
+
+triggers:
+  - id: "trigger.after_move.promotion"
+    enabled: true
+    priority: 50
+    type: ON_ACTOR_MOVED
+    conditions:
+      op: ALL_OF
+      children:
+        - type: ACTOR_EXISTS
+          subject_id_ref: "event.actor_id"
+        - type: LOCATION_EXISTS
+          subject_id_ref: "event.to_location"
+    effects:
+      - type: MANUAL_EFFECT
+        source_id_ref: "event.actor_id"
+        target:
+          kind: NONE
+          selector: MANUAL
+          required: false
+        value: "checkers.trigger.after_move"
+        optional: true
+        stop_on_failure: false
