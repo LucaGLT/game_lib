@@ -1011,259 +1011,231 @@ Per linee guida operative sui bridge non diretti, vedi
 ## Grammatica EBNF v0.1
 
 ```ebnf
-Document      ::= Block+
+Document =
+    { Block }+ ;
 
-Block         ::= '@' BlockType Newline Body '@end' Newline
+Block =
+      MetaBlock
+    | TargetBlock
+    | ConditionBlock
+    | EffectBlock
+    | RuleBlock
+    | StatusBlock
+    | TriggerBlock ;
 
-BlockType     ::= 'meta' | 'targets' | 'conditions' | 'effects'
-                | 'rules' | 'statuses' | 'triggers'
+ConditionExprOrName =
+      <condition_name>
+    | <ConditionExpr> ;
 
-Body          ::= Line+
-Line          ::= MetaLine | DefLine | Newline
+EffectChain =
+    <EffectEntry> { "AND THEN" <EffectEntry> } ;
 
-MetaLine      ::= Ident WS Value Newline
+EffectEntry =
+      <effect_name>
+    | <EffectType> "(" <TargetRefOrName> [ "," <Arg> { "," <Arg> } ] ")"
+    [ "?" ] ;
 
-DefLine       ::= Ident AttrSuffix? WS '::' WS DefBody Newline
-                  (WS SubLine Newline)*
+EffectModifier =
+      "[optional]"
+    | "[stop]"
+    | "[continue]" ;
 
-SubLine       ::= HookKeyword WS EffectChain
+ConditionExpr =
+      <CondAtom>
+    | "NOT" <ConditionExpr>
+    | <ConditionExpr> "AND" <ConditionExpr>
+    | <ConditionExpr> "OR" <ConditionExpr>
+    | "(" <ConditionExpr> ")" ;
 
-HookKeyword   ::= 'ON_APPLY' | 'ON_REMOVE' | 'ON_TURN_START' | 'ON_TURN_END'
+CondAtom =
+    <ConditionType> "(" [ <Arg> { "," <Arg> } ] ")" ;
 
-AttrSuffix    ::= '[' AttrList ']'
-AttrList      ::= Attr (',' Attr)*
-Attr          ::= 'priority' '=' Integer
-                | 'disabled'
+Arg =
+      <Ref>
+    | <StringLit>
+    | <Integer>
+    | <Identifier> ;
 
-DefBody       ::= TargetBody | ConditionBody | EffectBody
-                | RuleBody   | StatusBody    | TriggerBody
+Ref =
+    ( "input" | "event" | "source" ) "." <Identifier> ;
 
-TargetBody    ::= TargetKind WS TargetSelector (WS TargetMod)*
-TargetMod     ::= 'required' | 'optional' | 'no_self'
-                | 'range' WS RangeType (WS Integer)?
-                | 'needs'   WS TagList
-                | 'forbids' WS TagList
+TargetRefOrName =
+      <target_name>
+    | <Ref>
+    | <Identifier> ;
 
-ConditionBody ::= ConditionExpr
-ConditionExpr ::= ConditionTerm (WS ('AND'|'OR') WS ConditionTerm)*
-ConditionTerm ::= 'NOT' WS ConditionTerm
-                | '(' WS ConditionExpr WS ')'
-                | CondAtom
-CondAtom      ::= CondType '(' ArgList? ')'
-                | Ident
+Identifier =
+    <Letter> { <Letter> | <Digit> | "_" | "." } ;
 
-EffectBody    ::= EffectCall EffectMod*
-EffectCall    ::= EffectType '(' ArgList? ')'
-EffectMod     ::= '[' ('optional' | 'stop' | 'continue') ']'
+StringLit =
+    '"' { <AnyCharExceptQuote> } '"' ;
 
-RuleBody      ::= ('IF' WS ConditionExpr WS)? 'ON' WS Ident
-                  WS 'THEN' WS EffectChain
-                | 'ON' WS Ident (WS 'IF' WS ConditionExpr)?
-                  WS 'THEN' WS EffectChain
-
-EffectChain   ::= EffectEntry (WS 'AND' WS 'THEN' WS EffectEntry)*
-EffectEntry   ::= EffectCall EffectMod*
-                | Ident EffectMod*
-
-StatusBody    ::= StackingMode WS DurationType (WS StatusDurAttr)*
-StackingMode  ::= 'REFRESH' | 'ADD_STACK' | 'ONE_ONLY'
-                | 'REPLACE' | 'UNIQUE_BY_SOURCE'
-DurationType  ::= 'PERMANENT' | 'UNTIL_REMOVED' | 'UNTIL_NEXT_TURN'
-                | 'FOR_N' | 'WHILE_IN_LOCATION'
-StatusDurAttr ::= 'amount' WS Integer | 'value' WS Ident
-
-TriggerBody   ::= 'ON_EVENT' WS TriggerType
-                  (WS 'IF' WS ConditionExpr)?
-                  WS 'THEN' WS EffectChain
-
-ArgList       ::= Arg (',' WS Arg)*
-Arg           ::= Ref | StringLit | Integer
-Ref           ::= ('input' | 'event' | 'source') '.' Ident
-                | Ident
-
-TagList       ::= Tag (',' WS Tag)*
-Tag           ::= Ident
-
-Ident         ::= [a-zA-Z_][a-zA-Z0-9_.]*
-StringLit     ::= '"' [^"]* '"'
-Integer       ::= '-'? [0-9]+
-WS            ::= (' ' | '\t')+
-Newline       ::= '\n' | '\r\n'
+Integer =
+    [ "-" ] <Digit> { <Digit> } ;
 ```
 
-### Grafi Mermaid per blocco
+### EBNF sintetica per blocco
 
-> **Legenda colori**
-> - 🟢 Verde (`req`) — componente **obbligatorio**
-> - 🟡 Giallo (`opt`) — componente **opzionale**
-> - ⬜ Bianco (default) — struttura contenitore / intestazione blocco
+Le forme sotto descrivono la struttura minima di ogni blocco GRS.
+
+Convenzioni usate:
+
+- `(...)` raggruppamento
+- `|` alternativa
+- `[...]` opzionale
+- `{...}` ripetizione zero o più volte
+- `{...}+` ripetizione una o più volte
 
 ---
 
 #### `@meta`
 
-```mermaid
-flowchart LR
-    M0["@meta ... @end"]
-    M0 --> M1[game]
-    M0 --> M2[ns]
-    M0 --> M3[version]
-    M0 --> M4[min_gmrules]
-
-    style M1 fill:#4caf50,color:#fff
-    style M2 fill:#4caf50,color:#fff
-    style M3 fill:#4caf50,color:#fff
-    style M4 fill:#fff9c4,color:#333
+```ebnf
+MetaBlock =
+    "@meta"
+        "game" <GameId>
+        "ns" <Namespace>
+        "version" <Version>
+        [ "min_gmrules" <Version> ]
+    "@end" ;
 ```
 
 ---
 
 #### `@targets`
 
-```mermaid
-flowchart LR
-    T0["Name :: TargetKind TargetSelector ..."]
-    T0 --> T1[TargetKind]
-    T0 --> T2[TargetSelector]
-    T0 --> T3["range RangeType N"]
-    T0 --> T4["required / optional"]
-    T0 --> T5[no_self]
-    T0 --> T6["needs TAG,..."]
-    T0 --> T7["forbids TAG,..."]
+```ebnf
+TargetBlock =
+    "@targets"
+        { TargetLine }+
+    "@end" ;
 
-    style T1 fill:#4caf50,color:#fff
-    style T2 fill:#4caf50,color:#fff
-    style T3 fill:#fff9c4,color:#333
-    style T4 fill:#fff9c4,color:#333
-    style T5 fill:#fff9c4,color:#333
-    style T6 fill:#fff9c4,color:#333
-    style T7 fill:#fff9c4,color:#333
+TargetLine =
+    <target_name> "::" <TargetKind> <TargetSelector>
+    [ "range" <RangeType> [ <Integer> ] ]
+    [ "required" | "optional" ]
+    [ "needs" <Tag> { "," <Tag> } ]
+    [ "forbids" <Tag> { "," <Tag> } ]
+    [ "no_self" ] ;
 ```
 
 ---
 
 #### `@conditions`
 
-```mermaid
-flowchart LR
-    C0["Name :: CondExpr"]
-    C0 --> C1[Name]
-    C0 --> C2[CondExpr]
+```ebnf
+ConditionBlock =
+    "@conditions"
+        { ConditionLine }+
+    "@end" ;
 
-    C2 --> CA[CondAtom]
-    C2 --> CB["C_A AND C_B"]
-    C2 --> CC["C_A OR C_B"]
-    C2 --> CD["NOT C_A"]
-    C2 --> CE["(CondExpr)"]
+ConditionLine =
+    <condition_name> "::" <ConditionExpr> ;
 
-    CA --> CA1["FunctionName(Arg1, Arg2)"]
+ConditionExpr =
+      <CondAtom>
+    | "NOT" <ConditionExpr>
+    | <ConditionExpr> "AND" <ConditionExpr>
+    | <ConditionExpr> "OR" <ConditionExpr>
+    | "(" <ConditionExpr> ")" ;
 
-    style C1 fill:#4caf50,color:#fff
-    style C2 fill:#4caf50,color:#fff
-    style CA fill:#4caf50,color:#fff
-    style CA1 fill:#4caf50,color:#fff
-    style CB fill:#fff9c4,color:#333
-    style CC fill:#fff9c4,color:#333
-    style CD fill:#fff9c4,color:#333
-    style CE fill:#fff9c4,color:#333
+CondAtom =
+    <ConditionType> "(" [ <Arg> { "," <Arg> } ] ")" ;
 ```
 
 ---
 
 #### `@effects`
 
-```mermaid
-flowchart LR
-    E0["Name :: EffectCall EffectMod"]
-    E0 --> E1[Name]
-    E0 --> E2["EffectType(Target, Args...)"]
-    E0 --> E3["[optional]"]
-    E0 --> E4["[stop]"]
-    E0 --> E5["[continue]"]
+```ebnf
+EffectBlock =
+    "@effects"
+        { EffectLine }+
+    "@end" ;
 
-    style E1 fill:#4caf50,color:#fff
-    style E2 fill:#4caf50,color:#fff
-    style E3 fill:#fff9c4,color:#333
-    style E4 fill:#fff9c4,color:#333
-    style E5 fill:#fff9c4,color:#333
+EffectLine =
+    <effect_name> "::" <EffectType> "(" <TargetRefOrName>
+    [ "," <Arg> { "," <Arg> } ] ")"
+    { <EffectModifier> } ;
+
+EffectModifier =
+      "[optional]"
+    | "[stop]"
+    | "[continue]" ;
 ```
 
 ---
 
 #### `@rules`
 
-```mermaid
-flowchart LR
-    R0["Name AttrSuffix :: RuleBody"]
-    R0 --> R1[Name]
-    R0 --> R2["[priority=N]"]
-    R0 --> R3["[disabled]"]
-    R0 --> R4["IF CondExpr"]
-    R0 --> R5["ON TargetName"]
-    R0 --> R6["THEN EffectChain"]
+```ebnf
+RuleBlock =
+    "@rules"
+        { RuleLine }+
+    "@end" ;
 
-    R6 --> R7[EffectEntry]
-    R6 --> R8["AND THEN EffectEntry ..."]
+RuleLine =
+    <rule_name> { <RuleAttr> } "::"
+    [ "IF" <ConditionExprOrName> ]
+    "ON" <target_name>
+    "THEN" <EffectChain> ;
 
-    style R1 fill:#4caf50,color:#fff
-    style R5 fill:#4caf50,color:#fff
-    style R6 fill:#4caf50,color:#fff
-    style R7 fill:#4caf50,color:#fff
-    style R2 fill:#fff9c4,color:#333
-    style R3 fill:#fff9c4,color:#333
-    style R4 fill:#fff9c4,color:#333
-    style R8 fill:#fff9c4,color:#333
+RuleAttr =
+      "[priority=" <Integer> "]"
+    | "[disabled]" ;
+
+EffectChain =
+    <EffectEntry> { "AND THEN" <EffectEntry> } ;
+
+EffectEntry =
+    <effect_name> [ "?" ] ;
 ```
 
 ---
 
 #### `@statuses`
 
-```mermaid
-flowchart LR
-    S0["Name :: StackingMode DurationType SubLines"]
-    S0 --> S1[Name]
-    S0 --> S2[StackingMode]
-    S0 --> S3[DurationType]
-    S0 --> S4["StatusDurAttr (amount N)"]
-    S0 --> S5["ON_APPLY EffectChain"]
-    S0 --> S6["ON_REMOVE EffectChain"]
-    S0 --> S7["ON_TURN_START EffectChain"]
-    S0 --> S8["ON_TURN_END EffectChain"]
+```ebnf
+StatusBlock =
+    "@statuses"
+        { StatusLine }+
+    "@end" ;
 
-    style S1 fill:#4caf50,color:#fff
-    style S2 fill:#4caf50,color:#fff
-    style S3 fill:#4caf50,color:#fff
-    style S4 fill:#fff9c4,color:#333
-    style S5 fill:#fff9c4,color:#333
-    style S6 fill:#fff9c4,color:#333
-    style S7 fill:#fff9c4,color:#333
-    style S8 fill:#fff9c4,color:#333
+StatusLine =
+    <status_name> "::" <StackingMode> <DurationType>
+    { <StatusAttr> }
+    { <StatusHook> } ;
+
+StatusAttr =
+      "amount" <Integer>
+    | <Identifier> ;
+
+StatusHook =
+      "ON_APPLY" <EffectChain>
+    | "ON_REMOVE" <EffectChain>
+    | "ON_TURN_START" <EffectChain>
+    | "ON_TURN_END" <EffectChain>
+    | "ON_ACTION_COMPLETED" <EffectChain> ;
 ```
 
 ---
 
 #### `@triggers`
 
-```mermaid
-flowchart LR
-    TR0["Name AttrSuffix :: TriggerBody"]
-    TR0 --> TR1[Name]
-    TR0 --> TR2["[priority=N]"]
-    TR0 --> TR3["ON_EVENT TriggerType"]
-    TR0 --> TR4["IF CondExpr"]
-    TR0 --> TR5["THEN EffectChain"]
+```ebnf
+TriggerBlock =
+    "@triggers"
+        { TriggerLine }+
+    "@end" ;
 
-    TR5 --> TR6[EffectEntry]
-    TR5 --> TR7["AND THEN EffectEntry ..."]
+TriggerLine =
+    <trigger_name> { <TriggerAttr> } "::"
+    "ON_EVENT" <TriggerType>
+    [ "IF" <ConditionExprOrName> ]
+    "THEN" <EffectChain> ;
 
-    style TR1 fill:#4caf50,color:#fff
-    style TR3 fill:#4caf50,color:#fff
-    style TR5 fill:#4caf50,color:#fff
-    style TR6 fill:#4caf50,color:#fff
-    style TR2 fill:#fff9c4,color:#333
-    style TR4 fill:#fff9c4,color:#333
-    style TR7 fill:#fff9c4,color:#333
+TriggerAttr =
+    "[priority=" <Integer> "]" ;
 ```
 
 ---
