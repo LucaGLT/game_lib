@@ -120,8 +120,8 @@ protected:
     void add_step(std::unique_ptr<IActionStep> step);
 
 private:
-    std::vector<std::unique_ptr<IActionStep>> steps_;
-    std::size_t                               current_step_ = 0;
+    std::vector<std::unique_ptr<IActionStep>> _steps;
+    std::size_t                               _current_step = 0;
 };
 
 } // namespace gmFlow

@@ -45,7 +45,8 @@ public:
     EffectResult resolve(const EffectSpec& effect,
                          const ActorId& source_actor_id,
                          const std::vector<TargetRef>& selected_targets,
-                         RuleContext& ctx) const;
+                         RuleContext& ctx,
+                         int rule_priority = 100) const;
 
     /**
      * @brief Resolves and applies multiple effects in sequence.
@@ -62,7 +63,8 @@ public:
     EffectResult resolve_many(const std::vector<EffectSpec>& effects,
                               const ActorId& source_actor_id,
                               const std::vector<TargetRef>& selected_targets,
-                              RuleContext& ctx) const;
+                              RuleContext& ctx,
+                              int rule_priority = 100) const;
 };
 
 } // namespace gmRules

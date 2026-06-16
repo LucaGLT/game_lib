@@ -88,7 +88,8 @@ public:
     EffectResult resolve_effect(const EffectSpec& spec,
                                 const ActorId& source_actor_id,
                                 const std::vector<TargetRef>& selected_targets,
-                                RuleContext& ctx);
+                            RuleContext& ctx,
+                            int rule_priority = 100);
 
     /**
      * @brief Resolves and applies multiple effects in sequence.
@@ -98,7 +99,8 @@ public:
     EffectResult resolve_effects(const std::vector<EffectSpec>& specs,
                                  const ActorId& source_actor_id,
                                  const std::vector<TargetRef>& selected_targets,
-                                 RuleContext& ctx);
+                             RuleContext& ctx,
+                             int rule_priority = 100);
 
     // ── Status ────────────────────────────────────────────────────────────────
 

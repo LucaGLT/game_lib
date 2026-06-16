@@ -96,6 +96,24 @@ inline constexpr const char* EVT_CAMPAIGN_SESSION_UNLOCKED = "gmFlow.campaign.se
 /// @brief Published when all campaign sessions have been completed.
 inline constexpr const char* EVT_CAMPAIGN_COMPLETED = "gmFlow.campaign.completed";
 
+// ── Timeline lifecycle ─────────────────────────────────────────────────────
+
+/// @brief Published when the controller selects the next active timeline actor.
+inline constexpr const char* EVT_TIMELINE_ACTOR_SELECTED =
+    "gmFlow.timeline.actor_selected";
+
+/// @brief Published when the minimum timeline position advances.
+inline constexpr const char* EVT_TIMELINE_TIME_ADVANCED =
+    "gmFlow.timeline.time_advanced";
+
+/// @brief Published when two or more actors share the same lowest timeline position.
+inline constexpr const char* EVT_TIMELINE_TIE_DETECTED =
+    "gmFlow.timeline.tie_detected";
+
+/// @brief Published when no enabled actor is available for selection.
+inline constexpr const char* EVT_TIMELINE_NO_ACTOR_AVAILABLE =
+    "gmFlow.timeline.no_actor_available";
+
 } // namespace gmFlow
 
 #endif // GMFLOW_EVENTTYPE_HPP

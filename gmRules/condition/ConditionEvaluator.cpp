@@ -6,7 +6,9 @@
  *   ALWAYS, NEVER, ACTOR_EXISTS, ACTOR_HAS_STATUS, ACTOR_HAS_TAG,
  *   ACTOR_HP_AT_OR_BELOW, ACTOR_HP_AT_OR_ABOVE, ACTOR_IN_LOCATION,
  *   LOCATION_HAS_TAG, LOCATION_IS_ADJACENT, TARGET_EXISTS,
- *   TARGET_HAS_STATUS, TARGET_HAS_TAG
+ *   TARGET_HAS_STATUS, TARGET_HAS_TAG, RESOURCE_AT_LEAST,
+ *   DECK_HAS_AT_LEAST, CARD_IN_ZONE,
+ *   LOCATION_IS_REACHABLE, LOCATION_HAS_LOS, MOVE_COST_AT_MOST
  *
  * Composite operators: ALL_OF, ANY_OF, NONE_OF, NOT
  */
@@ -88,6 +90,60 @@ static RuleResult evaluate_atomic(const ConditionSpec& c, const RuleContext& ctx
 			if (!c.subject_id.empty() && ctx.actor_has_tag(c.subject_id, c.value))
 				return RuleResult::ok();
 			return RuleResult::fail(RuleError::CONDITION_FAILED, "target lacks tag");
+
+		// ── Chapter 4 — gmActor ───────────────────────────────────────────────
+
+		case ConditionType::RESOURCE_AT_LEAST:
+			if (ctx.actor_resource(c.subject_id, c.value) >= c.amount)
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"resource '" + c.value + "' on actor '" + c.subject_id
+				+ "' is below " + std::to_string(c.amount));
+
+		// ── Chapter 5 — gmAlea ────────────────────────────────────────────────
+
+		case ConditionType::DECK_HAS_AT_LEAST:
+			if (!ctx.has_deck(c.subject_id))
+				return RuleResult::fail(RuleError::UNKNOWN_DECK,
+					"deck '" + c.subject_id + "' not found");
+			if (ctx.deck_zone_count(c.subject_id, c.value) >= c.amount)
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"deck '" + c.subject_id + "' zone '" + c.value
+				+ "' has fewer than " + std::to_string(c.amount) + " cards");
+
+		case ConditionType::CARD_IN_ZONE:
+			if (ctx.card_in_zone(c.subject_id, c.target_id, c.value))
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"card '" + c.target_id + "' not in deck '" + c.subject_id
+				+ "' zone '" + c.value + "'");
+
+		// ── Chapter 6 — gmMap ─────────────────────────────────────────────────
+
+		case ConditionType::LOCATION_IS_REACHABLE:
+			if (ctx.is_location_reachable(c.subject_id, c.target_id))
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"location '" + c.target_id + "' not reachable from '"
+				+ c.subject_id + "'");
+
+		case ConditionType::LOCATION_HAS_LOS:
+			if (ctx.has_line_of_sight(c.subject_id, c.target_id))
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"no line-of-sight from '" + c.subject_id + "' to '"
+				+ c.target_id + "'");
+
+		case ConditionType::MOVE_COST_AT_MOST:
+		{
+			int cost = ctx.move_cost_between(c.subject_id, c.target_id);
+			if (cost >= 0 && cost <= c.amount)
+				return RuleResult::ok();
+			return RuleResult::fail(RuleError::CONDITION_FAILED,
+				"move cost " + std::to_string(cost) + " exceeds "
+				+ std::to_string(c.amount));
+		}
 
 		default:
 			return RuleResult::fail(RuleError::UNSUPPORTED_CONDITION,

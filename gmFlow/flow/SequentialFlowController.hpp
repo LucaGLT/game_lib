@@ -100,16 +100,16 @@ private:
     /// @brief Opens a new turn for the next actor in the turn order.
     void open_next_turn(GameContext& ctx);
 
-    std::vector<std::unique_ptr<IPhase>> phases_;
-    TurnPolicy                           turn_policy_;
-    RoundPolicy                          round_policy_;
-    std::size_t                          current_phase_index_ = 0;
-    std::size_t                          current_actor_index_ = 0;
-    int                                  round_index_         = 0;
-    bool                                 session_complete_    = false;
-    bool                                 rounds_exhausted_    = false;
+    std::vector<std::unique_ptr<IPhase>> _phases;
+    TurnPolicy                           _turn_policy;
+    RoundPolicy                          _round_policy;
+    std::size_t                          _current_phase_index = 0;
+    std::size_t                          _current_actor_index = 0;
+    int                                  _round_index         = 0;
+    bool                                 _session_complete    = false;
+    bool                                 _rounds_exhausted    = false;
 
-    std::unique_ptr<ActionWindow>        current_window_;
+    std::unique_ptr<ActionWindow>        _current_window;
 };
 
 } // namespace gmFlow

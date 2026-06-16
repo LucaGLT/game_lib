@@ -28,8 +28,12 @@ struct ActorData
     int         max_hp     = 0;
     std::string location_id;
     std::string faction; // "heroes" or "monsters"
+    std::string team_id;
+    bool        alive      = true;
     std::unordered_set<std::string> tags;
     std::vector<gmRules::StatusInstanceId> status_instance_ids;
+    std::unordered_map<std::string, int> resources;
+    std::unordered_set<std::string> equipped_items;
 };
 
 struct LocationData
@@ -37,6 +41,8 @@ struct LocationData
     std::unordered_set<std::string> tags;
     std::vector<std::string> adjacent;
     std::vector<gmRules::ActorId> actors;
+    bool passable   = true;
+    std::string owner_id;
 };
 
 class MockRuleContext : public gmRules::RuleContext
@@ -54,6 +60,8 @@ public:
         d.max_hp      = max_hp;
         d.location_id = location;
         d.faction     = faction;
+        d.team_id     = faction;
+        d.alive       = true;
         actors_[id]   = d;
         locations_[location].actors.push_back(id);
     }
@@ -69,6 +77,15 @@ public:
         locations_[b].adjacent.push_back(a);
     }
 
+    void add_deck_zone(const gmRules::DeckId& deck_id,
+                       const std::string& zone_name,
+                       const std::vector<gmRules::CardId>& cards)
+    {
+        deck_zones_[deck_id][zone_name] = cards;
+        if (!decks_.count(deck_id))
+            decks_[deck_id] = cards; // default zone mirrors first zone added
+    }
+
     void add_actor_tag(const gmRules::ActorId& id, const std::string& tag) override
     {
         actors_[id].tags.insert(tag);
@@ -77,8 +94,14 @@ public:
     // ── Collected outputs (for test assertions) ───────────────────────────────
 
     std::vector<gmRules::RuleEvent>    emitted_events;
+    std::vector<std::string>           emitted_buses;
     std::vector<gmRules::StatusInstance> added_statuses;
     std::vector<gmRules::StatusInstanceId> removed_statuses;
+    std::vector<gmRules::ActorId>      spawned_actors;
+    std::vector<gmRules::ActorId>      despawned_actors;
+    std::vector<gmRules::ActorId>      revived_actors;
+    std::vector<std::string>           created_barriers;
+    std::vector<std::string>           removed_barriers;
 
     // ── RuleContext interface ─────────────────────────────────────────────────
 
@@ -105,6 +128,15 @@ public:
     {
         auto it = actors_.find(id);
         return it != actors_.end() ? it->second.max_hp : 0;
+    }
+
+    int actor_resource(const gmRules::ActorId& id,
+                       const std::string& resource_id) const override
+    {
+        auto it = actors_.find(id);
+        if (it == actors_.end()) return 0;
+        auto rit = it->second.resources.find(resource_id);
+        return rit != it->second.resources.end() ? rit->second : 0;
     }
 
     bool actor_has_status(const gmRules::ActorId& id,
@@ -159,6 +191,78 @@ public:
     {
         auto it = actors_.find(id);
         if (it != actors_.end()) it->second.tags.erase(tag);
+    }
+
+    // ── Actor lifecycle (Chapter 4) ───────────────────────────────────────────
+
+    void spawn_actor(const gmRules::ActorId& id,
+                     const std::string& /*spec_json*/) override
+    {
+        if (!actors_.count(id))
+        {
+            ActorData d;
+            d.alive = true;
+            actors_[id] = d;
+        }
+        spawned_actors.push_back(id);
+    }
+
+    void despawn_actor(const gmRules::ActorId& id) override
+    {
+        actors_.erase(id);
+        despawned_actors.push_back(id);
+    }
+
+    void revive_actor(const gmRules::ActorId& id) override
+    {
+        auto it = actors_.find(id);
+        if (it != actors_.end())
+        {
+            it->second.alive = true;
+            it->second.current_hp = it->second.max_hp > 0 ? it->second.max_hp : 1;
+        }
+        revived_actors.push_back(id);
+    }
+
+    void change_actor_team(const gmRules::ActorId& id,
+                           const std::string& team_id) override
+    {
+        auto it = actors_.find(id);
+        if (it != actors_.end())
+        {
+            it->second.team_id = team_id;
+            it->second.faction = team_id;
+        }
+    }
+
+    // ── Actor resources (Chapter 4) ───────────────────────────────────────────
+
+    void modify_resource(const gmRules::ActorId& id,
+                         const std::string& resource_id,
+                         int delta) override
+    {
+        actors_[id].resources[resource_id] += delta;
+    }
+
+    void set_resource_max(const gmRules::ActorId& id,
+                          const std::string& resource_id,
+                          int max_value) override
+    {
+        resource_max_[id][resource_id] = max_value;
+    }
+
+    // ── Equipment (Chapter 4) ─────────────────────────────────────────────────
+
+    void equip_item(const gmRules::ActorId& id,
+                    const std::string& item_id) override
+    {
+        actors_[id].equipped_items.insert(item_id);
+    }
+
+    void unequip_item(const gmRules::ActorId& id,
+                      const std::string& slot_id) override
+    {
+        actors_[id].equipped_items.erase(slot_id);
     }
 
     void add_status_instance(const gmRules::StatusInstance& status) override
@@ -222,9 +326,87 @@ public:
         return it != locations_.end() ? it->second.actors : std::vector<gmRules::ActorId>{};
     }
 
-    void add_location_tag(const gmRules::LocationId& id, const std::string& tag)
+    // ── Advanced map queries (Chapter 6) ──────────────────────────────────────
+
+    bool is_location_reachable(const gmRules::LocationId& from,
+                               const gmRules::LocationId& to) const override
+    {
+        // Simplified: reachable if connected (adjacent or same)
+        if (from == to) return true;
+        return are_locations_adjacent(from, to);
+    }
+
+    bool has_line_of_sight(const gmRules::LocationId& from,
+                           const gmRules::LocationId& to) const override
+    {
+        // Simplified: always true between adjacent or same locations
+        if (from == to) return true;
+        return are_locations_adjacent(from, to);
+    }
+
+    int move_cost_between(const gmRules::LocationId& from,
+                          const gmRules::LocationId& to) const override
+    {
+        return distance_between_locations(from, to);
+    }
+
+    void add_location_tag(const gmRules::LocationId& id,
+                          const std::string& tag) override
     {
         locations_[id].tags.insert(tag);
+    }
+
+    void remove_location_tag(const gmRules::LocationId& id,
+                             const std::string& tag) override
+    {
+        auto it = locations_.find(id);
+        if (it != locations_.end()) it->second.tags.erase(tag);
+    }
+
+    void set_location_passable(const gmRules::LocationId& id,
+                               bool passable) override
+    {
+        locations_[id].passable = passable;
+    }
+
+    void set_location_owner(const gmRules::LocationId& id,
+                            const std::string& owner_id) override
+    {
+        locations_[id].owner_id = owner_id;
+    }
+
+    void create_barrier(const gmRules::LocationId& from,
+                        const gmRules::LocationId& to,
+                        const std::string& barrier_id) override
+    {
+        // Remove adjacency to simulate barrier
+        auto& adj_from = locations_[from].adjacent;
+        adj_from.erase(std::remove(adj_from.begin(), adj_from.end(), to), adj_from.end());
+        created_barriers.push_back(barrier_id);
+        barrier_locations_[barrier_id] = {from, to};
+    }
+
+    void remove_barrier(const std::string& barrier_id) override
+    {
+        auto it = barrier_locations_.find(barrier_id);
+        if (it != barrier_locations_.end())
+        {
+            // Restore adjacency
+            locations_[it->second.first].adjacent.push_back(it->second.second);
+            barrier_locations_.erase(it);
+        }
+        removed_barriers.push_back(barrier_id);
+    }
+
+    void spawn_interactable(const gmRules::LocationId& location_id,
+                            const std::string& spec_json) override
+    {
+        interactables_[location_id].push_back(spec_json);
+    }
+
+    void despawn_interactable(const std::string& interactable_id) override
+    {
+        despawned_interactables_.push_back(interactable_id);
     }
 
     void move_actor_to_location(const gmRules::ActorId& actor_id,
@@ -272,9 +454,104 @@ public:
         return gmRules::RuleResult::ok();
     }
 
-    void emit_event(const gmRules::RuleEvent& event) override
+    // ── Extended deck/dice operations (Chapter 5) ─────────────────────────────
+
+    int deck_zone_count(const gmRules::DeckId& id,
+                        const std::string& zone_name) const override
+    {
+        if (zone_name.empty())
+        {
+            auto it = decks_.find(id);
+            return it != decks_.end() ? static_cast<int>(it->second.size()) : 0;
+        }
+        auto dit = deck_zones_.find(id);
+        if (dit == deck_zones_.end()) return 0;
+        auto zit = dit->second.find(zone_name);
+        return zit != dit->second.end() ? static_cast<int>(zit->second.size()) : 0;
+    }
+
+    bool card_in_zone(const gmRules::DeckId& id,
+                      const gmRules::CardId& card_id,
+                      const std::string& zone_name) const override
+    {
+        auto dit = deck_zones_.find(id);
+        if (dit == deck_zones_.end()) return false;
+        auto zit = dit->second.find(zone_name);
+        if (zit == dit->second.end()) return false;
+        const auto& cards = zit->second;
+        return std::find(cards.begin(), cards.end(), card_id) != cards.end();
+    }
+
+    void shuffle_zone(const gmRules::DeckId& /*id*/,
+                      const std::string& /*zone_name*/) override
+    {
+        // No-op in mock; order irrelevant for tests
+    }
+
+    std::vector<gmRules::CardId> look_top_cards(const gmRules::DeckId& id,
+                                                int count) const override
+    {
+        auto it = decks_.find(id);
+        if (it == decks_.end()) return {};
+        const auto& cards = it->second;
+        int n = std::min(count, static_cast<int>(cards.size()));
+        return std::vector<gmRules::CardId>(cards.end() - n, cards.end());
+    }
+
+    std::vector<gmRules::CardId> look_bottom_cards(const gmRules::DeckId& id,
+                                                   int count) const override
+    {
+        auto it = decks_.find(id);
+        if (it == decks_.end()) return {};
+        const auto& cards = it->second;
+        int n = std::min(count, static_cast<int>(cards.size()));
+        return std::vector<gmRules::CardId>(cards.begin(), cards.begin() + n);
+    }
+
+    gmRules::RuleResult select_specific_card(const gmRules::DeckId& /*id*/,
+                                             const gmRules::CardId& /*card_id*/) override
+    {
+        return gmRules::RuleResult::ok();
+    }
+
+    gmRules::RuleResult discard_random_cards(const gmRules::DeckId& id,
+                                             const std::string& zone_name,
+                                             int count) override
+    {
+        auto dit = deck_zones_.find(id);
+        if (dit == deck_zones_.end()) return gmRules::RuleResult::ok();
+        auto zit = dit->second.find(zone_name);
+        if (zit == dit->second.end()) return gmRules::RuleResult::ok();
+        auto& cards = zit->second;
+        int n = std::min(count, static_cast<int>(cards.size()));
+        cards.erase(cards.begin(), cards.begin() + n);
+        return gmRules::RuleResult::ok();
+    }
+
+    gmRules::RuleResult place_card_on_top(const gmRules::DeckId& id,
+                                          const gmRules::CardId& card_id) override
+    {
+        decks_[id].push_back(card_id);
+        return gmRules::RuleResult::ok();
+    }
+
+    gmRules::RuleResult place_card_on_bottom(const gmRules::DeckId& id,
+                                             const gmRules::CardId& card_id) override
+    {
+        decks_[id].insert(decks_[id].begin(), card_id);
+        return gmRules::RuleResult::ok();
+    }
+
+    int roll_dice(const std::string& /*dice_expression*/) override
+    {
+        return 1; // deterministic stub — tests may override via subclass
+    }
+
+    void emit_event(const gmRules::RuleEvent& event,
+                    const std::string& bus_name = "RuleEvBus") override
     {
         emitted_events.push_back(event);
+        emitted_buses.push_back(bus_name);
     }
 
     gmRules::RuleResult apply_extended_effect(const gmRules::EffectSpec& effect,
@@ -323,7 +600,14 @@ private:
     std::unordered_map<gmRules::ActorId, ActorData>       actors_;
     std::unordered_map<gmRules::LocationId, LocationData>  locations_;
     std::unordered_map<gmRules::DeckId, std::vector<gmRules::CardId>> decks_;
+    std::unordered_map<gmRules::DeckId,
+        std::unordered_map<std::string, std::vector<gmRules::CardId>>> deck_zones_;
+    std::unordered_map<gmRules::ActorId,
+        std::unordered_map<std::string, int>> resource_max_;
     std::unordered_map<gmRules::StatusInstanceId, gmRules::StatusInstance> active_status_instances_;
+    std::unordered_map<std::string, std::pair<std::string, std::string>> barrier_locations_;
+    std::unordered_map<std::string, std::vector<std::string>> interactables_;
+    std::vector<std::string> despawned_interactables_;
 };
 
 } // namespace gmRules_test
