@@ -17,13 +17,88 @@
 
 namespace gmRules {
 
+static RuleResult validate_extended_effect_arguments(const EffectSpec& effect)
+{
+	switch (effect.type)
+	{
+		case EffectType::MODIFY_RESOURCE:
+		case EffectType::SET_RESOURCE_MAX:
+		case EffectType::EQUIP_ITEM:
+		case EffectType::UNEQUIP_ITEM:
+		{
+			if (effect.value.empty())
+			{
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"extended actor effect requires non-empty value");
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::SHUFFLE_ZONE:
+		case EffectType::LOOK_TOP_CARD:
+		case EffectType::LOOK_BOTTOM_CARD:
+		case EffectType::SELECT_SPECIFIC_CARD:
+		case EffectType::DISCARD_RANDOM:
+		case EffectType::PLACE_ON_TOP:
+		case EffectType::PLACE_ON_BOTTOM:
+		{
+			if (effect.source_id.empty())
+			{
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"extended deck effect requires source_id (deck_id)");
+			}
+			if (effect.value.empty())
+			{
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"extended deck effect requires non-empty value (zone/card spec)");
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::ROLL_DICE:
+		{
+			if (effect.value.empty())
+			{
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"ROLL_DICE requires non-empty dice expression/value");
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::SET_LOCATION_PASSABLE:
+		case EffectType::ADD_LOCATION_TAG:
+		case EffectType::REMOVE_LOCATION_TAG:
+		case EffectType::SET_LOCATION_OWNER:
+		case EffectType::CREATE_BARRIER:
+		case EffectType::REMOVE_BARRIER:
+		case EffectType::SPAWN_INTERACTABLE:
+		case EffectType::DESPAWN_INTERACTABLE:
+		{
+			if (effect.value.empty())
+			{
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"extended map effect requires non-empty value");
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::REVIVE_ACTOR:
+		case EffectType::CHANGE_TEAM:
+		case EffectType::CUSTOM:
+			return RuleResult::ok();
+
+		default:
+			return RuleResult::ok();
+	}
+}
+
 // ── Internal: apply one effect to one resolved target ────────────────────────
 
-static void apply_to_target(const EffectSpec& effect,
-                             const TargetRef& target,
-                             const ActorId& source_actor_id,
-                             EffectResult& result,
-                             RuleContext& ctx)
+static RuleResult apply_to_target(const EffectSpec& effect,
+								  const TargetRef& target,
+								  const ActorId& source_actor_id,
+								  EffectResult& result,
+								  RuleContext& ctx)
 {
 	RuleEvent ev;
 	ev.source_id = source_actor_id;
@@ -33,20 +108,20 @@ static void apply_to_target(const EffectSpec& effect,
 	{
 		case EffectType::DEAL_DAMAGE:
 		{
-			if (effect.amount <= 0) break; // no-op for zero/negative
+			if (effect.amount <= 0) return RuleResult::ok(); // no-op for zero/negative
 			ctx.modify_actor_hp(target.id, -effect.amount);
 			ev.type = "gmRules.actor.damaged";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::HEAL:
 		{
-			if (effect.amount <= 0) break;
+			if (effect.amount <= 0) return RuleResult::ok();
 			ctx.modify_actor_hp(target.id, effect.amount);
 			ev.type = "gmRules.actor.healed";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::MOVE_ACTOR:
@@ -54,20 +129,20 @@ static void apply_to_target(const EffectSpec& effect,
 			ctx.move_actor_to_location(target.id, effect.value);
 			ev.type = "gmRules.actor.moved";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::DRAW_CARDS:
 		{
 			if (!ctx.has_deck(effect.value))
 			{
-				result.add_warning("DRAW_CARDS: deck '" + effect.value + "' not found");
-				break;
+				return RuleResult::fail(RuleError::UNKNOWN_DECK,
+					"DRAW_CARDS: deck '" + effect.value + "' not found");
 			}
 			ctx.draw_cards(effect.value, effect.amount);
 			ev.type = "gmRules.deck.drawn";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::DISCARD_CARDS:
@@ -75,7 +150,7 @@ static void apply_to_target(const EffectSpec& effect,
 			// Discard is game-specific — emit event only
 			ev.type = "gmRules.deck.discarded";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::MOVE_CARD_TO_ZONE:
@@ -88,13 +163,12 @@ static void apply_to_target(const EffectSpec& effect,
 				RuleResult r = ctx.move_card_to_zone(effect.source_id, card_id, zone);
 				if (!r.valid())
 				{
-					result.add_warning("MOVE_CARD_TO_ZONE: " + r.message());
-					break;
+					return RuleResult::fail(r.error(), "MOVE_CARD_TO_ZONE: " + r.message());
 				}
 			}
 			ev.type = "gmRules.card.zone_moved";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::APPLY_STATUS:
@@ -108,7 +182,7 @@ static void apply_to_target(const EffectSpec& effect,
 			ctx.add_status_instance(inst);
 			ev.type = "gmRules.status.applied";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::REMOVE_STATUS:
@@ -118,7 +192,7 @@ static void apply_to_target(const EffectSpec& effect,
 			// We emit the event regardless of whether any instance matched
 			ev.type = "gmRules.status.removed";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::ADD_TAG:
@@ -126,7 +200,7 @@ static void apply_to_target(const EffectSpec& effect,
 			ctx.add_actor_tag(target.id, effect.value);
 			ev.type = "gmRules.actor.tag_added";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::REMOVE_TAG:
@@ -134,7 +208,7 @@ static void apply_to_target(const EffectSpec& effect,
 			ctx.remove_actor_tag(target.id, effect.value);
 			ev.type = "gmRules.actor.tag_removed";
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
 		}
 
 		case EffectType::EMIT_EVENT:
@@ -144,13 +218,65 @@ static void apply_to_target(const EffectSpec& effect,
 			ev.type = effect.value.empty() ? "gmRules.manual_effect" : effect.value;
 			ctx.emit_event(ev);
 			result.add_event(ev);
-			break;
+			return RuleResult::ok();
+		}
+
+		case EffectType::REVIVE_ACTOR:
+		case EffectType::CHANGE_TEAM:
+		case EffectType::MODIFY_RESOURCE:
+		case EffectType::SET_RESOURCE_MAX:
+		case EffectType::EQUIP_ITEM:
+		case EffectType::UNEQUIP_ITEM:
+		case EffectType::SHUFFLE_ZONE:
+		case EffectType::LOOK_TOP_CARD:
+		case EffectType::LOOK_BOTTOM_CARD:
+		case EffectType::SELECT_SPECIFIC_CARD:
+		case EffectType::DISCARD_RANDOM:
+		case EffectType::PLACE_ON_TOP:
+		case EffectType::PLACE_ON_BOTTOM:
+		case EffectType::ROLL_DICE:
+		case EffectType::SET_LOCATION_PASSABLE:
+		case EffectType::ADD_LOCATION_TAG:
+		case EffectType::REMOVE_LOCATION_TAG:
+		case EffectType::SET_LOCATION_OWNER:
+		case EffectType::CREATE_BARRIER:
+		case EffectType::REMOVE_BARRIER:
+		case EffectType::SPAWN_INTERACTABLE:
+		case EffectType::DESPAWN_INTERACTABLE:
+		case EffectType::CUSTOM:
+		{
+			RuleResult arg_check = validate_extended_effect_arguments(effect);
+			if (!arg_check.valid())
+			{
+				return arg_check;
+			}
+
+			RuleEvent ext_event;
+			RuleResult ext = ctx.apply_extended_effect(effect,
+			                                          target,
+			                                          source_actor_id,
+			                                          &ext_event);
+			if (ext.valid())
+			{
+				if (!ext_event.type.empty())
+				{
+					result.add_event(ext_event);
+				}
+				return RuleResult::ok();
+			}
+
+			return RuleResult::fail(RuleError::UNSUPPORTED_EFFECT,
+				"unsupported extended effect "
+				+ std::string(effect_type_name(effect.type))
+				+ ": " + ext.message());
 		}
 
 		default:
-			result.add_warning("Unsupported EffectType in V1 — skipped");
-			break;
+			return RuleResult::fail(RuleError::UNSUPPORTED_EFFECT,
+				"Unsupported EffectType in V1: " + std::string(effect_type_name(effect.type)));
 	}
+
+	return RuleResult::ok();
 }
 
 // ── EffectResolver::resolve ───────────────────────────────────────────────────
@@ -199,7 +325,16 @@ EffectResult EffectResolver::resolve(const EffectSpec& effect,
 		if (effect.type == EffectType::MANUAL_EFFECT || effect.type == EffectType::EMIT_EVENT)
 		{
 			TargetRef dummy;
-			apply_to_target(effect, dummy, source_actor_id, result, ctx);
+			RuleResult applied = apply_to_target(effect, dummy, source_actor_id, result, ctx);
+			if (!applied.valid())
+			{
+				if (effect.optional)
+				{
+					result.add_warning("effect apply failed (optional): " + applied.message());
+					return result;
+				}
+				return EffectResult::failure("effect apply failed: " + applied.message());
+			}
 		}
 		return result;
 	}
@@ -207,7 +342,16 @@ EffectResult EffectResolver::resolve(const EffectSpec& effect,
 	// 4. Apply to each resolved target
 	for (const TargetRef& t : target_result.targets())
 	{
-		apply_to_target(effect, t, source_actor_id, result, ctx);
+		RuleResult applied = apply_to_target(effect, t, source_actor_id, result, ctx);
+		if (!applied.valid())
+		{
+			if (effect.optional)
+			{
+				result.add_warning("effect apply failed (optional): " + applied.message());
+				continue;
+			}
+			return EffectResult::failure("effect apply failed: " + applied.message());
+		}
 	}
 
 	return result;

@@ -26,6 +26,9 @@
 
 namespace gmRules {
 
+struct EffectSpec;
+struct TargetRef;
+
 /**
  * @brief Abstract adapter that gives `gmRules` access to game state.
  *
@@ -178,6 +181,24 @@ public:
      * @param event Event to emit.
      */
     virtual void emit_event(const RuleEvent& event) = 0;
+
+    /**
+     * @brief Applies an extended effect not handled by gmRules V1 core.
+     *
+     * This hook is used for cross-library effects introduced by the DSL
+     * evolution (gmFlow lifecycle, gmAlea advanced actions, gmMap advanced
+     * topology changes, and game-specific effects).
+     *
+     * @param effect          Effect specification to apply.
+     * @param target          Resolved effect target.
+     * @param source_actor_id Source actor originating the effect.
+     * @param out_event       Optional emitted event to append to result.
+     * @return                `ok()` on success, `fail(...)` otherwise.
+     */
+    virtual RuleResult apply_extended_effect(const EffectSpec& effect,
+                                             const TargetRef& target,
+                                             const ActorId& source_actor_id,
+                                             RuleEvent* out_event) = 0;
 };
 
 } // namespace gmRules

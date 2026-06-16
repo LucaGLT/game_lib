@@ -11,6 +11,8 @@
 #define GMRULES_TESTS_MOCKRULECONTEXT_HPP
 
 #include "gmRules/core/RuleContext.hpp"
+#include "gmRules/effect/EffectSpec.hpp"
+#include "gmRules/target/TargetRef.hpp"
 
 #include <algorithm>
 #include <unordered_map>
@@ -40,6 +42,8 @@ struct LocationData
 class MockRuleContext : public gmRules::RuleContext
 {
 public:
+    bool allow_extended_effects = false;
+
     // ── Test-setup helpers ────────────────────────────────────────────────────
 
     void add_actor(const gmRules::ActorId& id, const std::string& faction,
@@ -271,6 +275,34 @@ public:
     void emit_event(const gmRules::RuleEvent& event) override
     {
         emitted_events.push_back(event);
+    }
+
+    gmRules::RuleResult apply_extended_effect(const gmRules::EffectSpec& effect,
+                                              const gmRules::TargetRef& target,
+                                              const gmRules::ActorId& source_actor_id,
+                                              gmRules::RuleEvent* out_event) override
+    {
+        if (!allow_extended_effects)
+        {
+            if (out_event != nullptr)
+            {
+                out_event->type.clear();
+                out_event->source_id.clear();
+                out_event->target_id.clear();
+                out_event->payload_json.clear();
+            }
+            return gmRules::RuleResult::fail(gmRules::RuleError::UNSUPPORTED_EFFECT,
+                                     "MockRuleContext: extended effect not implemented");
+        }
+
+        if (out_event != nullptr)
+        {
+            out_event->type = std::string("gmRules.extended.") + gmRules::effect_type_name(effect.type);
+            out_event->source_id = source_actor_id;
+            out_event->target_id = target.id;
+            out_event->payload_json.clear();
+        }
+        return gmRules::RuleResult::ok();
     }
 
     // ── Accessors for test assertions ─────────────────────────────────────────

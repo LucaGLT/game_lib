@@ -1,3 +1,35 @@
-Start testing: Jun 16 10:45 ora legale Europa occ.
+Start testing: Jun 16 13:14 ora legale Europa occ.
 ----------------------------------------------------------
-End testing: Jun 16 10:45 ora legale Europa occ.
+4/9 Testing: stdDice
+4/9 Test: stdDice
+Command: "C:/_GLT_/Qt Prj/game_lib/build/gmAlea/Debug/test_stdDice.exe"
+Directory: C:/_GLT_/Qt Prj/game_lib/build/gmAlea
+"stdDice" start time: Jun 16 13:14 ora legale Europa occ.
+Output:
+----------------------------------------------------------
+=== StdDice unit tests ===
+
+[PASS] default_constructor_is_d6
+[PASS] single_param_constructor_builds_1_to_max
+[PASS] range_constructor_builds_min_to_max
+[PASS] single_param_invalid_max_throws
+[PASS] range_invalid_bounds_throws
+[PASS] roll_one_within_range
+[PASS] roll_sum_matches_rolled_out
+[PASS] roll_min_matches_rolled_out
+[PASS] roll_max_matches_rolled_out
+[PASS] roll_mean_round_matches_rolled_out
+[PASS] same_seed_same_sequence
+[PASS] reseed_same_state_same_future_sequence
+[PASS] roll_ref_overload
+
+--- Results: 13 passed, 0 failed ---
+<end of output>
+Test time =   1.50 sec
+----------------------------------------------------------
+Test Passed.
+"stdDice" end time: Jun 16 13:14 ora legale Europa occ.
+"stdDice" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Jun 16 13:14 ora legale Europa occ.

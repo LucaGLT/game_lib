@@ -220,6 +220,124 @@ static void test_optional_failure_becomes_warning()
 	pass(T);
 }
 
+static void test_extended_effect_requires_runtime_support()
+{
+	const std::string T = "extended_effect_requires_runtime_support";
+	MockRuleContext ctx;
+	ctx.add_location("r1");
+	ctx.add_actor("hero1", "heroes", 10, 10, "r1");
+
+	EffectSpec e = make_effect(EffectType::SHUFFLE_ZONE, TargetSelector::SELF, 0, "hand");
+	e.source_id = "deck1";
+
+	EffectResolver resolver;
+	EffectResult result = resolver.resolve(e, "hero1", {}, ctx);
+
+	if (result.succeeded())
+	{
+		fail(T, "should fail without runtime extended-effect support");
+		return;
+	}
+	if (result.message().find("unsupported extended effect") == std::string::npos)
+	{
+		fail(T, "failure message should mention unsupported extended effect");
+		return;
+	}
+	pass(T);
+}
+
+static void test_optional_extended_effect_becomes_warning()
+{
+	const std::string T = "optional_extended_effect_becomes_warning";
+	MockRuleContext ctx;
+	ctx.add_location("r1");
+	ctx.add_actor("hero1", "heroes", 10, 10, "r1");
+
+	EffectSpec e1 = make_effect(EffectType::SHUFFLE_ZONE, TargetSelector::SELF, 0, "discard");
+	e1.source_id = "deck1";
+	e1.optional = true;
+
+	EffectSpec e2 = make_effect(EffectType::DEAL_DAMAGE, TargetSelector::SELF, 2);
+
+	EffectResolver resolver;
+	EffectResult result = resolver.resolve_many({e1, e2}, "hero1", {}, ctx);
+
+	if (!result.succeeded())
+	{
+		fail(T, "should succeed because first effect is optional");
+		return;
+	}
+	if (result.warnings().empty())
+	{
+		fail(T, "expected warning for optional unsupported extended effect");
+		return;
+	}
+	if (ctx.hp("hero1") != 8)
+	{
+		fail(T, "second effect should run and reduce hp to 8");
+		return;
+	}
+	pass(T);
+}
+
+static void test_extended_effect_delegates_to_runtime()
+{
+	const std::string T = "extended_effect_delegates_to_runtime";
+	MockRuleContext ctx;
+	ctx.allow_extended_effects = true;
+	ctx.add_location("r1");
+	ctx.add_actor("hero1", "heroes", 10, 10, "r1");
+
+	EffectSpec e = make_effect(EffectType::ROLL_DICE, TargetSelector::SELF, 0, "1d6");
+
+	EffectResolver resolver;
+	EffectResult result = resolver.resolve(e, "hero1", {}, ctx);
+
+	if (!result.succeeded())
+	{
+		fail(T, result.message());
+		return;
+	}
+	if (result.events().empty())
+	{
+		fail(T, "expected emitted event from runtime delegation");
+		return;
+	}
+	if (result.events()[0].type != "gmRules.extended.ROLL_DICE")
+	{
+		fail(T, "unexpected delegated event type");
+		return;
+	}
+	pass(T);
+}
+
+static void test_extended_effect_missing_required_arguments()
+{
+	const std::string T = "extended_effect_missing_required_arguments";
+	MockRuleContext ctx;
+	ctx.allow_extended_effects = true;
+	ctx.add_location("r1");
+	ctx.add_actor("hero1", "heroes", 10, 10, "r1");
+
+	EffectSpec e = make_effect(EffectType::SHUFFLE_ZONE, TargetSelector::SELF, 0, "discard");
+	// source_id (deck_id) intentionally missing
+
+	EffectResolver resolver;
+	EffectResult result = resolver.resolve(e, "hero1", {}, ctx);
+
+	if (result.succeeded())
+	{
+		fail(T, "should fail with semantic validation error");
+		return;
+	}
+	if (result.message().find("requires source_id") == std::string::npos)
+	{
+		fail(T, "missing source_id validation message not found");
+		return;
+	}
+	pass(T);
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 int main()
@@ -235,6 +353,10 @@ int main()
 	test_manual_effect_does_not_mutate();
 	test_stop_on_failure();
 	test_optional_failure_becomes_warning();
+	test_extended_effect_requires_runtime_support();
+	test_optional_extended_effect_becomes_warning();
+	test_extended_effect_delegates_to_runtime();
+	test_extended_effect_missing_required_arguments();
 
 	std::cout << "\n--- Results: " << g_pass << " passed, " << g_fail << " failed ---\n";
 	return (g_fail == 0) ? 0 : 1;

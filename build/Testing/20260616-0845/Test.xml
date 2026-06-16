@@ -25,11 +25,39 @@
 	ProcessorClockFrequency="2496"
 	>
 	<Testing>
-		<StartDateTime>Jun 16 10:45 ora legale Europa occ.</StartDateTime>
-		<StartTestTime>1781599523</StartTestTime>
-		<TestList/>
-		<EndDateTime>Jun 16 10:45 ora legale Europa occ.</EndDateTime>
-		<EndTestTime>1781599523</EndTestTime>
+		<StartDateTime>Jun 16 13:14 ora legale Europa occ.</StartDateTime>
+		<StartTestTime>1781608464</StartTestTime>
+		<TestList>
+			<Test>./gmAlea/stdDice</Test>
+		</TestList>
+		<Test Status="passed">
+			<Name>stdDice</Name>
+			<Path>./gmAlea</Path>
+			<FullName>./gmAlea/stdDice</FullName>
+			<FullCommandLine>"C:\_GLT_\Qt Prj\game_lib\build\gmAlea\Debug\test_stdDice.exe"</FullCommandLine>
+			<Results>
+				<NamedMeasurement type="numeric/double" name="Execution Time">
+					<Value>1.49923</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="numeric/double" name="Processors">
+					<Value>1</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Completion Status">
+					<Value>Completed</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Command Line">
+					<Value>"C:\_GLT_\Qt Prj\game_lib\build\gmAlea\Debug\test_stdDice.exe"</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Environment">
+					<Value>#CTEST_RESOURCE_GROUP_COUNT=</Value>
+				</NamedMeasurement>
+				<Measurement>
+					<Value encoding="base64" compression="gzip">eJyFkUFqAzEMRfdzCh2gAw2FLgJeFHqA0lmWIhRbkzF47NSSkxy/nrZD6xCandB/+v+DjDEwqHv2lqFEr6AsKmCM6bq3l6dheAfHI5WgaFMUzcVqyugF3eMKiI/7wHigTHND7YoPTnCDmnCm88pninu+Bs4+XqCNtY9HCt4tOuqU00lax1XfpRKr2wWSQsAUGU9ep5rzddKIUuZqrXZiwWXBDlPRBlkK3kJquVsIU81fSv5DCs2MwnX5M30Ujva3Mf/RlJS/x7FoyVfoJTbziOnIOSRyXdf3Pbyy1MfKFjYPcCARdndwDyP52gUq0H0CtL3Itg==</Value>
+				</Measurement>
+			</Results>
+		</Test>
+		<EndDateTime>Jun 16 13:14 ora legale Europa occ.</EndDateTime>
+		<EndTestTime>1781608465</EndTestTime>
 		<ElapsedMinutes>0</ElapsedMinutes>
 	</Testing>
 </Site>
