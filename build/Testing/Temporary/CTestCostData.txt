@@ -1,5 +1,0 @@
-gmDeck_v2 1 0.984246
-gmCompDeck 1 0.800213
-gmDice 1 0.988662
-stdDice 1 0.915603
----

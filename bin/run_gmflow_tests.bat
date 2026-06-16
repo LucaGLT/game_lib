@@ -35,7 +35,7 @@ set GF_BASE= ^
 
 echo.
 echo === BUILD test_action_queue ===
-"%CL%" -std=c++17 -I. ^
+"%CL%" -std=c++17 -I. -IgmDispatch ^
   gmFlow/core/Result.cpp ^
   gmFlow/actions/ActionQueue.cpp ^
   gmFlow/tests/test_action_queue.cpp ^
@@ -47,7 +47,7 @@ test_action_queue.exe
 
 echo.
 echo === BUILD test_action_window ===
-"%CL%" -std=c++17 -I. ^
+"%CL%" -std=c++17 -I. -IgmDispatch ^
   gmFlow/core/Result.cpp ^
   gmFlow/core/GameContext.cpp ^
   gmFlow/actors/ActorRegistry.cpp ^
@@ -79,7 +79,7 @@ test_action_window.exe
 
 echo.
 echo === BUILD test_flow_sequential ===
-"%CL%" -std=c++17 -I. ^
+"%CL%" -std=c++17 -I. -IgmDispatch ^
   gmFlow/core/Result.cpp ^
   gmFlow/core/GameContext.cpp ^
   gmFlow/actors/ActorRegistry.cpp ^
@@ -111,7 +111,7 @@ test_flow_sequential.exe
 
 echo.
 echo === BUILD test_flow_campaign ===
-"%CL%" -std=c++17 -I. ^
+"%CL%" -std=c++17 -I. -IgmDispatch ^
   gmFlow/campaign/Campaign.cpp ^
   gmFlow/tests/test_flow_campaign.cpp ^
   -o test_flow_campaign.exe

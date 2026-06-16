@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** Production
 **Language:** C++17 Standard
-**Namespace:** `GmSave`
+**Namespace:** `gmSave`
 **Header:** `gmSave.hpp`
 **Dependency:** nlohmann/json >= 3.9 (`json.hpp`, single-header, vendored)
 
@@ -12,48 +12,48 @@
 ## Table of Contents
 
 - [gmSave – Generic JSON Save/Load Library](#gmsave--generic-json-saveload-library)
-	- [Table of Contents](#table-of-contents)
-	- [Overview](#overview)
-		- [Key Features](#key-features)
-	- [Design Philosophy](#design-philosophy)
-	- [Requirements \& Setup](#requirements--setup)
-	- [User Contract](#user-contract)
-		- [Flat struct](#flat-struct)
-		- [Nested struct](#nested-struct)
-		- [std::vector\<T\>](#stdvectort)
-		- [std::optional\<T\>](#stdoptionalt)
-	- [API Reference](#api-reference)
-		- [Exception Hierarchy](#exception-hierarchy)
-			- [`SaveError`](#saveerror)
-			- [`FileWriteError`](#filewriteerror)
-			- [`FileReadError`](#filereaderror)
-			- [`JsonParseError`](#jsonparseerror)
-			- [`VersionMismatchError`](#versionmismatcherror)
-		- [`save()`](#save)
-		- [`load()`](#load)
-		- [`try_load()`](#try_load)
-		- [`save_versioned()`](#save_versioned)
-		- [`load_versioned()`](#load_versioned)
-		- [`peek_version()`](#peek_version)
-		- [Internal Helpers (detail)](#internal-helpers-detail)
-			- [`detail::write_file()`](#detailwrite_file)
-			- [`detail::read_file()`](#detailread_file)
-			- [`detail::parse_json()`](#detailparse_json)
-	- [Versioned Envelope Format](#versioned-envelope-format)
-	- [Usage Examples](#usage-examples)
-		- [Round-trip: flat struct](#round-trip-flat-struct)
-		- [Round-trip: versioned save](#round-trip-versioned-save)
-		- [Non-throwing load at startup](#non-throwing-load-at-startup)
-		- [Version detection for migration](#version-detection-for-migration)
-		- [Nested struct + vector + optional](#nested-struct--vector--optional)
-		- [Compact output](#compact-output)
-		- [Exception handling](#exception-handling)
-	- [Error Handling](#error-handling)
-	- [Design Notes](#design-notes)
-		- [Why free functions instead of member functions?](#why-free-functions-instead-of-member-functions)
-		- [Why nlohmann/json?](#why-nlohmannjson)
-		- [Why vendor json.hpp?](#why-vendor-jsonhpp)
-		- [Template bodies in the header](#template-bodies-in-the-header)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Key Features](#key-features)
+  - [Design Philosophy](#design-philosophy)
+  - [Requirements \& Setup](#requirements--setup)
+  - [User Contract](#user-contract)
+    - [Flat struct](#flat-struct)
+    - [Nested struct](#nested-struct)
+    - [std::vector\<T\>](#stdvectort)
+    - [std::optional\<T\>](#stdoptionalt)
+  - [API Reference](#api-reference)
+    - [Exception Hierarchy](#exception-hierarchy)
+      - [`ESaveError`](#esaveerror)
+      - [`EFileWriteError`](#efilewriteerror)
+      - [`EFileReadError`](#efilereaderror)
+      - [`EJsonParseError`](#ejsonparseerror)
+      - [`EVersionMismatchError`](#eversionmismatcherror)
+    - [`save()`](#save)
+    - [`load()`](#load)
+    - [`try_load()`](#try_load)
+    - [`save_versioned()`](#save_versioned)
+    - [`load_versioned()`](#load_versioned)
+    - [`peek_version()`](#peek_version)
+    - [Internal Helpers (detail)](#internal-helpers-detail)
+      - [`detail::write_file()`](#detailwrite_file)
+      - [`detail::read_file()`](#detailread_file)
+      - [`detail::parse_json()`](#detailparse_json)
+  - [Versioned Envelope Format](#versioned-envelope-format)
+  - [Usage Examples](#usage-examples)
+    - [Round-trip: flat struct](#round-trip-flat-struct)
+    - [Round-trip: versioned save](#round-trip-versioned-save)
+    - [Non-throwing load at startup](#non-throwing-load-at-startup)
+    - [Version detection for migration](#version-detection-for-migration)
+    - [Nested struct + vector + optional](#nested-struct--vector--optional)
+    - [Compact output](#compact-output)
+    - [Exception handling](#exception-handling)
+  - [Error Handling](#error-handling)
+  - [Design Notes](#design-notes)
+    - [Why free functions instead of member functions?](#why-free-functions-instead-of-member-functions)
+    - [Why nlohmann/json?](#why-nlohmannjson)
+    - [Why vendor json.hpp?](#why-vendor-jsonhpp)
+    - [Template bodies in the header](#template-bodies-in-the-header)
 
 ---
 
@@ -94,7 +94,7 @@ The library is a thin, type-safe wrapper around
   explicitly opt-in.
 - **Template bodies in the header.**  The C++ template requirement is satisfied
   by placing all template implementations as inline definitions at the bottom of
-  `gmSave.hpp`.  The non-template bodies (`VersionMismatchError` constructor
+  `gmSave.hpp`.  The non-template bodies (`EVersionMismatchError` constructor
   and `peek_version`) live in `gmSave.cpp`.
 
 ---
@@ -105,7 +105,7 @@ The library is a thin, type-safe wrapper around
 - `json.hpp` (nlohmann/json single-header) placed in the same directory as
   `gmSave.hpp`
 
-```
+```text
 gmSave/
 ├── gmSave.hpp   ← include this in your project
 ├── gmSave.cpp   ← compile this translation unit
@@ -225,63 +225,63 @@ void from_json(const nlohmann::json& j, Hero& h) {
 
 ## API Reference
 
-All symbols are in namespace `GmSave`.
+All symbols are in namespace `gmSave`.
 
 ---
 
 ### Exception Hierarchy
 
-```
+```text
 std::runtime_error
-└── SaveError                  Base class for all gmSave errors
-    ├── FileWriteError         File cannot be opened or written
-    ├── FileReadError          File not found or not readable
-    ├── JsonParseError         Content is not valid JSON, or required
+└── ESaveError                  Base class for all gmSave errors
+    ├── EFileWriteError         File cannot be opened or written
+    ├── EFileReadError          File not found or not readable
+    ├── EJsonParseError         Content is not valid JSON, or required
     │                          envelope fields are missing
-    └── VersionMismatchError   _version in file ≠ expected_version
+    └── EVersionMismatchError   _version in file ≠ expected_version
 ```
 
 ---
 
-#### `SaveError`
+#### `ESaveError`
 
 ```cpp
-class SaveError : public std::runtime_error;
-explicit SaveError(const std::string& message);
+class ESaveError : public std::runtime_error;
+explicit ESaveError(const std::string& message);
 ```
 
-Base class for all gmSave errors.  The prefix `"SaveError: "` is prepended to
+Base class for all gmSave errors.  The prefix `"ESaveError: "` is prepended to
 every message.
 
 ---
 
-#### `FileWriteError`
+#### `EFileWriteError`
 
 ```cpp
-class FileWriteError : public SaveError;
-explicit FileWriteError(const std::string& message);
+class EFileWriteError : public ESaveError;
+explicit EFileWriteError(const std::string& message);
 ```
 
 Thrown when the destination file cannot be opened or a write operation fails.
 
 ---
 
-#### `FileReadError`
+#### `EFileReadError`
 
 ```cpp
-class FileReadError : public SaveError;
-explicit FileReadError(const std::string& message);
+class EFileReadError : public ESaveError;
+explicit EFileReadError(const std::string& message);
 ```
 
 Thrown when the source file cannot be found or opened for reading.
 
 ---
 
-#### `JsonParseError`
+#### `EJsonParseError`
 
 ```cpp
-class JsonParseError : public SaveError;
-explicit JsonParseError(const std::string& message);
+class EJsonParseError : public ESaveError;
+explicit EJsonParseError(const std::string& message);
 ```
 
 Thrown when:
@@ -290,11 +290,11 @@ Thrown when:
 
 ---
 
-#### `VersionMismatchError`
+#### `EVersionMismatchError`
 
 ```cpp
-class VersionMismatchError : public SaveError;
-VersionMismatchError(uint32_t expected, uint32_t found);
+class EVersionMismatchError : public ESaveError;
+EVersionMismatchError(uint32_t expected, uint32_t found);
 
 uint32_t expected_version;   // version requested by the caller
 uint32_t found_version;      // version read from the file
@@ -305,8 +305,8 @@ match the value supplied by the caller.  Both version numbers are accessible
 as public members for programmatic handling (e.g. migration logic).
 
 **Example message:**
-```
-SaveError: Version mismatch: expected 2, found 1
+```text
+ESaveError: Version mismatch: expected 2, found 1
 ```
 
 ---
@@ -329,7 +329,7 @@ then writes `j.dump(indent)` to `filepath`.
 | `data` | — | Value to serialize. `T` must have `to_json`. |
 | `indent` | `2` | Spaces per indentation level. Use `-1` for compact output. |
 
-**Throws:** `FileWriteError` if the file cannot be opened or written.
+**Throws:** `EFileWriteError` if the file cannot be opened or written.
 
 ---
 
@@ -352,8 +352,9 @@ Reads the file, parses it, then returns `j.get<T>()` (which triggers ADL
 **Returns:** The deserialized value of type `T`.
 
 **Throws:**
-- `FileReadError` if the file cannot be opened.
-- `JsonParseError` if the content is not valid JSON.
+
+- `EFileReadError` if the file cannot be opened.
+- `EJsonParseError` if the content is not valid JSON.
 
 ---
 
@@ -409,7 +410,7 @@ The envelope format is:
 | `version` | — | Version tag written to the `_version` field. |
 | `indent` | `2` | Spaces per indentation level. Use `-1` for compact output. |
 
-**Throws:** `FileWriteError` if the file cannot be opened or written.
+**Throws:** `EFileWriteError` if the file cannot be opened or written.
 
 ---
 
@@ -436,9 +437,10 @@ Steps performed:
 **Returns:** The deserialized value of type `T`.
 
 **Throws:**
-- `FileReadError` if the file cannot be opened.
-- `JsonParseError` if the content is not valid JSON, or `_version` / `payload` fields are absent.
-- `VersionMismatchError` if `_version != expected_version`.
+
+- `EFileReadError` if the file cannot be opened.
+- `EJsonParseError` if the content is not valid JSON, or `_version` / `payload` fields are absent.
+- `EVersionMismatchError` if `_version != expected_version`.
 
 ---
 
@@ -470,7 +472,7 @@ layout or migration path to apply.
 
 ### Internal Helpers (detail)
 
-> These live in `namespace GmSave::detail` and are not part of the public API.
+> These live in `namespace gmSave::detail` and are not part of the public API.
 > Documented here for contributors.
 
 #### `detail::write_file()`
@@ -482,7 +484,7 @@ void write_file(const std::string& filepath, const std::string& content);
 Opens `filepath` for writing (creating or overwriting), writes `content`, then
 checks `ofs.good()`.
 
-**Throws:** `FileWriteError` on open failure or write error.
+**Throws:** `EFileWriteError` on open failure or write error.
 
 ---
 
@@ -495,7 +497,7 @@ std::string read_file(const std::string& filepath);
 Opens `filepath` for reading and returns the full content as a `std::string`
 using `std::istreambuf_iterator`.
 
-**Throws:** `FileReadError` if the file cannot be opened.
+**Throws:** `EFileReadError` if the file cannot be opened.
 
 ---
 
@@ -506,9 +508,9 @@ nlohmann::json parse_json(const std::string& content, const std::string& filepat
 ```
 
 Calls `nlohmann::json::parse(content)` and maps any `nlohmann::json::parse_error`
-to `JsonParseError` with the file path included in the message.
+to `EJsonParseError` with the file path included in the message.
 
-**Throws:** `JsonParseError` if `content` is not valid JSON.
+**Throws:** `EJsonParseError` if `content` is not valid JSON.
 
 ---
 
@@ -557,7 +559,7 @@ void from_json(const nlohmann::json& j, Config& c) {
 
 // --- Save ---
 Config cfg{"dungeon_01", 4};
-GmSave::save("config.json", cfg);
+gmSave::save("config.json", cfg);
 
 // config.json:
 // {
@@ -566,7 +568,7 @@ GmSave::save("config.json", cfg);
 // }
 
 // --- Load ---
-Config loaded = GmSave::load<Config>("config.json");
+Config loaded = gmSave::load<Config>("config.json");
 ```
 
 ---
@@ -574,7 +576,7 @@ Config loaded = GmSave::load<Config>("config.json");
 ### Round-trip: versioned save
 
 ```cpp
-GmSave::save_versioned("save.json", cfg, /*version=*/2);
+gmSave::save_versioned("save.json", cfg, /*version=*/2);
 
 // save.json:
 // {
@@ -585,7 +587,7 @@ GmSave::save_versioned("save.json", cfg, /*version=*/2);
 //   }
 // }
 
-Config restored = GmSave::load_versioned<Config>("save.json", /*expected_version=*/2);
+Config restored = gmSave::load_versioned<Config>("save.json", /*expected_version=*/2);
 ```
 
 ---
@@ -594,7 +596,7 @@ Config restored = GmSave::load_versioned<Config>("save.json", /*expected_version
 
 ```cpp
 Config cfg;  // default values
-if (!GmSave::try_load("config.json", cfg)) {
+if (!gmSave::try_load("config.json", cfg)) {
     // file missing or corrupt — use defaults, no exception
     cfg = Config{"default_map", 2};
 }
@@ -605,16 +607,16 @@ if (!GmSave::try_load("config.json", cfg)) {
 ### Version detection for migration
 
 ```cpp
-std::optional<uint32_t> ver = GmSave::peek_version("save.json");
+std::optional<uint32_t> ver = gmSave::peek_version("save.json");
 
 if (!ver.has_value()) {
     // plain (non-versioned) file or missing file
     // handle legacy format
 } else if (*ver == 1) {
-    SaveFileV1 old = GmSave::load_versioned<SaveFileV1>("save.json", 1);
+    SaveFileV1 old = gmSave::load_versioned<SaveFileV1>("save.json", 1);
     // migrate old → current format
 } else if (*ver == 2) {
-    SaveFileV2 current = GmSave::load_versioned<SaveFileV2>("save.json", 2);
+    SaveFileV2 current = gmSave::load_versioned<SaveFileV2>("save.json", 2);
 }
 ```
 
@@ -654,10 +656,10 @@ void from_json(const nlohmann::json& j, Hero& h) {
 
 // Save
 Hero hero = {"Gandalf", 100, 80, {{"Staff", 15}, {"Fireball", 40}}};
-GmSave::save_versioned("hero.json", hero, 1);
+gmSave::save_versioned("hero.json", hero, 1);
 
 // Load
-Hero loaded = GmSave::load_versioned<Hero>("hero.json", 1);
+Hero loaded = gmSave::load_versioned<Hero>("hero.json", 1);
 
 // hero.json on disk:
 // {
@@ -679,7 +681,7 @@ Hero loaded = GmSave::load_versioned<Hero>("hero.json", 1);
 ### Compact output
 
 ```cpp
-GmSave::save("config.json", cfg, /*indent=*/-1);
+gmSave::save("config.json", cfg, /*indent=*/-1);
 // {"map_name":"dungeon_01","max_players":4}
 ```
 
@@ -688,24 +690,24 @@ GmSave::save("config.json", cfg, /*indent=*/-1);
 ### Exception handling
 
 ```cpp
-// --- FileReadError ---
+// --- EFileReadError ---
 try {
-    Config c = GmSave::load<Config>("missing.json");
-} catch (const GmSave::FileReadError& e) {
-    // e.what() -> "SaveError: Cannot open file for reading: missing.json"
+    Config c = gmSave::load<Config>("missing.json");
+} catch (const gmSave::EFileReadError& e) {
+    // e.what() -> "ESaveError: Cannot open file for reading: missing.json"
 }
 
-// --- JsonParseError ---
+// --- EJsonParseError ---
 try {
-    Config c = GmSave::load<Config>("corrupt.json");
-} catch (const GmSave::JsonParseError& e) {
-    // e.what() -> "SaveError: JSON parse error in 'corrupt.json': ..."
+    Config c = gmSave::load<Config>("corrupt.json");
+} catch (const gmSave::EJsonParseError& e) {
+    // e.what() -> "ESaveError: JSON parse error in 'corrupt.json': ..."
 }
 
-// --- VersionMismatchError ---
+// --- EVersionMismatchError ---
 try {
-    Config c = GmSave::load_versioned<Config>("save.json", /*expected=*/3);
-} catch (const GmSave::VersionMismatchError& e) {
+    Config c = gmSave::load_versioned<Config>("save.json", /*expected=*/3);
+} catch (const gmSave::EVersionMismatchError& e) {
     uint32_t expected = e.expected_version;   // 3
     uint32_t found    = e.found_version;      // e.g. 1
 }
@@ -717,11 +719,11 @@ try {
 
 | Situation | Exception |
 |---|---|
-| Destination file cannot be opened / written | `FileWriteError` |
-| Source file not found or not readable | `FileReadError` |
-| File content is not valid JSON | `JsonParseError` |
-| Versioned file missing `_version` or `payload` | `JsonParseError` |
-| `_version` in file ≠ `expected_version` | `VersionMismatchError` |
+| Destination file cannot be opened / written | `EFileWriteError` |
+| Source file not found or not readable | `EFileReadError` |
+| File content is not valid JSON | `EJsonParseError` |
+| Versioned file missing `_version` or `payload` | `EJsonParseError` |
+| `_version` in file ≠ `expected_version` | `EVersionMismatchError` |
 | Any error inside `try_load` | Silent — returns `false` |
 | Any error inside `peek_version` | Silent — returns `std::nullopt` |
 
@@ -752,5 +754,5 @@ the include path is simply `"json.hpp"`.
 Because `save`, `load`, `try_load`, `save_versioned`, and `load_versioned` are
 function templates, their bodies must be visible at every call site.  They are
 therefore defined as inline functions at the bottom of `gmSave.hpp`.  The two
-non-template symbols (`VersionMismatchError` constructor and `peek_version`)
+non-template symbols (`EVersionMismatchError` constructor and `peek_version`)
 are compiled in `gmSave.cpp` to avoid duplicate-symbol errors.

@@ -3,12 +3,12 @@
 
 /**
  * @file IChannel.hpp
- * @brief Abstract output-channel interface for the GmDispatch library.
+ * @brief Abstract output-channel interface for the gmDispatch library.
  */
 
 #include "Envelope.hpp"
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Abstract base class for all dispatch output channels.
@@ -30,50 +30,50 @@ namespace GmDispatch {
  *
  * ### Implementing a custom channel
  * @code
- *   class MyChannel : public GmDispatch::IChannel {
+ *   class MyChannel : public gmDispatch::IChannel {
  *   public:
- *       void send(const GmDispatch::Envelope& envelope) override { ... }
+ *       void send(const gmDispatch::Envelope& envelope) override { ... }
  *       void flush()                                     override { ... }
  *   };
  * @endcode
  */
 class IChannel {
 public:
-    virtual ~IChannel() = default;
+	virtual ~IChannel() = default;
 
-    /**
-     * @brief Optional channel name used by @ref PatternRouter for targeted delivery.
-     *
-     * When @c Envelope::targets is non-empty, only channels whose @c name()
-     * appears in the list receive the message.  Return an empty string (the
-     * default) to opt out of targeting — anonymous channels always receive
-     * messages regardless of @c Envelope::targets.
-     *
-     * @return Channel name, or @c "" for anonymous channels.
-     */
-    virtual std::string name() const { return ""; }
+	/**
+	 * @brief Optional channel name used by @ref PatternRouter for targeted delivery.
+	 *
+	 * When @c Envelope::targets is non-empty, only channels whose @c name()
+	 * appears in the list receive the message.  Return an empty string (the
+	 * default) to opt out of targeting — anonymous channels always receive
+	 * messages regardless of @c Envelope::targets.
+	 *
+	 * @return Channel name, or @c "" for anonymous channels.
+	 */
+	virtual std::string name() const { return ""; }
 
-    /**
-     * @brief Delivers a single envelope to the underlying output medium.
-     *
-     * Called by @ref IRouter once per matching subscription.  The envelope
-     * is the same object passed to @ref Dispatcher::dispatch(); channels
-     * must not modify it.
-     *
-     * @param envelope The dispatch event to deliver.
-     */
-    virtual void send(const Envelope& envelope) = 0;
+	/**
+	 * @brief Delivers a single envelope to the underlying output medium.
+	 *
+	 * Called by @ref IRouter once per matching subscription.  The envelope
+	 * is the same object passed to @ref GmDispatcher::dispatch(); channels
+	 * must not modify it.
+	 *
+	 * @param envelope The dispatch event to deliver.
+	 */
+	virtual void send(const Envelope& envelope) = 0;
 
-    /**
-     * @brief Flushes any buffered data to the underlying medium.
-     *
-     * For in-process channels (e.g. @ref EventBusChannel) this is a no-op.
-     * For I/O channels (file, socket) it must ensure all buffered bytes
-     * are written before returning.
-     */
-    virtual void flush() = 0;
+	/**
+	 * @brief Flushes any buffered data to the underlying medium.
+	 *
+	 * For in-process channels (e.g. @ref EventBusChannel) this is a no-op.
+	 * For I/O channels (file, socket) it must ensure all buffered bytes
+	 * are written before returning.
+	 */
+	virtual void flush() = 0;
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_ICHANNEL_HPP

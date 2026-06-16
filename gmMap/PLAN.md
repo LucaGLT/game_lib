@@ -2,7 +2,7 @@
 
 ## Phase 1 – Structure & API Design
 - [x] Define type aliases (`LocationId`, `TileId`, `Metadata`)
-- [x] Define exception hierarchy (`MapError` and subclasses)
+- [x] Define exception hierarchy (`EMapError` and subclasses)
 - [x] Design class template `gmMap<ItemT>` with full API
 - [x] Write Doxygen comments on all declarations
 - [x] Create `gmMap.hpp` (declarations + inline stub bodies)
@@ -13,8 +13,8 @@
 
 ## Phase 2 – Private Helpers
 
-- [x] Implement `_require_location(LocationId)` — throws `UnknownLocationError`
-- [x] Implement `_require_tile(TileId)` — throws `UnknownTileError`
+- [x] Implement `_require_location(LocationId)` — throws `EUnknownLocationError`
+- [x] Implement `_require_tile(TileId)` — throws `EUnknownTileError`
 ---
 
 ## Phase 3 – Construction / Reset
@@ -66,7 +66,7 @@
 
 ## Phase 9 – Location Metadata
 - [x] Implement `set_location_meta(id, key, value)`
-- [x] Implement `get_location_meta(id, key)` — throws `UnknownMetaKeyError`
+- [x] Implement `get_location_meta(id, key)` — throws `EUnknownMetaKeyError`
 - [x] Implement `has_location_meta(id, key)`
 - [x] Implement `remove_location_meta(id, key)` — no-op if absent
 - [x] Implement `location_metadata(id)` — remove temporary static stub
@@ -75,7 +75,7 @@
 
 ## Phase 10 – Tile Metadata
 - [x] Implement `set_tile_meta(id, key, value)`
-- [x] Implement `get_tile_meta(id, key)` — throws `UnknownMetaKeyError`
+- [x] Implement `get_tile_meta(id, key)` — throws `EUnknownMetaKeyError`
 - [x] Implement `has_tile_meta(id, key)`
 - [x] Implement `remove_tile_meta(id, key)` — no-op if absent
 - [x] Implement `tile_metadata(id)` — remove temporary static stub

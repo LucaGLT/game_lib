@@ -4,36 +4,37 @@
  */
 
 #include "FileSink.hpp"
+#include "GmLogError.hpp"
 
-#include <stdexcept>
-
-namespace GmLog {
+namespace gmLog {
 
 FileSink::FileSink(const std::string& filePath)
-    : filePath_(filePath)
+	: _file_path(filePath)
 {
-    file_.open(filePath, std::ios::out | std::ios::app);
-    if (!file_.is_open()) {
-        throw std::runtime_error("FileSink: cannot open log file: " + filePath);
-    }
+	_file.open(filePath, std::ios::out | std::ios::app);
+	if (!_file.is_open())
+	{
+		throw ELogError("FileSink: cannot open log file: " + filePath);
+	}
 }
 
 FileSink::~FileSink()
 {
-    if (file_.is_open()) {
-        file_.flush();
-        file_.close();
-    }
+	if (_file.is_open())
+	{
+		_file.flush();
+		_file.close();
+	}
 }
 
 void FileSink::write(const std::string& message)
 {
-    file_ << message << '\n';
+	_file << message << '\n';
 }
 
 void FileSink::flush()
 {
-    file_.flush();
+	_file.flush();
 }
 
-} // namespace GmLog
+} // namespace gmLog

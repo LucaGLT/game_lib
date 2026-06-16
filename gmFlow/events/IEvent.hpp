@@ -8,7 +8,7 @@
  * Every event that gmFlow or a game plug-in publishes must implement this
  * interface.  The @ref EventBus uses the `type()` return value to route
  * events to the correct subscribers via the underlying
- * `GmDispatch::EventBusChannel`.
+ * `gmDispatch::EventBusChannel`.
  *
  * ### Implementing a custom event
  * @code

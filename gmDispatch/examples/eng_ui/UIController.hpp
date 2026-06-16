@@ -39,53 +39,53 @@
 
 class UIController {
 public:
-    /**
-     * @brief Costruisce il controller e si iscrive a "eng.*" sul ui_eng_bus fornito.
-     *
-     * @param ui_eng_bus Dispatcher condiviso con il CoreEngine.
-     */
-    explicit UIController(GmDispatch::Dispatcher& ui_eng_bus);
+	/**
+	 * @brief Costruisce il controller e si iscrive a "eng.*" sul ui_eng_bus fornito.
+	 *
+	 * @param ui_eng_bus GmDispatcher condiviso con il CoreEngine.
+	 */
+	explicit UIController(gmDispatch::GmDispatcher& ui_eng_bus);
 
-    ~UIController() = default;
+	~UIController() = default;
 
-    UIController(const UIController&)            = delete;
-    UIController& operator=(const UIController&) = delete;
+	UIController(const UIController&)            = delete;
+	UIController& operator=(const UIController&) = delete;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Comandi UI → CoreEngine
-    // ═══════════════════════════════════════════════════════════════════════
+	// ═══════════════════════════════════════════════════════════════════════
+	//  Comandi UI → CoreEngine
+	// ═══════════════════════════════════════════════════════════════════════
 
-    /** Chiede al motore di caricare il file di salvataggio indicato. */
-    void sendLoadGame     (const std::string& filePath);
+	/** Chiede al motore di caricare il file di salvataggio indicato. */
+	void sendLoadGame     (const std::string& filePath);
 
-    /** Chiede al motore di salvare la sessione corrente nel file indicato. */
-    void sendSaveGame     (const std::string& filePath);
+	/** Chiede al motore di salvare la sessione corrente nel file indicato. */
+	void sendSaveGame     (const std::string& filePath);
 
-    /** Avvia una nuova partita con la lista di giocatori fornita. */
-    void sendStartGame    (const std::vector<std::string>& playerIds);
+	/** Avvia una nuova partita con la lista di giocatori fornita. */
+	void sendStartGame    (const std::vector<std::string>& playerIds);
 
-    /** Richiede lo stato corrente del gioco. */
-    void sendGetGameState ();
+	/** Richiede lo stato corrente del gioco. */
+	void sendGetGameState ();
 
-    /** Richiede le informazioni sul giocatore con l'id indicato. */
-    void sendGetPlayerInfo(const std::string& playerId);
+	/** Richiede le informazioni sul giocatore con l'id indicato. */
+	void sendGetPlayerInfo(const std::string& playerId);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Ultime risposte ricevute
-    //  (validi dopo il corrispondente sendXxx(); reset all'inizio di ogni send)
-    // ═══════════════════════════════════════════════════════════════════════
+	// ═══════════════════════════════════════════════════════════════════════
+	//  Ultime risposte ricevute
+	//  (validi dopo il corrispondente sendXxx(); reset all'inizio di ogni send)
+	// ═══════════════════════════════════════════════════════════════════════
 
-    std::optional<LoadedResponse>  lastLoaded;     ///< Set da eng.loaded
-    std::optional<SavedResponse>   lastSaved;      ///< Set da eng.saved
-    std::optional<GameState>       lastGameState;  ///< Set da eng.game_state
-    std::optional<PlayerInfo>      lastPlayerInfo; ///< Set da eng.player_info
-    std::optional<ErrorResponse>   lastError;      ///< Set da eng.error
+	std::optional<LoadedResponse>  lastLoaded;     ///< Set da eng.loaded
+	std::optional<SavedResponse>   lastSaved;      ///< Set da eng.saved
+	std::optional<GameState>       lastGameState;  ///< Set da eng.game_state
+	std::optional<PlayerInfo>      lastPlayerInfo; ///< Set da eng.player_info
+	std::optional<ErrorResponse>   lastError;      ///< Set da eng.error
 
 private:
-    void onEnvelope(const GmDispatch::Envelope& env);
+	void onEnvelope(const gmDispatch::Envelope& env);
 
-    GmDispatch::Dispatcher&                      bus_;
-    std::shared_ptr<GmDispatch::EventBusChannel> channel_;
+	gmDispatch::GmDispatcher&                      _bus;
+	std::shared_ptr<gmDispatch::EventBusChannel> channel_;
 };
 
 #endif // EXAMPLE_ENGUI_UICONTROLLER_HPP

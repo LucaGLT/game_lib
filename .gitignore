@@ -1,0 +1,15 @@
+# CMake build directory
+build/
+/build/
+
+# IDE
+.vs/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
