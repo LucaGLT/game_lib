@@ -1091,55 +1091,179 @@ WS            ::= (' ' | '\t')+
 Newline       ::= '\n' | '\r\n'
 ```
 
-### Grafo Mermaid corrispondente
+### Grafi Mermaid per blocco
+
+> **Legenda colori**
+> - 🟢 Verde (`req`) — componente **obbligatorio**
+> - 🟡 Giallo (`opt`) — componente **opzionale**
+> - ⬜ Bianco (default) — struttura contenitore / intestazione blocco
+
+---
+
+#### `@meta`
 
 ```mermaid
-flowchart TD
-    A[Document] --> B["Block+"]
-    B --> C["@BlockType Newline Body @end Newline"]
+flowchart LR
+    M0["@meta ... @end"]
+    M0 --> M1[game]
+    M0 --> M2[ns]
+    M0 --> M3[version]
+    M0 --> M4[min_gmrules]
 
-    C --> D[BlockType]
-    C --> E[Body]
+    style M1 fill:#4caf50,color:#fff
+    style M2 fill:#4caf50,color:#fff
+    style M3 fill:#4caf50,color:#fff
+    style M4 fill:#fff9c4,color:#333
+```
 
-    D --> D1[meta]
-    D --> D2[targets]
-    D --> D3[conditions]
-    D --> D4[effects]
-    D --> D5[rules]
-    D --> D6[statuses]
-    D --> D7[triggers]
+---
 
-    E --> F["Line+"]
-    F --> F1[MetaLine]
-    F --> F2[DefLine]
-    F --> F3[Newline]
+#### `@targets`
 
-    F2 --> G["Ident AttrSuffix? :: DefBody Newline"]
-    G --> H["SubLine*"]
-    H --> H1[HookKeyword EffectChain]
+```mermaid
+flowchart LR
+    T0["Name :: TargetKind TargetSelector ..."]
+    T0 --> T1[TargetKind]
+    T0 --> T2[TargetSelector]
+    T0 --> T3["range RangeType N"]
+    T0 --> T4["required / optional"]
+    T0 --> T5[no_self]
+    T0 --> T6["needs TAG,..."]
+    T0 --> T7["forbids TAG,..."]
 
-    G --> I[DefBody]
-    I --> I1[TargetBody]
-    I --> I2[ConditionBody]
-    I --> I3[EffectBody]
-    I --> I4[RuleBody]
-    I --> I5[StatusBody]
-    I --> I6[TriggerBody]
+    style T1 fill:#4caf50,color:#fff
+    style T2 fill:#4caf50,color:#fff
+    style T3 fill:#fff9c4,color:#333
+    style T4 fill:#fff9c4,color:#333
+    style T5 fill:#fff9c4,color:#333
+    style T6 fill:#fff9c4,color:#333
+    style T7 fill:#fff9c4,color:#333
+```
 
-    I2 --> J[ConditionExpr]
-    J --> J1[ConditionTerm]
-    J1 --> J2["NOT ConditionTerm"]
-    J1 --> J3["(ConditionExpr)"]
-    J1 --> J4[CondAtom]
+---
 
-    I3 --> K["EffectCall EffectMod*"]
-    I4 --> L["IF? ON Ident THEN EffectChain"]
-    I5 --> M["StackingMode DurationType StatusDurAttr*"]
-    I6 --> N["ON_EVENT TriggerType IF? THEN EffectChain"]
+#### `@conditions`
 
-    L --> O["EffectEntry AND THEN EffectEntry ..."]
-    N --> O
-    H1 --> O
+```mermaid
+flowchart LR
+    C0["Name :: CondExpr"]
+    C0 --> C1[Name]
+    C0 --> C2[CondExpr]
+
+    C2 --> CA[CondAtom]
+    C2 --> CB["C_A AND C_B"]
+    C2 --> CC["C_A OR C_B"]
+    C2 --> CD["NOT C_A"]
+    C2 --> CE["(CondExpr)"]
+
+    CA --> CA1["FunctionName(Arg1, Arg2)"]
+
+    style C1 fill:#4caf50,color:#fff
+    style C2 fill:#4caf50,color:#fff
+    style CA fill:#4caf50,color:#fff
+    style CA1 fill:#4caf50,color:#fff
+    style CB fill:#fff9c4,color:#333
+    style CC fill:#fff9c4,color:#333
+    style CD fill:#fff9c4,color:#333
+    style CE fill:#fff9c4,color:#333
+```
+
+---
+
+#### `@effects`
+
+```mermaid
+flowchart LR
+    E0["Name :: EffectCall EffectMod"]
+    E0 --> E1[Name]
+    E0 --> E2["EffectType(Target, Args...)"]
+    E0 --> E3["[optional]"]
+    E0 --> E4["[stop]"]
+    E0 --> E5["[continue]"]
+
+    style E1 fill:#4caf50,color:#fff
+    style E2 fill:#4caf50,color:#fff
+    style E3 fill:#fff9c4,color:#333
+    style E4 fill:#fff9c4,color:#333
+    style E5 fill:#fff9c4,color:#333
+```
+
+---
+
+#### `@rules`
+
+```mermaid
+flowchart LR
+    R0["Name AttrSuffix :: RuleBody"]
+    R0 --> R1[Name]
+    R0 --> R2["[priority=N]"]
+    R0 --> R3["[disabled]"]
+    R0 --> R4["IF CondExpr"]
+    R0 --> R5["ON TargetName"]
+    R0 --> R6["THEN EffectChain"]
+
+    R6 --> R7[EffectEntry]
+    R6 --> R8["AND THEN EffectEntry ..."]
+
+    style R1 fill:#4caf50,color:#fff
+    style R5 fill:#4caf50,color:#fff
+    style R6 fill:#4caf50,color:#fff
+    style R7 fill:#4caf50,color:#fff
+    style R2 fill:#fff9c4,color:#333
+    style R3 fill:#fff9c4,color:#333
+    style R4 fill:#fff9c4,color:#333
+    style R8 fill:#fff9c4,color:#333
+```
+
+---
+
+#### `@statuses`
+
+```mermaid
+flowchart LR
+    S0["Name :: StackingMode DurationType SubLines"]
+    S0 --> S1[Name]
+    S0 --> S2[StackingMode]
+    S0 --> S3[DurationType]
+    S0 --> S4["StatusDurAttr (amount N)"]
+    S0 --> S5["ON_APPLY EffectChain"]
+    S0 --> S6["ON_REMOVE EffectChain"]
+    S0 --> S7["ON_TURN_START EffectChain"]
+    S0 --> S8["ON_TURN_END EffectChain"]
+
+    style S1 fill:#4caf50,color:#fff
+    style S2 fill:#4caf50,color:#fff
+    style S3 fill:#4caf50,color:#fff
+    style S4 fill:#fff9c4,color:#333
+    style S5 fill:#fff9c4,color:#333
+    style S6 fill:#fff9c4,color:#333
+    style S7 fill:#fff9c4,color:#333
+    style S8 fill:#fff9c4,color:#333
+```
+
+---
+
+#### `@triggers`
+
+```mermaid
+flowchart LR
+    TR0["Name AttrSuffix :: TriggerBody"]
+    TR0 --> TR1[Name]
+    TR0 --> TR2["[priority=N]"]
+    TR0 --> TR3["ON_EVENT TriggerType"]
+    TR0 --> TR4["IF CondExpr"]
+    TR0 --> TR5["THEN EffectChain"]
+
+    TR5 --> TR6[EffectEntry]
+    TR5 --> TR7["AND THEN EffectEntry ..."]
+
+    style TR1 fill:#4caf50,color:#fff
+    style TR3 fill:#4caf50,color:#fff
+    style TR5 fill:#4caf50,color:#fff
+    style TR6 fill:#4caf50,color:#fff
+    style TR2 fill:#fff9c4,color:#333
+    style TR4 fill:#fff9c4,color:#333
+    style TR7 fill:#fff9c4,color:#333
 ```
 
 ---
