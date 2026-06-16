@@ -8,6 +8,7 @@
 
 #include <any>
 #include <chrono>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,7 @@ namespace gmDispatch {
  * ### Routing
  * @li @c typeId is matched against subscription keys in @ref IRouter.
  * @li @c targets (non-empty) restricts delivery to named channels — Phase 4 feature.
+ * @li @c headers carries generic string metadata for bridges and adapters.
  * @li @c messageId is optional; useful for request/response correlation.
  *
  * @par Example
@@ -61,6 +63,14 @@ struct Envelope {
 	 * will receive the envelope.  This is a Phase 4 feature; V1 ignores it.
 	 */
 	std::vector<std::string> targets;
+
+	/**
+	 * @brief Arbitrary string headers attached by bridges or higher-level adapters.
+	 *
+	 * Use this for transport metadata that does not fit the fixed Envelope fields,
+	 * such as source system identifiers, rule priorities, or adapter-specific tags.
+	 */
+	std::map<std::string, std::string> headers;
 
 	/**
 	 * @brief Optional unique message identifier.

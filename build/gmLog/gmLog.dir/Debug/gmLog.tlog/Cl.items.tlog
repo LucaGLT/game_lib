@@ -1,0 +1,7 @@
+C:\_GLT_\Qt Prj\game_lib\gmLog\Logger.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\Logger.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\LoggerFactory.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\LoggerFactory.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\LogLevel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\LogLevel.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\dispatchers\SyncDispatcher.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\SyncDispatcher.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\formatters\JsonFormatter.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\JsonFormatter.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\sinks\FileSink.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\FileSink.obj
+C:\_GLT_\Qt Prj\game_lib\gmLog\sinks\StdoutSink.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmLog\gmLog.dir\Debug\StdoutSink.obj

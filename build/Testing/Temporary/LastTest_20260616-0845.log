@@ -1,0 +1,33 @@
+Start testing: Jun 16 18:18 ora legale Europa occ.
+----------------------------------------------------------
+6/11 Testing: gmDispatch_smoke_phase3_4
+6/11 Test: gmDispatch_smoke_phase3_4
+Command: "C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/Debug/test_gmDispatch_smoke_phase3_4.exe"
+Directory: C:/_GLT_/Qt Prj/game_lib/build/gmDispatch
+"gmDispatch_smoke_phase3_4" start time: Jun 16 18:18 ora legale Europa occ.
+Output:
+----------------------------------------------------------
+=== gmDispatch Phase 3+4 smoke tests ===
+
+[PASS] test_fileChannel
+[PASS] test_patternExact
+[PASS] test_patternWildcard
+[PASS] test_patternBroadcast
+[PASS] test_targetedDelivery
+[PASS] test_anonymousBypassesTarget
+[PASS] test_asyncDispatcher
+[PASS] test_asyncConcurrentSubscribe
+[PASS] test_logDispatchBridge
+[PASS] test_ruleEventBridge
+[PASS] test_ruleEventBridgeFailure
+
+Done.
+<end of output>
+Test time =   0.95 sec
+----------------------------------------------------------
+Test Passed.
+"gmDispatch_smoke_phase3_4" end time: Jun 16 18:18 ora legale Europa occ.
+"gmDispatch_smoke_phase3_4" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Jun 16 18:18 ora legale Europa occ.

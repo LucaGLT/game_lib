@@ -1,4 +1,4 @@
-set(CMAKE_RC_COMPILER "C:/AppPortable/clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-rc.exe")
+set(CMAKE_RC_COMPILER "rc")
 set(CMAKE_RC_COMPILER_ARG1 "")
 set(CMAKE_RC_COMPILER_LOADED 1)
 set(CMAKE_RC_SOURCE_FILE_EXTENSIONS rc;RC)

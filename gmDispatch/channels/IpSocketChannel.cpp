@@ -39,7 +39,7 @@
 			WSADATA wd;
 			if (::WSAStartup(MAKEWORD(2,2), &wd) != 0)
 			{
-				throw EDispatchError("IpSocketChannel: WSAStartup failed");
+				throw gmDispatch::EDispatchError("IpSocketChannel: WSAStartup failed");
 			}
 			init = true;
 		}
