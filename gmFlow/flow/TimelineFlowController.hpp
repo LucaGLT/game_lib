@@ -253,11 +253,11 @@ protected:
 	void publish_no_actor_available(GameContext& ctx) const;
 
 private:
-	std::unique_ptr<ITimelineAdapter> adapter_;
-	TimelinePolicy                    policy_;
-	std::optional<ActorId>            active_actor_;
-	TimelineValue                     current_time_ = 0;
-	std::optional<ActionWindow>       current_window_;
+	std::unique_ptr<ITimelineAdapter> _adapter;
+	TimelinePolicy                    _policy;
+	std::optional<ActorId>            _active_actor;
+	TimelineValue                     _current_time = 0;
+	std::optional<ActionWindow>       _current_window;
 };
 
 } // namespace gmFlow

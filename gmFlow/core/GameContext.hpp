@@ -121,14 +121,14 @@ public:
     void set_current_turn_id(TurnId id);
 
 private:
-    SessionId      session_id_;
-    GameState&     state_;
-    ActorRegistry& registry_;
-    EventBus&      event_bus_;
+    SessionId      _session_id;
+    GameState&     _state;
+    ActorRegistry& _registry;
+    EventBus&      _event_bus;
 
-    PhaseId        current_phase_id_;
-    RoundId        current_round_id_;
-    TurnId         current_turn_id_;
+    PhaseId        _current_phase_id;
+    RoundId        _current_round_id;
+    TurnId         _current_turn_id;
 };
 
 } // namespace gmFlow

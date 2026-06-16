@@ -212,14 +212,14 @@ public:
     const SessionId& session_id() const;
 
 private:
-    SessionConfig                           config_;
-    std::unique_ptr<GameState>              game_state_;
-    ActorRegistry                           actor_registry_;
-    EventBus                                event_bus_;
-    GameContext                             context_;
-    std::unique_ptr<IFlowController>        flow_controller_;
-    ActionQueue                             action_queue_;
-    SessionState                            session_state_ = SessionState::CREATED;
+    SessionConfig                           _config;
+    std::unique_ptr<GameState>              _game_state;
+    ActorRegistry                           _actor_registry;
+    EventBus                                _event_bus;
+    GameContext                             _context;
+    std::unique_ptr<IFlowController>        _flow_controller;
+    ActionQueue                             _action_queue;
+    SessionState                            _session_state = SessionState::CREATED;
 };
 
 } // namespace gmFlow

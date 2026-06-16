@@ -58,8 +58,8 @@ public:
     bool is_actor_active(const ActorId& actor_id) const;
 
 private:
-    TurnId                id_;
-    std::vector<ActorId>  active_actors_;
+    TurnId                _id;
+    std::vector<ActorId>  _active_actors;
 };
 
 } // namespace gmFlow

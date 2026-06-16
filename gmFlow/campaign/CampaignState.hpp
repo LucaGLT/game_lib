@@ -108,9 +108,9 @@ private:
         bool victory   = false;
     };
 
-    std::unordered_map<SessionId, SessionResult> results_;
-    std::unordered_set<SessionId>                unlocked_;
-    std::unordered_map<std::string, std::string> data_;
+    std::unordered_map<SessionId, SessionResult> _results;
+    std::unordered_set<SessionId>                _unlocked;
+    std::unordered_map<std::string, std::string> _data;
 };
 
 } // namespace gmFlow

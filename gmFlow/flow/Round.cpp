@@ -8,11 +8,11 @@
 namespace gmFlow {
 
 Round::Round(RoundId id, int index)
-    : id_(std::move(id))
-    , index_(index)
+    : _id(std::move(id))
+    , _index(index)
 {}
 
-const RoundId& Round::id()    const { return id_;    }
-int            Round::index() const { return index_; }
+const RoundId& Round::id()    const { return _id;    }
+int            Round::index() const { return _index; }
 
 } // namespace gmFlow

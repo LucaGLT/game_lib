@@ -83,12 +83,12 @@ struct FakeTimelineState : public gmFlow::GameState
 	// Ordered list of actor IDs as seen by the adapter.
 	std::vector<gmFlow::ActorId> actor_order;
 
-	const gmFlow::SessionId& session_id() const override { return id_; }
-	void on_session_started(const gmFlow::SessionId& id) override { id_ = id; }
+	const gmFlow::SessionId& session_id() const override { return _id; }
+	void on_session_started(const gmFlow::SessionId& id) override { _id = id; }
 	void on_session_completed() override {}
 
 private:
-	gmFlow::SessionId id_;
+	gmFlow::SessionId _id;
 };
 
 // ── Fake adapter ──────────────────────────────────────────────────────────────

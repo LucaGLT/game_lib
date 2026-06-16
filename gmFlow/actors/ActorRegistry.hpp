@@ -93,8 +93,8 @@ public:
     std::size_t count() const;
 
 private:
-    std::unordered_map<ActorId, Actor> actors_;
-    std::vector<ActorId>               insertion_order_; ///< Preserves add() order for turn sequencing.
+    std::unordered_map<ActorId, Actor> _actors;
+    std::vector<ActorId>               _insertion_order; ///< Preserves add() order for turn sequencing.
 };
 
 } // namespace gmFlow

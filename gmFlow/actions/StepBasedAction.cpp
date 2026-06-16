@@ -16,18 +16,18 @@ bool StepBasedAction::is_multi_step() const { return true;  }
 
 ValidationResult StepBasedAction::validate(const GameContext& ctx) const
 {
-    if (steps_.empty()) {
+    if (_steps.empty()) {
         return ValidationResult::fail(
             ValidationError::RULE_VIOLATION,
             "StepBasedAction has no registered steps.");
     }
-    if (current_step_ >= steps_.size()) {
+    if (_current_step >= _steps.size()) {
         return ValidationResult::ok();  // All steps done — nothing left to validate.
     }
-    if (!steps_[current_step_]->can_enter(ctx)) {
+    if (!_steps[_current_step]->can_enter(ctx)) {
         return ValidationResult::fail(
             ValidationError::RULE_VIOLATION,
-            "Step '" + steps_[current_step_]->id() + "' cannot be entered.");
+            "Step '" + _steps[_current_step]->id() + "' cannot be entered.");
     }
     return ValidationResult::ok();
 }
@@ -40,11 +40,11 @@ ActionResult StepBasedAction::execute(GameContext& ctx)
 ActionResult StepBasedAction::execute(GameContext& ctx, const StepInput& input)
 {
     // TODO: Phase 4.5 — emit EVT_ACTION_STARTED on first call; emit per-step events.
-    if (current_step_ >= steps_.size()) {
+    if (_current_step >= _steps.size()) {
         return ActionResult::success();  // Already complete.
     }
 
-    IActionStep& step = *steps_[current_step_];
+    IActionStep& step = *_steps[_current_step];
 
     if (!step.can_enter(ctx)) {
         return ActionResult::failure(
@@ -58,8 +58,8 @@ ActionResult StepBasedAction::execute(GameContext& ctx, const StepInput& input)
     }
 
     if (result.complete()) {
-        ++current_step_;
-        if (current_step_ >= steps_.size()) {
+        ++_current_step;
+        if (_current_step >= _steps.size()) {
             // All steps done.
             return ActionResult::success();
         }
@@ -71,12 +71,12 @@ ActionResult StepBasedAction::execute(GameContext& ctx, const StepInput& input)
 
 std::size_t StepBasedAction::current_step_index() const
 {
-    return current_step_;
+    return _current_step;
 }
 
 std::size_t StepBasedAction::step_count() const
 {
-    return steps_.size();
+    return _steps.size();
 }
 
 void StepBasedAction::add_step(std::unique_ptr<IActionStep> step)
@@ -84,7 +84,7 @@ void StepBasedAction::add_step(std::unique_ptr<IActionStep> step)
     if (!step) {
         throw std::invalid_argument("StepBasedAction::add_step(): step must not be null");
     }
-    steps_.push_back(std::move(step));
+    _steps.push_back(std::move(step));
 }
 
 } // namespace gmFlow

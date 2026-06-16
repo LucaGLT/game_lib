@@ -139,10 +139,10 @@ private:
     /// @brief Evaluates unlock conditions for all locked sessions.
     void evaluate_unlocks();
 
-    std::vector<SessionDefinition>  sessions_;
-    CampaignState                   state_;
-    std::optional<SessionId>        current_session_id_;
-    EventCallback                   event_callback_;
+    std::vector<SessionDefinition>  _sessions;
+    CampaignState                   _state;
+    std::optional<SessionId>        _current_session_id;
+    EventCallback                   _event_callback;
 };
 
 } // namespace gmFlow

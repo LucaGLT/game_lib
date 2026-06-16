@@ -10,28 +10,28 @@
 namespace gmFlow {
 
 Turn::Turn(TurnId id)
-    : id_(std::move(id))
+    : _id(std::move(id))
 {}
 
 const TurnId& Turn::id() const
 {
-    return id_;
+    return _id;
 }
 
 void Turn::add_active_actor(const ActorId& actor_id)
 {
-    active_actors_.push_back(actor_id);
+    _active_actors.push_back(actor_id);
 }
 
 const std::vector<ActorId>& Turn::active_actors() const
 {
-    return active_actors_;
+    return _active_actors;
 }
 
 bool Turn::is_actor_active(const ActorId& actor_id) const
 {
-    return std::find(active_actors_.begin(), active_actors_.end(), actor_id)
-        != active_actors_.end();
+    return std::find(_active_actors.begin(), _active_actors.end(), actor_id)
+        != _active_actors.end();
 }
 
 } // namespace gmFlow

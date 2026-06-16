@@ -39,10 +39,10 @@ namespace {
 class StubAction : public gmFlow::IAction {
 public:
     explicit StubAction(std::string id, std::string owner = "actor_1")
-        : id_(std::move(id)), owner_(std::move(owner)) {}
+        : _id(std::move(id)), _owner(std::move(owner)) {}
 
-    gmFlow::ActionId     id()     const override { return id_; }
-    gmFlow::ActorId      owner()  const override { return owner_; }
+    gmFlow::ActionId     id()     const override { return _id; }
+    gmFlow::ActorId      owner()  const override { return _owner; }
     gmFlow::ActionStatus status() const override { return gmFlow::ActionStatus::CREATED; }
 
     gmFlow::ValidationResult validate(const gmFlow::GameContext&) const override {
@@ -60,8 +60,8 @@ public:
     bool executed = false;
 
 private:
-    gmFlow::ActionId id_;
-    gmFlow::ActorId  owner_;
+    gmFlow::ActionId _id;
+    gmFlow::ActorId  _owner;
 };
 
 } // anonymous namespace
