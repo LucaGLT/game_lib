@@ -928,6 +928,86 @@ Il generatore di codice traduce i `value_ref: input.destination` in parametri de
 
 ---
 
+## Integrazione con le altre librerie
+
+Questa sezione chiarisce come gmRules si integra con il resto di game_lib.
+gmRules resta un motore di valutazione regole: non possiede lo stato globale,
+ma legge/scrive tramite `RuleContext` e tramite adapter runtime.
+
+### Matrice integrazione
+
+| Libreria | Tipo integrazione | Come avviene |
+|---|---|---|
+| `gmActor` | Diretta (runtime) | `ACTOR_*`, tag, status, HP e identity sono risolti su attori runtime |
+| `gmAlea` | Diretta (runtime) | `CARD_IN_ZONE`, `DRAW_CARDS`, `MOVE_CARD_TO_ZONE` su deck/zone/carte |
+| `gmMap` | Diretta (runtime) | `LOCATION_*`, adiacenza, spostamenti e filtri geografici |
+| `gmDispatch` | Indiretta (bridge) | `EMIT_EVENT` / `MANUAL_EFFECT` verso event bus applicativo |
+| `gmFlow` | Indiretta (orchestrazione) | dispatch di action/turn lifecycle, trigger events e sequencing |
+
+### gmActor
+
+Interazione diretta tramite primitive di condizione/effetto:
+
+- condizioni: `ACTOR_EXISTS`, `ACTOR_HAS_TAG`, `ACTOR_HAS_STATUS`,
+  `ACTOR_HP_AT_OR_BELOW`, `ACTOR_HP_AT_OR_ABOVE`
+- effetti: `DEAL_DAMAGE`, `HEAL`, `ADD_TAG`, `REMOVE_TAG`,
+  `APPLY_STATUS`, `REMOVE_STATUS`
+
+In pratica, gmRules usa ID attore e metadati actor-centrici; la gestione
+concreta degli attori rimane nel dominio gmActor (o adapter equivalente).
+
+### gmAlea
+
+Interazione diretta quando il dominio usa carte/mazzi:
+
+- condizioni: `CARD_IN_ZONE`, `DECK_HAS_AT_LEAST`
+- effetti: `DRAW_CARDS`, `MOVE_CARD_TO_ZONE`
+
+gmRules non implementa il deck engine: richiede solo che il runtime esponga
+operazioni coerenti su zone (`hand`, `discard`, `play`, `banish`, ecc.).
+
+### gmMap
+
+Interazione diretta per vincoli spaziali e movimento:
+
+- condizioni: `LOCATION_EXISTS`, `LOCATION_HAS_TAG`, `LOCATION_IS_ADJACENT`,
+  `ACTOR_IN_LOCATION`
+- target modifiers: `range SAME_LOCATION`, `ADJACENT_LOCATION`,
+  `WITHIN_N_LOCATIONS N`, `ANY_VISIBLE_LOCATION`
+- effetti: `MOVE_ACTOR`
+
+gmRules delega a gmMap la semantica topologica (adiacenza, visibilità,
+reachability), mantenendo nel DSL solo la descrizione declarativa.
+
+### gmDispatch
+
+Integrazione non diretta nel core: gmRules produce segnali (`EMIT_EVENT`,
+`MANUAL_EFFECT`) e il bridge runtime li pubblica sul dispatcher reale.
+
+Pattern consigliato:
+
+1. gmRules emette un evento dominio (`combat.hit.confirmed`).
+2. Adapter traduce in envelope/evento gmDispatch.
+3. Altri sistemi (UI, telemetry, AI observer) si sottoscrivono via gmDispatch.
+
+### gmFlow
+
+Integrazione non diretta: gmFlow orchestra il ciclo turni/azioni e invoca
+gmRules nei punti stabiliti del flow.
+
+Pattern tipico:
+
+1. gmFlow riceve comando azione (player/AI).
+2. gmFlow costruisce `input.xxx` e invoca rule evaluation.
+3. gmFlow emette eventi lifecycle (`ACTION_SUBMITTED`, `ACTION_COMPLETED`).
+4. gmRules valuta trigger collegati e produce effetti/eventi.
+5. gmFlow decide avanzamento fase/turno.
+
+Per linee guida operative sui bridge non diretti, vedi
+`gmRules/specs/grs-integration-suggestions.md`.
+
+---
+
 ## Grammatica EBNF v0.1
 
 ```ebnf
@@ -1009,6 +1089,57 @@ StringLit     ::= '"' [^"]* '"'
 Integer       ::= '-'? [0-9]+
 WS            ::= (' ' | '\t')+
 Newline       ::= '\n' | '\r\n'
+```
+
+### Grafo Mermaid corrispondente
+
+```mermaid
+flowchart TD
+    A[Document] --> B[Block+]
+    B --> C[@ BlockType Newline Body @end Newline]
+
+    C --> D[BlockType]
+    C --> E[Body]
+
+    D --> D1[meta]
+    D --> D2[targets]
+    D --> D3[conditions]
+    D --> D4[effects]
+    D --> D5[rules]
+    D --> D6[statuses]
+    D --> D7[triggers]
+
+    E --> F[Line+]
+    F --> F1[MetaLine]
+    F --> F2[DefLine]
+    F --> F3[Newline]
+
+    F2 --> G[Ident AttrSuffix? :: DefBody Newline]
+    G --> H[SubLine*]
+    H --> H1[HookKeyword EffectChain]
+
+    G --> I[DefBody]
+    I --> I1[TargetBody]
+    I --> I2[ConditionBody]
+    I --> I3[EffectBody]
+    I --> I4[RuleBody]
+    I --> I5[StatusBody]
+    I --> I6[TriggerBody]
+
+    I2 --> J[ConditionExpr]
+    J --> J1[ConditionTerm]
+    J1 --> J2[NOT ConditionTerm]
+    J1 --> J3[(ConditionExpr)]
+    J1 --> J4[CondAtom]
+
+    I3 --> K[EffectCall EffectMod*]
+    I4 --> L[IF? ON Ident THEN EffectChain]
+    I5 --> M[StackingMode DurationType StatusDurAttr*]
+    I6 --> N[ON_EVENT TriggerType IF? THEN EffectChain]
+
+    L --> O[EffectEntry AND THEN EffectEntry ...]
+    N --> O
+    H1 --> O
 ```
 
 ---
