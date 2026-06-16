@@ -27,6 +27,7 @@ struct RuleEvent
     std::string source_id;    ///< Who caused the event
     std::string target_id;    ///< What was affected
     std::string payload_json; ///< Optional JSON payload (empty in V1)
+    int         priority = 100; ///< Rule priority used for dispatch metadata
 };
 
 } // namespace gmRules

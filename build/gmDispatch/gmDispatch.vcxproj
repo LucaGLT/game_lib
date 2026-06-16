@@ -283,6 +283,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\Dispatcher.cpp" />
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\DispatcherFactory.cpp" />
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\LogDispatchBridge.cpp" />
+    <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\DispatchRuleContextAdapter.cpp" />
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\RuleEventBridge.cpp" />
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\EventBusChannel.cpp" />
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\FileChannel.cpp" />

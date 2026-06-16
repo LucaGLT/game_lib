@@ -77,6 +77,7 @@ public:
     // ── Collected outputs (for test assertions) ───────────────────────────────
 
     std::vector<gmRules::RuleEvent>    emitted_events;
+    std::vector<std::string>           emitted_buses;
     std::vector<gmRules::StatusInstance> added_statuses;
     std::vector<gmRules::StatusInstanceId> removed_statuses;
 
@@ -272,9 +273,11 @@ public:
         return gmRules::RuleResult::ok();
     }
 
-    void emit_event(const gmRules::RuleEvent& event) override
+    void emit_event(const gmRules::RuleEvent& event,
+                    const std::string& bus_name = "RuleEvBus") override
     {
         emitted_events.push_back(event);
+        emitted_buses.push_back(bus_name);
     }
 
     gmRules::RuleResult apply_extended_effect(const gmRules::EffectSpec& effect,

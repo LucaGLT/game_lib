@@ -1,6 +1,7 @@
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\Dispatcher.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\Dispatcher.obj
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\DispatcherFactory.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\DispatcherFactory.obj
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\LogDispatchBridge.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\LogDispatchBridge.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\DispatchRuleContextAdapter.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\DispatchRuleContextAdapter.obj
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\RuleEventBridge.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\RuleEventBridge.obj
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\EventBusChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\EventBusChannel.obj
 C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\FileChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\FileChannel.obj

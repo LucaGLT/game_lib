@@ -92,17 +92,29 @@ static RuleResult validate_extended_effect_arguments(const EffectSpec& effect)
 	}
 }
 
+static RuleResult publish_event(const RuleEvent& event,
+							  const std::string& bus_name,
+							  EffectResult& result,
+							  RuleContext& ctx)
+{
+	ctx.emit_event(event, bus_name);
+	result.add_event(event);
+	return RuleResult::ok();
+}
+
 // ── Internal: apply one effect to one resolved target ────────────────────────
 
 static RuleResult apply_to_target(const EffectSpec& effect,
 								  const TargetRef& target,
 								  const ActorId& source_actor_id,
 								  EffectResult& result,
-								  RuleContext& ctx)
+								  RuleContext& ctx,
+								  int rule_priority)
 {
 	RuleEvent ev;
 	ev.source_id = source_actor_id;
 	ev.target_id = target.id;
+	ev.priority = rule_priority;
 
 	switch (effect.type)
 	{
@@ -111,8 +123,7 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			if (effect.amount <= 0) return RuleResult::ok(); // no-op for zero/negative
 			ctx.modify_actor_hp(target.id, -effect.amount);
 			ev.type = "gmRules.actor.damaged";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::HEAL:
@@ -120,16 +131,14 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			if (effect.amount <= 0) return RuleResult::ok();
 			ctx.modify_actor_hp(target.id, effect.amount);
 			ev.type = "gmRules.actor.healed";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::MOVE_ACTOR:
 		{
 			ctx.move_actor_to_location(target.id, effect.value);
 			ev.type = "gmRules.actor.moved";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::DRAW_CARDS:
@@ -141,16 +150,14 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			}
 			ctx.draw_cards(effect.value, effect.amount);
 			ev.type = "gmRules.deck.drawn";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::DISCARD_CARDS:
 		{
 			// Discard is game-specific — emit event only
 			ev.type = "gmRules.deck.discarded";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::MOVE_CARD_TO_ZONE:
@@ -167,8 +174,7 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 				}
 			}
 			ev.type = "gmRules.card.zone_moved";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::APPLY_STATUS:
@@ -181,8 +187,7 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			inst.source_id      = source_actor_id;
 			ctx.add_status_instance(inst);
 			ev.type = "gmRules.status.applied";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::REMOVE_STATUS:
@@ -191,24 +196,21 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			auto inst_ids = ctx.statuses_on_actor(target.id);
 			// We emit the event regardless of whether any instance matched
 			ev.type = "gmRules.status.removed";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::ADD_TAG:
 		{
 			ctx.add_actor_tag(target.id, effect.value);
 			ev.type = "gmRules.actor.tag_added";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::REMOVE_TAG:
 		{
 			ctx.remove_actor_tag(target.id, effect.value);
 			ev.type = "gmRules.actor.tag_removed";
-			result.add_event(ev);
-			return RuleResult::ok();
+			return publish_event(ev, "RuleEvBus", result, ctx);
 		}
 
 		case EffectType::EMIT_EVENT:
@@ -216,9 +218,10 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 		{
 			// D6: emit event, no state mutation
 			ev.type = effect.value.empty() ? "gmRules.manual_effect" : effect.value;
-			ctx.emit_event(ev);
-			result.add_event(ev);
-			return RuleResult::ok();
+			const std::string bus_name = effect.source_id.empty()
+				? "RuleEvBus"
+				: effect.source_id;
+			return publish_event(ev, bus_name, result, ctx);
 		}
 
 		case EffectType::REVIVE_ACTOR:
@@ -260,7 +263,8 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 			{
 				if (!ext_event.type.empty())
 				{
-					result.add_event(ext_event);
+					ext_event.priority = rule_priority;
+					return publish_event(ext_event, "RuleEvBus", result, ctx);
 				}
 				return RuleResult::ok();
 			}
@@ -284,7 +288,8 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 EffectResult EffectResolver::resolve(const EffectSpec& effect,
                                      const ActorId& source_actor_id,
                                      const std::vector<TargetRef>& selected_targets,
-                                     RuleContext& ctx) const
+								 RuleContext& ctx,
+								 int rule_priority) const
 {
 	EffectResult result = EffectResult::success();
 
@@ -325,7 +330,12 @@ EffectResult EffectResolver::resolve(const EffectSpec& effect,
 		if (effect.type == EffectType::MANUAL_EFFECT || effect.type == EffectType::EMIT_EVENT)
 		{
 			TargetRef dummy;
-			RuleResult applied = apply_to_target(effect, dummy, source_actor_id, result, ctx);
+			RuleResult applied = apply_to_target(effect,
+										dummy,
+										source_actor_id,
+										result,
+										ctx,
+										rule_priority);
 			if (!applied.valid())
 			{
 				if (effect.optional)
@@ -342,7 +352,12 @@ EffectResult EffectResolver::resolve(const EffectSpec& effect,
 	// 4. Apply to each resolved target
 	for (const TargetRef& t : target_result.targets())
 	{
-		RuleResult applied = apply_to_target(effect, t, source_actor_id, result, ctx);
+		RuleResult applied = apply_to_target(effect,
+									t,
+									source_actor_id,
+									result,
+									ctx,
+									rule_priority);
 		if (!applied.valid())
 		{
 			if (effect.optional)
@@ -360,13 +375,18 @@ EffectResult EffectResolver::resolve(const EffectSpec& effect,
 EffectResult EffectResolver::resolve_many(const std::vector<EffectSpec>& effects,
                                           const ActorId& source_actor_id,
                                           const std::vector<TargetRef>& selected_targets,
-                                          RuleContext& ctx) const
+								  RuleContext& ctx,
+								  int rule_priority) const
 {
 	EffectResult combined = EffectResult::success();
 
 	for (const EffectSpec& eff : effects)
 	{
-		EffectResult r = resolve(eff, source_actor_id, selected_targets, ctx);
+		EffectResult r = resolve(eff,
+								source_actor_id,
+								selected_targets,
+								ctx,
+								rule_priority);
 
 		// Propagate events
 		for (const RuleEvent& ev : r.events())

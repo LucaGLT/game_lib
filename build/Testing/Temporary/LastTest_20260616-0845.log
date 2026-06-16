@@ -1,33 +1,27 @@
-Start testing: Jun 16 18:18 ora legale Europa occ.
+Start testing: Jun 16 19:10 ora legale Europa occ.
 ----------------------------------------------------------
-6/11 Testing: gmDispatch_smoke_phase3_4
-6/11 Test: gmDispatch_smoke_phase3_4
-Command: "C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/Debug/test_gmDispatch_smoke_phase3_4.exe"
-Directory: C:/_GLT_/Qt Prj/game_lib/build/gmDispatch
-"gmDispatch_smoke_phase3_4" start time: Jun 16 18:18 ora legale Europa occ.
+11/11 Testing: gmRules_integration
+11/11 Test: gmRules_integration
+Command: "C:/_GLT_/Qt Prj/game_lib/build/gmRules/Debug/test_gmRules_integration.exe"
+Directory: C:/_GLT_/Qt Prj/game_lib/build/gmRules
+"gmRules_integration" start time: Jun 16 19:10 ora legale Europa occ.
 Output:
 ----------------------------------------------------------
-=== gmDispatch Phase 3+4 smoke tests ===
+=== gmRules: Integration tests ===
 
-[PASS] test_fileChannel
-[PASS] test_patternExact
-[PASS] test_patternWildcard
-[PASS] test_patternBroadcast
-[PASS] test_targetedDelivery
-[PASS] test_anonymousBypassesTarget
-[PASS] test_asyncDispatcher
-[PASS] test_asyncConcurrentSubscribe
-[PASS] test_logDispatchBridge
-[PASS] test_ruleEventBridge
-[PASS] test_ruleEventBridgeFailure
+[PASS] card_like_target_condition_damage
+[PASS] status_damage_on_activation_start
+[PASS] move_effect_validates_location
+[PASS] draw_effect_validates_deck_adapter
+[PASS] manual_effect_produces_event
 
-Done.
+--- Results: 5 passed, 0 failed ---
 <end of output>
-Test time =   0.95 sec
+Test time =   1.71 sec
 ----------------------------------------------------------
 Test Passed.
-"gmDispatch_smoke_phase3_4" end time: Jun 16 18:18 ora legale Europa occ.
-"gmDispatch_smoke_phase3_4" time elapsed: 00:00:00
+"gmRules_integration" end time: Jun 16 19:10 ora legale Europa occ.
+"gmRules_integration" time elapsed: 00:00:01
 ----------------------------------------------------------
 
-End testing: Jun 16 18:18 ora legale Europa occ.
+End testing: Jun 16 19:10 ora legale Europa occ.

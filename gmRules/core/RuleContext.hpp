@@ -180,7 +180,8 @@ public:
      * a custom observer list, or simply log it.
      * @param event Event to emit.
      */
-    virtual void emit_event(const RuleEvent& event) = 0;
+    virtual void emit_event(const RuleEvent& event,
+                            const std::string& bus_name = "RuleEvBus") = 0;
 
     /**
      * @brief Applies an extended effect not handled by gmRules V1 core.

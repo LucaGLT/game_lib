@@ -5,6 +5,7 @@ add_library(gmDispatch STATIC
     DispatcherFactory.cpp
 
     bridges/LogDispatchBridge.cpp
+    bridges/DispatchRuleContextAdapter.cpp
     bridges/RuleEventBridge.cpp
 
     channels/EventBusChannel.cpp

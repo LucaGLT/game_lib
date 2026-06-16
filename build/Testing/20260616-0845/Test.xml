@@ -25,19 +25,19 @@
 	ProcessorClockFrequency="2496"
 	>
 	<Testing>
-		<StartDateTime>Jun 16 18:18 ora legale Europa occ.</StartDateTime>
-		<StartTestTime>1781626733</StartTestTime>
+		<StartDateTime>Jun 16 19:10 ora legale Europa occ.</StartDateTime>
+		<StartTestTime>1781629808</StartTestTime>
 		<TestList>
-			<Test>./gmDispatch/gmDispatch_smoke_phase3_4</Test>
+			<Test>./gmRules/gmRules_integration</Test>
 		</TestList>
 		<Test Status="passed">
-			<Name>gmDispatch_smoke_phase3_4</Name>
-			<Path>./gmDispatch</Path>
-			<FullName>./gmDispatch/gmDispatch_smoke_phase3_4</FullName>
-			<FullCommandLine>"C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\Debug\test_gmDispatch_smoke_phase3_4.exe"</FullCommandLine>
+			<Name>gmRules_integration</Name>
+			<Path>./gmRules</Path>
+			<FullName>./gmRules/gmRules_integration</FullName>
+			<FullCommandLine>"C:\_GLT_\Qt Prj\game_lib\build\gmRules\Debug\test_gmRules_integration.exe"</FullCommandLine>
 			<Results>
 				<NamedMeasurement type="numeric/double" name="Execution Time">
-					<Value>0.954347</Value>
+					<Value>1.71077</Value>
 				</NamedMeasurement>
 				<NamedMeasurement type="numeric/double" name="Processors">
 					<Value>1</Value>
@@ -46,18 +46,18 @@
 					<Value>Completed</Value>
 				</NamedMeasurement>
 				<NamedMeasurement type="text/string" name="Command Line">
-					<Value>"C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\Debug\test_gmDispatch_smoke_phase3_4.exe"</Value>
+					<Value>"C:\_GLT_\Qt Prj\game_lib\build\gmRules\Debug\test_gmRules_integration.exe"</Value>
 				</NamedMeasurement>
 				<NamedMeasurement type="text/string" name="Environment">
 					<Value>#CTEST_RESOURCE_GROUP_COUNT=</Value>
 				</NamedMeasurement>
 				<Measurement>
-					<Value encoding="base64" compression="gzip">eJyFz0GLwjAQBeB7fkXugpfdaw5b656FCnsQWcb02QbTicwkYv/9FsFDWMHr+94bGOecHaY26JWyH+1uJIX9WH1andIFNkOzWuecMYfdV9cdH8nvOURsRmJGrPLlSIbw9k4+v4KfEHtP0r+yRhItqPUwkwzI6FvEcIPMFRInnqdUtJmvpArdP9p1R2f2z/8g/22T2BcRcO7KSb2EE6pSTMNz3kjoh1qlRGxvy/i9fVOIRWBMmxhr8wc1bokc====</Value>
+					<Value encoding="base64" compression="gzip">eJxlzzEOwjAMBdA9p/ABqMTCgpSBkQ2VESHLit0qappUiVOuT6goC6v/0/+ytRbGua9ByhmuUWXMpD5FUClawFprzON2ud+f4CgzBj8JKuVRFF2K7D8YmWYaZYdFSWv5HrHF5NSvWy22LOsO57QKyjCIU1wpeKa2iiG5ze6KM73+FYubkJgWlfzro1gp7HbJiatrVFaJakzXddBLqUHbqydYqBThAxxhIB+EoeXmDZ2uYao=</Value>
 				</Measurement>
 			</Results>
 		</Test>
-		<EndDateTime>Jun 16 18:18 ora legale Europa occ.</EndDateTime>
-		<EndTestTime>1781626733</EndTestTime>
+		<EndDateTime>Jun 16 19:10 ora legale Europa occ.</EndDateTime>
+		<EndTestTime>1781629810</EndTestTime>
 		<ElapsedMinutes>0</ElapsedMinutes>
 	</Testing>
 </Site>

@@ -10,6 +10,9 @@
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\LogDispatchBridge.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\DispatchRuleContextAdapter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\RuleEventBridge.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
