@@ -8,6 +8,13 @@ C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_gmDice.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_stdDice.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/gmAlea_all_tests.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/RUN_TESTS.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmLog/CMakeFiles/gmLog.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmLog/CMakeFiles/RUN_TESTS.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/CMakeFiles/gmDispatch.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/CMakeFiles/test_gmDispatch_smoke_phase2.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/CMakeFiles/test_gmDispatch_smoke_phase3_4.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/CMakeFiles/gmDispatch_all_tests.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmDispatch/CMakeFiles/RUN_TESTS.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/gmRules.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_target_resolver.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir

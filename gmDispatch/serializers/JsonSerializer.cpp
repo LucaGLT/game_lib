@@ -60,6 +60,23 @@ std::string JsonSerializer::serialize(const Envelope& envelope)
 	}
 	oss << ']';
 
+	// headers JSON object
+	oss << ",\"headers\":{";
+	std::size_t header_index = 0;
+	for (const std::pair<const std::string, std::string>& header : envelope.headers)
+	{
+		if (header_index > 0)
+		{
+			oss << ',';
+		}
+
+		oss << '"' << escape_json_string(header.first) << '"'
+			<< ':'
+			<< '"' << escape_json_string(header.second) << '"';
+		++header_index;
+	}
+	oss << '}';
+
 	// payload: type().name() as best-effort string (Phase 3: per-type serializers)
 	const std::string payloadStr = envelope.payload.has_value()
 									   ? std::string(envelope.payload.type().name())

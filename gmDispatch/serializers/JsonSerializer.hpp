@@ -22,7 +22,7 @@ namespace gmDispatch {
  * ### Output format
  * @code
  *   {"time":"2026-06-11T10:30:00.123","source":"CoreEngine","typeId":"engine.tick",
- *    "messageId":"","targets":[],"payload":"TickData"}
+ *    "messageId":"","targets":[],"headers":{},"payload":"TickData"}
  * @endcode
  *
  * | Field | Type | Notes |
@@ -32,6 +32,7 @@ namespace gmDispatch {
  * | @c typeId | string | @c Envelope::typeId |
  * | @c messageId | string | @c Envelope::messageId (empty when not set) |
  * | @c targets | JSON array of strings | @c Envelope::targets (empty array = broadcast) |
+ * | @c headers | JSON object of strings | @c Envelope::headers |
  * | @c payload | string | @c std::any::type().name() or custom (Phase 3) |
  *
  * ### Relationship with GmLog::JsonFormatter

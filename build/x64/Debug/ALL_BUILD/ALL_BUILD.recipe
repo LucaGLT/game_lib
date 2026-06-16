@@ -14,6 +14,12 @@
       <FullPath>C:\_GLT_\Qt Prj\game_lib\build\gmAlea\Debug\test_gmDice.exe</FullPath>
     </ProjectOutput>
     <ProjectOutput>
+      <FullPath>C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\Debug\test_gmDispatch_smoke_phase2.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\Debug\test_gmDispatch_smoke_phase3_4.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
       <FullPath>C:\_GLT_\Qt Prj\game_lib\build\gmRules\Debug\test_gmRules_condition_evaluator.exe</FullPath>
     </ProjectOutput>
     <ProjectOutput>
