@@ -43,7 +43,7 @@ RuleResult StatusEngine::apply_status(const StatusDefinition& def,
 	{
 		switch (def.stacking_policy.mode)
 		{
-			case StackingMode::IGNORE_NEW:
+			case StackingMode::ONE_ONLY:
 				return RuleResult::ok(); // discard silently
 
 			case StackingMode::REPLACE:

@@ -501,7 +501,7 @@
       "enum": [
         "REFRESH_DURATION",
         "ADD_STACK",
-        "IGNORE_NEW",
+        "ONE_ONLY",
         "REPLACE",
         "UNIQUE_BY_SOURCE"
       ]

@@ -104,7 +104,7 @@ empowered :: REFRESH UNTIL_NEXT_TURN
     ON_APPLY ADD_TAG(Target_Self, empowered)
 
 # Stunned: hero cannot act next turn
-stunned :: IGNORE_NEW UNTIL_NEXT_TURN
+stunned :: ONE_ONLY UNTIL_NEXT_TURN
     ON_APPLY  ADD_TAG(Target_Self, stunned)
     ON_REMOVE REMOVE_TAG(Target_Self, stunned)
 @end

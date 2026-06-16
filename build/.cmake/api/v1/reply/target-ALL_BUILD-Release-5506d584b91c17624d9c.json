@@ -1,0 +1,66 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
+		},
+		{
+			"id" : "test_stdDice::@f84d063891cd2db68551"
+		},
+		{
+			"id" : "test_gmRules_target_resolver::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "test_gmRules_status_engine::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "test_gmRules_integration::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "test_gmRules_effect_resolver::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "test_gmRules_condition_evaluator::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "gmRules::@299625f486f42b2943d8"
+		},
+		{
+			"id" : "gmAlea::@f84d063891cd2db68551"
+		},
+		{
+			"id" : "test_gmDeck_v2::@f84d063891cd2db68551"
+		},
+		{
+			"id" : "test_gmCompDeck::@f84d063891cd2db68551"
+		},
+		{
+			"id" : "test_gmDice::@f84d063891cd2db68551"
+		}
+	],
+	"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
+	"isGeneratorProvided" : true,
+	"name" : "ALL_BUILD",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}

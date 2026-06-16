@@ -572,7 +572,7 @@ frenzy :: ADD_STACK UNTIL_REMOVED
 @end
 ```
 
-#### `IGNORE_NEW`
+#### `ONE_ONLY`
 
 Se lo status e gia presente, la nuova applicazione viene scartata.
 Lo status esistente rimane immutato. Utile per stati "una tantum" che
@@ -580,7 +580,7 @@ non devono essere resettati.
 
 ```grs
 @statuses
-captured :: IGNORE_NEW UNTIL_REMOVED
+captured :: ONE_ONLY UNTIL_REMOVED
     ON_APPLY ADD_TAG(Target_Piece, captured)
 # Una pedina gia catturata non puo essere catturata una seconda volta.
 @end
@@ -632,7 +632,7 @@ triggerato da altra regola.
 
 ```grs
 @statuses
-blind :: IGNORE_NEW PERMANENT
+blind :: ONE_ONLY PERMANENT
     ON_APPLY  ADD_TAG(Target_Piece, blind)
     ON_REMOVE REMOVE_TAG(Target_Piece, blind)
 # Cecita permanente: rimane finche una cura specifica non la rimuove.
@@ -648,7 +648,7 @@ nell'intenzione del designer.
 
 ```grs
 @statuses
-captured :: IGNORE_NEW UNTIL_REMOVED
+captured :: ONE_ONLY UNTIL_REMOVED
     ON_APPLY ADD_TAG(Target_Piece, captured)
 # La pedina resta catturata finche il game loop non chiama REMOVE_STATUS.
 @end
@@ -883,12 +883,9 @@ T_TrapSquare [priority=100] ::
 Le regole GRS (e gmRules) sono **definizioni statiche** — scritte una
 volta sola nel file di regole.
 
-Ma i valori su cui operano sono **dinamici** — dipendono da cosa
-succede a runtime: quale pedina il giocatore ha scelto, in quale
-casella vuole spostarla, quale attore ha subito danno.
+Ma i valori su cui operano sono **dinamici** — dipendono da cosa succede a runtime: quale pedina il giocatore ha scelto, in quale casella vuole spostarla, quale attore ha subito danno.
 
-I ref runtime sono **segnaposto nominati** che il runtime rimpiazza
-con i valori reali nel momento in cui la regola viene eseguita.
+I ref runtime sono **segnaposto nominati** che il runtime rimpiazza con i valori reali nel momento in cui la regola viene eseguita.
 
 ### 3 namespace
 
@@ -927,9 +924,7 @@ effect.value = "sq_17";                  // <- era input.destination
 engine.resolve_effect(effect, "w_01", {selected_target}, ctx);
 ```
 
-Il generatore di codice traduce i `value_ref: input.destination`
-in parametri della funzione factory o in un oggetto `RuntimeBindings`
-passato al momento dell'invocazione.
+Il generatore di codice traduce i `value_ref: input.destination` in parametri della funzione factory o in un oggetto `RuntimeBindings` passato al momento dell'invocazione.
 
 ---
 
@@ -991,7 +986,7 @@ EffectEntry   ::= EffectCall EffectMod*
                 | Ident EffectMod*
 
 StatusBody    ::= StackingMode WS DurationType (WS StatusDurAttr)*
-StackingMode  ::= 'REFRESH' | 'ADD_STACK' | 'IGNORE_NEW'
+StackingMode  ::= 'REFRESH' | 'ADD_STACK' | 'ONE_ONLY'
                 | 'REPLACE' | 'UNIQUE_BY_SOURCE'
 DurationType  ::= 'PERMANENT' | 'UNTIL_REMOVED' | 'UNTIL_NEXT_TURN'
                 | 'FOR_N' | 'WHILE_IN_LOCATION'
@@ -1040,7 +1035,7 @@ Newline       ::= '\n' | '\r\n'
 | `AND THEN E2` | `rule.effects[1]` |
 | `[priority=200]` | `rule.priority: 200` |
 | `[disabled]` | `rule.enabled: false` |
-| `IGNORE_NEW UNTIL_REMOVED` | `stacking_policy.mode`, `default_duration.type` |
+| `ONE_ONLY UNTIL_REMOVED` | `stacking_policy.mode`, `default_duration.type` |
 | `ON_APPLY E` | `status.on_apply: [E]` |
 | `ON_EVENT ACTOR_MOVED` | `trigger.type: ON_ACTOR_MOVED` |
 

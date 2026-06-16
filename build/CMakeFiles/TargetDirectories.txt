@@ -1,15 +1,13 @@
-C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/test.dir
-C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/edit_cache.dir
-C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/rebuild_cache.dir
+C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/RUN_TESTS.dir
+C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/ALL_BUILD.dir
+C:/_GLT_/Qt Prj/game_lib/build/CMakeFiles/ZERO_CHECK.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/gmAlea.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_gmDeck_v2.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_gmCompDeck.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_gmDice.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test_stdDice.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/gmAlea_all_tests.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/test.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/edit_cache.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/rebuild_cache.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmAlea/CMakeFiles/RUN_TESTS.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/gmRules.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_target_resolver.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_condition_evaluator.dir
@@ -17,6 +15,4 @@ C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_effect_resolver.d
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_status_engine.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test_gmRules_integration.dir
 C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/gmRules_all_tests.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/test.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/edit_cache.dir
-C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/rebuild_cache.dir
+C:/_GLT_/Qt Prj/game_lib/build/gmRules/CMakeFiles/RUN_TESTS.dir

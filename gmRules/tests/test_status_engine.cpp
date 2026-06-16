@@ -103,14 +103,14 @@ static void test_apply_status_add_stack()
 	pass(T);
 }
 
-static void test_apply_status_ignore_new()
+static void test_apply_status_one_only()
 {
-	const std::string T = "apply_status_ignore_new";
+	const std::string T = "apply_status_one_only";
 	MockRuleContext ctx;
 	ctx.add_location("r1");
 	ctx.add_actor("goblin", "monsters", 10, 10, "r1");
 
-	StatusDefinition def = make_status("shield", StackingMode::IGNORE_NEW);
+	StatusDefinition def = make_status("shield", StackingMode::ONE_ONLY);
 	StatusEngine engine;
 	engine.apply_status(def, "goblin", "src1", ctx);
 	size_t after_first = ctx.added_statuses.size();
@@ -258,7 +258,7 @@ int main()
 	test_apply_status_adds_instance();
 	test_apply_status_refresh_duration();
 	test_apply_status_add_stack();
-	test_apply_status_ignore_new();
+	test_apply_status_one_only();
 	test_apply_status_replace();
 	test_on_apply_effects_resolved();
 	test_remove_status_calls_on_remove();

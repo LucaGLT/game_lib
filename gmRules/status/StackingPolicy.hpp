@@ -15,7 +15,7 @@ enum class StackingMode
 {
     REFRESH_DURATION, ///< Reset duration of existing instance; keep stacks at 1
     ADD_STACK,        ///< Increment stacks up to `max_stacks`
-    IGNORE_NEW,       ///< Discard the new application; keep existing
+    ONE_ONLY,         ///< Discard the new application; keep existing
     REPLACE,          ///< Remove existing instance and apply fresh
     UNIQUE_BY_SOURCE  ///< One instance per source — refresh if same source, add if different
 };

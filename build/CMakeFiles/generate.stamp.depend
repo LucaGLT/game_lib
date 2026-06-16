@@ -9,6 +9,7 @@ C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerSupport.cmake
+C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineRCCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeFindBinUtils.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeGenericSystem.cmake
@@ -17,12 +18,14 @@ C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeParseImplicitIncludeInfo.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeParseImplicitLinkInfo.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeParseLibraryArchitecture.cmake
+C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeRCCompiler.cmake.in
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeRCInformation.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeSystem.cmake.in
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeTestCompilerCommon.cmake
+C:/Program Files/CMake/share/cmake-3.31/Modules/CMakeTestRCCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/Compiler/ADSP-DetermineCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/Compiler/ARMCC-DetermineCompiler.cmake
 C:/Program Files/CMake/share/cmake-3.31/Modules/Compiler/ARMClang-DetermineCompiler.cmake

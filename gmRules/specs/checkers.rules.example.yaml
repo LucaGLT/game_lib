@@ -151,7 +151,7 @@ statuses:
     continuous_effects: []
     modifiers: []
     stacking_policy:
-      mode: IGNORE_NEW
+      mode: ONE_ONLY
       max_stacks: 1
     default_duration:
       type: UNTIL_REMOVED
