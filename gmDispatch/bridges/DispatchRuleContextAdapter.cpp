@@ -58,6 +58,12 @@ bool DispatchRuleContextAdapter::are_enemies(const gmRules::ActorId& a,
 	return _inner.are_enemies(a, b);
 }
 
+int DispatchRuleContextAdapter::actor_resource(const gmRules::ActorId& actor_id,
+											const std::string& resource_id) const
+{
+	return _inner.actor_resource(actor_id, resource_id);
+}
+
 void DispatchRuleContextAdapter::modify_actor_hp(const gmRules::ActorId& actor_id,
 											 int delta)
 {
@@ -74,6 +80,58 @@ void DispatchRuleContextAdapter::remove_actor_tag(const gmRules::ActorId& actor_
 										  const std::string& tag)
 {
 	_inner.remove_actor_tag(actor_id, tag);
+}
+
+// ── Chapter 4 — gmActor lifecycle ─────────────────────────────────────────────
+
+void DispatchRuleContextAdapter::spawn_actor(const gmRules::ActorId& actor_id,
+										 const std::string& spec_json)
+{
+	_inner.spawn_actor(actor_id, spec_json);
+}
+
+void DispatchRuleContextAdapter::despawn_actor(const gmRules::ActorId& actor_id)
+{
+	_inner.despawn_actor(actor_id);
+}
+
+void DispatchRuleContextAdapter::revive_actor(const gmRules::ActorId& actor_id)
+{
+	_inner.revive_actor(actor_id);
+}
+
+void DispatchRuleContextAdapter::change_actor_team(const gmRules::ActorId& actor_id,
+											  const std::string& team_id)
+{
+	_inner.change_actor_team(actor_id, team_id);
+}
+
+// ── Chapter 4 — gmActor resources / equipment ─────────────────────────────────
+
+void DispatchRuleContextAdapter::modify_resource(const gmRules::ActorId& actor_id,
+											 const std::string& resource_id,
+											 int delta)
+{
+	_inner.modify_resource(actor_id, resource_id, delta);
+}
+
+void DispatchRuleContextAdapter::set_resource_max(const gmRules::ActorId& actor_id,
+											  const std::string& resource_id,
+											  int max_value)
+{
+	_inner.set_resource_max(actor_id, resource_id, max_value);
+}
+
+void DispatchRuleContextAdapter::equip_item(const gmRules::ActorId& actor_id,
+									const std::string& item_id)
+{
+	_inner.equip_item(actor_id, item_id);
+}
+
+void DispatchRuleContextAdapter::unequip_item(const gmRules::ActorId& actor_id,
+									  const std::string& slot_id)
+{
+	_inner.unequip_item(actor_id, slot_id);
 }
 
 void DispatchRuleContextAdapter::add_status_instance(const gmRules::StatusInstance& status)
@@ -121,10 +179,79 @@ DispatchRuleContextAdapter::actors_in_location(const gmRules::LocationId& locati
 	return _inner.actors_in_location(location_id);
 }
 
+// ── Chapter 6 — gmMap queries ────────────────────────────────────────────────
+
+bool DispatchRuleContextAdapter::is_location_reachable(const gmRules::LocationId& from,
+												  const gmRules::LocationId& to) const
+{
+	return _inner.is_location_reachable(from, to);
+}
+
+bool DispatchRuleContextAdapter::has_line_of_sight(const gmRules::LocationId& from,
+											  const gmRules::LocationId& to) const
+{
+	return _inner.has_line_of_sight(from, to);
+}
+
+int DispatchRuleContextAdapter::move_cost_between(const gmRules::LocationId& from,
+											 const gmRules::LocationId& to) const
+{
+	return _inner.move_cost_between(from, to);
+}
+
 void DispatchRuleContextAdapter::move_actor_to_location(const gmRules::ActorId& actor_id,
 											 const gmRules::LocationId& location_id)
 {
 	_inner.move_actor_to_location(actor_id, location_id);
+}
+
+// ── Chapter 6 — gmMap mutations ──────────────────────────────────────────────
+
+void DispatchRuleContextAdapter::set_location_passable(const gmRules::LocationId& location_id,
+												  bool passable)
+{
+	_inner.set_location_passable(location_id, passable);
+}
+
+void DispatchRuleContextAdapter::add_location_tag(const gmRules::LocationId& location_id,
+										  const std::string& tag)
+{
+	_inner.add_location_tag(location_id, tag);
+}
+
+void DispatchRuleContextAdapter::remove_location_tag(const gmRules::LocationId& location_id,
+											  const std::string& tag)
+{
+	_inner.remove_location_tag(location_id, tag);
+}
+
+void DispatchRuleContextAdapter::set_location_owner(const gmRules::LocationId& location_id,
+											   const std::string& owner_id)
+{
+	_inner.set_location_owner(location_id, owner_id);
+}
+
+void DispatchRuleContextAdapter::create_barrier(const gmRules::LocationId& from,
+										   const gmRules::LocationId& to,
+										   const std::string& barrier_id)
+{
+	_inner.create_barrier(from, to, barrier_id);
+}
+
+void DispatchRuleContextAdapter::remove_barrier(const std::string& barrier_id)
+{
+	_inner.remove_barrier(barrier_id);
+}
+
+void DispatchRuleContextAdapter::spawn_interactable(const gmRules::LocationId& location_id,
+											   const std::string& spec_json)
+{
+	_inner.spawn_interactable(location_id, spec_json);
+}
+
+void DispatchRuleContextAdapter::despawn_interactable(const std::string& interactable_id)
+{
+	_inner.despawn_interactable(interactable_id);
 }
 
 bool DispatchRuleContextAdapter::has_deck(const gmRules::DeckId& deck_id) const
@@ -144,6 +271,71 @@ gmRules::RuleResult DispatchRuleContextAdapter::move_card_to_zone(const gmRules:
 												  const std::string& zone_name)
 {
 	return _inner.move_card_to_zone(deck_id, card_id, zone_name);
+}
+
+// ── Chapter 5 — gmAlea ────────────────────────────────────────────────────────
+
+int DispatchRuleContextAdapter::deck_zone_count(const gmRules::DeckId& deck_id,
+											const std::string& zone_name) const
+{
+	return _inner.deck_zone_count(deck_id, zone_name);
+}
+
+bool DispatchRuleContextAdapter::card_in_zone(const gmRules::DeckId& deck_id,
+									   const gmRules::CardId& card_id,
+									   const std::string& zone_name) const
+{
+	return _inner.card_in_zone(deck_id, card_id, zone_name);
+}
+
+void DispatchRuleContextAdapter::shuffle_zone(const gmRules::DeckId& deck_id,
+										 const std::string& zone_name)
+{
+	_inner.shuffle_zone(deck_id, zone_name);
+}
+
+std::vector<gmRules::CardId>
+DispatchRuleContextAdapter::look_top_cards(const gmRules::DeckId& deck_id,
+										 int count) const
+{
+	return _inner.look_top_cards(deck_id, count);
+}
+
+std::vector<gmRules::CardId>
+DispatchRuleContextAdapter::look_bottom_cards(const gmRules::DeckId& deck_id,
+											int count) const
+{
+	return _inner.look_bottom_cards(deck_id, count);
+}
+
+gmRules::RuleResult DispatchRuleContextAdapter::select_specific_card(const gmRules::DeckId& deck_id,
+												  const gmRules::CardId& card_id)
+{
+	return _inner.select_specific_card(deck_id, card_id);
+}
+
+gmRules::RuleResult DispatchRuleContextAdapter::discard_random_cards(const gmRules::DeckId& deck_id,
+												  const std::string& zone_name,
+												  int count)
+{
+	return _inner.discard_random_cards(deck_id, zone_name, count);
+}
+
+gmRules::RuleResult DispatchRuleContextAdapter::place_card_on_top(const gmRules::DeckId& deck_id,
+												 const gmRules::CardId& card_id)
+{
+	return _inner.place_card_on_top(deck_id, card_id);
+}
+
+gmRules::RuleResult DispatchRuleContextAdapter::place_card_on_bottom(const gmRules::DeckId& deck_id,
+												    const gmRules::CardId& card_id)
+{
+	return _inner.place_card_on_bottom(deck_id, card_id);
+}
+
+int DispatchRuleContextAdapter::roll_dice(const std::string& dice_expression)
+{
+	return _inner.roll_dice(dice_expression);
 }
 
 void DispatchRuleContextAdapter::emit_event(const gmRules::RuleEvent& event,
