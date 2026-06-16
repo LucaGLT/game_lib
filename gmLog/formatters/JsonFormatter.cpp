@@ -79,14 +79,14 @@ std::string JsonFormatter::format_timestamp(
 
 	const std::time_t tt = system_clock::to_time_t(tp);
 
-	// std::gmtime uses a static buffer; copying immediately is safe because
-	// SyncDispatcher serialises all format() calls via its mutex.
 	std::tm tm_utc{};
-	const std::tm* tmp = std::gmtime(&tt);
-	if (tmp)
-	{
-		tm_utc = *tmp;
-	}
+	#if defined(_WIN32)
+	// On Windows use the thread-safe API to avoid deprecation warnings.
+	gmtime_s(&tm_utc, &tt);
+	#else
+	// On POSIX use the thread-safe API.
+	gmtime_r(&tt, &tm_utc);
+	#endif
 
 	const auto ms = duration_cast<milliseconds>(tp.time_since_epoch()) % 1000;
 

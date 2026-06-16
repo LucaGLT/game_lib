@@ -29,6 +29,7 @@
  *     gmDispatch/dispatchers/SyncDispatcher.cpp \
  *     gmDispatch/dispatchers/AsyncDispatcher.cpp \
  *     gmDispatch/bridges/LogDispatchBridge.cpp \
+ *     gmDispatch/bridges/RuleEventBridge.cpp \
  *     gmLog/LogLevel.cpp gmLog/Logger.cpp gmLog/LoggerFactory.cpp \
  *     gmLog/sinks/StdoutSink.cpp gmLog/sinks/FileSink.cpp \
  *     gmLog/formatters/JsonFormatter.cpp \
@@ -43,6 +44,9 @@
 #include "gmDispatch/dispatchers/SyncDispatcher.hpp"
 #include "gmDispatch/dispatchers/AsyncDispatcher.hpp"
 #include "gmDispatch/bridges/LogDispatchBridge.hpp"
+#include "gmDispatch/bridges/RuleEventBridge.hpp"
+
+#include "gmRules/core/RuleEvent.hpp"
 
 #include "gmLog/LoggerFactory.hpp"
 
@@ -53,6 +57,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <stdexcept>
+#include <vector>
 #include <thread>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -363,6 +369,109 @@ static void test_logDispatchBridge()
 	}
 }
 
+// ── Test 10: RuleEventBridge — forwards gmRules events to mapped channels ────
+
+class MockDispatcher : public gmDispatch::IDispatcher {
+public:
+	bool throw_on_dispatch = false;
+	std::vector<gmDispatch::Envelope> envelopes;
+
+	void dispatch(const gmDispatch::Envelope& envelope) override
+	{
+		if (throw_on_dispatch)
+		{
+			throw std::runtime_error("mock dispatch failure");
+		}
+
+		envelopes.push_back(envelope);
+	}
+
+	void subscribe(const std::string&, std::shared_ptr<gmDispatch::IChannel>) override
+	{}
+
+	void unsubscribe(const std::string&, std::shared_ptr<gmDispatch::IChannel>) override
+	{}
+
+	void flush() override
+	{}
+};
+
+static void test_ruleEventBridge()
+{
+	const std::string TEST = "test_ruleEventBridge";
+
+	std::unique_ptr<MockDispatcher> impl = std::make_unique<MockDispatcher>();
+	MockDispatcher*                 raw  = impl.get();
+
+	gmDispatch::DispatcherConfig cfg;
+	cfg.name = "RulesBus";
+
+	gmDispatch::GmDispatcher bus(cfg, std::move(impl));
+	gmDispatch::RuleEventBridge bridge(bus);
+
+	gmRules::RuleEvent event;
+	event.type = "gmRules.actor.hp_changed";
+	event.source_id = "hero";
+	event.target_id = "orc";
+	event.payload_json = "{\"delta\":-3}";
+
+	bridge.dispatch(event, 7);
+
+	const bool routed = raw->envelopes.size() == 1 &&
+		raw->envelopes[0].typeId == "actor.events" &&
+		raw->envelopes[0].source == "gmRules" &&
+		raw->envelopes[0].headers.at("source_system") == "gmRules" &&
+		raw->envelopes[0].headers.at("rule_priority") == "7" &&
+		raw->envelopes[0].headers.at("rule_event_type") == event.type &&
+		raw->envelopes[0].headers.at("rule_source_id") == event.source_id &&
+		raw->envelopes[0].headers.at("rule_target_id") == event.target_id &&
+		std::any_cast<std::string>(raw->envelopes[0].payload) == event.payload_json &&
+		bridge.success_count() == 1 &&
+		bridge.failure_count() == 0;
+
+	if (routed)
+	{
+		pass(TEST);
+	}
+	else
+	{
+		fail(TEST, "bridge did not map or preserve the event correctly");
+	}
+}
+
+static void test_ruleEventBridgeFailure()
+{
+	const std::string TEST = "test_ruleEventBridgeFailure";
+
+	std::unique_ptr<MockDispatcher> impl = std::make_unique<MockDispatcher>();
+	MockDispatcher*                 raw  = impl.get();
+	raw->throw_on_dispatch = true;
+
+	gmDispatch::DispatcherConfig cfg;
+	cfg.name = "RulesBus";
+
+	gmDispatch::GmDispatcher bus(cfg, std::move(impl));
+	gmDispatch::RuleEventBridge bridge(bus);
+
+	gmRules::RuleEvent event;
+	event.type = "gmRules.map.path_blocked";
+	event.source_id = "map01";
+
+	bridge.dispatch(event, 3);
+
+	if (bridge.success_count() == 0 &&
+		bridge.failure_count() == 1 &&
+		!bridge.last_error().empty() &&
+		raw->envelopes.empty())
+	{
+		pass(TEST);
+	}
+	else
+	{
+		fail(TEST, "failure was not tracked as expected");
+	}
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 int main()
@@ -378,6 +487,8 @@ int main()
 	test_asyncDispatcher();
 	test_asyncConcurrentSubscribe();
 	test_logDispatchBridge();
+	test_ruleEventBridge();
+	test_ruleEventBridgeFailure();
 
 	std::cout << "\nDone.\n";
 	return 0;

@@ -1,0 +1,67 @@
+<<<<<<< HEAD
+{"time":"2026-06-12T12:54:19.438","logger":"gmMapTest","level":"INFO","message":"[PASS] T01: clear() on empty map"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T02: clear() removes all locations"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T03: create_location succeeds"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T04: create_location throws on duplicate (exception: EMapError: Location 10 already exists)"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T05: has_location returns false for missing"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T06: location_count with 1 location"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T07: location_count with 5 locations"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T08: all_locations returns 3 locations"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T09: remove_location removes location"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T10: remove_location throws on missing (exception: EMapError: Location 999 does not exist)"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T11: remove_location decrements count"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T12: Complex CRUD scenario"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T13: all_locations empty after clear"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T14: all_locations contains correct IDs"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"[PASS] T15: remove_location cascade cleans neighbors"}
+{"time":"2026-06-12T12:54:19.439","logger":"gmMapTest","level":"INFO","message":"=== gmMap Phases 2-4 test summary: 15/15 passed"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T01: clear() on empty map"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T02: clear() removes all locations"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T03: create_location succeeds"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T04: create_location throws on duplicate (exception: EMapError: Location 10 already exists)"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T05: has_location returns false for missing"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T06: location_count with 1 location"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T07: location_count with 5 locations"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T08: all_locations returns 3 locations"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T09: remove_location removes location"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T10: remove_location throws on missing (exception: EMapError: Location 999 does not exist)"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T11: remove_location decrements count"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T12: Complex CRUD scenario"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T13: all_locations empty after clear"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T14: all_locations contains correct IDs"}
+{"time":"2026-06-12T12:55:07.043","logger":"gmMapTest","level":"INFO","message":"[PASS] T15: remove_location cascade cleans neighbors"}
+{"time":"2026-06-12T12:55:07.044","logger":"gmMapTest","level":"INFO","message":"=== gmMap Phases 2-4 test summary: 15/15 passed"}
+=======
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"ERROR","message":"[FAIL] T01: _require_location throws on missing location (expected exception, none thrown)"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T02: clear() empties empty map"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T03: clear() removes all locations"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T04: create_location succeeds"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T05: create_location throws on duplicate (exception: MapError: Location 10 already exists)"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T06: has_location returns false for missing"}
+{"time":"2026-06-10T21:36:55.148","logger":"gmMapTest","level":"INFO","message":"[PASS] T07: location_count after creating 1 location"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T08: location_count with 5 locations"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T09: all_locations returns all created locations"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T10: remove_location removes location"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T11: remove_location throws on missing (exception: MapError: Location 999 does not exist)"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T12: remove_location decrements location_count"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T13: Complex: create 3, remove 1, check count"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"[PASS] T14: all_locations empty after clear"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"ERROR","message":"[FAIL] T15: _require_tile throws on missing tile (expected exception, none thrown)"}
+{"time":"2026-06-10T21:36:55.149","logger":"gmMapTest","level":"INFO","message":"=== gmMap test summary: 13/15 passed"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T01: clear() on empty map"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T02: clear() removes all locations"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T03: create_location succeeds"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T04: create_location throws on duplicate (exception: MapError: Location 10 already exists)"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T05: has_location returns false for missing"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T06: location_count with 1 location"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T07: location_count with 5 locations"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T08: all_locations returns 3 locations"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T09: remove_location removes location"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T10: remove_location throws on missing (exception: MapError: Location 999 does not exist)"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T11: remove_location decrements count"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T12: Complex CRUD scenario"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T13: all_locations empty after clear"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T14: all_locations contains correct IDs"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"[PASS] T15: remove_location cascade cleans neighbors"}
+{"time":"2026-06-10T21:37:48.387","logger":"gmMapTest","level":"INFO","message":"=== gmMap Phases 2-4 test summary: 15/15 passed"}
+>>>>>>> feature/gmAlea

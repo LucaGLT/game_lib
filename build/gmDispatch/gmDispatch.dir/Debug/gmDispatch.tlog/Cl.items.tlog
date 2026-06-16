@@ -1,0 +1,13 @@
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\Dispatcher.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\Dispatcher.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\DispatcherFactory.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\DispatcherFactory.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\LogDispatchBridge.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\LogDispatchBridge.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\bridges\RuleEventBridge.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\RuleEventBridge.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\EventBusChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\EventBusChannel.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\FileChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\FileChannel.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\IpSocketChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\IpSocketChannel.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\channels\StdoutChannel.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\StdoutChannel.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\dispatchers\AsyncDispatcher.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\AsyncDispatcher.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\dispatchers\SyncDispatcher.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\SyncDispatcher.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\routers\PatternRouter.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\PatternRouter.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\routers\SyncRouter.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\SyncRouter.obj
+C:\_GLT_\Qt Prj\game_lib\gmDispatch\serializers\JsonSerializer.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmDispatch\gmDispatch.dir\Debug\JsonSerializer.obj

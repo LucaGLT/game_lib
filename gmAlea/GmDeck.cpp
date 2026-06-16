@@ -1,7 +1,8 @@
-﻿#include "GmDeck.hpp"
+#include "GmDeck.hpp"
 
 #include <algorithm>
 #include <sstream>
+#include <unordered_map>
 
 namespace gmAlea
 {
@@ -174,6 +175,24 @@ void GmDeck::push_front(uint32_t token_id)
 	_deck.insert(_deck.begin(), token_id);
 }
 
+uint32_t GmDeck::see_top() const
+{
+	if (is_empty())
+	{
+		throw EAleaDeckEmptyError("Cannot view top of an empty deck");
+	}
+	return _deck.front();
+}
+
+uint32_t GmDeck::see_bottom() const
+{
+	if (is_empty())
+	{
+		throw EAleaDeckEmptyError("Cannot view bottom of an empty deck");
+	}
+	return _deck.back();
+}
+
 uint32_t GmDeck::draw_specific(uint32_t token_id)
 {
 	if (!contains(token_id))
@@ -185,4 +204,11 @@ uint32_t GmDeck::draw_specific(uint32_t token_id)
 	return token_id;
 }
 
+void GmDeck::reseed(unsigned int seed)
+{
+	_seed = seed;
+	_rng.seed(seed);
+}
+
 } // namespace gmAlea
+

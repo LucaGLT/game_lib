@@ -49,7 +49,7 @@ Generic JSON persistence layer for any C++ struct, requiring only `to_json` / `f
 - Non-throwing `try_load()` variant — safe for startup loading without try/catch boilerplate
 - Supports vectors, `std::optional`, nested structs, heterogeneous field types
 - Configurable indentation; compact mode available
-- Comprehensive exception hierarchy: `FileWriteError`, `FileReadError`, `JsonParseError`, `VersionMismatchError`
+- Comprehensive exception hierarchy: `EFileWriteError`, `EFileReadError`, `EJsonParseError`, `EVersionMismatchError`
 
 **Main functions:** `save()`, `load()`, `try_load()`, `save_versioned()`, `load_versioned()`, `peek_version()`
 
