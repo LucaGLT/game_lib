@@ -15,7 +15,7 @@
  *   auto state = std::make_unique<MyGameState>();
  *
  *   // 2. Build the dispatcher (gmDispatch) and game session.
- *   auto dispatcher = GmDispatch::DispatcherFactory::createSyncDispatcher("GameBus");
+ *   auto dispatcher = gmDispatch::DispatcherFactory::create_sync_dispatcher("GameBus");
  *
  *   gmFlow::SessionConfig cfg;
  *   cfg.session_id = "session_001";
@@ -60,7 +60,7 @@
 #include <stdexcept>
 
 // Forward declarations.
-namespace GmDispatch { class Dispatcher; }
+namespace gmDispatch { class GmDispatcher; }
 
 namespace gmFlow {
 
@@ -123,7 +123,7 @@ public:
     GameSession(SessionConfig                            config,
                 std::unique_ptr<IFlowController>         flow_controller,
                 std::unique_ptr<GameState>               state,
-                std::shared_ptr<GmDispatch::Dispatcher>  dispatcher);
+				std::shared_ptr<gmDispatch::GmDispatcher>  dispatcher);
 
     ~GameSession() = default;
 

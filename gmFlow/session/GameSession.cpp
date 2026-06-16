@@ -26,7 +26,7 @@ GameSessionError::GameSessionError(const std::string& message)
 GameSession::GameSession(SessionConfig                           config,
                          std::unique_ptr<IFlowController>        flow_controller,
                          std::unique_ptr<GameState>              state,
-                         std::shared_ptr<GmDispatch::Dispatcher> dispatcher)
+				 std::shared_ptr<gmDispatch::GmDispatcher> dispatcher)
     : config_(std::move(config))
     , game_state_(std::move(state))
     , event_bus_(std::move(dispatcher))

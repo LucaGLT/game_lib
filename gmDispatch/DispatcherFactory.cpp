@@ -8,59 +8,59 @@
 
 #include <memory>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
-Dispatcher DispatcherFactory::createSyncDispatcher(const std::string& name,
-                                                   bool               autoTimestamp)
+GmDispatcher DispatcherFactory::create_sync_dispatcher(const std::string& name,
+												   bool               auto_timestamp)
 {
-    DispatcherConfig cfg;
-    cfg.name          = name;
-    cfg.autoTimestamp = autoTimestamp;
+	DispatcherConfig cfg;
+	cfg.name          = name;
+	cfg.auto_timestamp = auto_timestamp;
 
-    return Dispatcher(
-        std::move(cfg),
-        std::make_unique<SyncDispatcher>(
-            std::make_unique<SyncRouter>()));
+	return GmDispatcher(
+		std::move(cfg),
+		std::make_unique<SyncDispatcher>(
+			std::make_unique<SyncRouter>()));
 }
 
-Dispatcher DispatcherFactory::createDebugDispatcher(const std::string& name)
+GmDispatcher DispatcherFactory::create_debug_dispatcher(const std::string& name)
 {
-    DispatcherConfig cfg;
-    cfg.name          = name;
-    cfg.autoTimestamp = true;
+	DispatcherConfig cfg;
+	cfg.name          = name;
+	cfg.auto_timestamp = true;
 
-    std::unique_ptr<SyncDispatcher> impl =
-        std::make_unique<SyncDispatcher>(std::make_unique<SyncRouter>());
+	std::unique_ptr<SyncDispatcher> impl =
+		std::make_unique<SyncDispatcher>(std::make_unique<SyncRouter>());
 
-    impl->subscribe("*", std::make_shared<StdoutChannel>());
+	impl->subscribe("*", std::make_shared<StdoutChannel>());
 
-    return Dispatcher(std::move(cfg), std::move(impl));
+	return GmDispatcher(std::move(cfg), std::move(impl));
 }
 
-Dispatcher DispatcherFactory::createAsyncDispatcher(const std::string& name,
-                                                    bool               autoTimestamp)
+GmDispatcher DispatcherFactory::create_async_dispatcher(const std::string& name,
+													bool               auto_timestamp)
 {
-    DispatcherConfig cfg;
-    cfg.name          = name;
-    cfg.autoTimestamp = autoTimestamp;
+	DispatcherConfig cfg;
+	cfg.name          = name;
+	cfg.auto_timestamp = auto_timestamp;
 
-    return Dispatcher(
-        std::move(cfg),
-        std::make_unique<AsyncDispatcher>(
-            std::make_unique<SyncRouter>()));
+	return GmDispatcher(
+		std::move(cfg),
+		std::make_unique<AsyncDispatcher>(
+			std::make_unique<SyncRouter>()));
 }
 
-Dispatcher DispatcherFactory::createPatternDispatcher(const std::string& name,
-                                                      bool               autoTimestamp)
+GmDispatcher DispatcherFactory::create_pattern_dispatcher(const std::string& name,
+													  bool               auto_timestamp)
 {
-    DispatcherConfig cfg;
-    cfg.name          = name;
-    cfg.autoTimestamp = autoTimestamp;
+	DispatcherConfig cfg;
+	cfg.name          = name;
+	cfg.auto_timestamp = auto_timestamp;
 
-    return Dispatcher(
-        std::move(cfg),
-        std::make_unique<SyncDispatcher>(
-            std::make_unique<PatternRouter>()));
+	return GmDispatcher(
+		std::move(cfg),
+		std::make_unique<SyncDispatcher>(
+			std::make_unique<PatternRouter>()));
 }
 
-} // namespace GmDispatch
+} // namespace gmDispatch

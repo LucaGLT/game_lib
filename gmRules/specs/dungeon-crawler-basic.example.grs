@@ -1,0 +1,187 @@
+@meta
+game          dungeon_crawler
+ns            dungeon.core
+version       1.0.0
+min_gmrules   0.5.0
+@end
+
+# ============================================================================
+# TARGETS — Chi/cosa puo essere bersaglio di effetti
+# ============================================================================
+
+@targets
+Target_Hero        :: ACTOR SELECTED_ACTOR required
+Target_Enemy       :: ACTOR SELECTED_ENEMY required
+Target_Self        :: ACTOR SELF           required
+Target_Allies      :: ACTOR ALL_ALLIES_IN_LOCATION range SAME_LOCATION optional no_self
+Target_AllEnemies  :: ACTOR ALL_ENEMIES_IN_LOCATION range SAME_LOCATION optional
+@end
+
+# ============================================================================
+# CONDITIONS — Logica: quando una regola puo essere applicata
+# ============================================================================
+
+@conditions
+# Base existence checks
+C_HeroExists         :: ACTOR_EXISTS(input.hero_id)
+C_EnemyExists        :: ACTOR_EXISTS(input.enemy_id)
+C_DestinationValid   :: LOCATION_EXISTS(input.destination)
+C_TargetIsAlive      :: ACTOR_HP_AT_OR_ABOVE(input.target_id, 1)
+
+# Movement & proximity
+C_CanMove            :: C_HeroExists AND C_DestinationValid
+C_EnemyAdjacent      :: LOCATION_IS_ADJACENT(input.hero_location, input.enemy_location)
+C_EnemyInRange       :: C_EnemyExists AND C_EnemyAdjacent
+
+# Combat readiness
+C_HeroHasWeapon      :: ACTOR_HAS_TAG(input.hero_id, equipped_weapon)
+C_CanAttack          :: C_HeroHasWeapon AND C_EnemyInRange AND C_TargetIsAlive
+C_EnemyNotDefended   :: NOT ACTOR_HAS_STATUS(input.enemy_id, defended)
+
+# Health status
+C_HeroWounded        :: ACTOR_HP_AT_OR_BELOW(input.hero_id, 3)
+C_HeroCanHeal        :: ACTOR_HAS_TAG(input.hero_id, has_potion)
+
+# Weapon equip checks
+C_HasBigSword        :: ACTOR_HAS_TAG(input.hero_id, bigword_available)
+C_NoWeaponEquipped   :: NOT ACTOR_HAS_TAG(input.hero_id, equipped_weapon)
+@end
+
+# ============================================================================
+# EFFECTS — Azioni: cosa succede quando una regola si attiva
+# ============================================================================
+
+@effects
+# Movement
+E_MoveHero              :: MOVE_ACTOR(Target_Hero, input.destination)
+
+# Attack effects
+E_AttackDamage          :: DEAL_DAMAGE(Target_Enemy, 2)
+E_AttackDamageWithSword :: DEAL_DAMAGE(Target_Enemy, 4)
+E_DefenderCounterDmg    :: DEAL_DAMAGE(Target_Hero, 1) [optional]
+
+# Defense
+E_DefendStatus          :: APPLY_STATUS(Target_Hero, defended) [stop]
+E_ReduceDamage          :: MANUAL_EFFECT(dungeon.defense.active) [optional]
+
+# Healing
+E_HealSmall             :: HEAL(Target_Hero, 3)
+E_HealAdjacent          :: HEAL(Target_Allies, 2) [optional]
+E_RemovePotion          :: REMOVE_TAG(Target_Hero, has_potion)
+
+# Weapon equip
+E_EquipBigSword         :: ADD_TAG(Target_Hero, equipped_weapon)
+E_SetWeaponType         :: MANUAL_EFFECT(dungeon.weapon.bigword_equipped) [optional]
+
+# Events & logging
+E_AttackLog             :: EMIT_EVENT(Target_Enemy, dungeon.attack.performed)
+E_HealLog               :: EMIT_EVENT(Target_Self, dungeon.heal.performed)
+E_MoveLog               :: MANUAL_EFFECT(dungeon.move.performed) [optional]
+@end
+
+# ============================================================================
+# STATUSES — Stati effetto: cosa cambia quando uno status e attivo
+# ============================================================================
+
+@statuses
+# Defended status: halves incoming damage for 1 turn
+defended :: REFRESH UNTIL_NEXT_TURN
+    ON_APPLY  ADD_TAG(Target_Self, defended)
+    ON_REMOVE REMOVE_TAG(Target_Self, defended)
+
+# Poisoned: hero loses 1 HP each turn
+poisoned :: UNIQUE_BY_SOURCE FOR_N amount 2
+    ON_TURN_END DEAL_DAMAGE(Target_Self, 1) [optional]
+    ON_REMOVE   REMOVE_TAG(Target_Self, poisoned)
+
+# Wounded: hero is hurt but can still act
+wounded :: REFRESH UNTIL_REMOVED
+    ON_APPLY  ADD_TAG(Target_Self, wounded)
+    ON_REMOVE REMOVE_TAG(Target_Self, wounded)
+
+# Empowered: next attack does +2 damage
+empowered :: REFRESH UNTIL_NEXT_TURN
+    ON_APPLY ADD_TAG(Target_Self, empowered)
+
+# Stunned: hero cannot act next turn
+stunned :: ONE_ONLY UNTIL_NEXT_TURN
+    ON_APPLY  ADD_TAG(Target_Self, stunned)
+    ON_REMOVE REMOVE_TAG(Target_Self, stunned)
+@end
+
+# ============================================================================
+# RULES — Gameplay actions the player can perform
+# ============================================================================
+
+@rules
+# ---- MOVE: Hero moves to adjacent location ----
+Move_Hero [priority=100] ::
+    IF C_CanMove
+    ON Target_Hero
+    THEN E_MoveHero AND THEN E_MoveLog?
+
+# ---- ATTACK: Hero without weapon attacks nearby enemy (2 damage) ----
+Attack_Barehands [priority=200] ::
+    IF C_CanAttack AND NOT C_HeroHasWeapon
+    ON Target_Hero
+    THEN E_AttackDamage AND THEN E_AttackLog
+
+# ---- ATTACK: Hero with big sword (4 damage) ----
+Attack_WithSword [priority=210] ::
+    IF C_CanAttack AND ACTOR_HAS_TAG(input.hero_id, equipped_weapon)
+    ON Target_Hero
+    THEN E_AttackDamageWithSword AND THEN E_AttackLog
+
+# ---- DEFEND: Hero takes defensive stance (halves damage next turn) ----
+Defend_Stance [priority=150] ::
+    IF C_HeroExists AND C_TargetIsAlive
+    ON Target_Hero
+    THEN E_DefendStatus AND THEN E_ReduceDamage?
+
+# ---- HEAL: Hero uses potion to restore 3 HP ----
+Heal_Self [priority=120] ::
+    IF C_HeroCanHeal
+    ON Target_Hero
+    THEN E_HealSmall AND THEN E_RemovePotion AND THEN E_HealLog?
+
+# ---- HEAL: Hero heals nearby allies (2 HP each) ----
+Heal_Adjacent [priority=125] ::
+    IF C_HeroCanHeal
+    ON Target_Hero
+    THEN E_HealAdjacent AND THEN E_RemovePotion
+
+# ---- EQUIP WEAPON: Hero equips the big sword ----
+Equip_BigSword [priority=80] ::
+    IF C_HasBigSword AND C_NoWeaponEquipped
+    ON Target_Hero
+    THEN E_EquipBigSword AND THEN E_SetWeaponType?
+@end
+
+# ============================================================================
+# TRIGGERS — Automatic reactions to game events
+# ============================================================================
+
+@triggers
+# Cleanup: Remove defended status at end of each hero turn
+T_CleanupDefended [priority=100] ::
+    ON_EVENT ACTION_COMPLETED
+    IF ACTOR_HAS_STATUS(event.actor_id, defended)
+    THEN REMOVE_STATUS(Target_Self, defended) [optional]
+
+# Block stunned hero from acting
+T_BlockIfStunned [priority=50] ::
+    ON_EVENT ACTION_SUBMITTED
+    IF ACTOR_HAS_TAG(event.actor_id, stunned)
+    THEN MANUAL_EFFECT(dungeon.action.blocked) [optional]
+
+# Mark hero as wounded when HP drops below 4
+T_WoundedCheck [priority=200] ::
+    ON_EVENT ACTOR_DAMAGED
+    IF ACTOR_HP_AT_OR_BELOW(event.actor_id, 4) AND NOT ACTOR_HAS_TAG(event.actor_id, wounded)
+    THEN ADD_TAG(Target_Self, wounded)
+
+# Log combat turn
+T_LogCombatEnd [priority=999] ::
+    ON_EVENT ACTION_COMPLETED
+    THEN MANUAL_EFFECT(dungeon.turn.completed) [optional]
+@end

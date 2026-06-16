@@ -63,7 +63,7 @@ dispatch.
 
 ## Design Philosophy
 
-```
+```text
 Codice applicativo
       ↓
 logInfo(db, "Messaggio")
@@ -106,7 +106,7 @@ Include the desired headers in your source files:
 
 ## File Structure
 
-```
+```text
 gmLog/
 ├── LogLevel.hpp / .cpp
 ├── LogRecord.hpp
@@ -131,7 +131,7 @@ gmLog/
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │  Application code                                       │
 │                                                         │

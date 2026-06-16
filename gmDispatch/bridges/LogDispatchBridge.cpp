@@ -4,31 +4,31 @@
  */
 
 #include "LogDispatchBridge.hpp"
-#include "../../gmLog/LogLevel.hpp"
+#include "../gmLog/LogLevel.hpp"
 
-namespace GmDispatch {
+namespace gmDispatch {
 
-LogDispatchBridge::LogDispatchBridge(Dispatcher& bus)
-    : bus_(bus)
+LogDispatchBridge::LogDispatchBridge(GmDispatcher& bus)
+	: _bus(bus)
 {}
 
-void LogDispatchBridge::dispatch(const GmLog::LogRecord& record)
+void LogDispatchBridge::dispatch(const gmLog::LogRecord& record)
 {
-    Envelope env;
+	Envelope env;
 
-    env.typeId    = std::string("log.") + GmLog::levelToString(record.level);
-    env.source    = record.loggerName;
-    env.timestamp = record.timestamp;
-    env.messageId = (record.function != nullptr) ? std::string(record.function) : "";
-    env.payload   = record.message;   // stored as std::string
+	env.typeId    = std::string("log.") + gmLog::level_to_string(record.level);
+	env.source    = record.logger_name;
+	env.timestamp = record.timestamp;
+	env.messageId = (record.function != nullptr) ? std::string(record.function) : "";
+	env.payload   = record.message;   // stored as std::string
 
-    // targets is intentionally empty: log events are always broadcast
-    bus_.dispatch(env);
+	// targets is intentionally empty: log events are always broadcast
+	_bus.dispatch(env);
 }
 
 void LogDispatchBridge::flush()
 {
-    bus_.flush();
+	_bus.flush();
 }
 
-} // namespace GmDispatch
+} // namespace gmDispatch

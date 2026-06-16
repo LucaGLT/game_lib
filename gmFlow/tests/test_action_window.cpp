@@ -126,9 +126,9 @@ private:
 struct TestCtx {
     NullState                           state;
     gmFlow::ActorRegistry               registry;
-    std::shared_ptr<GmDispatch::Dispatcher> dispatcher =
-        std::make_shared<GmDispatch::Dispatcher>(
-            GmDispatch::DispatcherFactory::createSyncDispatcher("test"));
+	std::shared_ptr<gmDispatch::GmDispatcher> dispatcher =
+		std::make_shared<gmDispatch::GmDispatcher>(
+			gmDispatch::DispatcherFactory::create_sync_dispatcher("test"));
     gmFlow::EventBus                    bus{dispatcher};
     gmFlow::GameContext                 ctx{"test_session", state, registry, bus};
 };

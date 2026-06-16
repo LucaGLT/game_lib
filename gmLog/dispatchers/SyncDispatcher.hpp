@@ -6,14 +6,14 @@
  * @brief Thread-safe synchronous log dispatcher (V1).
  */
 
-#include "../ILogDispatcher.hpp"
-#include "../ILogFormatter.hpp"
-#include "../ILogSink.hpp"
+#include "ILogDispatcher.hpp"
+#include "ILogFormatter.hpp"
+#include "ILogSink.hpp"
 
 #include <memory>
 #include <mutex>
 
-namespace GmLog {
+namespace gmLog {
 
 /**
  * @brief Thread-safe synchronous log dispatcher.
@@ -30,44 +30,44 @@ namespace GmLog {
  *
  * ### Migrating to async
  * When asynchronous logging is needed, replace SyncDispatcher with a future
- * @c AsyncDispatcher.  Because @ref Logger holds a
+ * @c AsyncDispatcher.  Because @ref GmLogger holds a
  * @c std::unique_ptr<ILogDispatcher>, the change is confined to the
  * construction site (or the @ref LoggerFactory helper).
  */
 class SyncDispatcher : public ILogDispatcher {
 public:
-    /**
-     * @brief Constructs a SyncDispatcher with the given sink and formatter.
-     *
-     * @param sink      Unique-ownership pointer to the output sink.
-     * @param formatter Unique-ownership pointer to the record formatter.
-     */
-    SyncDispatcher(std::unique_ptr<ILogSink>       sink,
-                   std::unique_ptr<ILogFormatter>  formatter);
+	/**
+	 * @brief Constructs a SyncDispatcher with the given sink and formatter.
+	 *
+	 * @param sink      Unique-ownership pointer to the output sink.
+	 * @param formatter Unique-ownership pointer to the record formatter.
+	 */
+	SyncDispatcher(std::unique_ptr<ILogSink>       sink,
+				   std::unique_ptr<ILogFormatter>  formatter);
 
-    ~SyncDispatcher() = default;
+	~SyncDispatcher() = default;
 
-    /**
-     * @brief Formats @p record and writes it to the sink under mutex protection.
-     *
-     * This call blocks on the calling thread until @c ILogSink::write()
-     * returns.
-     *
-     * @param record The log event to dispatch.
-     */
-    void dispatch(const LogRecord& record) override;
+	/**
+	 * @brief Formats @p record and writes it to the sink under mutex protection.
+	 *
+	 * This call blocks on the calling thread until @c ILogSink::write()
+	 * returns.
+	 *
+	 * @param record The log event to dispatch.
+	 */
+	void dispatch(const LogRecord& record) override;
 
-    /**
-     * @brief Flushes the underlying sink under mutex protection.
-     */
-    void flush() override;
+	/**
+	 * @brief Flushes the underlying sink under mutex protection.
+	 */
+	void flush() override;
 
 private:
-    std::mutex                    mutex_;      ///< Serialises format + write across threads.
-    std::unique_ptr<ILogSink>      sink_;      ///< Owned output channel.
-    std::unique_ptr<ILogFormatter> formatter_; ///< Owned record-to-string converter.
+	std::mutex                    _mutex;      ///< Serialises format + write across threads.
+	std::unique_ptr<ILogSink>      _sink;      ///< Owned output channel.
+	std::unique_ptr<ILogFormatter> _formatter; ///< Owned record-to-string converter.
 };
 
-} // namespace GmLog
+} // namespace gmLog
 
 #endif // GMLOG_SYNCDISPATCHER_HPP

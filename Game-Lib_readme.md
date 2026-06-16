@@ -13,8 +13,7 @@ All libraries are self-contained, dependency-free (C++17 stdlib only), and desig
 | `gmSave` | `GmSave` | Production | JSON persistence with versioning |
 | `gmMap` | `GameMap` | In Development | Generic topology-agnostic game map |
 | `gmDispatch` | `GmDispatch` | Production | Subscription-based event/message routing |
-| `gmDeck` | `gmFate` | Production | Token deck management (draw, shuffle, probability) |
-| `gmCompDeck` | `gmFate` | Production | Multi-zone card lifecycle orchestrator |
+| `gmAlea` | `gmAlea` | Production | Token deck management — `GmDeck`, `GmCompDeck`, `GmDice` |
 
 ---
 
@@ -50,7 +49,7 @@ Generic JSON persistence layer for any C++ struct, requiring only `to_json` / `f
 - Non-throwing `try_load()` variant — safe for startup loading without try/catch boilerplate
 - Supports vectors, `std::optional`, nested structs, heterogeneous field types
 - Configurable indentation; compact mode available
-- Comprehensive exception hierarchy: `FileWriteError`, `FileReadError`, `JsonParseError`, `VersionMismatchError`
+- Comprehensive exception hierarchy: `EFileWriteError`, `EFileReadError`, `EJsonParseError`, `EVersionMismatchError`
 
 **Main functions:** `save()`, `load()`, `try_load()`, `save_versioned()`, `load_versioned()`, `peek_version()`
 
@@ -95,9 +94,9 @@ Lightweight 1:N subscription-based event bus for decoupling game engine componen
 
 ---
 
-## gmDeck — Token Deck Library
+## gmAlea — Token Deck & Dice Library
 
-**Namespace:** `gmFate` | **API:** `gmDeck/gmDeck_API.md`
+**Namespace:** `gmAlea` | **API:** `gmAlea/gmDeck_API.md`
 
 High-performance, deterministic token deck with `uint32_t` IDs. Suitable for any draw-and-shuffle mechanic including probability/fate decks with repeated card types.
 
@@ -110,27 +109,27 @@ High-performance, deterministic token deck with `uint32_t` IDs. Suitable for any
 - `push_back()` / `push_front()` — add tokens without reshuffle
 - `auto_shuffle` flag for zones that must not shuffle on construction
 
-**Main class:** `gmDeck` — exceptions: `DeckEmptyError`, `DuplicateTokenIdError`, `TokenNotFoundError`, `InvalidDrawCountError`
+**Main class:** `GmDeck` — exceptions: `EAleaDeckEmptyError`, `EAleaDuplicateTokenIdError`, `EAleaTokenNotFoundError`, `EAleaInvalidDrawCountError`
 
 ---
 
-## gmCompDeck — Composite Deck Orchestrator
+## gmAlea — Composite Deck Orchestrator
 
-**Namespace:** `gmFate` | **API:** `gmDeck/gmCompDeck_API.md`
+**Namespace:** `gmAlea` | **API:** `gmAlea/gmCompDeck_API.md`
 
-Multi-zone card lifecycle manager built on top of `gmDeck`. Models the complete state of one game entity's cards across five distinct zones, guaranteeing that every token ID lives in exactly one zone at all times.
+Multi-zone card lifecycle manager built on top of `GmDeck`. Models the complete state of one game entity's cards across six distinct zones, guaranteeing that every token ID lives in exactly one zone at all times.
 
 **Key features:**
 
-- Five zones: **Main Deck** (shufflable) · **Hand** · **Play Area** · **Discard Pile** (order preserved, no shuffle) · **Banish Zone** (insert-only, permanent)
+- Six zones: **Main Deck** (shufflable) · **Hand** · **Play Area** · **Memory** · **Discard Pile** (order preserved, no shuffle) · **Banish Zone** (insert-only, permanent)
 - Uniqueness invariant: every token is in exactly one zone — enforced by the orchestrator
 - Compile-time zone safety via `static_assert` in `PolicyBasedDeck<Policy>`: shuffling a discard pile or drawing from a banish zone is a *compile error*, not a runtime bug
 - Atomic cross-zone moves: `draw_to_hand()`, `play_card()`, `resolve_card()`, `discard_from_hand()`, `take_from_discard()`, `banish()`, `reshuffle_discard_into_deck()`, and more
 - `locate(id)` — find which zone currently holds any token
-- Standalone zone types usable without `gmCompDeck`: `MainDeck`, `CardHand`, `PlayArea`, `DiscardPile`, `BanishZone`
+- Standalone zone types usable without `GmCompDeck`: `MainDeck`, `CardHand`, `PlayArea`, `MemoryZone`, `DiscardPile`, `BanishZone`
 - Custom policies supported via user-defined `struct` with three `constexpr bool` flags
 
-**Main class:** `gmCompDeck` — zone aliases: `MainDeck`, `CardHand`, `PlayArea`, `DiscardPile`, `BanishZone`
+**Main class:** `GmCompDeck` — zone aliases: `MainDeck`, `CardHand`, `PlayArea`, `MemoryZone`, `DiscardPile`, `BanishZone`
 
 ---
 

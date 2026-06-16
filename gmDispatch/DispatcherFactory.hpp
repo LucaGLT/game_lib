@@ -3,79 +3,79 @@
 
 /**
  * @file DispatcherFactory.hpp
- * @brief Convenience factory for creating pre-configured Dispatcher instances.
+ * @brief Convenience factory for creating pre-configured GmDispatcher instances.
  */
 
 #include "Dispatcher.hpp"
 
 #include <string>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
- * @brief Static factory that creates ready-to-use @ref Dispatcher instances.
+ * @brief Static factory that creates ready-to-use @ref GmDispatcher instances.
  *
- * | Method                    | Router         | Dispatcher      | Default channels |
+ * | Method                    | Router         | GmDispatcher      | Default channels |
  * |---------------------------|----------------|-----------------|------------------|
- * | @ref createSyncDispatcher | SyncRouter     | SyncDispatcher  | none             |
- * | @ref createDebugDispatcher| SyncRouter     | SyncDispatcher  | StdoutChannel(*) |
- * | @ref createAsyncDispatcher| SyncRouter     | AsyncDispatcher | none             |
- * | @ref createPatternDispatcher| PatternRouter | SyncDispatcher  | none             |
+ * | @ref create_sync_dispatcher | SyncRouter     | SyncDispatcher  | none             |
+ * | @ref create_debug_dispatcher| SyncRouter     | SyncDispatcher  | StdoutChannel(*) |
+ * | @ref create_async_dispatcher| SyncRouter     | AsyncDispatcher | none             |
+ * | @ref create_pattern_dispatcher| PatternRouter | SyncDispatcher  | none             |
  *
  * @note This is a static-only utility class; it cannot be instantiated.
  */
 class DispatcherFactory {
 public:
-    DispatcherFactory()  = delete;
-    ~DispatcherFactory() = delete;
+	DispatcherFactory()  = delete;
+	~DispatcherFactory() = delete;
 
-    /**
-     * @brief Synchronous dispatcher + SyncRouter (no channels).
-     *
-     * @param name          Dispatcher name.
-     * @param autoTimestamp Auto-stamp @c Envelope::timestamp when unset.
-     */
-    static Dispatcher createSyncDispatcher(
-        const std::string& name,
-        bool               autoTimestamp = true);
+	/**
+	 * @brief Synchronous dispatcher + SyncRouter (no channels).
+	 *
+	 * @param name          GmDispatcher name.
+	 * @param auto_timestamp Auto-stamp @c Envelope::timestamp when unset.
+	 */
+	static GmDispatcher create_sync_dispatcher(
+		const std::string& name,
+		bool               auto_timestamp = true);
 
-    /**
-     * @brief Synchronous dispatcher pre-wired with a StdoutChannel on @c "*".
-     *
-     * Every dispatched envelope is printed as a JSON line to @c std::cout.
-     *
-     * @param name Dispatcher name.
-     */
-    static Dispatcher createDebugDispatcher(
-        const std::string& name);
+	/**
+	 * @brief Synchronous dispatcher pre-wired with a StdoutChannel on @c "*".
+	 *
+	 * Every dispatched envelope is printed as a JSON line to @c std::cout.
+	 *
+	 * @param name GmDispatcher name.
+	 */
+	static GmDispatcher create_debug_dispatcher(
+		const std::string& name);
 
-    /**
-     * @brief Asynchronous dispatcher + SyncRouter.
-     *
-     * @c dispatch() returns immediately; a worker thread routes envelopes.
-     * Call @c flush() to wait for all pending envelopes to be delivered.
-     *
-     * @param name          Dispatcher name.
-     * @param autoTimestamp Auto-stamp @c Envelope::timestamp when unset.
-     */
-    static Dispatcher createAsyncDispatcher(
-        const std::string& name,
-        bool               autoTimestamp = true);
+	/**
+	 * @brief Asynchronous dispatcher + SyncRouter.
+	 *
+	 * @c dispatch() returns immediately; a worker thread routes envelopes.
+	 * Call @c flush() to wait for all pending envelopes to be delivered.
+	 *
+	 * @param name          GmDispatcher name.
+	 * @param auto_timestamp Auto-stamp @c Envelope::timestamp when unset.
+	 */
+	static GmDispatcher create_async_dispatcher(
+		const std::string& name,
+		bool               auto_timestamp = true);
 
-    /**
-     * @brief Synchronous dispatcher + @ref PatternRouter.
-     *
-     * Use this variant when you need wildcard subscription patterns
-     * (@c "engine.*") or targeted delivery via @c Envelope::targets.
-     *
-     * @param name          Dispatcher name.
-     * @param autoTimestamp Auto-stamp @c Envelope::timestamp when unset.
-     */
-    static Dispatcher createPatternDispatcher(
-        const std::string& name,
-        bool               autoTimestamp = true);
+	/**
+	 * @brief Synchronous dispatcher + @ref PatternRouter.
+	 *
+	 * Use this variant when you need wildcard subscription patterns
+	 * (@c "engine.*") or targeted delivery via @c Envelope::targets.
+	 *
+	 * @param name          GmDispatcher name.
+	 * @param auto_timestamp Auto-stamp @c Envelope::timestamp when unset.
+	 */
+	static GmDispatcher create_pattern_dispatcher(
+		const std::string& name,
+		bool               auto_timestamp = true);
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_DISPATCHERFACTORY_HPP

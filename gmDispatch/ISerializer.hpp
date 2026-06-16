@@ -3,14 +3,14 @@
 
 /**
  * @file ISerializer.hpp
- * @brief Abstract serializer interface for the GmDispatch library.
+ * @brief Abstract serializer interface for the gmDispatch library.
  */
 
 #include "Envelope.hpp"
 
 #include <string>
 
-namespace GmDispatch {
+namespace gmDispatch {
 
 /**
  * @brief Abstract base class for envelope serializers.
@@ -29,9 +29,9 @@ namespace GmDispatch {
  *
  * ### Implementing a custom serializer
  * @code
- *   class CsvSerializer : public GmDispatch::ISerializer {
+ *   class CsvSerializer : public gmDispatch::ISerializer {
  *   public:
- *       std::string serialize(const GmDispatch::Envelope& envelope) override {
+ *       std::string serialize(const gmDispatch::Envelope& envelope) override {
  *           return envelope.source + "," + envelope.typeId + ",...";
  *       }
  *   };
@@ -42,18 +42,18 @@ namespace GmDispatch {
  */
 class ISerializer {
 public:
-    virtual ~ISerializer() = default;
+	virtual ~ISerializer() = default;
 
-    /**
-     * @brief Converts an envelope to its string representation.
-     *
-     * @param envelope The dispatch event to serialize.
-     * @return Formatted string ready to be passed to a channel's write
-     *         operation.  Must NOT contain a trailing newline.
-     */
-    virtual std::string serialize(const Envelope& envelope) = 0;
+	/**
+	 * @brief Converts an envelope to its string representation.
+	 *
+	 * @param envelope The dispatch event to serialize.
+	 * @return Formatted string ready to be passed to a channel's write
+	 *         operation.  Must NOT contain a trailing newline.
+	 */
+	virtual std::string serialize(const Envelope& envelope) = 0;
 };
 
-} // namespace GmDispatch
+} // namespace gmDispatch
 
 #endif // GMDISPATCH_ISERIALIZER_HPP

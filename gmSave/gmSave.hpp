@@ -1,5 +1,5 @@
-#ifndef GMSAVE_HPP
-#define GMSAVE_HPP
+#ifndef GMSAVE_GMSAVE_HPP
+#define GMSAVE_GMSAVE_HPP
 
 /**
  * @file gmSave.hpp
@@ -51,79 +51,90 @@
 
 static_assert(__cplusplus >= 201703L, "gmSave requires C++17 or later (-std=c++17)");
 
-namespace GmSave {
+namespace gmSave
+{
 
 // --- Exceptions ---------------------------------------------------------------
 
 /**
  * @brief Base exception class for all gmSave errors.
  */
-class SaveError : public std::runtime_error {
+class ESaveError : public std::runtime_error
+{
 public:
-    explicit SaveError(const std::string& message)
-        : std::runtime_error("SaveError: " + message) {}
+	explicit ESaveError(const std::string& message)
+		: std::runtime_error("ESaveError: " + message)
+	{}
 };
 
 /**
  * @brief Thrown when a file cannot be opened or written to disk.
  */
-class FileWriteError : public SaveError {
+class EFileWriteError : public ESaveError
+{
 public:
-    explicit FileWriteError(const std::string& message)
-        : SaveError(message) {}
+	explicit EFileWriteError(const std::string& message)
+		: ESaveError(message)
+	{}
 };
 
 /**
  * @brief Thrown when a file cannot be found or read from disk.
  */
-class FileReadError : public SaveError {
+class EFileReadError : public ESaveError
+{
 public:
-    explicit FileReadError(const std::string& message)
-        : SaveError(message) {}
+	explicit EFileReadError(const std::string& message)
+		: ESaveError(message)
+	{}
 };
 
 /**
  * @brief Thrown when the file content is not valid JSON.
  */
-class JsonParseError : public SaveError {
+class EJsonParseError : public ESaveError
+{
 public:
-    explicit JsonParseError(const std::string& message)
-        : SaveError(message) {}
+	explicit EJsonParseError(const std::string& message)
+		: ESaveError(message)
+	{}
 };
 
 /**
  * @brief Thrown by load_versioned() when the `_version` field in the file
  *        does not match the expected version supplied by the caller.
  */
-class VersionMismatchError : public SaveError {
+class EVersionMismatchError : public ESaveError
+{
 public:
-    /**
-     * @brief Constructs the error with version detail.
-     * @param expected Version number the caller requested.
-     * @param found    Version number read from the file.
-     */
-    VersionMismatchError(uint32_t expected, uint32_t found);
+	/**
+	 * @brief Constructs the error with version detail.
+	 * @param expected Version number the caller requested.
+	 * @param found    Version number read from the file.
+	 */
+	EVersionMismatchError(uint32_t expected, uint32_t found);
 
-    /// @brief Version number the caller requested.
-    uint32_t expected_version;
+	/// @brief Version number the caller requested.
+	uint32_t expected_version;
 
-    /// @brief Version number actually found in the file.
-    uint32_t found_version;
+	/// @brief Version number actually found in the file.
+	uint32_t found_version;
 };
 
 // --- Internal helpers (not part of the public API) ----------------------------
 
 /**
- * @namespace GmSave::detail
+ * @namespace gmSave::detail
  * @brief Internal implementation helpers; not part of the public API.
  */
-namespace detail {
+namespace detail
+{
 
 /**
  * @brief Writes @p content to a file, creating or overwriting it.
  * @param filepath  Destination file path.
  * @param content   String to write.
- * @throws FileWriteError if the file cannot be opened or written.
+ * @throws EFileWriteError if the file cannot be opened or written.
  */
 void write_file(const std::string& filepath, const std::string& content);
 
@@ -131,16 +142,16 @@ void write_file(const std::string& filepath, const std::string& content);
  * @brief Reads the entire content of a file into a string.
  * @param filepath  Source file path.
  * @return File content as a string.
- * @throws FileReadError if the file cannot be opened.
+ * @throws EFileReadError if the file cannot be opened.
  */
 std::string read_file(const std::string& filepath);
 
 /**
- * @brief Parses a JSON string, mapping nlohmann parse errors to JsonParseError.
+ * @brief Parses a JSON string, mapping nlohmann parse errors to EJsonParseError.
  * @param content   Raw JSON string.
  * @param filepath  File path used in error messages only.
  * @return Parsed `nlohmann::json` object.
- * @throws JsonParseError if @p content is not valid JSON.
+ * @throws EJsonParseError if @p content is not valid JSON.
  */
 nlohmann::json parse_json(const std::string& content, const std::string& filepath);
 
@@ -159,7 +170,7 @@ nlohmann::json parse_json(const std::string& content, const std::string& filepat
  * @param filepath  Destination file path (created or overwritten).
  * @param data      Value to serialize.
  * @param indent    JSON indentation in spaces (default 2; use -1 for compact).
- * @throws FileWriteError if the file cannot be opened or written.
+ * @throws EFileWriteError if the file cannot be opened or written.
  */
 template <typename T>
 void save(const std::string& filepath, const T& data, int indent = 2);
@@ -174,8 +185,8 @@ void save(const std::string& filepath, const T& data, int indent = 2);
  *             `from_json(const nlohmann::json&, T&)` free function.
  * @param filepath  Source file path.
  * @return The deserialized value of type @p T.
- * @throws FileReadError   if the file cannot be opened.
- * @throws JsonParseError  if the file content is not valid JSON.
+ * @throws EFileReadError   if the file cannot be opened.
+ * @throws EJsonParseError  if the file content is not valid JSON.
  */
 template <typename T>
 T load(const std::string& filepath);
@@ -211,13 +222,13 @@ bool try_load(const std::string& filepath, T& out) noexcept;
  * @param data      Value to serialize.
  * @param version   Version tag written to the `_version` field.
  * @param indent    JSON indentation in spaces (default 2; use -1 for compact).
- * @throws FileWriteError if the file cannot be opened or written.
+ * @throws EFileWriteError if the file cannot be opened or written.
  */
 template <typename T>
 void save_versioned(const std::string& filepath,
-                    const T&           data,
-                    uint32_t           version,
-                    int                indent = 2);
+					const T&           data,
+					uint32_t           version,
+					int                indent = 2);
 
 /**
  * @brief Deserializes a value from a versioned JSON file.
@@ -230,10 +241,10 @@ void save_versioned(const std::string& filepath,
  * @param filepath         Source file path.
  * @param expected_version Version the caller expects to find.
  * @return The deserialized value of type @p T.
- * @throws FileReadError        if the file cannot be opened.
- * @throws JsonParseError       if the file content is not valid JSON or
+ * @throws EFileReadError        if the file cannot be opened.
+ * @throws EJsonParseError       if the file content is not valid JSON or
  *                              the `_version` / `payload` fields are missing.
- * @throws VersionMismatchError if `_version != expected_version`.
+ * @throws EVersionMismatchError if `_version != expected_version`.
  */
 template <typename T>
 T load_versioned(const std::string& filepath, uint32_t expected_version);
@@ -258,60 +269,65 @@ std::optional<uint32_t> peek_version(const std::string& filepath);
 template <typename T>
 void save(const std::string& filepath, const T& data, int indent)
 {
-    nlohmann::json j = data;
-    detail::write_file(filepath, j.dump(indent));
+	nlohmann::json j = data;
+	detail::write_file(filepath, j.dump(indent));
 }
 
 template <typename T>
 T load(const std::string& filepath)
 {
-    const std::string    content = detail::read_file(filepath);
-    const nlohmann::json j       = detail::parse_json(content, filepath);
-    return j.get<T>();
+	const std::string    content = detail::read_file(filepath);
+	const nlohmann::json j       = detail::parse_json(content, filepath);
+	return j.get<T>();
 }
 
 template <typename T>
 bool try_load(const std::string& filepath, T& out) noexcept
 {
-    try {
-        out = load<T>(filepath);
-        return true;
-    } catch (...) {
-        return false;
-    }
+	try
+	{
+		out = load<T>(filepath);
+		return true;
+	}
+	catch (...)
+	{
+		return false;
+	}
 }
 
 template <typename T>
 void save_versioned(const std::string& filepath,
-                    const T&           data,
-                    uint32_t           version,
-                    int                indent)
+					const T&           data,
+					uint32_t           version,
+					int                indent)
 {
-    nlohmann::json envelope;
-    envelope["_version"] = version;
-    envelope["payload"]  = data;
-    detail::write_file(filepath, envelope.dump(indent));
+	nlohmann::json envelope;
+	envelope["_version"] = version;
+	envelope["payload"]  = data;
+	detail::write_file(filepath, envelope.dump(indent));
 }
 
 template <typename T>
 T load_versioned(const std::string& filepath, uint32_t expected_version)
 {
-    const std::string    content  = detail::read_file(filepath);
-    const nlohmann::json envelope = detail::parse_json(content, filepath);
+	const std::string    content  = detail::read_file(filepath);
+	const nlohmann::json envelope = detail::parse_json(content, filepath);
 
-    if (!envelope.contains("_version") || !envelope.contains("payload")) {
-        throw JsonParseError(
-            "Missing '_version' or 'payload' field in: " + filepath);
-    }
+	if (!envelope.contains("_version") || !envelope.contains("payload"))
+	{
+		throw EJsonParseError(
+			"Missing '_version' or 'payload' field in: " + filepath);
+	}
 
-    const uint32_t found = envelope.at("_version").get<uint32_t>();
-    if (found != expected_version) {
-        throw VersionMismatchError(expected_version, found);
-    }
+	const uint32_t found = envelope.at("_version").get<uint32_t>();
+	if (found != expected_version)
+	{
+		throw EVersionMismatchError(expected_version, found);
+	}
 
-    return envelope.at("payload").get<T>();
+	return envelope.at("payload").get<T>();
 }
 
-} // namespace GmSave
+} // namespace gmSave
 
-#endif // GMSAVE_HPP
+#endif // GMSAVE_GMSAVE_HPP
