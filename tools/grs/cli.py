@@ -19,6 +19,8 @@ from .lexer import LexerError
 from .linter import lint
 from .validator import validate
 from .diagnostic import format_text, format_json, has_errors, Diagnostic
+from .yaml_gen import generate as yaml_generate
+from .graph_gen import grapho_rule, grapho_all
 from typing import List
 
 
@@ -118,12 +120,34 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_yaml(args: argparse.Namespace) -> int:
-    print("[INFO] sottocomando 'yaml' non ancora implementato (Fase 5)")
+    doc = _parse_or_exit(args.file)
+    if doc is None:
+        return 1
+    yaml_text = yaml_generate(doc)
+    if getattr(args, "output", None):
+        from pathlib import Path
+        Path(args.output).write_text(yaml_text, encoding="utf-8")
+        print(f"  → {args.output}")
+    else:
+        print(yaml_text, end="")
     return 0
 
 
 def _cmd_grapho(args: argparse.Namespace) -> int:
-    print("[INFO] sottocomando 'grapho' non ancora implementato (Fase 6)")
+    doc = _parse_or_exit(args.file)
+    if doc is None:
+        return 1
+    rule_name = getattr(args, "rule", None)
+    if rule_name:
+        md_text = grapho_rule(doc, rule_name)
+    else:
+        md_text = grapho_all(doc)
+    if getattr(args, "output", None):
+        from pathlib import Path
+        Path(args.output).write_text(md_text, encoding="utf-8")
+        print(f"  → {args.output}")
+    else:
+        print(md_text, end="")
     return 0
 
 
