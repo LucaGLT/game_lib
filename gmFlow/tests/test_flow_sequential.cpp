@@ -466,7 +466,7 @@ static void test_double_start_throws() {
         session->start();
         session->start(); // should throw
         fail(T, "second start() should have thrown");
-    } catch (const gmFlow::GameSessionError&) {
+    } catch (const gmFlow::EGameSessionError&) {
         pass(T);
     } catch (...) {
         fail(T, "wrong exception type");

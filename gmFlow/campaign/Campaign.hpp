@@ -43,13 +43,13 @@
 namespace gmFlow {
 
 /**
- * @class CampaignError
+ * @class ECampaignError
  * @brief Exception thrown for invalid campaign operations.
  */
-class CampaignError : public std::runtime_error {
+class ECampaignError : public std::runtime_error {
 public:
     /// @brief Constructs the error with a descriptive message.
-    explicit CampaignError(const std::string& message);
+    explicit ECampaignError(const std::string& message);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ public:
      * unlocked automatically.
      *
      * @param definitions  Ordered list of session definitions.  Must not be empty.
-     * @throws CampaignError if definitions is empty.
+     * @throws ECampaignError if definitions is empty.
      */
     explicit Campaign(std::vector<SessionDefinition> definitions);
 
@@ -94,7 +94,7 @@ public:
      *
      * @param session_id ID of the session to start.
      * @return Const reference to the matching SessionDefinition.
-     * @throws CampaignError if the session is not found or not yet unlocked.
+     * @throws ECampaignError if the session is not found or not yet unlocked.
      */
     const SessionDefinition& start_session(const SessionId& session_id);
 
@@ -110,7 +110,7 @@ public:
      * `EVT_CAMPAIGN_COMPLETED`.
      *
      * @param victory true if the players won; false for a loss/draw.
-     * @throws CampaignError if no session is currently active.
+     * @throws ECampaignError if no session is currently active.
      */
     void complete_current_session(bool victory);
 

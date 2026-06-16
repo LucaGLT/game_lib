@@ -430,13 +430,13 @@ position) belongs in the `GameState` subclass.
 Session-scoped map from `ActorId` to `Actor`.
 
 ```cpp
-class UnknownActorError : public std::runtime_error { … };
+class EUnknownActorError : public std::runtime_error { … };
 
 class ActorRegistry {
 public:
     void          add(Actor actor);
     bool          has(const ActorId& id)  const;
-    const Actor&  get(const ActorId& id)  const;  // throws UnknownActorError
+    const Actor&  get(const ActorId& id)  const;  // throws EUnknownActorError
     std::vector<ActorId> all_ids()        const;
     std::size_t   count()                 const;
 };
@@ -990,7 +990,7 @@ struct SessionDefinition {
 #### Campaign
 
 ```cpp
-class CampaignError : public std::runtime_error { … };
+class ECampaignError : public std::runtime_error { … };
 
 class Campaign {
 public:

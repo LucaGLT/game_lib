@@ -12,10 +12,10 @@
 namespace gmFlow {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GameSessionError
+// EGameSessionError
 // ─────────────────────────────────────────────────────────────────────────────
 
-GameSessionError::GameSessionError(const std::string& message)
+EGameSessionError::EGameSessionError(const std::string& message)
     : std::runtime_error("GameSession: " + message)
 {}
 
@@ -44,7 +44,7 @@ GameSession::GameSession(SessionConfig                           config,
 void GameSession::start()
 {
     if (session_state_ != SessionState::CREATED) {
-        throw GameSessionError("start() called on a session that is not in CREATED state");
+        throw EGameSessionError("start() called on a session that is not in CREATED state");
     }
 
     // Populate actor registry from config.
@@ -64,7 +64,7 @@ void GameSession::start()
 void GameSession::tick()
 {
     if (session_state_ != SessionState::RUNNING) {
-        throw GameSessionError("tick() called on a session that is not RUNNING");
+        throw EGameSessionError("tick() called on a session that is not RUNNING");
     }
 
     // Drain the deferred/reaction action queue.
@@ -90,7 +90,7 @@ void GameSession::tick()
 void GameSession::pause()
 {
     if (session_state_ != SessionState::RUNNING) {
-        throw GameSessionError("pause() called on a session that is not RUNNING");
+        throw EGameSessionError("pause() called on a session that is not RUNNING");
     }
     session_state_ = SessionState::PAUSED;
 
@@ -103,7 +103,7 @@ void GameSession::pause()
 void GameSession::resume()
 {
     if (session_state_ != SessionState::PAUSED) {
-        throw GameSessionError("resume() called on a session that is not PAUSED");
+        throw EGameSessionError("resume() called on a session that is not PAUSED");
     }
     // TODO: Phase 4.7 — restore state snapshot via gmSave.
     session_state_ = SessionState::RUNNING;

@@ -1,6 +1,6 @@
 /**
  * @file actors/ActorRegistry.cpp
- * @brief Implementation of gmFlow::ActorRegistry and UnknownActorError.
+ * @brief Implementation of gmFlow::ActorRegistry and EUnknownActorError.
  */
 
 #include "gmFlow/actors/ActorRegistry.hpp"
@@ -10,10 +10,10 @@
 namespace gmFlow {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UnknownActorError
+// EUnknownActorError
 // ─────────────────────────────────────────────────────────────────────────────
 
-UnknownActorError::UnknownActorError(const ActorId& actor_id)
+EUnknownActorError::EUnknownActorError(const ActorId& actor_id)
     : std::runtime_error("ActorRegistry: unknown actor '" + actor_id + "'")
 {}
 
@@ -56,7 +56,7 @@ const Actor& ActorRegistry::get(const ActorId& actor_id) const
 {
     const auto it = actors_.find(actor_id);
     if (it == actors_.end()) {
-        throw UnknownActorError(actor_id);
+        throw EUnknownActorError(actor_id);
     }
     return it->second;
 }

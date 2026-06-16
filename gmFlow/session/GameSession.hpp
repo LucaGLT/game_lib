@@ -68,13 +68,13 @@ namespace gmFlow {
 class IAction;
 
 /**
- * @class GameSessionError
+ * @class EGameSessionError
  * @brief Base exception thrown by GameSession for invalid operations.
  */
-class GameSessionError : public std::runtime_error {
+class EGameSessionError : public std::runtime_error {
 public:
     /// @brief Constructs the error with a descriptive message.
-    explicit GameSessionError(const std::string& message);
+    explicit EGameSessionError(const std::string& message);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ public:
      * Transitions from CREATED to RUNNING, populates the ActorRegistry,
      * calls `IFlowController::start()`, and publishes @ref EVT_SESSION_STARTED.
      *
-     * @throws GameSessionError if the session is not in the CREATED state.
+     * @throws EGameSessionError if the session is not in the CREATED state.
      */
     void start();
 
@@ -150,7 +150,7 @@ public:
      * `IFlowController::is_session_complete()`.  If complete, transitions to
      * COMPLETED and publishes @ref EVT_SESSION_COMPLETED.
      *
-     * @throws GameSessionError if the session is not in the RUNNING state.
+     * @throws EGameSessionError if the session is not in the RUNNING state.
      */
     void tick();
 
@@ -161,7 +161,7 @@ public:
      * snapshot via gmSave, and publishes @ref EVT_SESSION_PAUSED.
      * The session loop must not call `tick()` while paused.
      *
-     * @throws GameSessionError if the session is not in the RUNNING state.
+     * @throws EGameSessionError if the session is not in the RUNNING state.
      */
     void pause();
 
@@ -171,7 +171,7 @@ public:
      * Restores the state snapshot and transitions back to RUNNING.
      * Publishes @ref EVT_SESSION_RESUMED.
      *
-     * @throws GameSessionError if the session is not in the PAUSED state.
+     * @throws EGameSessionError if the session is not in the PAUSED state.
      */
     void resume();
 
@@ -188,7 +188,7 @@ public:
      * @param actor  ID of the actor submitting the action.
      * @param action The action to submit; ownership is transferred on success.
      * @return ValidationResult::ok() if accepted; fail(...) otherwise.
-     * @throws GameSessionError if the session is not in the RUNNING state.
+     * @throws EGameSessionError if the session is not in the RUNNING state.
      */
     ValidationResult submit_action(const ActorId&           actor,
                                    std::unique_ptr<IAction> action);

@@ -12,10 +12,10 @@
 namespace gmFlow {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CampaignError
+// ECampaignError
 // ─────────────────────────────────────────────────────────────────────────────
 
-CampaignError::CampaignError(const std::string& message)
+ECampaignError::ECampaignError(const std::string& message)
     : std::runtime_error("Campaign: " + message)
 {}
 
@@ -75,7 +75,7 @@ Campaign::Campaign(std::vector<SessionDefinition> definitions)
     : sessions_(std::move(definitions))
 {
     if (sessions_.empty()) {
-        throw CampaignError("session definitions list must not be empty");
+        throw ECampaignError("session definitions list must not be empty");
     }
 
     // Unlock sessions flagged as initial.
@@ -94,13 +94,13 @@ void Campaign::set_event_callback(EventCallback callback)
 const SessionDefinition& Campaign::start_session(const SessionId& session_id)
 {
     if (!state_.is_unlocked(session_id)) {
-        throw CampaignError("session '" + session_id + "' is not unlocked");
+        throw ECampaignError("session '" + session_id + "' is not unlocked");
     }
 
     const auto it = std::find_if(sessions_.begin(), sessions_.end(),
         [&](const SessionDefinition& d) { return d.session_id == session_id; });
     if (it == sessions_.end()) {
-        throw CampaignError("session '" + session_id + "' not found in definitions");
+        throw ECampaignError("session '" + session_id + "' not found in definitions");
     }
 
     current_session_id_ = session_id;
@@ -110,7 +110,7 @@ const SessionDefinition& Campaign::start_session(const SessionId& session_id)
 void Campaign::complete_current_session(bool victory)
 {
     if (!current_session_id_.has_value()) {
-        throw CampaignError("complete_current_session() called with no active session");
+        throw ECampaignError("complete_current_session() called with no active session");
     }
 
     const SessionId sid = current_session_id_.value();
