@@ -1095,8 +1095,8 @@ Newline       ::= '\n' | '\r\n'
 
 ```mermaid
 flowchart TD
-    A[Document] --> B[Block+]
-    B --> C[@ BlockType Newline Body @end Newline]
+    A[Document] --> B["Block+"]
+    B --> C["@BlockType Newline Body @end Newline"]
 
     C --> D[BlockType]
     C --> E[Body]
@@ -1109,13 +1109,13 @@ flowchart TD
     D --> D6[statuses]
     D --> D7[triggers]
 
-    E --> F[Line+]
+    E --> F["Line+"]
     F --> F1[MetaLine]
     F --> F2[DefLine]
     F --> F3[Newline]
 
-    F2 --> G[Ident AttrSuffix? :: DefBody Newline]
-    G --> H[SubLine*]
+    F2 --> G["Ident AttrSuffix? :: DefBody Newline"]
+    G --> H["SubLine*"]
     H --> H1[HookKeyword EffectChain]
 
     G --> I[DefBody]
@@ -1128,16 +1128,16 @@ flowchart TD
 
     I2 --> J[ConditionExpr]
     J --> J1[ConditionTerm]
-    J1 --> J2[NOT ConditionTerm]
-    J1 --> J3[(ConditionExpr)]
+    J1 --> J2["NOT ConditionTerm"]
+    J1 --> J3["(ConditionExpr)"]
     J1 --> J4[CondAtom]
 
-    I3 --> K[EffectCall EffectMod*]
-    I4 --> L[IF? ON Ident THEN EffectChain]
-    I5 --> M[StackingMode DurationType StatusDurAttr*]
-    I6 --> N[ON_EVENT TriggerType IF? THEN EffectChain]
+    I3 --> K["EffectCall EffectMod*"]
+    I4 --> L["IF? ON Ident THEN EffectChain"]
+    I5 --> M["StackingMode DurationType StatusDurAttr*"]
+    I6 --> N["ON_EVENT TriggerType IF? THEN EffectChain"]
 
-    L --> O[EffectEntry AND THEN EffectEntry ...]
+    L --> O["EffectEntry AND THEN EffectEntry ..."]
     N --> O
     H1 --> O
 ```
