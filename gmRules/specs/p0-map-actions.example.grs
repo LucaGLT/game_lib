@@ -1,0 +1,86 @@
+@meta
+# Id gioco di esempio per copertura azioni map P0
+game        grs_p0_map_actions
+# Namespace regole map
+ns          grs.p0.actions.map
+# Versione dello script
+version     1.0.0
+# Versione minima runtime
+min_gmrules 0.5.0
+@end
+
+@targets
+# Source actor (eventuale contesto chiamante)
+Target_Self      :: ACTOR SELF required
+# Location selezionata su cui applicare mutazioni topologiche
+Target_Location  :: LOCATION SELECTED range GLOBAL required
+@end
+
+@conditions
+# Guard: la location deve esistere prima di ogni mutazione
+C_LocationExists :: LOCATION_EXISTS(input.location_id)
+@end
+
+@effects
+# Imposta location attraversabile
+E_SetPassable      :: SET_LOCATION_PASSABLE(Target_Location, true)
+# Aggiunge tag topologico/di gameplay alla location
+E_AddLocationTag   :: ADD_LOCATION_TAG(Target_Location, high_ground)
+# Rimuove tag dalla location
+E_RemoveLocationTag:: REMOVE_LOCATION_TAG(Target_Location, high_ground)
+# Imposta owner/controller della location
+E_SetOwner         :: SET_LOCATION_OWNER(Target_Location, faction.heroes)
+# Crea barriera sulla location
+E_CreateBarrier    :: CREATE_BARRIER(Target_Location, barrier.wall_stone)
+# Rimuove barriera dalla location
+E_RemoveBarrier    :: REMOVE_BARRIER(Target_Location, barrier.wall_stone)
+# Spawna oggetto interagibile in mappa
+E_SpawnInteract    :: SPAWN_INTERACTABLE(Target_Location, interactable.trap_spike)
+# Rimuove oggetto interagibile dalla mappa
+E_DespawnInteract  :: DESPAWN_INTERACTABLE(Target_Location, interactable.trap_spike)
+
+# Log finale catena map (non bloccante)
+E_MapLog           :: MANUAL_EFFECT(grs.p0.actions.map.executed) [optional]
+@end
+
+@rules
+# Regola di scenario: esegue tutte le azioni map estese
+R_MapActions [priority=100] ::
+    # Richiede location valida
+    IF C_LocationExists
+    # Applica le mutazioni sulla location target
+    ON Target_Location
+    # Sequenza completa di azioni map P0
+    THEN E_SetPassable
+         AND THEN E_AddLocationTag
+         AND THEN E_RemoveLocationTag
+         AND THEN E_SetOwner
+         AND THEN E_CreateBarrier
+         AND THEN E_RemoveBarrier
+         AND THEN E_SpawnInteract
+         AND THEN E_DespawnInteract
+         AND THEN E_MapLog?
+@end
+
+@triggers
+# Trigger su cambio stato location
+T_OnLocationStateChanged [priority=200] ::
+    # Evento map: state changed
+    ON_EVENT LOCATION_STATE_CHANGED
+    # Solo log
+    THEN E_MapLog?
+
+# Trigger su path bloccato
+T_OnPathBlocked [priority=210] ::
+    # Evento map: path blocked
+    ON_EVENT PATH_BLOCKED
+    # Solo log
+    THEN E_MapLog?
+
+# Trigger su cambio line of sight
+T_OnLosChanged [priority=220] ::
+    # Evento map: los changed
+    ON_EVENT LOS_CHANGED
+    # Solo log
+    THEN E_MapLog?
+@end
