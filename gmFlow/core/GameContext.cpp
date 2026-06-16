@@ -11,25 +11,25 @@ GameContext::GameContext(SessionId      session_id,
                          GameState&     state,
                          ActorRegistry& registry,
                          EventBus&      event_bus)
-    : session_id_(std::move(session_id))
-    , state_(state)
-    , registry_(registry)
-    , event_bus_(event_bus)
+    : _session_id(std::move(session_id))
+    , _state(state)
+    , _registry(registry)
+    , _event_bus(event_bus)
 {}
 
-const SessionId& GameContext::session_id() const  { return session_id_; }
-GameState&       GameContext::state()             { return state_; }
-const GameState& GameContext::state() const       { return state_; }
-ActorRegistry&   GameContext::actor_registry()    { return registry_; }
-const ActorRegistry& GameContext::actor_registry() const { return registry_; }
-EventBus&        GameContext::event_bus()         { return event_bus_; }
+const SessionId& GameContext::session_id() const  { return _session_id; }
+GameState&       GameContext::state()             { return _state; }
+const GameState& GameContext::state() const       { return _state; }
+ActorRegistry&   GameContext::actor_registry()    { return _registry; }
+const ActorRegistry& GameContext::actor_registry() const { return _registry; }
+EventBus&        GameContext::event_bus()         { return _event_bus; }
 
-const PhaseId& GameContext::current_phase_id() const { return current_phase_id_; }
-const RoundId& GameContext::current_round_id() const { return current_round_id_; }
-const TurnId&  GameContext::current_turn_id()  const { return current_turn_id_; }
+const PhaseId& GameContext::current_phase_id() const { return _current_phase_id; }
+const RoundId& GameContext::current_round_id() const { return _current_round_id; }
+const TurnId&  GameContext::current_turn_id()  const { return _current_turn_id; }
 
-void GameContext::set_current_phase_id(PhaseId id) { current_phase_id_ = std::move(id); }
-void GameContext::set_current_round_id(RoundId id) { current_round_id_ = std::move(id); }
-void GameContext::set_current_turn_id(TurnId  id)  { current_turn_id_  = std::move(id); }
+void GameContext::set_current_phase_id(PhaseId id) { _current_phase_id = std::move(id); }
+void GameContext::set_current_round_id(RoundId id) { _current_round_id = std::move(id); }
+void GameContext::set_current_turn_id(TurnId  id)  { _current_turn_id  = std::move(id); }
 
 } // namespace gmFlow

@@ -73,9 +73,9 @@ public:
     void set_display_name(std::string name);
 
 private:
-    ActorId     id_;
-    ActorType   type_;
-    std::string display_name_;
+    ActorId     _id;
+    ActorType   _type;
+    std::string _display_name;
 };
 
 } // namespace gmFlow

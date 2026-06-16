@@ -44,8 +44,8 @@ public:
     int index() const;
 
 private:
-    RoundId id_;
-    int     index_;
+    RoundId _id;
+    int     _index;
 };
 
 } // namespace gmFlow

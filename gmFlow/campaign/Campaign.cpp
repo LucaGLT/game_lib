@@ -12,10 +12,10 @@
 namespace gmFlow {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CampaignError
+// ECampaignError
 // ─────────────────────────────────────────────────────────────────────────────
 
-CampaignError::CampaignError(const std::string& message)
+ECampaignError::ECampaignError(const std::string& message)
     : std::runtime_error("Campaign: " + message)
 {}
 
@@ -25,46 +25,46 @@ CampaignError::CampaignError(const std::string& message)
 
 void CampaignState::mark_completed(const SessionId& session_id, bool victory)
 {
-    results_[session_id] = {true, victory};
+    _results[session_id] = {true, victory};
 }
 
 bool CampaignState::is_completed(const SessionId& session_id) const
 {
-    const auto it = results_.find(session_id);
-    return it != results_.end() && it->second.completed;
+    const auto it = _results.find(session_id);
+    return it != _results.end() && it->second.completed;
 }
 
 bool CampaignState::is_victory(const SessionId& session_id) const
 {
-    const auto it = results_.find(session_id);
-    return it != results_.end() && it->second.victory;
+    const auto it = _results.find(session_id);
+    return it != _results.end() && it->second.victory;
 }
 
 void CampaignState::unlock(const SessionId& session_id)
 {
-    unlocked_.insert(session_id);
+    _unlocked.insert(session_id);
 }
 
 bool CampaignState::is_unlocked(const SessionId& session_id) const
 {
-    return unlocked_.count(session_id) > 0;
+    return _unlocked.count(session_id) > 0;
 }
 
 void CampaignState::set_data(const std::string& key, std::string value)
 {
-    data_[key] = std::move(value);
+    _data[key] = std::move(value);
 }
 
 std::string CampaignState::get_data(const std::string& key,
                                     const std::string& default_val) const
 {
-    const auto it = data_.find(key);
-    return it != data_.end() ? it->second : default_val;
+    const auto it = _data.find(key);
+    return it != _data.end() ? it->second : default_val;
 }
 
 bool CampaignState::has_data(const std::string& key) const
 {
-    return data_.count(key) > 0;
+    return _data.count(key) > 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,92 +72,92 @@ bool CampaignState::has_data(const std::string& key) const
 // ─────────────────────────────────────────────────────────────────────────────
 
 Campaign::Campaign(std::vector<SessionDefinition> definitions)
-    : sessions_(std::move(definitions))
+    : _sessions(std::move(definitions))
 {
-    if (sessions_.empty()) {
-        throw CampaignError("session definitions list must not be empty");
+    if (_sessions.empty()) {
+        throw ECampaignError("session definitions list must not be empty");
     }
 
     // Unlock sessions flagged as initial.
-    for (const SessionDefinition& def : sessions_) {
+    for (const SessionDefinition& def : _sessions) {
         if (def.initial_unlock) {
-            state_.unlock(def.session_id);
+            _state.unlock(def.session_id);
         }
     }
 }
 
 void Campaign::set_event_callback(EventCallback callback)
 {
-    event_callback_ = std::move(callback);
+    _event_callback = std::move(callback);
 }
 
 const SessionDefinition& Campaign::start_session(const SessionId& session_id)
 {
-    if (!state_.is_unlocked(session_id)) {
-        throw CampaignError("session '" + session_id + "' is not unlocked");
+    if (!_state.is_unlocked(session_id)) {
+        throw ECampaignError("session '" + session_id + "' is not unlocked");
     }
 
-    const auto it = std::find_if(sessions_.begin(), sessions_.end(),
+    const auto it = std::find_if(_sessions.begin(), _sessions.end(),
         [&](const SessionDefinition& d) { return d.session_id == session_id; });
-    if (it == sessions_.end()) {
-        throw CampaignError("session '" + session_id + "' not found in definitions");
+    if (it == _sessions.end()) {
+        throw ECampaignError("session '" + session_id + "' not found in definitions");
     }
 
-    current_session_id_ = session_id;
+    _current_session_id = session_id;
     return *it;
 }
 
 void Campaign::complete_current_session(bool victory)
 {
-    if (!current_session_id_.has_value()) {
-        throw CampaignError("complete_current_session() called with no active session");
+    if (!_current_session_id.has_value()) {
+        throw ECampaignError("complete_current_session() called with no active session");
     }
 
-    const SessionId sid = current_session_id_.value();
-    state_.mark_completed(sid, victory);
-    current_session_id_.reset();
+    const SessionId sid = _current_session_id.value();
+    _state.mark_completed(sid, victory);
+    _current_session_id.reset();
 
     // TODO: Phase 4.8 — log completion via gmLog
     evaluate_unlocks();
 
     if (is_complete()) {
-        if (event_callback_) {
-            event_callback_(EVT_CAMPAIGN_COMPLETED, "");
+        if (_event_callback) {
+            _event_callback(EVT_CAMPAIGN_COMPLETED, "");
         }
     }
 }
 
 bool Campaign::is_complete() const
 {
-    return std::all_of(sessions_.begin(), sessions_.end(),
+    return std::all_of(_sessions.begin(), _sessions.end(),
         [&](const SessionDefinition& def) {
-            return state_.is_completed(def.session_id);
+            return _state.is_completed(def.session_id);
         });
 }
 
-const CampaignState& Campaign::state() const { return state_; }
-CampaignState&       Campaign::state()       { return state_; }
+const CampaignState& Campaign::state() const { return _state; }
+CampaignState&       Campaign::state()       { return _state; }
 
-const std::vector<SessionDefinition>& Campaign::sessions() const { return sessions_; }
+const std::vector<SessionDefinition>& Campaign::sessions() const { return _sessions; }
 
 std::optional<SessionId> Campaign::current_session_id() const
 {
-    return current_session_id_;
+    return _current_session_id;
 }
 
 void Campaign::evaluate_unlocks()
 {
-    for (const SessionDefinition& def : sessions_) {
-        if (state_.is_unlocked(def.session_id)) continue;
+    for (const SessionDefinition& def : _sessions) {
+        if (_state.is_unlocked(def.session_id)) continue;
 
         const bool prereqs_met = std::all_of(
             def.unlock_requires.begin(), def.unlock_requires.end(),
-            [&](const SessionId& req) { return state_.is_completed(req); });
+            [&](const SessionId& req) { return _state.is_completed(req); });
 
         if (prereqs_met) {
-            state_.unlock(def.session_id);
-            if (event_callback_) {
-                event_callback_(EVT_CAMPAIGN_SESSION_UNLOCKED, def.session_id);
+            _state.unlock(def.session_id);
+            if (_event_callback) {
+                _event_callback(EVT_CAMPAIGN_SESSION_UNLOCKED, def.session_id);
             }
         }
     }

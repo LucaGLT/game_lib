@@ -414,14 +414,16 @@ static void test_ruleEventBridge()
 	event.source_id = "hero";
 	event.target_id = "orc";
 	event.payload_json = "{\"delta\":-3}";
+	event.priority = 7;
 
-	bridge.dispatch(event, 7);
+	bridge.dispatch(event);
 
 	const bool routed = raw->envelopes.size() == 1 &&
-		raw->envelopes[0].typeId == "actor.events" &&
+		raw->envelopes[0].typeId == "RuleEvBus" &&
 		raw->envelopes[0].source == "gmRules" &&
 		raw->envelopes[0].headers.at("source_system") == "gmRules" &&
 		raw->envelopes[0].headers.at("rule_priority") == "7" &&
+		raw->envelopes[0].headers.at("rule_topic") == "actor.events" &&
 		raw->envelopes[0].headers.at("rule_event_type") == event.type &&
 		raw->envelopes[0].headers.at("rule_source_id") == event.source_id &&
 		raw->envelopes[0].headers.at("rule_target_id") == event.target_id &&
@@ -456,8 +458,9 @@ static void test_ruleEventBridgeFailure()
 	gmRules::RuleEvent event;
 	event.type = "gmRules.map.path_blocked";
 	event.source_id = "map01";
+	event.priority = 3;
 
-	bridge.dispatch(event, 3);
+	bridge.dispatch(event, "MapEvBus");
 
 	if (bridge.success_count() == 0 &&
 		bridge.failure_count() == 1 &&

@@ -166,11 +166,11 @@ private:
         std::unique_ptr<IAction> action;
     };
 
-    std::vector<ActorId>    eligible_actors_;
-    std::vector<ActorId>    passed_actors_;
-    std::vector<Submission> submissions_;
-    CompletionPolicy        policy_;
-    bool                    closed_ = false;
+    std::vector<ActorId>    _eligible_actors;
+    std::vector<ActorId>    _passed_actors;
+    std::vector<Submission> _submissions;
+    CompletionPolicy        _policy;
+    bool                    _closed = false;
 };
 
 } // namespace gmFlow

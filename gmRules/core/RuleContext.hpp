@@ -72,6 +72,14 @@ public:
     /** @brief Returns `true` if the two actors are enemies. */
     virtual bool are_enemies(const ActorId& a, const ActorId& b) const = 0;
 
+    /**
+     * @brief Returns the current value of a named actor resource.
+     * @param actor_id    Target actor.
+     * @param resource_id Identifier of the resource (e.g. "mana", "stamina").
+     */
+    virtual int actor_resource(const ActorId& actor_id,
+                               const std::string& resource_id) const = 0;
+
     // ── Actor mutation ────────────────────────────────────────────────────────
 
     /**
@@ -91,6 +99,70 @@ public:
     /** @brief Removes a tag from the actor. */
     virtual void remove_actor_tag(const ActorId& actor_id,
                                   const std::string& tag) = 0;
+
+    // ── Actor lifecycle (Chapter 4 — gmActor) ────────────────────────────────
+
+    /**
+     * @brief Spawns a new actor into the context.
+     * @param actor_id  Identifier to assign to the spawned actor.
+     * @param spec_json Serialised actor specification (game-specific).
+     */
+    virtual void spawn_actor(const ActorId& actor_id,
+                             const std::string& spec_json) = 0;
+
+    /** @brief Removes an actor from the context permanently. */
+    virtual void despawn_actor(const ActorId& actor_id) = 0;
+
+    /** @brief Revives a previously dead/downed actor. */
+    virtual void revive_actor(const ActorId& actor_id) = 0;
+
+    /**
+     * @brief Moves an actor to a different team or faction.
+     * @param actor_id Target actor.
+     * @param team_id  New team identifier.
+     */
+    virtual void change_actor_team(const ActorId& actor_id,
+                                   const std::string& team_id) = 0;
+
+    // ── Actor resources (Chapter 4 — gmActor) ────────────────────────────────
+
+    /**
+     * @brief Applies a signed delta to a named actor resource.
+     * @param actor_id    Target actor.
+     * @param resource_id Resource identifier.
+     * @param delta       Signed delta value.
+     */
+    virtual void modify_resource(const ActorId& actor_id,
+                                 const std::string& resource_id,
+                                 int delta) = 0;
+
+    /**
+     * @brief Sets the maximum value of a named actor resource.
+     * @param actor_id    Target actor.
+     * @param resource_id Resource identifier.
+     * @param max_value   New maximum value.
+     */
+    virtual void set_resource_max(const ActorId& actor_id,
+                                  const std::string& resource_id,
+                                  int max_value) = 0;
+
+    // ── Equipment (Chapter 4 — gmActor) ──────────────────────────────────────
+
+    /**
+     * @brief Equips an item on an actor.
+     * @param actor_id Target actor.
+     * @param item_id  Identifier of the item to equip.
+     */
+    virtual void equip_item(const ActorId& actor_id,
+                            const std::string& item_id) = 0;
+
+    /**
+     * @brief Unequips an item from an actor slot.
+     * @param actor_id Target actor.
+     * @param slot_id  Equipment slot identifier.
+     */
+    virtual void unequip_item(const ActorId& actor_id,
+                              const std::string& slot_id) = 0;
 
     // ── Status mutation ───────────────────────────────────────────────────────
 
@@ -137,6 +209,34 @@ public:
     virtual std::vector<ActorId>
     actors_in_location(const LocationId& location_id) const = 0;
 
+    // ── Advanced map queries (Chapter 6 — gmMap) ─────────────────────────────
+
+    /**
+     * @brief Returns `true` if a path exists from `from` to `to`.
+     * @param from Origin location.
+     * @param to   Destination location.
+     */
+    virtual bool is_location_reachable(const LocationId& from,
+                                       const LocationId& to) const = 0;
+
+    /**
+     * @brief Returns `true` if `from` has an unobstructed line of sight to `to`.
+     * @param from Observer location.
+     * @param to   Target location.
+     */
+    virtual bool has_line_of_sight(const LocationId& from,
+                                   const LocationId& to) const = 0;
+
+    /**
+     * @brief Returns the movement cost from `from` to `to`.
+     *
+     * Returns -1 if unreachable.
+     * @param from Origin location.
+     * @param to   Destination location.
+     */
+    virtual int move_cost_between(const LocationId& from,
+                                  const LocationId& to) const = 0;
+
     // ── Location mutation ─────────────────────────────────────────────────────
 
     /**
@@ -146,6 +246,70 @@ public:
      */
     virtual void move_actor_to_location(const ActorId& actor_id,
                                         const LocationId& location_id) = 0;
+
+    // ── Advanced map mutations (Chapter 6 — gmMap) ───────────────────────────
+
+    /**
+     * @brief Sets the passability of a location.
+     * @param location_id Target location.
+     * @param passable    `true` = passable, `false` = blocked.
+     */
+    virtual void set_location_passable(const LocationId& location_id,
+                                       bool passable) = 0;
+
+    /**
+     * @brief Adds a tag to a location.
+     * @param location_id Target location.
+     * @param tag         Tag string to add.
+     */
+    virtual void add_location_tag(const LocationId& location_id,
+                                  const std::string& tag) = 0;
+
+    /**
+     * @brief Removes a tag from a location.
+     * @param location_id Target location.
+     * @param tag         Tag string to remove.
+     */
+    virtual void remove_location_tag(const LocationId& location_id,
+                                     const std::string& tag) = 0;
+
+    /**
+     * @brief Assigns an owner/controller to a location.
+     * @param location_id Target location.
+     * @param owner_id    Owner actor or team identifier.
+     */
+    virtual void set_location_owner(const LocationId& location_id,
+                                    const std::string& owner_id) = 0;
+
+    /**
+     * @brief Creates a directional topological barrier between two locations.
+     * @param from       Origin location.
+     * @param to         Destination location.
+     * @param barrier_id Unique identifier for the barrier.
+     */
+    virtual void create_barrier(const LocationId& from,
+                                const LocationId& to,
+                                const std::string& barrier_id) = 0;
+
+    /**
+     * @brief Removes a previously created barrier.
+     * @param barrier_id Barrier identifier returned from `create_barrier`.
+     */
+    virtual void remove_barrier(const std::string& barrier_id) = 0;
+
+    /**
+     * @brief Spawns an interactable object at a location.
+     * @param location_id Target location.
+     * @param spec_json   Serialised interactable specification.
+     */
+    virtual void spawn_interactable(const LocationId& location_id,
+                                    const std::string& spec_json) = 0;
+
+    /**
+     * @brief Removes an interactable object from the map.
+     * @param interactable_id Identifier of the interactable to remove.
+     */
+    virtual void despawn_interactable(const std::string& interactable_id) = 0;
 
     // ── Deck / card access ────────────────────────────────────────────────────
 
@@ -171,6 +335,91 @@ public:
                                          const CardId& card_id,
                                          const std::string& zone_name) = 0;
 
+    // ── Extended deck/dice operations (Chapter 5 — gmAlea) ───────────────────
+
+    /**
+     * @brief Returns the number of cards in a named zone of a deck.
+     * @param deck_id   Deck to query.
+     * @param zone_name Zone name; empty string queries the full deck.
+     */
+    virtual int deck_zone_count(const DeckId& deck_id,
+                                const std::string& zone_name) const = 0;
+
+    /**
+     * @brief Returns `true` if the card is currently in the given zone.
+     * @param deck_id   Deck to query.
+     * @param card_id   Card to locate.
+     * @param zone_name Zone name to check against.
+     */
+    virtual bool card_in_zone(const DeckId& deck_id,
+                              const CardId& card_id,
+                              const std::string& zone_name) const = 0;
+
+    /**
+     * @brief Shuffles the cards within a named deck zone.
+     * @param deck_id   Target deck.
+     * @param zone_name Zone to shuffle.
+     */
+    virtual void shuffle_zone(const DeckId& deck_id,
+                              const std::string& zone_name) = 0;
+
+    /**
+     * @brief Returns the top N card IDs without removing them.
+     * @param deck_id Target deck.
+     * @param count   Number of cards to peek.
+     */
+    virtual std::vector<CardId> look_top_cards(const DeckId& deck_id,
+                                               int count) const = 0;
+
+    /**
+     * @brief Returns the bottom N card IDs without removing them.
+     * @param deck_id Target deck.
+     * @param count   Number of cards to peek.
+     */
+    virtual std::vector<CardId> look_bottom_cards(const DeckId& deck_id,
+                                                  int count) const = 0;
+
+    /**
+     * @brief Marks a specific card as selected (game-defined semantics).
+     * @param deck_id Target deck.
+     * @param card_id Card to select.
+     */
+    virtual RuleResult select_specific_card(const DeckId& deck_id,
+                                            const CardId& card_id) = 0;
+
+    /**
+     * @brief Discards `count` random cards from the given zone.
+     * @param deck_id   Target deck.
+     * @param zone_name Source zone.
+     * @param count     Number of cards to discard.
+     */
+    virtual RuleResult discard_random_cards(const DeckId& deck_id,
+                                            const std::string& zone_name,
+                                            int count) = 0;
+
+    /**
+     * @brief Places a card on the top of the named deck zone.
+     * @param deck_id Target deck.
+     * @param card_id Card to place.
+     */
+    virtual RuleResult place_card_on_top(const DeckId& deck_id,
+                                         const CardId& card_id) = 0;
+
+    /**
+     * @brief Places a card on the bottom of the named deck zone.
+     * @param deck_id Target deck.
+     * @param card_id Card to place.
+     */
+    virtual RuleResult place_card_on_bottom(const DeckId& deck_id,
+                                            const CardId& card_id) = 0;
+
+    /**
+     * @brief Rolls dice using the given expression and returns the result.
+     * @param dice_expression String dice expression, e.g. "2d6", "1d20+3".
+     * @return Resolved integer result.
+     */
+    virtual int roll_dice(const std::string& dice_expression) = 0;
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     /**
@@ -180,7 +429,8 @@ public:
      * a custom observer list, or simply log it.
      * @param event Event to emit.
      */
-    virtual void emit_event(const RuleEvent& event) = 0;
+    virtual void emit_event(const RuleEvent& event,
+                            const std::string& bus_name = "RuleEvBus") = 0;
 
     /**
      * @brief Applies an extended effect not handled by gmRules V1 core.

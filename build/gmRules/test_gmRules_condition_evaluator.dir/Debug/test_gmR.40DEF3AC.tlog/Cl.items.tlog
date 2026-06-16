@@ -1,9 +1,0 @@
-C:\_GLT_\Qt Prj\game_lib\gmRules\core\RuleResult.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\RuleResult.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\target\TargetResult.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\TargetResult.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\target\TargetResolver.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\TargetResolver.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\condition\ConditionEvaluator.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\ConditionEvaluator.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\effect\EffectResult.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\EffectResult.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\effect\EffectResolver.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\EffectResolver.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\status\StatusEngine.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\StatusEngine.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\facade\gmRulesEngine.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\gmRulesEngine.obj
-C:\_GLT_\Qt Prj\game_lib\gmRules\tests\test_condition_evaluator.cpp;C:\_GLT_\Qt Prj\game_lib\build\gmRules\test_gmRules_condition_evaluator.dir\Debug\test_condition_evaluator.obj

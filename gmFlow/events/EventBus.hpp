@@ -110,8 +110,8 @@ public:
     void publish(const IEvent& event);
 
 private:
-	std::shared_ptr<gmDispatch::GmDispatcher>                                      dispatcher_;
-	std::vector<std::pair<EventType, std::shared_ptr<gmDispatch::IChannel>>>      subscriptions_;
+	std::shared_ptr<gmDispatch::GmDispatcher>                                      _dispatcher;
+	std::vector<std::pair<EventType, std::shared_ptr<gmDispatch::IChannel>>>      _subscriptions;
 };
 
 } // namespace gmFlow

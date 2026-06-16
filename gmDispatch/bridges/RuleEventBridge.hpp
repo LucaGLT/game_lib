@@ -26,10 +26,10 @@ public:
 	explicit RuleEventBridge(GmDispatcher& bus);
 
 	void dispatch(const gmRules::RuleEvent& event,
-				  int rule_priority = 0);
+				  const std::string& bus_name = "RuleEvBus");
 
 	void dispatch_many(const std::vector<gmRules::RuleEvent>& events,
-					   int rule_priority = 0);
+					   const std::string& bus_name = "RuleEvBus");
 
 	std::size_t success_count() const;
 	std::size_t failure_count() const;
@@ -43,7 +43,7 @@ private:
 
 	static std::string map_channel(const std::string& event_type);
 	static Envelope build_envelope(const gmRules::RuleEvent& event,
-								 int rule_priority);
+							 const std::string& bus_name);
 };
 
 } // namespace gmDispatch

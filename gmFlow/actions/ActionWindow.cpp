@@ -16,24 +16,24 @@ namespace gmFlow {
 
 ActionWindow::ActionWindow(std::vector<ActorId> eligible_actors,
                            CompletionPolicy     policy)
-    : eligible_actors_(std::move(eligible_actors))
-    , policy_(policy)
-    , closed_(false)
+    : _eligible_actors(std::move(eligible_actors))
+    , _policy(policy)
+    , _closed(false)
 {}
 
 bool ActionWindow::can_submit(const ActorId& actor_id) const
 {
-    if (closed_) return false;
+    if (_closed) return false;
 
     // Actor must be in the eligible list.
     const bool eligible = std::find(
-        eligible_actors_.begin(), eligible_actors_.end(), actor_id)
-        != eligible_actors_.end();
+        _eligible_actors.begin(), _eligible_actors.end(), actor_id)
+        != _eligible_actors.end();
     if (!eligible) return false;
 
     // Actor must not have already submitted (one submission per actor per window).
     const bool already_submitted = std::any_of(
-        submissions_.begin(), submissions_.end(),
+        _submissions.begin(), _submissions.end(),
         [&](const Submission& s) { return s.actor_id == actor_id; });
     return !already_submitted;
 }
@@ -51,45 +51,45 @@ ValidationResult ActionWindow::submit(const ActorId& actor_id,
     Submission s;
     s.actor_id = actor_id;
     s.action   = std::move(action);
-    submissions_.push_back(std::move(s));
+    _submissions.push_back(std::move(s));
     return ValidationResult::ok();
 }
 
 void ActionWindow::pass(const ActorId& actor_id)
 {
     const bool eligible = std::find(
-        eligible_actors_.begin(), eligible_actors_.end(), actor_id)
-        != eligible_actors_.end();
+        _eligible_actors.begin(), _eligible_actors.end(), actor_id)
+        != _eligible_actors.end();
     if (!eligible) return;
 
     const bool already_passed = std::find(
-        passed_actors_.begin(), passed_actors_.end(), actor_id)
-        != passed_actors_.end();
+        _passed_actors.begin(), _passed_actors.end(), actor_id)
+        != _passed_actors.end();
     if (!already_passed) {
-        passed_actors_.push_back(actor_id);
+        _passed_actors.push_back(actor_id);
     }
 }
 
 bool ActionWindow::is_complete(const GameContext& /*ctx*/) const
 {
-    if (closed_) return true;
+    if (_closed) return true;
 
     // TODO: Phase 4.4 — implement per-policy completion checks
-    switch (policy_) {
+    switch (_policy) {
         case CompletionPolicy::ALL_SUBMITTED:
-            return submissions_.size() >= eligible_actors_.size();
+            return _submissions.size() >= _eligible_actors.size();
 
         case CompletionPolicy::ANY_SUBMITTED:
-            return !submissions_.empty();
+            return !_submissions.empty();
 
         case CompletionPolicy::MANUAL_CLOSE:
             return false;  // Only closes via force_close().
 
         case CompletionPolicy::UNTIL_ALL_PASSED:
-            return passed_actors_.size() >= eligible_actors_.size();
+            return _passed_actors.size() >= _eligible_actors.size();
 
         case CompletionPolicy::PRIORITY_RESOLVED:
-            return submissions_.size() >= eligible_actors_.size();
+            return _submissions.size() >= _eligible_actors.size();
     }
     return false;
 }
@@ -99,11 +99,11 @@ void ActionWindow::resolve(GameContext& ctx)
     if (!is_complete(ctx)) {
         throw std::runtime_error("ActionWindow::resolve(): window is not yet complete");
     }
-    closed_ = true;
+    _closed = true;
 
     // Execute all stored actions in submission order.
     // PRIORITY_RESOLVED: a future version should sort submissions by priority here.
-    for (Submission& sub : submissions_) {
+    for (Submission& sub : _submissions) {
         if (!sub.action) continue;
 
         ActionStartedEvent asev;
@@ -137,7 +137,7 @@ void ActionWindow::resolve(GameContext& ctx)
             ctx.event_bus().publish(afev);
         }
     }
-    submissions_.clear();
+    _submissions.clear();
 
     WindowClosedEvent wcev;
     ctx.event_bus().publish(wcev);
@@ -145,22 +145,22 @@ void ActionWindow::resolve(GameContext& ctx)
 
 void ActionWindow::force_close()
 {
-    closed_ = true;
+    _closed = true;
 }
 
 bool ActionWindow::is_closed() const
 {
-    return closed_;
+    return _closed;
 }
 
 const std::vector<ActorId>& ActionWindow::eligible_actors() const
 {
-    return eligible_actors_;
+    return _eligible_actors;
 }
 
 std::size_t ActionWindow::submission_count() const
 {
-    return submissions_.size();
+    return _submissions.size();
 }
 
 } // namespace gmFlow

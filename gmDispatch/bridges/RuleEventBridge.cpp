@@ -5,7 +5,7 @@
 
 #include "RuleEventBridge.hpp"
 
-#include "../gmRules/core/RuleEvent.hpp"
+#include "gmRules/core/RuleEvent.hpp"
 
 #include <chrono>
 #include <exception>
@@ -49,27 +49,29 @@ std::string RuleEventBridge::map_channel(const std::string& event_type)
 }
 
 Envelope RuleEventBridge::build_envelope(const gmRules::RuleEvent& event,
-									 int rule_priority)
+									 const std::string& bus_name)
 {
 	Envelope envelope;
-	envelope.typeId = map_channel(event.type);
+	const std::string rule_topic = map_channel(event.type);
+	envelope.typeId = bus_name.empty() ? "RuleEvBus" : bus_name;
 	envelope.source = "gmRules";
 	envelope.timestamp = std::chrono::system_clock::now();
 	envelope.payload = event.payload_json;
 	envelope.headers["rule_event_type"] = event.type;
-	envelope.headers["rule_priority"] = std::to_string(rule_priority);
+	envelope.headers["rule_priority"] = std::to_string(event.priority);
 	envelope.headers["rule_source_id"] = event.source_id;
 	envelope.headers["rule_target_id"] = event.target_id;
+	envelope.headers["rule_topic"] = rule_topic;
 	envelope.headers["source_system"] = "gmRules";
 	return envelope;
 }
 
 void RuleEventBridge::dispatch(const gmRules::RuleEvent& event,
-							   int rule_priority)
+							   const std::string& bus_name)
 {
 	try
 	{
-		_bus.dispatch(build_envelope(event, rule_priority));
+		_bus.dispatch(build_envelope(event, bus_name));
 		++_success_count;
 	}
 	catch (const std::exception& ex)
@@ -85,11 +87,11 @@ void RuleEventBridge::dispatch(const gmRules::RuleEvent& event,
 }
 
 void RuleEventBridge::dispatch_many(const std::vector<gmRules::RuleEvent>& events,
-								   int rule_priority)
+								   const std::string& bus_name)
 {
 	for (const gmRules::RuleEvent& event : events)
 	{
-		dispatch(event, rule_priority);
+		dispatch(event, bus_name);
 	}
 }
 

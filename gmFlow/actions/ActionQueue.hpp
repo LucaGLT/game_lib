@@ -105,7 +105,7 @@ private:
     };
 
     /// Backing store — sorted highest priority first.
-    std::vector<Entry> entries_;
+    std::vector<Entry> _entries;
 };
 
 } // namespace gmFlow

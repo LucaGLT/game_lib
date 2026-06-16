@@ -32,18 +32,28 @@ EffectResult gmRulesEngine::resolve_effect(
     const EffectSpec& spec,
     const ActorId& source_actor_id,
     const std::vector<TargetRef>& selected_targets,
-    RuleContext& ctx)
+    RuleContext& ctx,
+    int rule_priority)
 {
-	return effect_resolver_.resolve(spec, source_actor_id, selected_targets, ctx);
+    return effect_resolver_.resolve(spec,
+                             source_actor_id,
+                             selected_targets,
+                             ctx,
+                             rule_priority);
 }
 
 EffectResult gmRulesEngine::resolve_effects(
     const std::vector<EffectSpec>& specs,
     const ActorId& source_actor_id,
     const std::vector<TargetRef>& selected_targets,
-    RuleContext& ctx)
+    RuleContext& ctx,
+    int rule_priority)
 {
-	return effect_resolver_.resolve_many(specs, source_actor_id, selected_targets, ctx);
+    return effect_resolver_.resolve_many(specs,
+                              source_actor_id,
+                              selected_targets,
+                              ctx,
+                              rule_priority);
 }
 
 RuleResult gmRulesEngine::apply_status(const StatusDefinition& status,

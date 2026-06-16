@@ -58,29 +58,29 @@ namespace {
 // Minimal GameState for test contexts.
 class NullState : public gmFlow::GameState {
 public:
-    const gmFlow::SessionId& session_id() const override { return id_; }
-    void on_session_started(const gmFlow::SessionId& id) override { id_ = id; }
+    const gmFlow::SessionId& session_id() const override { return _id; }
+    void on_session_started(const gmFlow::SessionId& id) override { _id = id; }
     void on_session_completed() override {}
 private:
-    gmFlow::SessionId id_;
+    gmFlow::SessionId _id;
 };
 
 // Stub IAction that records whether execute() was called.
 class TrackingAction : public gmFlow::IAction {
 public:
     explicit TrackingAction(std::string id, std::string owner)
-        : id_(std::move(id)), owner_(std::move(owner)) {}
+        : _id(std::move(id)), _owner(std::move(owner)) {}
 
-    gmFlow::ActionId     id()     const override { return id_; }
-    gmFlow::ActorId      owner()  const override { return owner_; }
-    gmFlow::ActionStatus status() const override { return status_; }
+    gmFlow::ActionId     id()     const override { return _id; }
+    gmFlow::ActorId      owner()  const override { return _owner; }
+    gmFlow::ActionStatus status() const override { return _status; }
 
     gmFlow::ValidationResult validate(const gmFlow::GameContext&) const override {
         return gmFlow::ValidationResult::ok();
     }
     gmFlow::ActionResult execute(gmFlow::GameContext&) override {
         executed = true;
-        status_  = gmFlow::ActionStatus::COMPLETED;
+        _status  = gmFlow::ActionStatus::COMPLETED;
         return gmFlow::ActionResult::success();
     }
 
@@ -91,19 +91,19 @@ public:
     bool executed = false;
 
 private:
-    gmFlow::ActionId     id_;
-    gmFlow::ActorId      owner_;
-    gmFlow::ActionStatus status_ = gmFlow::ActionStatus::CREATED;
+    gmFlow::ActionId     _id;
+    gmFlow::ActorId      _owner;
+    gmFlow::ActionStatus _status = gmFlow::ActionStatus::CREATED;
 };
 
 // Stub action that always fails execute().
 class FailingAction : public gmFlow::IAction {
 public:
     explicit FailingAction(std::string id, std::string owner)
-        : id_(std::move(id)), owner_(std::move(owner)) {}
+        : _id(std::move(id)), _owner(std::move(owner)) {}
 
-    gmFlow::ActionId     id()     const override { return id_; }
-    gmFlow::ActorId      owner()  const override { return owner_; }
+    gmFlow::ActionId     id()     const override { return _id; }
+    gmFlow::ActorId      owner()  const override { return _owner; }
     gmFlow::ActionStatus status() const override { return gmFlow::ActionStatus::CREATED; }
 
     gmFlow::ValidationResult validate(const gmFlow::GameContext&) const override {
@@ -118,8 +118,8 @@ public:
     bool is_multi_step() const override { return false; }
 
 private:
-    gmFlow::ActionId id_;
-    gmFlow::ActorId  owner_;
+    gmFlow::ActionId _id;
+    gmFlow::ActorId  _owner;
 };
 
 // Helper: build a GameContext with no actors and a null state.
