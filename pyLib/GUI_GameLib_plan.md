@@ -1,203 +1,499 @@
-# GUI lib per GameLib
+# gmGui – Development Plan
 
-## Language
-La GUI la voglio creare in python con pyQt ultima versione
-
-## Connesoine
-si aggancerà al Core Engine tramite il gmDispatch
-Suggerisci il modo migliore per gestire questo canale 
-
-## Layout
-mi serve con sezoini staccabili, spostabili e dockabili a piacere
-ogni sezione si può dockare in una delle Aree della figura 
-
-## GUI Moule
-Sarà composta da moduli GUI che gestiscono 1:1 le lib
-- gmActor
-- gmAlea diviso in 2 moduli diversi GmCompDeck, GmDice
-- gmFlow 
-- gmMap
-
-Dammi suggerimenti su come progettare al meglio queste GUI", no results
-
-Prima di rispondere, leggo le API delle librerie coinvolte per dare suggerimenti precisi.  
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/IDispatcher.hpp#1-1), lines 1 to 80
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/gmDispatch_API.md#1-1), lines 1 to 80
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/Envelope.hpp#1-1), lines 1 to 70
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/channels)
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/dispatchers)
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/channels/IpSocketChannel.hpp#1-1), lines 1 to 60
-
-Read [](file:///c%3A/_GLT_/Qt%20Prj/game_lib/gmDispatch/channels/EventBusChannel.hpp#1-1), lines 1 to 80
-
-Ora ho abbastanza contesto. Posso rispondere in modo preciso e completo.
+**Version:** 0.1.0
+**Status:** Phase 1 – Planned ⏳
+**Language:** Python 3.11+ / PySide6
+**Package:** `gmGui`
 
 ---
 
-## Architettura GUI Python/PyQt6 per GameLib
+## Goal
+
+`gmGui` è la GUI Python/PySide6 per il GameLib engine C++17. Fornisce un'interfaccia
+dockabile e modulare per visualizzare e interagire in tempo reale con le librerie
+`gmActor`, `gmAlea` (GmCompDeck e GmDice), `gmFlow` e `gmMap`. La connessione al
+motore C++ avviene tramite un bridge TCP bidirezionale che sfrutta `gmDispatch::IpSocketChannel`
+e `gmDispatch::JsonSerializer` già implementati nel core, mantenendo i due processi
+completamente separati per evitare conflitti con il GIL Python. Ogni modulo GUI mappa
+1:1 una libreria del core ed espone una interfaccia uniforme (`IGmGuiModule`) che permette
+a `MainWindow` di gestire registrazione, routing degli eventi e persistenza del layout
+in modo uniforme e indipendente dal contenuto di ciascun modulo.
 
 ---
 
-### 1. Stack tecnologico consigliato
-
-| Componente | Scelta | Motivazione |
-|---|---|---|
-| Framework GUI | **PyQt6** | Qt6 nativo, DockWidget di qualità, licensing LGPL-3 |
-| Bridge C++ ↔ Python | **pybind11** o **ctypes/cffi** | vedi §2 |
-| Serializzazione messaggi | **JSON** (via `gmDispatch::JsonSerializer`) | già implementata nel C++ |
-| Canale di comunicazione | **TCP socket** (`IpSocketChannel`) | processo separato, no GIL |
-
----
-
-### 2. Collegamento al Core Engine tramite gmDispatch
-
-Il modo **migliore e più sicuro** è tenere il Core Engine C++ e la GUI Python in **processi separati**, collegati via `IpSocketChannel` + `JsonSerializer`.
-
-**Perché non in-process (pybind11 + EventBusChannel)?**
-
-- Il GIL Python blocca i thread C++.
-- Il `SyncDispatcher` chiamerebbe callback Python dentro il suo mutex → deadlock garantito (è avvertito esplicitamente nell'EventBusChannel.hpp, righe 29-32).
-- Un crash della GUI non abbatte il motore.
-
-#### Architettura raccomandata: TCP bridge
+## Architecture
 
 ```
-┌─────────────────────────────┐       TCP/JSON-Lines
-│  Core Engine (C++17 process)│ ────────────────────────►  ┌─────────────────────┐
-│                             │                            │  GUI Python process │
-│  Dispatcher                 │                            │                     │
-│    └─ IpSocketChannel ──────┼──────── localhost:9000 ───►│  TcpBridgeReceiver  │
-│                             │                            │    └─ Qt Signals    │
-│  ← subscribe("*")           │◄───────── localhost:9001 ──┤  TcpBridgeSender    │
-│    per ricevere cmd dalla GUI│                            └─────────────────────┘
-└─────────────────────────────┘
-```
-
-Lato Python, un `QThread` dedicato legge frames dal socket, li deserializza in `dict` Python e li emette come **Qt Signals** verso i widget. I widget inviano comandi al motore su un secondo socket (o sulla stessa connessione con un distinguishing `source` field).
-
-```python
-class EngineReceiver(QThread):
-    envelope_received = Signal(dict)   # payload: {'typeId':..., 'payload':...}
-
-    def run(self):
-        while self._running:
-            frame = self._read_length_prefixed_frame()   # uint32_t + bytes
-            msg   = json.loads(frame)
-            self.envelope_received.emit(msg)
-```
-
-> Se in futuro vuoi tutto in-process, usa **pybind11** + un `EventBusChannel` con handler che posta in una `queue.Queue` letta da un `QTimer` ogni 16 ms — mai chiamare widget Qt da thread non-GUI.
-
----
-
-### 3. Layout dockabile
-
-Usa `QMainWindow` + `QDockWidget`. Ogni modulo GUI è un `QDockWidget` che si può sganciare, spostare e ri-ancorare alle aree della figura.
-
-#### Mapping aree figura → Qt
-
-| Area figura | `Qt::DockWidgetArea` / widget Qt |
-|---|---|
-| `Header` | `QMenuBar` + `QToolBar` (fissi) |
-| `Body_Header` | `QDockWidget` → `TopDockWidgetArea` |
-| `L_Panel` | `QDockWidget` → `LeftDockWidgetArea` |
-| `Body` | `QMainWindow::setCentralWidget()` (non dockabile) |
-| `R_Panel` | `QDockWidget` → `RightDockWidgetArea` |
-| `Body_Footer` | `QDockWidget` → `BottomDockWidgetArea` (sopra status bar) |
-| `Footer` | `QStatusBar` (fisso) |
-
-```python
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setDockNestingEnabled(True)   # permette tabs + split
-        self._setup_docks()
-
-    def _setup_docks(self):
-        for module in [GmMapModule(), GmFlowModule(), ...]:
-            dock = QDockWidget(module.title, self)
-            dock.setWidget(module.widget())
-            dock.setFeatures(
-                QDockWidget.DockWidgetMovable  |
-                QDockWidget.DockWidgetFloatable|
-                QDockWidget.DockWidgetClosable
-            )
-            self.addDockWidget(module.default_area, dock)
-```
-
-Salva/ripristina il layout con `QMainWindow.saveState()` / `restoreState()` via `QSettings`.
-
----
-
-### 4. Struttura moduli GUI
-
-Ogni modulo è una **classe Python** con interfaccia uniforme:
-
-```python
-class IGmGuiModule:
-    @property
-    def title(self) -> str: ...
-    @property
-    def default_area(self) -> Qt.DockWidgetArea: ...
-    def widget(self) -> QWidget: ...
-    def connect_engine(self, receiver: EngineReceiver, sender: EngineSender): ...
-    def on_envelope(self, msg: dict): ...   # chiamato via Signal
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  C++17 Core Engine (processo separato)                                      │
+│                                                                             │
+│  GmDispatcher (AsyncDispatcher)                                             │
+│    └─ IpSocketChannel("127.0.0.1", 9000)  ──── TCP frames ──►              │
+│  CmdServer (thread) ◄────────────────────────── TCP frames ───             │
+└─────────────────────────────────────────────────────────────────────────────┘
+          ▲ porta 9001 (comandi GUI→Engine)       │ porta 9000 (eventi Engine→GUI)
+          │                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  gmGui (processo Python)                                                    │
+│                                                                             │
+│  engine_bridge/                                                             │
+│    framing.py          ← wire protocol: uint32_t len-prefix + UTF-8 JSON   │
+│    EngineReceiver      ← QThread: server TCP:9000, emette Signal(dict)      │
+│    EngineSender        ← client TCP:9001, scrive frames                     │
+│                                                                             │
+│  MainWindow (QMainWindow)                                                   │
+│    ├─ QMenuBar / QToolBar / QStatusBar   ← Header / Footer fissi           │
+│    ├─ _routing: dict[typeId → [IGmGuiModule]]  ← dispatcher centrale       │
+│    ├─ QDockWidget(GmFlowModule)          ← TopDockWidgetArea                │
+│    ├─ QDockWidget(GmMapModule)           ← LeftDockWidgetArea               │
+│    ├─ QDockWidget(GmActorModule)         ← RightDockWidgetArea              │
+│    ├─ QDockWidget(GmCompDeckModule)      ← RightDockWidgetArea (tab)        │
+│    └─ QDockWidget(GmDiceModule)          ← BottomDockWidgetArea             │
+│                                                                             │
+│  modules/                                                                   │
+│    IGmGuiModule (ABC)  ← contratto: module_id, title, widget(),            │
+│    BaseModule          │            subscribed_type_ids(), on_envelope()    │
+│    GmFlowModule        ← QGraphicsScene timeline (TurnPolicy/Round/Phase)  │
+│    GmActorModule       ← QTreeWidget attori + pannello dettaglio HP/status  │
+│    GmCompDeckModule    ← 5 zone QListWidget con drag&drop                  │
+│    GmDiceModule        ← SpinBox + Roll + animazione risultato              │
+│    GmMapModule         ← QGraphicsScene nodi/archi LocationId               │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 5. Moduli specifici — suggerimenti di design
+## File Structure
 
-#### `GmMapModule` → `LeftDockWidgetArea` (default) o centrale
-
-- Widget principale: `QGraphicsScene` + `QGraphicsView` con griglia di tile.
-- Ogni cella della mappa è un `QGraphicsRectItem` colorato per tipo terreno.
-- Quando arriva `envelope.typeId == "map.cell_changed"` → aggiorna la cella corrispondente.
-- Barra laterale: lista filtri terreno, zoom slider.
-
-#### `GmFlowModule` → `TopDockWidgetArea`
-
-- Visualizza la timeline come una `QGraphicsScene` con blocchi orizzontali (turni/fasi).
-- Il blocco attivo è evidenziato. Pulsanti: `Next Turn`, `Pause`, `Reset`.
-- Subscrive a `"flow.phase_changed"`, `"flow.tick"`.
-
-#### `GmCompDeckModule` → `RightDockWidgetArea`
-
-- Lista di zone (mazzo, mano, scarti, …) come `QListWidget` verticale.
-- Drag & drop tra zone tramite `QAbstractItemView::DragDrop`.
-- Subscrive a `"deck.card_moved"`, `"deck.zone_changed"`.
-
-#### `GmDiceModule` → `BottomDockWidgetArea` (piccolo)
-
-- Una riga con selettori `QSpinBox` (numero dadi, facce) + pulsante `Roll`.
-- Risultati mostrati in `QLabel` con animazione CSS-like (`QPropertyAnimation`).
-- Invia `envelope.typeId = "dice.roll_request"`, riceve `"dice.roll_result"`.
-
-#### `GmActorModule` → `RightDockWidgetArea` (tab con GmCompDeck)
-
-- `QTreeWidget` con gerarchia attori: radice → gruppo → singolo attore.
-- Selezionando un attore, pannello di dettaglio (stats, status, items) in `QFormLayout`.
-- Subscrive a `"actor.stat_changed"`, `"actor.status_added"`.
+```
+pyLib/
+├── GUI_GameLib_plan.md          ← questo file
+│
+└── gmGui/
+    ├── __init__.py              ← esporta MainWindow, IGmGuiModule
+    ├── main.py                  ← entry point: QApplication + MainWindow
+    ├── main_window.py           ← QMainWindow, dock manager, routing centrale
+    ├── settings.py              ← QSettings wrapper: save/restore layout
+    │
+    ├── engine_bridge/
+    │   ├── __init__.py
+    │   ├── framing.py           ← send_frame(), recv_frame(), _recv_exact()
+    │   ├── receiver.py          ← EngineReceiver(QThread), server TCP:9000
+    │   └── sender.py            ← EngineSender, client TCP:9001
+    │
+    ├── modules/
+    │   ├── __init__.py          ← esporta tutti i moduli
+    │   ├── base_module.py       ← IGmGuiModule (ABC) + BaseModule
+    │   ├── gm_flow_module.py    ← GmFlowModule
+    │   ├── gm_actor_module.py   ← GmActorModule
+    │   ├── gm_comp_deck_module.py  ← GmCompDeckModule
+    │   ├── gm_dice_module.py    ← GmDiceModule
+    │   └── gm_map_module.py     ← GmMapModule
+    │
+    ├── widgets/                 ← widget riusabili condivisi tra moduli
+    │   ├── __init__.py
+    │   ├── hp_bar.py            ← HpBar(QWidget): barra HP animata
+    │   ├── timeline_scene.py    ← TimelineScene(QGraphicsScene)
+    │   ├── map_scene.py         ← MapScene(QGraphicsScene)
+    │   └── zone_list.py         ← ZoneList(QListWidget): drag&drop deck zone
+    │
+    └── tests/
+        ├── test_framing.py      ← test wire protocol (loopback)
+        ├── test_routing.py      ← test dispatcher centrale
+        ├── test_gm_flow.py      ← test modulo flow con mock envelopes
+        ├── test_gm_actor.py     ← test modulo actor con mock envelopes
+        ├── test_gm_comp_deck.py ← test modulo deck con mock envelopes
+        ├── test_gm_dice.py      ← test modulo dice con mock envelopes
+        └── test_gm_map.py       ← test modulo map con mock envelopes
+```
 
 ---
 
-### 6. Struttura directory consigliata
+## Development Phases
 
-```
-gui/
-├── main.py
-├── main_window.py          ← QMainWindow + dock manager
-├── engine_bridge/
-│   ├── __init__.py
-│   ├── receiver.py         ← EngineReceiver(QThread) — lettura socket
-│   └── sender.py           ← EngineSender — scrittura socket
-├── modules/
+---
+
+### Phase 1 — Interfaces & Stubs ⏳
+
+- [ ] Creare la directory `pyLib/gmGui/` con tutti i `__init__.py`
+- [ ] Definire `IGmGuiModule` (ABC) in `modules/base_module.py`
+  - Proprietà astratte: `module_id`, `title`, `default_area`
+  - Metodi astratti: `widget()`, `subscribed_type_ids()`, `on_envelope(msg)`
+  - Metodi con default: `on_attach()`, `on_detach()`, `save_state()`, `restore_state()`
+  - Metodo concreto: `send_command()` (delegato a `_sender`)
+- [ ] Definire `BaseModule(IGmGuiModule, ABC)` in `modules/base_module.py`
+  - Costruttore: `_sender = None`, `_widget = None`
+  - `set_sender(sender)` — iniettato da MainWindow
+  - `widget()` — chiama `_build_widget()` una sola volta (cache)
+  - `_build_widget()` astratto
+- [ ] Creare stub di `EngineReceiver(QThread)` in `engine_bridge/receiver.py`
+  - Signal `envelope_received = Signal(dict)`
+  - Signal `connection_lost = Signal()`
+  - Metodi stub: `run()`, `stop()`
+- [ ] Creare stub di `EngineSender` in `engine_bridge/sender.py`
+  - Metodi stub: `send_command(type_id, data)`, `close()`
+- [ ] Creare stub di `framing.py`
+  - `send_frame(sock, payload)`, `recv_frame(sock)`, `_recv_exact(sock, n)` — raise `NotImplementedError`
+- [ ] Creare stub di tutti e 5 i moduli (solo `module_id`, `title`, `default_area`, `subscribed_type_ids()` e `_build_widget()` con `QLabel("stub")`)
+  - `GmFlowModule`, `GmActorModule`, `GmCompDeckModule`, `GmDiceModule`, `GmMapModule`
+- [ ] Creare stub di `MainWindow(QMainWindow)` in `main_window.py`
+  - `_register_modules()`, `_add_dock()`, `_on_envelope()` — corpi vuoti
+- [ ] Creare stub di `settings.py` — `save_layout()`, `restore_layout()` — corpi vuoti
+- [ ] Creare `main.py` — `QApplication` + `MainWindow.show()`
+- [ ] Smoke test: `python -m gmGui` avvia senza eccezioni con 5 dock stub visibili
+
+**Notes:**
+
+- `IGmGuiModule` e `BaseModule` sono nel medesimo file per semplicità; se crescono si separano.
+- I tipi hint `PySide6.QtCore.Qt.DockWidgetArea` richiedono `from __future__ import annotations`.
+- Tutti i moduli ereditano da `BaseModule`, non direttamente da `IGmGuiModule`.
+
+---
+
+### Phase 2 — TCP Bridge (framing + EngineReceiver + EngineSender) ⏳
+
+- [ ] Implementare `framing.send_frame(sock, payload: str) -> None`
+  - Codifica `payload` in UTF-8
+  - Scrive `struct.pack(">I", len(data)) + data` con `sock.sendall()`
+- [ ] Implementare `framing._recv_exact(sock, n: int) -> bytes`
+  - Loop su `sock.recv()` fino a `n` byte esatti
+  - Solleva `ConnectionError` se il socket chiude prima
+- [ ] Implementare `framing.recv_frame(sock) -> str`
+  - Legge 4 byte big-endian → lunghezza
+  - Chiama `_recv_exact(sock, length)` → decodifica UTF-8
+- [ ] Implementare `EngineReceiver.run()`
+  - Crea `socket.socket(AF_INET, SOCK_STREAM)` con `SO_REUSEADDR`
+  - `bind(host, 9000)` → `listen(1)` → `settimeout(1.0)` per `stop()` non-bloccante
+  - Loop: `accept()` → `recv_frame()` → `json.loads()` → estrae `headers["data"]` se presente → `envelope_received.emit(msg)`
+  - Gestione `socket.timeout`: `continue`
+  - Gestione `ConnectionError` / `OSError`: emette `connection_lost`, `client = None` (attende riconnessione)
+- [ ] Implementare `EngineReceiver.stop()`
+  - `self._running = False` → `self.wait()`
+- [ ] Implementare `EngineSender._ensure_connected()`
+  - `socket.connect((host, 9001))` lazy
+- [ ] Implementare `EngineSender.send_command(type_id, data)`
+  - `_ensure_connected()` → `send_frame(sock, json.dumps({"typeId": type_id, "source": "GUI", "data": data}))`
+- [ ] Implementare `EngineSender.close()`
+  - Chiude il socket se aperto, `_sock = None`
+- [ ] Smoke test: test loopback `test_framing.py`
+  - Apre due socket collegati via `socket.socketpair()`
+  - Verifica `recv_frame(send_frame(s, "hello"))` == `"hello"`
+  - Verifica round-trip con payload JSON 1 KB e 100 KB
+
+**Notes:**
+
+- `EngineReceiver` è un TCP **server** (porta 9000): il C++ `IpSocketChannel` si connette ad esso.
+- `EngineSender` è un TCP **client** (porta 9001): si connette al `CmdServer` C++.
+- La porta 9000 è in ascolto **prima** che il motore C++ venga avviato — il C++ si connette quando esegue il primo `dispatch()`.
+- `socket.settimeout(1.0)` sul server permette al thread di controllare `_running` ogni secondo senza busy-wait.
+
+---
+
+### Phase 3 — MainWindow & Dock System ⏳
+
+- [ ] Implementare `MainWindow.__init__()`
+  - `setWindowTitle("GameLib GUI")`, `resize(1280, 800)`
+  - `setDockNestingEnabled(True)` — abilita split e tab tra dock
+  - `_receiver = EngineReceiver()`, `_sender = EngineSender()`
+  - Collega `_receiver.envelope_received` → `_on_envelope`
+  - Avvia `_receiver.start()`
+- [ ] Implementare `MainWindow._register_modules()`
+  - Istanzia tutti e 5 i moduli
+  - Chiama `mod.set_sender(self._sender)` su ciascuno
+  - Costruisce `_routing: dict[str, list[BaseModule]]` da `subscribed_type_ids()`
+  - Chiama `_add_dock(mod)` per ciascuno
+  - Chiama `mod.on_attach()` per ciascuno
+- [ ] Implementare `MainWindow._add_dock(mod)`
+  - Crea `QDockWidget(mod.title, self)`
+  - `dock.setObjectName(mod.module_id)` — necessario per `saveState()`
+  - Imposta `DockWidgetMovable | DockWidgetFloatable | DockWidgetClosable`
+  - `addDockWidget(mod.default_area, dock)`
+  - Salva riferimento `self._docks[mod.module_id] = dock`
+- [ ] Implementare `MainWindow._on_envelope(msg: dict)`
+  - `tid = msg.get("typeId", "")`
+  - Per ogni modulo in `_routing.get(tid, [])`: `mod.on_envelope(msg)`
+- [ ] Aggiungere tabbing automatico di GmActorModule e GmCompDeckModule
+  - `tabifyDockWidget(actor_dock, deck_dock)`
+- [ ] Implementare `settings.save_layout(window)` e `restore_layout(window)`
+  - `QSettings("GameLib", "gmGui")`
+  - `settings.setValue("geometry", window.saveGeometry())`
+  - `settings.setValue("windowState", window.saveState())`
+  - `restore_layout`: `restoreGeometry()` + `restoreState()`
+- [ ] Collegare `closeEvent` di `MainWindow` a `save_layout()` + `stop()` di `EngineReceiver`
+- [ ] Aggiungere `QMenuBar` con menu `View` (mostra/nasconde dock) e `Help`
+- [ ] Aggiungere `QStatusBar` con label connessione engine (`Disconnesso` / `Connesso`)
+  - Collegato a `_receiver.connection_lost` e primo `envelope_received`
+- [ ] Smoke test: `python -m gmGui` → tutti i dock appaiono nell'area corretta, chiusura e riapertura ripristina il layout
+
+**Notes:**
+
+- `dock.setObjectName()` è obbligatorio: `saveState()` usa il nome oggetto per identificare i dock.
+- GmActorModule e GmCompDeckModule sono tabbed di default sulla `RightDockWidgetArea`; l'utente può separarli.
+- `EngineReceiver` viene avviato prima che il motore C++ sia connesso; gestisce silenziosamente l'attesa.
+
+---
+
+### Phase 4 — GmFlowModule ⏳
+
+**typeId sottoscritti** (da `FlowEvents.hpp` + `TimelineEvents.hpp`):
+`gmFlow.session.started`, `gmFlow.session.paused`, `gmFlow.session.completed`,
+`gmFlow.phase.entered`, `gmFlow.phase.exited`,
+`gmFlow.round.started`, `gmFlow.round.ended`,
+`gmFlow.turn.started`, `gmFlow.turn.ended`,
+`gmFlow.timeline.actor_selected`, `gmFlow.timeline.time_advanced`
+
+- [ ] Implementare `widgets/timeline_scene.py` — `TimelineScene(QGraphicsScene)`
+  - Asse X = `TimelineValue` (da `TimelineActorSelectedEvent.timeline_position`)
+  - Ogni attore = `QGraphicsRectItem` con label `actor_id`
+  - Attore attivo evidenziato con bordo colorato e z-order elevato
+  - Metodi: `set_actors(actors: list[dict])`, `select_actor(actor_id)`, `advance_time(new_time)`
+  - Linea verticale "tempo corrente" aggiornata da `advance_time()`
+- [ ] Implementare `GmFlowModule._build_widget()`
+  - Layout verticale:
+    - Riga 1: label `Session`, label `Phase`, label `Round`, label `Turn`
+    - Riga 2: `QGraphicsView` su `TimelineScene` (altezza 120px)
+    - Riga 3: pulsanti `[▶ RESUME]` `[■ PAUSE]` `[■ STOP]`
+    - Riga 4: `QListWidget` log eventi (ultimi 20, insert-top)
+- [ ] Implementare `GmFlowModule.on_envelope(msg)`
+  - `gmFlow.session.started` → aggiorna label Session, abilita pulsanti
+  - `gmFlow.session.paused` → disabilita PAUSE, abilita RESUME
+  - `gmFlow.session.completed` → disabilita tutti i pulsanti
+  - `gmFlow.phase.entered` → aggiorna label Phase, appende log
+  - `gmFlow.round.started/ended` → aggiorna label Round
+  - `gmFlow.turn.started` → aggiorna label Turn + `timeline_scene.select_actor()`
+  - `gmFlow.timeline.actor_selected` → `timeline_scene.select_actor()`
+  - `gmFlow.timeline.time_advanced` → `timeline_scene.advance_time()`
+- [ ] Collegare pulsanti a `send_command()`
+  - PAUSE → `send_command("gmFlow.session.pause", {})`
+  - RESUME → `send_command("gmFlow.session.resume", {})`
+  - STOP → `send_command("gmFlow.session.stop", {})`
+- [ ] Smoke test `test_gm_flow.py`
+  - Costruisce `GmFlowModule` standalone
+  - Inietta mock envelopes: `session.started`, `phase.entered`, `round.started`, `turn.started`, `timeline.actor_selected`
+  - Verifica che label e scene riflettano i valori attesi
+
+**Notes:**
+
+- `TimelineValue` è un intero (da `TimelineTypes.hpp`); l'asse X della scena è scalato con `pixels_per_unit = 8`.
+- Il log eventi usa `QListWidget.insertItem(0, text)` + `setMaximumCount(20)`.
+- I pulsanti vengono disabilitati all'avvio e abilitati al primo `session.started`.
+
+---
+
+### Phase 5 — GmActorModule ⏳
+
+**typeId sottoscritti** (da `ActorEvents.hpp`):
+`gmActor.actor.hp_changed`, `gmActor.actor.status_added`, `gmActor.actor.status_removed`,
+`gmActor.actor.moved_area`, `gmActor.actor.life_state_changed`,
+`gmActor.actor.item_equipped`, `gmActor.actor.item_unequipped`
+
+- [ ] Implementare `widgets/hp_bar.py` — `HpBar(QWidget)`
+  - `paintEvent`: disegna rettangolo pieno proporzionale a `current/max`
+  - Colore: verde `> 50%`, giallo `20–50%`, rosso `< 20%`
+  - Metodo: `set_hp(current: int, max_hp: int)` con `QPropertyAnimation` sull'opacity al cambio
+- [ ] Implementare `GmActorModule._build_widget()`
+  - Layout orizzontale (splitter):
+    - Pannello sinistro: `QComboBox` filtro (`Tutti / Eroi / Mostri / Alleati`) + `QTreeWidget`
+      - Colonne: `Nome`, `HP`, `Stato`
+      - Raggruppamento per fazione (`FactionId`) come nodi radice
+    - Pannello destro (dettaglio attore selezionato):
+      - `QLabel` nome, `HpBar`, `QFormLayout` stats
+      - `QListWidget` status effetti (`StatusId`, stacks)
+      - `QListWidget` equipaggiamento (`ItemInstanceId`, slot)
+- [ ] Implementare `GmActorModule.on_envelope(msg)`
+  - `hp_changed`: aggiorna riga albero + `HpBar` pannello dettaglio
+  - `status_added` / `status_removed`: aggiorna colonna Stato + lista status
+  - `moved_area`: aggiorna tooltip riga (mostra `new_area`)
+  - `life_state_changed`: colorazione riga (`DEAD` → grigio, `DYING` → rosso)
+  - `item_equipped` / `item_unequipped`: aggiorna lista equipaggiamento
+- [ ] `QTreeWidget.itemSelectionChanged` → aggiorna pannello dettaglio
+- [ ] `QComboBox` filtro → filtra riga per fazione (mostra/nasconde `QTreeWidgetItem`)
+- [ ] Smoke test `test_gm_actor.py`
+  - Inietta sequenza: `hp_changed` (da 100 a 40), `status_added` (Avvelenato x2), `life_state_changed` (ALIVE→DYING)
+  - Verifica HpBar value, colore rosso, status presente in lista
+
+**Notes:**
+
+- `QTreeWidget` usa un dizionario interno `_actor_items: dict[ActorId, QTreeWidgetItem]` per aggiornamenti O(1).
+- Il pannello dettaglio non ha un modello dati proprio: viene popolato direttamente al cambio di selezione rileggendo i dati dall'item dell'albero.
+- `FactionId` non arriva negli event payload; viene comunicato con un envelope `gmActor.snapshot` alla connessione iniziale.
+
+---
+
+### Phase 6 — GmCompDeckModule ⏳
+
+**typeId sottoscritti** (eventi custom deck):
+`gmAlea.deck.card_moved`, `gmAlea.deck.zone_changed`, `gmAlea.deck.shuffled`, `gmAlea.deck.drawn`
+
+- [ ] Implementare `widgets/zone_list.py` — `ZoneList(QListWidget)`
+  - `setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)`
+  - `setDefaultDropAction(Qt.DropAction.MoveAction)`
+  - Segnale personalizzato `card_dropped = Signal(str, str, str)` — `(card_id, from_zone, to_zone)`
+  - Override `dropEvent`: emette `card_dropped` + chiama super
+- [ ] Implementare `GmCompDeckModule._build_widget()`
+  - `QComboBox` selezione deck (per supporto multi-player futuro)
+  - 5 colonne `ZoneList` (MainDeck, CardHand, PlayArea, DiscardPile, BanishZone)
+  - Etichetta contatore sotto ogni zona (`N carte`)
+  - Pulsanti contestuali: `[Draw 1]` (MainDeck), `[Shuffle Discard→Main]`
+- [ ] Implementare `GmCompDeckModule.on_envelope(msg)`
+  - `card_moved`: sposta `QListWidgetItem` dalla zona sorgente a quella destinazione
+  - `zone_changed`: full-refresh della zona indicata (replace tutti gli item)
+  - `shuffled`: aggiorna etichetta MainDeck + animazione breve (opacity flash)
+  - `drawn`: come `card_moved` da MainDeck a CardHand
+- [ ] Collegare `ZoneList.card_dropped` → `send_command("gmAlea.deck.move_card", {"card_id":..., "from":..., "to":...})`
+- [ ] Collegare `[Draw 1]` → `send_command("gmAlea.deck.draw", {"count": 1})`
+- [ ] Collegare `[Shuffle Discard→Main]` → `send_command("gmAlea.deck.recycle_discard", {})`
+- [ ] Smoke test `test_gm_comp_deck.py`
+  - `zone_changed` su MainDeck con 3 carte → verifica contatore = 3
+  - `card_moved` da MainDeck a CardHand → verifica contatori aggiornati
+  - Drag & drop simulato → verifica `send_command` chiamato con parametri corretti
+
+**Notes:**
+
+- Gli item del `ZoneList` hanno `setData(Qt.ItemDataRole.UserRole, card_id)` per identificazione sicura.
+- La zona BanishZone ha `setDragDropMode(NoDragDrop)` lato drop: si può trascinare fuori ma non dentro (rispecchia `BanishPolicy` C++: `is_insert_only = true`).
+- Il contatore sotto la zona è un `QLabel` aggiornato ad ogni modifica.
+
+---
+
+### Phase 7 — GmDiceModule ⏳
+
+**typeId sottoscritti**: `gmAlea.dice.roll_result`
+
+- [ ] Implementare `GmDiceModule._build_widget()`
+  - `QComboBox` tipo dado: `Standard` / `Custom`
+  - Modalità Standard: `QSpinBox` numero dadi (1–20), `QSpinBox` facce (2–100)
+  - Modalità Custom: `QComboBox` profilo dado (`d_combat`, `d_event`, …), `QSpinBox` n (1–10)
+  - Pulsante `[LANCIA]` (espanso, prominente)
+  - `QLabel` risultato principale (font grande, centro)
+  - `QLabel` dettaglio singoli dadi (`3 + 5 + 2`)
+  - `QListWidget` storico (ultimi 10 risultati, read-only)
+  - Pulsante `[Clear storico]`
+- [ ] Collegare `QComboBox` tipo → mostra/nasconde widget Standard vs Custom con `QStackedWidget`
+- [ ] Collegare `[LANCIA]`
+  - Modalità Standard: `send_command("gmAlea.dice.roll_request", {"count": n, "faces": f})`
+  - Modalità Custom: `send_command("gmAlea.dice.roll_custom_request", {"profile": p, "count": n})`
+- [ ] Implementare `GmDiceModule.on_envelope(msg)`
+  - `roll_result`: estrae `data["dice"]` (list) e `data["total"]`
+  - Aggiorna label dettaglio: `" + ".join(str(d) for d in dice)`
+  - Aggiorna label risultato: `str(total)`
+  - Avvia `QPropertyAnimation` su `opacity` del label risultato (0.0 → 1.0, 400ms)
+  - Inserisce in cima allo storico: `f"{total}  [{', '.join(...)}]"`
+- [ ] Smoke test `test_gm_dice.py`
+  - Simula click `[LANCIA]` → verifica `send_command` chiamato
+  - Inietta `roll_result` con `{"dice": [3, 5, 2], "total": 10}` → verifica label = "10", dettaglio = "3 + 5 + 2"
+  - Verifica storico ha 1 voce dopo il primo lancio
+
+**Notes:**
+
+- I profili dado Custom sono caricati da `gmAlea.dice.profiles_snapshot` inviato dal motore alla connessione.
+- `QPropertyAnimation` agisce sulla proprietà `windowOpacity` di un `QWidget` wrapper del label.
+
+---
+
+### Phase 8 — GmMapModule ⏳
+
+**typeId sottoscritti**:
+`gmMap.map.loaded`, `gmMap.location.item_added`, `gmMap.location.item_removed`,
+`gmMap.location.metadata_changed`, `gmActor.actor.moved_area`, `gmActor.actor.position_changed`
+
+- [ ] Implementare `widgets/map_scene.py` — `MapScene(QGraphicsScene)`
+  - `LocationNode(QGraphicsEllipseItem)` — diameter 32px
+    - Colore fill da metadata `terrain` (dizionario `terrain → QColor` configurabile)
+    - Label `LocationId` centrata
+    - Tooltip: lista item + metadata
+  - `AdjacencyEdge(QGraphicsLineItem)` — connette coppie di nodi
+  - `ActorMarker(QGraphicsPixmapItem)` — icona attore sovrapposta al nodo
+  - Metodi:
+    - `load_map(locations: list[dict], edges: list[tuple])` — costruisce scena da zero
+    - `move_actor(actor_id, new_location_id)` — sposta marker
+    - `update_location(loc_id, metadata: dict)` — aggiorna colore/tooltip nodo
+- [ ] Implementare `GmMapModule._build_widget()`
+  - `QGraphicsView` su `MapScene` con scroll e zoom tramite `wheelEvent`
+  - Barra superiore: `[Zoom -]` `[Zoom +]` `[Fit]` + `QComboBox` layer (`terrain`, `items`, `actors`)
+  - Barra inferiore: label selezione (`Location#N — terrain: X — Items: [Y]`)
+- [ ] Collegare `MapScene.selectionChanged` → aggiorna barra inferiore con metadata location
+- [ ] Implementare `GmMapModule.on_envelope(msg)`
+  - `map.loaded`: chiama `map_scene.load_map()` con dati snapshot completo
+  - `location.item_added/removed`: aggiorna tooltip nodo
+  - `location.metadata_changed`: aggiorna colore nodo
+  - `actor.moved_area`: `map_scene.move_actor(actor_id, new_location_id)`
+  - `actor.position_changed`: aggiorna sotto-posizione marker (offset fine nel nodo)
+- [ ] Zoom: `QGraphicsView.scale(factor, factor)` con limiti `[0.25, 4.0]`
+- [ ] `[Fit]`: `QGraphicsView.fitInView(scene.itemsBoundingRect(), Qt.KeepAspectRatio)`
+- [ ] Smoke test `test_gm_map.py`
+  - Inietta `map.loaded` con 5 location e 4 edge → verifica 5 nodi e 4 archi nella scena
+  - Inietta `actor.moved_area` → verifica marker spostato sul nodo corretto
+
+**Notes:**
+
+- `gmMap` non emette eventi nativi; il motore pubblica su `gmDispatch` con `typeId` prefissati `gmMap.*`.
+- Il layer `items` colora i nodi in base al numero di item presenti (da metadata o da `location.item_added`).
+- `ActorMarker` usa come icona una lettera iniziale dell'`actor_id` su cerchio colorato per fazione.
+
+---
+
+### Phase 9 — Layout Persistence & Module State ⏳
+
+- [ ] Implementare `settings.save_layout(window: MainWindow)`
+  - `QSettings("GameLib", "gmGui")` con `IniFormat`
+  - Salva `geometry`, `windowState` (dock layout)
+  - Per ogni modulo: `settings.setValue(f"module/{mod.module_id}/state", json.dumps(mod.save_state()))`
+- [ ] Implementare `settings.restore_layout(window: MainWindow)`
+  - `restoreGeometry()` + `restoreState()`
+  - Per ogni modulo: `mod.restore_state(json.loads(settings.value(..., "{}")))`
+- [ ] Implementare `GmMapModule.save_state()` / `restore_state()`
+  - Persiste zoom level, posizione centrale della view, layer selezionato
+- [ ] Implementare `GmCompDeckModule.save_state()` / `restore_state()`
+  - Persiste deck selezionato nel `QComboBox`
+- [ ] Implementare `GmFlowModule.save_state()` / `restore_state()`
+  - Persiste `pixels_per_unit` (zoom timeline)
+- [ ] Collegare `MainWindow.closeEvent` a `settings.save_layout()` + tutti `mod.on_detach()`
+- [ ] Chiamare `settings.restore_layout()` in `MainWindow.__init__()` dopo `_register_modules()`
+- [ ] Smoke test: avviare app, modificare layout dock, chiudere, riaprire → verifica identico layout ripristinato
+
+**Notes:**
+
+- `QMainWindow.saveState()` usa gli `objectName` dei `QDockWidget` impostati in Phase 3: senza nome l'ordine non è garantito.
+- `QSettings` con `IniFormat` produce un file leggibile a scopo di debug sotto `%APPDATA%\GameLib\gmGui.ini` (Windows).
+
+---
+
+### Phase 10 — Integration & End-to-End Testing ⏳
+
+- [ ] Creare `tests/mock_engine.py` — server TCP mock che simula `IpSocketChannel` C++
+  - Accetta connessione su porta 9000 (riceve comandi GUI)
+  - Si connette su porta 9001 (invia eventi al `EngineReceiver`)
+  - Libreria di eventi canned: sequenza `session.started → phase.entered → turn.started → roll_result`
+- [ ] Scrivere test E2E `test_integration.py`
+  - Avvia `mock_engine` in thread background
+  - Avvia `MainWindow` in modalità headless (`QApplication` con offscreen platform)
+  - Invia sequenza eventi → verifica stato dei moduli dopo ogni evento
+  - Invia comando da GUI (es. PAUSE) → verifica arrivo sul mock_engine
+- [ ] Verificare gestione `connection_lost`:
+  - Mock engine chiude socket durante test → `QStatusBar` mostra "Disconnesso"
+  - Mock engine si riconnette → `QStatusBar` torna "Connesso"
+- [ ] Verificare gestione JSON malformato:
+  - Mock engine invia frame con JSON invalido → nessun crash, log in `QStatusBar`
+- [ ] Smoke test finale: sessione completa simulata (10 turni, 3 attori, mappa 5 location, 2 lanci di dado)
+
+**Notes:**
+
+- Il mock engine usa lo stesso `framing.py` del client Python per garantire coerenza del wire protocol.
+- I test headless richiedono `QT_QPA_PLATFORM=offscreen` come variabile di ambiente.
+- L'integrazione con il motore C++ reale è fuori scope di questo piano; sarà oggetto di un piano separato (`gmGui_integration_plan.md`).
+
+---
+
+## Key Design Decisions
+
+1. **Processi separati (TCP) anziché in-process (pybind11)**: il GIL Python e il mutex di `SyncDispatcher` sono incompatibili; un crash della GUI non deve abbattere il motore.
+2. **Due porte distinte (9000/9001)**: `IpSocketChannel` è solo client TCP; per ricevere comandi dalla GUI il C++ deve esporre un secondo server (`CmdServer`). Una singola connessione bidirezionale richiederebbe framing applicativo aggiuntivo per distinguere direzione.
+3. **`IGmGuiModule` + `BaseModule` separati**: `IGmGuiModule` è il contratto pubblico (testabile con mock), `BaseModule` fornisce il boilerplate senza inquinare l'interfaccia.
+4. **Routing centrale in `MainWindow`**: ogni modulo dichiara i propri `typeId` di interesse; `MainWindow` costruisce la routing table una volta sola. Aggiungere un nuovo modulo non richiede modifiche a `MainWindow`.
+5. **`dock.setObjectName(module_id)`**: `QMainWindow.saveState()` identifica i dock per nome oggetto; senza questo campo il ripristino del layout è non deterministico.
+6. **`headers["data"]` come JSON string**: `JsonSerializer` serializza `payload` come `type().name()` (solo nome del tipo). I dati reali viaggiano in `headers["data"]` come stringa JSON, estratta dal bridge prima di emettere il Signal.
+7. **Stub in Phase 1 prima di qualsiasi widget reale**: permette di verificare il boot completo dell'applicazione e il sistema di routing prima di implementare widget complessi.
 │   ├── base_module.py      ← IGmGuiModule (ABC)
 │   ├── gm_map_module.py
 │   ├── gm_flow_module.py
