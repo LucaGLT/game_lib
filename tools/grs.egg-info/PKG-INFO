@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: grs
+Version: 0.3.0
+Summary: CLI tool per file GRS — Game Rule Script v0.3
+Requires-Python: >=3.9

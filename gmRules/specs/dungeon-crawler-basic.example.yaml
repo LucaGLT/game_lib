@@ -1,0 +1,411 @@
+meta:
+  game_id: dungeon_crawler
+  namespace: dungeon.core
+  schema_version: 1.0.0
+  compatibility:
+    gmRules_min: 0.5.0
+
+targets:
+  - id: Target_Hero
+    kind: ACTOR
+    selector: SELECTED_ACTOR
+    range_type: NONE
+    required: true
+    allow_self: true
+  - id: Target_Enemy
+    kind: ACTOR
+    selector: SELECTED_ENEMY
+    range_type: NONE
+    required: true
+    allow_self: true
+  - id: Target_Self
+    kind: ACTOR
+    selector: SELF
+    range_type: NONE
+    required: true
+    allow_self: true
+  - id: Target_Allies
+    kind: ACTOR
+    selector: ALL_ALLIES_IN_LOCATION
+    range_type: SAME_LOCATION
+    required: false
+    allow_self: false
+  - id: Target_AllEnemies
+    kind: ACTOR
+    selector: ALL_ENEMIES_IN_LOCATION
+    range_type: SAME_LOCATION
+    required: false
+    allow_self: true
+
+conditions:
+  - id: C_HeroExists
+    type: ACTOR_EXISTS
+    subject_id_ref: input.hero_id
+  - id: C_EnemyExists
+    type: ACTOR_EXISTS
+    subject_id_ref: input.enemy_id
+  - id: C_DestinationValid
+    type: LOCATION_EXISTS
+    location_ref: input.destination
+  - id: C_TargetIsAlive
+    type: ACTOR_HP_AT_OR_ABOVE
+    subject_id_ref: input.target_id
+    amount: 1
+  - id: C_CanMove
+    op: ALL_OF
+    children:
+      - ref: C_HeroExists
+      - ref: C_DestinationValid
+  - id: C_EnemyAdjacent
+    type: LOCATION_IS_ADJACENT
+    location_a_ref: input.hero_location
+    location_b_ref: input.enemy_location
+  - id: C_EnemyInRange
+    op: ALL_OF
+    children:
+      - ref: C_EnemyExists
+      - ref: C_EnemyAdjacent
+  - id: C_HeroHasWeapon
+    type: ACTOR_HAS_TAG
+    subject_id_ref: input.hero_id
+    tag: equipped_weapon
+  - id: C_CanAttack
+    op: ALL_OF
+    children:
+      - ref: C_HeroHasWeapon
+      - ref: C_EnemyInRange
+      - ref: C_TargetIsAlive
+  - id: C_EnemyNotDefended
+    op: NOT
+    children:
+      - type: ACTOR_HAS_STATUS
+        subject_id_ref: input.enemy_id
+        status_id: defended
+  - id: C_HeroWounded
+    type: ACTOR_HP_AT_OR_BELOW
+    subject_id_ref: input.hero_id
+    amount: 3
+  - id: C_HeroCanHeal
+    type: ACTOR_HAS_TAG
+    subject_id_ref: input.hero_id
+    tag: has_potion
+  - id: C_HasBigSword
+    type: ACTOR_HAS_TAG
+    subject_id_ref: input.hero_id
+    tag: bigword_available
+  - id: C_NoWeaponEquipped
+    op: NOT
+    children:
+      - type: ACTOR_HAS_TAG
+        subject_id_ref: input.hero_id
+        tag: equipped_weapon
+
+effects:
+  - id: E_MoveHero
+    type: MOVE_ACTOR
+    target: Target_Hero
+    value_ref: input.destination
+    optional: false
+    stop_on_failure: true
+  - id: E_AttackDamage
+    type: DEAL_DAMAGE
+    target: Target_Enemy
+    amount: 2
+    optional: false
+    stop_on_failure: true
+  - id: E_AttackDamageWithSword
+    type: DEAL_DAMAGE
+    target: Target_Enemy
+    amount: 4
+    optional: false
+    stop_on_failure: true
+  - id: E_DefenderCounterDmg
+    type: DEAL_DAMAGE
+    target: Target_Hero
+    amount: 1
+    optional: true
+    stop_on_failure: false
+  - id: E_DefendStatus
+    type: APPLY_STATUS
+    target: Target_Hero
+    status_id: defended
+    optional: false
+    stop_on_failure: true
+  - id: E_ReduceDamage
+    type: MANUAL_EFFECT
+    event_name: dungeon.defense.active
+    optional: true
+    stop_on_failure: false
+  - id: E_HealSmall
+    type: HEAL
+    target: Target_Hero
+    amount: 3
+    optional: false
+    stop_on_failure: true
+  - id: E_HealAdjacent
+    type: HEAL
+    target: Target_Allies
+    amount: 2
+    optional: true
+    stop_on_failure: false
+  - id: E_RemovePotion
+    type: REMOVE_TAG
+    target: Target_Hero
+    tag: has_potion
+    optional: false
+    stop_on_failure: true
+  - id: E_EquipBigSword
+    type: ADD_TAG
+    target: Target_Hero
+    tag: equipped_weapon
+    optional: false
+    stop_on_failure: true
+  - id: E_SetWeaponType
+    type: MANUAL_EFFECT
+    event_name: dungeon.weapon.bigword_equipped
+    optional: true
+    stop_on_failure: false
+  - id: E_AttackLog
+    type: EMIT_EVENT
+    target: Target_Enemy
+    event_name: dungeon.attack.performed
+    optional: false
+    stop_on_failure: true
+  - id: E_HealLog
+    type: EMIT_EVENT
+    target: Target_Self
+    event_name: dungeon.heal.performed
+    optional: false
+    stop_on_failure: true
+  - id: E_MoveLog
+    type: MANUAL_EFFECT
+    event_name: dungeon.move.performed
+    optional: true
+    stop_on_failure: false
+
+statuses:
+  - id: defended
+    stacking_policy:
+      mode: REFRESH
+    default_duration:
+      type: UNTIL_NEXT_TURN
+    on_apply:
+      - type: ADD_TAG
+        target: Target_Self
+        tag: defended
+        optional: false
+        stop_on_failure: true
+    on_remove:
+      - type: REMOVE_TAG
+        target: Target_Self
+        tag: defended
+        optional: false
+        stop_on_failure: true
+  - id: poisoned
+    stacking_policy:
+      mode: UNIQUE_BY_SOURCE
+    default_duration:
+      type: FOR_N
+      amount: 2
+    on_turn_end:
+      - type: DEAL_DAMAGE
+        target: Target_Self
+        amount: 1
+        optional: true
+        stop_on_failure: false
+    on_remove:
+      - type: REMOVE_TAG
+        target: Target_Self
+        tag: poisoned
+        optional: false
+        stop_on_failure: true
+  - id: wounded
+    stacking_policy:
+      mode: REFRESH
+    default_duration:
+      type: UNTIL_REMOVED
+    on_apply:
+      - type: ADD_TAG
+        target: Target_Self
+        tag: wounded
+        optional: false
+        stop_on_failure: true
+    on_remove:
+      - type: REMOVE_TAG
+        target: Target_Self
+        tag: wounded
+        optional: false
+        stop_on_failure: true
+  - id: empowered
+    stacking_policy:
+      mode: REFRESH
+    default_duration:
+      type: UNTIL_NEXT_TURN
+    on_apply:
+      - type: ADD_TAG
+        target: Target_Self
+        tag: empowered
+        optional: false
+        stop_on_failure: true
+  - id: stunned
+    stacking_policy:
+      mode: ONE_ONLY
+    default_duration:
+      type: UNTIL_NEXT_TURN
+    on_apply:
+      - type: ADD_TAG
+        target: Target_Self
+        tag: stunned
+        optional: false
+        stop_on_failure: true
+    on_remove:
+      - type: REMOVE_TAG
+        target: Target_Self
+        tag: stunned
+        optional: false
+        stop_on_failure: true
+
+rules:
+  - id: Move_Hero
+    priority: 100
+    enabled: true
+    target: Target_Hero
+    conditions:
+      ref: C_CanMove
+    effects:
+      - ref: E_MoveHero
+      - ref: E_MoveLog
+        optional: true
+  - id: Attack_Barehands
+    priority: 200
+    enabled: true
+    target: Target_Hero
+    conditions:
+      op: ALL_OF
+      children:
+        - ref: C_CanAttack
+        - op: NOT
+          children:
+            - ref: C_HeroHasWeapon
+    effects:
+      - ref: E_AttackDamage
+      - ref: E_AttackLog
+  - id: Attack_WithSword
+    priority: 210
+    enabled: true
+    target: Target_Hero
+    conditions:
+      op: ALL_OF
+      children:
+        - ref: C_CanAttack
+        - type: ACTOR_HAS_TAG
+          subject_id_ref: input.hero_id
+          tag: equipped_weapon
+    effects:
+      - ref: E_AttackDamageWithSword
+      - ref: E_AttackLog
+  - id: Defend_Stance
+    priority: 150
+    enabled: true
+    target: Target_Hero
+    conditions:
+      op: ALL_OF
+      children:
+        - ref: C_HeroExists
+        - ref: C_TargetIsAlive
+    effects:
+      - ref: E_DefendStatus
+      - ref: E_ReduceDamage
+        optional: true
+  - id: Heal_Self
+    priority: 120
+    enabled: true
+    target: Target_Hero
+    conditions:
+      ref: C_HeroCanHeal
+    effects:
+      - ref: E_HealSmall
+      - ref: E_RemovePotion
+      - ref: E_HealLog
+        optional: true
+  - id: Heal_Adjacent
+    priority: 125
+    enabled: true
+    target: Target_Hero
+    conditions:
+      ref: C_HeroCanHeal
+    effects:
+      - ref: E_HealAdjacent
+      - ref: E_RemovePotion
+  - id: Equip_BigSword
+    priority: 80
+    enabled: true
+    target: Target_Hero
+    conditions:
+      op: ALL_OF
+      children:
+        - ref: C_HasBigSword
+        - ref: C_NoWeaponEquipped
+    effects:
+      - ref: E_EquipBigSword
+      - ref: E_SetWeaponType
+        optional: true
+
+triggers:
+  - id: T_CleanupDefended
+    priority: 100
+    enabled: true
+    type: ON_ACTION_COMPLETED
+    conditions:
+      type: ACTOR_HAS_STATUS
+      subject_id_ref: event.actor_id
+      status_id: defended
+    effects:
+      - type: REMOVE_STATUS
+        target: Target_Self
+        status_id: defended
+        optional: true
+        stop_on_failure: false
+  - id: T_BlockIfStunned
+    priority: 50
+    enabled: true
+    type: ON_ACTION_SUBMITTED
+    conditions:
+      type: ACTOR_HAS_TAG
+      subject_id_ref: event.actor_id
+      tag: stunned
+    effects:
+      - type: MANUAL_EFFECT
+        event_name: dungeon.action.blocked
+        optional: true
+        stop_on_failure: false
+  - id: T_WoundedCheck
+    priority: 200
+    enabled: true
+    type: ON_ACTOR_DAMAGED
+    conditions:
+      op: ALL_OF
+      children:
+        - type: ACTOR_HP_AT_OR_BELOW
+          subject_id_ref: event.actor_id
+          amount: 4
+        - op: NOT
+          children:
+            - type: ACTOR_HAS_TAG
+              subject_id_ref: event.actor_id
+              tag: wounded
+    effects:
+      - type: ADD_TAG
+        target: Target_Self
+        tag: wounded
+        optional: false
+        stop_on_failure: true
+  - id: T_LogCombatEnd
+    priority: 999
+    enabled: true
+    type: ON_ACTION_COMPLETED
+    effects:
+      - type: MANUAL_EFFECT
+        event_name: dungeon.turn.completed
+        optional: true
+        stop_on_failure: false
