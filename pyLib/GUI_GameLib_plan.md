@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
 **Version:** 1.0.0
-**Status:** Phase 10 – Planned ⏳
+**Status:** Completo ✅
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -470,7 +470,33 @@ pyLib/
 
 ---
 
-### Phase 10 — Integration & End-to-End Testing ⏳
+### Phase 10 — Integration & End-to-End Testing ✅
+
+- [x] Creare `tests/mock_engine.py` — TCP mock che simula `IpSocketChannel` C++
+  - Si connette come client TCP a `:19000` (EngineReceiver) e invia frame eventi
+  - Ascolta come server TCP su `:19001` (CmdServer) e raccoglie comandi da EngineSender
+  - `send_event(type_id, data)` — invia envelope con `headers["data"]` JSON convention
+  - `wait_for_command(type_id, timeout)` — polling thread-safe sui comandi ricevuti
+  - `disconnect_event()` / `reconnect_event()` — simula disconnessione motore
+  - `start()` / `stop()` — lifecycle completo
+- [x] Scrivere `tests/test_integration.py` — 9 test E2E
+  - Fixture `e2e_env`: `MainWindow` con bridge patchati su porte 19000/19001 + `MockEngine`
+  - Helper `_wait(condition, timeout)`: polling `QApplication.processEvents()` per consegna segnali cross-thread
+- [x] **TestEventSequence** — eventi TCP → aggiornamenti moduli:
+  - `gmFlow.session.started` → `GmFlowModule._lbl_session` aggiornata
+  - `gmActor.snapshot` → `GmActorModule._actor_items` popolato
+  - `gmMap.map.loaded` → `MapScene` con 5 nodi e 4 archi
+  - `gmAlea.dice.roll_result` → label risultato + dettaglio aggiornati
+- [x] **TestCommandFlow** — pulsanti GUI → comandi arrivano al mock engine:
+  - Pulsante PAUSE → `'gmFlow.session.pause'` ricevuto da MockEngine
+  - Pulsante LANCIA → `'gmAlea.dice.roll_request'` con `count`/`faces` ricevuto
+- [x] **TestConnectionManagement** — resilienza bridge:
+  - `disconnect_event()` → `QStatusBar` torna `'Disconnesso'` entro 4 s
+  - Frame JSON malformato → nessun crash, nessuna eccezione
+- [x] **TestFullSessionSmoke** — sessione Tris completa (9 location, 2 attori, 3 turni, 2 lanci dado):
+  - Tutti i moduli aggiornati; PAUSE disabilitato dopo `session.completed`
+  - `player_x` marker su cella 8; storico dado con 2 voci
+- [x] Test suite `test_integration.py` — **9/9 PASSED** (13 s)
 
 - [ ] Creare `tests/mock_engine.py` — server TCP mock che simula `IpSocketChannel` C++
   - Accetta connessione su porta 9000 (riceve comandi GUI)
