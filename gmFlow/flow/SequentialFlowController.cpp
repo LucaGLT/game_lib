@@ -4,6 +4,7 @@
  */
 
 #include "gmFlow/flow/SequentialFlowController.hpp"
+#include "gmFlow/flow/FlowPhase.hpp"
 #include "gmFlow/core/GameContext.hpp"
 #include "gmFlow/actors/ActorRegistry.hpp"
 #include "gmFlow/events/EventBus.hpp"
@@ -63,7 +64,11 @@ void SequentialFlowController::start(GameContext& ctx)
     sev.session_id = ctx.session_id();
     ctx.event_bus().publish(sev);
 
-    open_next_turn(ctx);
+    // Open first turn only for non-self-ticking phases.
+    // A FlowPhase drives its own inner turns; the outer controller
+    // must not create a competing outer ActionWindow for it.
+    if (!dynamic_cast<FlowPhase*>(_phases[0].get()))
+        open_next_turn(ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +76,22 @@ void SequentialFlowController::start(GameContext& ctx)
 void SequentialFlowController::process(GameContext& ctx)
 {
     if (_session_complete || _rounds_exhausted) return;
+
+    // If the current phase is a FlowPhase it manages its own inner controller
+    // and ActionWindows.  Drive it once per outer tick and check completion.
+    if (_current_phase_index < _phases.size())
+    {
+        FlowPhase* fp =
+            dynamic_cast<FlowPhase*>(_phases[_current_phase_index].get());
+        if (fp)
+        {
+            fp->tick(ctx);
+            if (fp->is_complete(ctx))
+                advance_phase(ctx);
+            return;
+        }
+    }
+
     if (!_current_window)                       return;
     if (!_current_window->is_complete(ctx))     return;
 
@@ -122,9 +143,18 @@ void SequentialFlowController::process(GameContext& ctx)
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-bool SequentialFlowController::can_actor_act(const GameContext& /*ctx*/,
+bool SequentialFlowController::can_actor_act(const GameContext& ctx,
                                              const ActorId& actor) const
 {
+    // Delegate to the inner FlowPhase when it is the active phase.
+    if (_current_phase_index < _phases.size())
+    {
+        const FlowPhase* fp =
+            dynamic_cast<const FlowPhase*>(_phases[_current_phase_index].get());
+        if (fp)
+            return fp->can_actor_act(ctx, actor);
+    }
+
     if (!_current_window || _current_window->is_closed()) return false;
     return _current_window->can_submit(actor);
 }
@@ -139,10 +169,19 @@ void SequentialFlowController::on_action_completed(GameContext& /*ctx*/,
 }
 
 ValidationResult SequentialFlowController::accept_action(
-    GameContext& /*ctx*/,
+    GameContext& ctx,
     const ActorId& actor,
     std::unique_ptr<IAction> action)
 {
+    // Delegate to the inner FlowPhase controller when it is the active phase.
+    if (_current_phase_index < _phases.size())
+    {
+        FlowPhase* fp =
+            dynamic_cast<FlowPhase*>(_phases[_current_phase_index].get());
+        if (fp)
+            return fp->accept_action(ctx, actor, std::move(action));
+    }
+
     if (!_current_window) {
         return ValidationResult::fail(
             ValidationError::ACTION_WINDOW_CLOSED,
@@ -154,6 +193,15 @@ ValidationResult SequentialFlowController::accept_action(
 bool SequentialFlowController::is_session_complete(const GameContext& /*ctx*/) const
 {
     return _session_complete || _rounds_exhausted;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+IPhase* SequentialFlowController::current_phase() const
+{
+    if (_current_phase_index < _phases.size())
+        return _phases[_current_phase_index].get();
+    return nullptr;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +247,9 @@ void SequentialFlowController::advance_phase(GameContext& ctx)
     penev.previous_id = exiting_id;
     ctx.event_bus().publish(penev);
 
-    open_next_turn(ctx);
+    // A FlowPhase drives its own inner turns; skip opening an outer turn.
+    if (!dynamic_cast<FlowPhase*>(_phases[_current_phase_index].get()))
+        open_next_turn(ctx);
 }
 
 void SequentialFlowController::open_next_turn(GameContext& ctx)
