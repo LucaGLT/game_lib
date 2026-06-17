@@ -53,6 +53,11 @@ python -m grs <sottocomando> [argomenti]
 ### Installazione come comando `grs`
 
 ```bash
+# Da dentro la cartella tools/
+pip install -e .
+grs <sottocomando> [argomenti]
+
+# Oppure dalla root del progetto (game_lib/)
 pip install -e tools/
 grs <sottocomando> [argomenti]
 ```
