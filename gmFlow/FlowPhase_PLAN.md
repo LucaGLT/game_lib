@@ -1,10 +1,11 @@
 # gmFlow — FlowPhase Extension Plan
 
 **Version:** 2.0
-**Status:** Phase 5 — Planned ⏳
+**Status:** Phase 5–15 — Planned ⏳
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Scope:** Extension of existing gmFlow infrastructure (additive, backward-compatible)
+**Tracks:** FlowPhase (Ph 5–10) · gmFlow↔gmRules Integration (Ph 11–15)
 
 ---
 
@@ -296,6 +297,226 @@ esterne. Ogni test è indipendente (no shared fixtures state).
 
 ---
 
+---
+
+## Capitolo 2 — gmFlow ↔ gmRules Integration
+
+> Queste fasi sono **indipendenti** da FlowPhase (Fasi 5–10) e possono procedere
+> in parallelo. Dipendono solo dall'infrastruttura gmFlow V1 già completa.
+
+---
+
+### Decisioni di Design — Integrazione gmFlow/gmRules
+
+| # | Decisione | Scelta |
+|---|-----------|--------|
+| R1 | gmRules non dipende da gmFlow | Confermato — il contratto è basato su stringhe evento e `RuleContext` astratto |
+| R2 | Adapter in `gmFlow/bridges/` | L'adapter `GmRulesFlowBridge` vive in `gmFlow/bridges/` — dipende da entrambe le lib ma non le modifica |
+| R3 | Lifecycle hooks via EventBus | gmFlow pubblica eventi già esistenti (`EVT_TURN_STARTED` ecc.); l'adapter sottoscrive e invoca gmRules |
+| R4 | Action gateway | `IAction::validate()` può invocare gmRules via `RuleContext`; è game-specific code, non infrastruttura |
+| R5 | Payload minimo stabile | Ogni evento gateway porta: `actor_id`, `action_id`, `phase_id`, `round_index`, `turn_index` |
+| R6 | Outcome deterministico | Se gmRules blocca un'azione → `ValidationResult::fail(RULE_VIOLATION, reason)` |
+| R7 | FlowPhase e scope_prefix | Con FlowPhase attiva, il payload include anche `scope_prefix` per identificare il livello gerarchico |
+| R8 | Thread safety | Bridge sincrono (stessa strategia di `SyncDispatcher`); async fuori scope V2 |
+
+---
+
+### Phase 11 — FlowRulesGateway ⏳
+
+**Goal:** Interfaccia che connette il lifecycle di gmFlow al motore di regole gmRules.
+Nessuna modifica ai file esistenti di gmFlow o gmRules.
+
+**File nuovo:** `gmFlow/bridges/FlowRulesGateway.hpp`
+
+```cpp
+namespace gmFlow {
+
+/// Payload minimale passato a gmRules per ogni evento lifecycle.
+struct FlowRulesPayload {
+    std::string actor_id;       // attore corrente (vuoto se evento non-actor)
+    std::string action_id;      // azione in corso (vuoto se non applicabile)
+    std::string phase_id;       // fase corrente dal GameContext
+    std::string round_id;       // round corrente dal GameContext
+    std::string turn_id;        // turn corrente dal GameContext
+    std::string scope_prefix;   // prefisso PhaseContext (vuoto se root session)
+    std::string event_type;     // stringa EVT_xxx di gmFlow
+};
+
+/// Callback invocata dal bridge per ogni evento lifecycle.
+/// Il game engine implementa questo per delegare a gmRulesEngine.
+using FlowRulesCallback = std::function<bool(const FlowRulesPayload&)>;
+// Ritorna true se l'evento è consentito/passato; false se bloccato.
+
+/// Registra i callback sui lifecycle events dell'EventBus.
+void register_flow_rules_gateway(
+    EventBus&          event_bus,
+    FlowRulesCallback  on_turn_started,
+    FlowRulesCallback  on_turn_ended,
+    FlowRulesCallback  on_round_started,
+    FlowRulesCallback  on_round_ended,
+    FlowRulesCallback  on_phase_entered,
+    FlowRulesCallback  on_phase_exited,
+    FlowRulesCallback  on_window_opened,
+    FlowRulesCallback  on_window_closed,
+    FlowRulesCallback  on_action_submitted,   // pre-check
+    FlowRulesCallback  on_action_completed);  // post-check
+
+} // namespace gmFlow
+```
+
+Checklist:
+
+- [ ] Creare `gmFlow/bridges/` directory
+- [ ] Creare `gmFlow/bridges/FlowRulesGateway.hpp`
+  - Definire `struct FlowRulesPayload` con i campi R5
+  - Definire `using FlowRulesCallback`
+  - Dichiarare `register_flow_rules_gateway()`
+  - Include guard `#ifndef GMFLOW_FLOWRULESGATEWAY_HPP`
+  - Doxygen completo
+- [ ] Creare `gmFlow/bridges/FlowRulesGateway.cpp`
+  - Implementare `register_flow_rules_gateway()`:
+    sottoscrive all'`EventBus` per ogni evento elencato
+    chiama il callback corrispondente con payload costruito dall'evento
+  - Costruire `FlowRulesPayload` castando l'`IEvent` al tipo concreto
+    (`TurnStartedEvent`, `RoundStartedEvent`, `ActionSubmittedEvent`, ecc.)
+- [ ] Aggiungere `bridges/FlowRulesGateway.cpp` a `gmFlow/CMakeLists.txt`
+
+**Notes:**
+`register_flow_rules_gateway()` non ritorna nulla e non lancia — se un callback
+è `nullptr`, la sottoscrizione per quell'evento viene saltata silenziosamente.
+Il `scope_prefix` nel payload è vuoto quando si opera sul `GameContext` radice;
+viene popolato quando il chiamante passa un `PhaseContext` (Fase 11 è compatibile
+con FlowPhase ma non ne dipende).
+
+---
+
+### Phase 12 — ActionGateway (pre/post check) ⏳
+
+**Goal:** Meccanismo per bloccare o modificare un'azione prima e dopo l'esecuzione
+tramite gmRules, senza modificare `IAction` o `GameSession`.
+
+**Strategia:** `ActionGateway` è un adapter che wrappa una `IAction` esistente,
+aggiungendo un pre-check (via `validate()` esteso) e un post-check
+(via `on_completed` callback). Il game engine usa `ActionGateway::wrap()` per
+decorare ogni azione prima di passarla a `submit_action()`.
+
+**File nuovo:** `gmFlow/bridges/ActionGateway.hpp` / `.cpp`
+
+```cpp
+namespace gmFlow {
+
+/// Funzione di pre-check: ritorna fail se le regole bloccano l'azione.
+using ActionPreCheck  = std::function<ValidationResult(
+    const FlowRulesPayload&)>;
+
+/// Funzione di post-hook: chiamata dopo execute() con il risultato.
+using ActionPostHook  = std::function<void(
+    const FlowRulesPayload&, const ActionResult&)>;
+
+/// Wrappa una IAction con pre/post hooks gmRules.
+class ActionGateway : public IAction {
+public:
+    ActionGateway(std::unique_ptr<IAction> inner,
+                  FlowRulesPayload         payload,
+                  ActionPreCheck           pre_check,
+                  ActionPostHook           post_hook);
+
+    ValidationResult validate(const GameContext& ctx) const override;
+    ActionResult     execute(GameContext& ctx) override;
+
+    // Delega tutto il resto all'inner action
+    const ActionId&  id()           const override;
+    const ActorId&   actor_id()     const override;
+    ActionPriority   priority()     const override;
+    ActionStatus     status()       const override;
+    bool             is_async()     const override;
+    bool             requires_turn()const override;
+    bool             is_multi_step()const override;
+};
+
+} // namespace gmFlow
+```
+
+Checklist:
+
+- [ ] Creare `gmFlow/bridges/ActionGateway.hpp`
+  - Dichiarare `using ActionPreCheck` e `using ActionPostHook`
+  - Dichiarare `class ActionGateway : public IAction`
+  - Include guard `#ifndef GMFLOW_ACTIONGATEWAY_HPP`
+  - Doxygen su tutti i simboli pubblici
+- [ ] Creare `gmFlow/bridges/ActionGateway.cpp`
+  - `validate()`: chiama prima `_inner->validate()`; se ok chiama `_pre_check(_payload)`;
+    ritorna il primo fallimento
+  - `execute()`: chiama `_inner->execute()`; poi chiama `_post_hook(_payload, result)`;
+    ritorna il result dell'inner
+  - Tutti gli altri metodi delegano a `*_inner`
+- [ ] Aggiungere `bridges/ActionGateway.cpp` a `gmFlow/CMakeLists.txt`
+
+**Notes:**
+`ActionGateway` **non blocca** in `execute()` — il post-hook è informativo.
+Il blocco avviene solo in `validate()` via `pre_check`. Questa scelta garantisce
+che un'azione già in esecuzione non venga interrotta a metà. Il `_payload` viene
+costruito prima del `validate()` e include `phase_id`, `round_id`, `turn_id`
+letti dal `GameContext` al momento della submission. Con `FlowPhase` attivo, il
+chiamante può passare il `PhaseContext` corrente per ottenere gli ID locali.
+
+---
+
+### Phase 13 — Integration Tests ⏳
+
+**Goal:** Verificare il contratto completo gmFlow → gmRules su turno e round.
+
+- [ ] Creare `gmFlow/tests/test_flow_rules_integration.cpp`
+- [ ] **Test 1** — Gateway registrato: `EVT_TURN_STARTED` chiama il callback con
+  `actor_id` corretto
+- [ ] **Test 2** — Gateway registrato: `EVT_ROUND_STARTED` chiama il callback con
+  `round_id` corretto
+- [ ] **Test 3** — `ActionGateway` pre-check che ritorna `fail` → azione **non**
+  arriva in `execute()`
+- [ ] **Test 4** — `ActionGateway` pre-check che ritorna `ok` → `execute()` viene
+  chiamato
+- [ ] **Test 5** — `ActionGateway` post-hook chiamato con `ActionResult::success()`
+  dopo esecuzione riuscita
+- [ ] **Test 6** — `ActionGateway` post-hook chiamato con `ActionResult::failure()`
+  dopo esecuzione fallita
+- [ ] **Test 7** — Sequenza completa su un turno: `TURN_STARTED` → submit →
+  pre-check ok → execute → post-hook → `TURN_ENDED` — tutti i callback invocati
+  nell'ordine corretto
+- [ ] **Test 8** — Blocco da pre-check: `TURN_STARTED` scatta, azione bloccata da
+  `RULE_VIOLATION`, `TURN_ENDED` scatta comunque
+- [ ] **Test 9** — Con `FlowPhase`: eventi del sub-controller includono
+  `scope_prefix` nel payload
+- [ ] **Test 10** — Regressione: senza `ActionGateway`, il comportamento originale
+  di `SequentialFlowController` è invariato
+- [ ] Aggiornare `gmFlow/CMakeLists.txt` con test target
+  `gmFlow_flow_rules_integration`
+
+---
+
+### Phase 14 — Build Integration (Cap 2) ⏳
+
+- [ ] In `gmFlow/CMakeLists.txt`:
+  - Aggiungere `bridges/FlowRulesGateway.cpp`
+  - Aggiungere `bridges/ActionGateway.cpp`
+  - Aggiungere test target `gmFlow_flow_rules_integration`
+- [ ] `cmake --build build --config Debug` — 0 errori
+- [ ] `ctest --test-dir build -R gmFlow` — tutti i test passano (regressione zero)
+- [ ] `ctest --test-dir build -R gmFlow_flow_rules` — 10/10 PASS
+
+---
+
+### Phase 15 — Documentation (Cap 2) ⏳
+
+- [ ] Aggiornare `gmFlow/gmFlow_API.md`:
+  - Aggiungere sezione `bridges/ — Rules Integration`
+  - Documentare `FlowRulesGateway` con tabella eventi + payload
+  - Documentare `ActionGateway` con sequenza pre/post check
+  - Aggiungere esempio d'uso end-to-end (turno completo con regole)
+- [ ] Aggiornare `gmRules/specs/grs-integration-implementation-plan.md`:
+  - Marcare Capitolo 2 come completato quando Fase 14 è done
+
+---
+
 ## Dipendenze tra Fasi
 
 ```
@@ -307,16 +528,30 @@ Phase 6 (SequentialFlowController refactor)
     ▼
 Phase 7 (FlowPhase)
     │
-    ├─► Phase 8 (Tests)
-    └─► Phase 9 (Build integration) ──► Phase 10 (Documentation)
+    ├─► Phase 8 (Tests FlowPhase)
+    └─► Phase 9 (Build FlowPhase) ──► Phase 10 (Docs FlowPhase)
+
+
+Phase 11 (FlowRulesGateway)        ← indipendente da 5-10, parallela
+    │
+    ▼
+Phase 12 (ActionGateway)
+    │
+    ▼
+Phase 13 (Integration Tests)
+    │
+    └─► Phase 14 (Build Cap2) ──► Phase 15 (Docs Cap2)
 ```
 
-Fasi 5 e 6 sono **indipendenti** e possono essere sviluppate in parallelo.
-Fase 7 dipende da entrambe. Fasi 8, 9, 10 dipendono da Fase 7.
+FlowPhase (Fasi 5–10) e gmRules Integration (Fasi 11–15) sono **indipendenti** e
+possono procedere in parallelo. La Fase 9 (test `gmFlow_flow_phase` include il
+test 9 che usa entrambi) è l'unico punto di convergenza opzionale.
 
 ---
 
 ## Criteri di Accettazione
+
+### FlowPhase (Fasi 5–10)
 
 | Criterio | Verifica |
 |----------|----------|
@@ -329,9 +564,23 @@ Fase 7 dipende da entrambe. Fasi 8, 9, 10 dipendono da Fase 7.
 | IDs locali isolati | Test 2, 3, 4, 8 verificano nessuna corruzione del GameContext radice |
 | Build pulita (0 warning) | `cmake --build build --config Debug` — 0 errori, 0 warning |
 
+### gmRules Integration (Fasi 11–15)
+
+| Criterio | Verifica |
+|----------|----------|
+| Nessuna modifica a gmRules | `git diff gmRules/` mostra zero righe modificate |
+| Nessuna modifica a IFlowController / IPhase | File invariati |
+| Gateway callback invocati nell'ordine corretto | Test 7 verifica sequenza completa |
+| Blocco pre-check deterministico | Test 3 + 8: azione bloccata → `RULE_VIOLATION` coerente |
+| Post-hook sempre invocato | Test 5 + 6: sia su success che failure |
+| 10 test integrazione passano | `ctest -R gmFlow_flow_rules` — 10/10 PASS |
+| Regressione zero | `ctest -R gmFlow` — tutte le suite preesistenti passano |
+
 ---
 
 ## Riepilogo Impatto sui File Esistenti
+
+### FlowPhase (Fasi 5–10)
 
 | File | Tipo modifica | Dettaglio |
 |------|---------------|-----------|
@@ -339,9 +588,28 @@ Fase 7 dipende da entrambe. Fasi 8, 9, 10 dipendono da Fase 7.
 | `gmFlow/core/GameContext.cpp` | **Nessuna** | — |
 | `gmFlow/flow/SequentialFlowController.hpp` | **Minima** | `_round_index` → protected, `advance_phase` → virtual, `current_phase()` aggiunto |
 | `gmFlow/flow/SequentialFlowController.cpp` | **Minima** | Implementare `current_phase()` |
-| `gmFlow/CMakeLists.txt` | **Minima** | Aggiungere 2 sorgenti + 1 test target |
+| `gmFlow/flow/PhaseContext.hpp` | **NUOVO** | Subclasse di GameContext con IDs locali |
+| `gmFlow/flow/PhaseContext.cpp` | **NUOVO** | Implementazione |
+| `gmFlow/flow/FlowPhase.hpp` | **NUOVO** | IPhase con controller + PhaseContext interni |
+| `gmFlow/flow/FlowPhase.cpp` | **NUOVO** | Implementazione |
+| `gmFlow/tests/test_flow_phase.cpp` | **NUOVO** | 10 test cases |
+| `gmFlow/CMakeLists.txt` | **Minima** | +2 sorgenti +1 test target |
 | `gmFlow/gmFlow_API.md` | **Additiva** | Nuove sezioni, nessuna cancellazione |
-| Tutti gli altri file esistenti | **Nessuna** | — |
+| Tutti gli altri file gmFlow esistenti | **Nessuna** | — |
+
+### gmRules Integration (Fasi 11–15)
+
+| File | Tipo modifica | Dettaglio |
+|------|---------------|-----------|
+| `gmFlow/bridges/FlowRulesGateway.hpp` | **NUOVO** | Payload, callback type, register function |
+| `gmFlow/bridges/FlowRulesGateway.cpp` | **NUOVO** | Sottoscrizioni EventBus + dispatch callback |
+| `gmFlow/bridges/ActionGateway.hpp` | **NUOVO** | IAction wrapper con pre/post hook |
+| `gmFlow/bridges/ActionGateway.cpp` | **NUOVO** | Implementazione validate+execute con hooks |
+| `gmFlow/tests/test_flow_rules_integration.cpp` | **NUOVO** | 10 test casi |
+| `gmFlow/CMakeLists.txt` | **Minima** | +2 sorgenti bridges +1 test target |
+| `gmFlow/gmFlow_API.md` | **Additiva** | Sezione bridges/ aggiunta |
+| `gmRules/**` | **Nessuna** | gmRules non viene toccato |
+| `gmDispatch/**` | **Nessuna** | — |
 
 ---
 
