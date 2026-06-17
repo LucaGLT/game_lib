@@ -40,6 +40,15 @@ def _display_name(actor_id: str) -> str:
     return "Player X" if actor_id.endswith("X") else "Player O"
 
 
+def _phase_to_actor(phase: str) -> str | None:
+    """Maps Tris phase ids to actor symbols used by Flow timeline."""
+    if phase == "PLAYER1_TURN":
+        return "X"
+    if phase == "PLAYER2_TURN":
+        return "O"
+    return None
+
+
 def _envelope(type_id: str, payload: dict) -> dict:
     """Builds a module-facing envelope exposing *payload* via both access paths."""
     return {
@@ -126,8 +135,20 @@ class TrisEventAdapter:
         envelopes: list[dict] = [
             _envelope("gmFlow.session.started", {"session_id": "tris"})
         ]
+        envelopes.append(_envelope("gmFlow.round.started", {"round_id": 1}))
         if phase:
             envelopes.append(_envelope("gmFlow.phase.entered", {"phase_id": phase}))
+            actor = _phase_to_actor(phase)
+            if actor is not None:
+                envelopes.append(
+                    _envelope(
+                        "gmFlow.turn.started",
+                        {
+                            "turn_id": f"TURN_{actor}",
+                            "active_actors": [actor],
+                        },
+                    )
+                )
         # In Tris the dice are owned by the engine (1d2 starter): configure the
         # dice panel as 1D2 and lock the manual controls so the user cannot roll.
         envelopes.append(
@@ -143,6 +164,17 @@ class TrisEventAdapter:
         envelopes: list[dict] = [
             _envelope("gmFlow.phase.entered", {"phase_id": phase})
         ]
+        actor = _phase_to_actor(phase)
+        if actor is not None:
+            envelopes.append(
+                _envelope(
+                    "gmFlow.turn.started",
+                    {
+                        "turn_id": f"TURN_{actor}",
+                        "active_actors": [actor],
+                    },
+                )
+            )
         if phase == "GAME_OVER":
             envelopes.append(_envelope("gmFlow.session.completed", {}))
         return envelopes

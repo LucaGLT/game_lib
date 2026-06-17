@@ -12,33 +12,74 @@ app = QApplication([])
 m = GmFlowModule()
 m.widget()
 
-# Simula una sessione Tris.
-m.on_envelope({"typeId": "gmFlow.session.started", "data": {"session_id": "tris"}})
-m.on_envelope({"typeId": "gmFlow.phase.entered", "data": {"phase_id": "ON_GOING"}})
-m.on_envelope({"typeId": "gmFlow.round.started", "data": {"index": 1}})
+print("=== TEST LOGIC ===\n")
 
-# Simula turni alternati X e O.
+# Session 1
+print("Session 1 started")
+m.on_envelope({"typeId": "gmFlow.session.started", "data": {"session_id": "tris"}})
+print(f"  Session counter: {m._lbl_session.text()}")
+print(f"  Round label: {m._lbl_round.text()}")
+print(f"  Turn label: {m._lbl_turn.text()}")
+
+# Round 1
+print("\nRound 1 started")
+m.on_envelope({"typeId": "gmFlow.round.started", "data": {}})
+print(f"  Round label: {m._lbl_round.text()}")
+
+# Turns: X, O, X, O, X (5 turni in Tris)
+print("\nTurns:")
 for i in range(5):
     actor = "PLAYER_X" if i % 2 == 0 else "PLAYER_O"
+    actor_short = "X" if i % 2 == 0 else "O"
     m.on_envelope({"typeId": "gmFlow.turn.started", 
-                   "data": {"turn_id": actor, "active_actors": [actor]}})
+                   "data": {"turn_id": actor, "active_actors": [actor_short]}})
+    print(f"  Turn {i+1}: {actor_short}")
+    print(f"    Label: {m._lbl_turn.text()}")
+    print(f"    Turn actors list: {m._turn_actors}")
 
-m.on_envelope({"typeId": "gmFlow.phase.entered", "data": {"phase_id": "GAME_OVER"}})
-m.on_envelope({"typeId": "gmFlow.session.completed", "data": {}})
+print(f"\nSession 1 final state:")
+print(f"  Session: {m._session_count}")
+print(f"  Round: {m._round_count}")
+print(f"  Turn: {m._turn_count}")
+print(f"  Turn actors: {m._turn_actors}")
 
-print("Session    :", m._lbl_session.text())
-print("Phase      :", m._lbl_phase.text())
-print("Round      :", m._lbl_round.text())
-print("Turn       :", m._lbl_turn.text())
-print("Turn count :", m._turn_count)
-print("Round count:", m._round_count)
-print("Log entries:", m._log.count())
-print("Log visible:", m._log.isVisible())
-print("Status msg :", m._status_msg.text())
+# Session 2
+print("\n\nSession 2 started")
+m.on_envelope({"typeId": "gmFlow.session.started", "data": {"session_id": "tris"}})
+print(f"  Session counter: {m._lbl_session.text()}")
+print(f"  Round label: {m._lbl_round.text()}")
+print(f"  Turn label: {m._lbl_turn.text()}")
+print(f"  Turn actors reset: {m._turn_actors}")
 
-ok = (m._turn_count == 5 and m._round_count == 1 
-      and m._log.count() == 10
-      and "Sessione terminata" in m._status_msg.text()
-      and m._lbl_turn.text().startswith("⏱"))
-print("RESULT:", "PASS" if ok else "FAIL")
+# Round 1 (nuova partita)
+print("\nRound 1 started (partita 2)")
+m.on_envelope({"typeId": "gmFlow.round.started", "data": {}})
+print(f"  Round label: {m._lbl_round.text()}")
+
+# Turni: X, O, X (3 turni)
+print("\nTurns (partita 2):")
+for i in range(3):
+    actor = "PLAYER_X" if i % 2 == 0 else "PLAYER_O"
+    actor_short = "X" if i % 2 == 0 else "O"
+    m.on_envelope({"typeId": "gmFlow.turn.started", 
+                   "data": {"turn_id": actor, "active_actors": [actor_short]}})
+    print(f"  Turn {i+1}: {actor_short}")
+
+print(f"\nFinal state:")
+print(f"  Session: {m._session_count}")
+print(f"  Round: {m._round_count}")
+print(f"  Turn: {m._turn_count}")
+print(f"  Turn actors (partita 2): {m._turn_actors}")
+
+ok = (
+    m._session_count == 2
+    and m._round_count == 1
+    and m._turn_count == 3
+    and m._turn_actors == ["X", "O", "X"]
+    and "Session: 2" in m._lbl_session.text()
+    and "Round: 1" in m._lbl_round.text()
+    and "Turn: 3" in m._lbl_turn.text()
+)
+
+print("\nRESULT:", "PASS ✓" if ok else "FAIL ✗")
 sys.exit(0 if ok else 1)

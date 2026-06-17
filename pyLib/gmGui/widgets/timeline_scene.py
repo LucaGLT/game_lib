@@ -8,7 +8,7 @@ A vertical cyan line marks the current minimum timeline position.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPen
 from PySide6.QtWidgets import (
     QGraphicsLineItem,
     QGraphicsRectItem,
@@ -26,9 +26,12 @@ class TimelineScene(QGraphicsScene):
     moves when :meth:`advance_time` is called.
     """
 
-    _BLOCK_WIDTH: int = 60
-    _BLOCK_HEIGHT: int = 40
-    _pixels_per_unit: int = 8
+    _BLOCK_WIDTH: int = 70
+    _BLOCK_HEIGHT: int = 42
+    _BLOCK_GAP: int = 10
+    _LEFT_PADDING: int = 16
+    _TOP_PADDING: int = 10
+    _pixels_per_unit: int = _BLOCK_WIDTH + _BLOCK_GAP
 
     def __init__(self, parent: object = None) -> None:
         super().__init__(parent)
@@ -36,6 +39,7 @@ class TimelineScene(QGraphicsScene):
         self._selected_id: str | None = None
         self._current_time: int = 0
         self._time_line: QGraphicsLineItem | None = None
+        self._default_pens: dict[str, QPen] = {}
 
     def set_actors(self, actors: list[dict]) -> None:
         """Populates the scene with actor blocks from a snapshot.
@@ -44,35 +48,72 @@ class TimelineScene(QGraphicsScene):
         selection is re-applied if the actor is still present.
 
         Args:
-            actors: List of dicts with keys ``"actor_id"`` (str) and
-                    ``"timeline_position"`` (int).
+            actors: List of dicts with keys:
+                    - ``"actor_id"`` (str, required): unique identifier for dict key
+                    - ``"timeline_position"`` (int, required): x position
+                    - ``"label"`` (str, optional): display label (defaults to actor_id)
         """
         self.clear()
         self._actor_rects = {}
         self._time_line = None
+        self._default_pens = {}
 
-        inactive_pen: QPen = QPen(Qt.GlobalColor.darkGray, 1)
+        base_font: QFont = QFont("Segoe UI", 10)
+        base_font.setBold(True)
 
         for actor in actors:
             actor_id: str = str(actor.get("actor_id", "?"))
             pos: int = int(actor.get("timeline_position", 0))
-            x: float = float(pos * self._pixels_per_unit)
+            label_text: str = str(actor.get("label", actor_id))
+            x: float = float(self._LEFT_PADDING + pos * self._pixels_per_unit)
+            y: float = float(self._TOP_PADDING)
+
+            if label_text == "X":
+                pen: QPen = QPen(QColor("#1f78d1"), 2)
+                brush: QBrush = QBrush(QColor("#eaf4ff"))
+                text_color = QColor("#0b4f9c")
+            elif label_text == "O":
+                pen = QPen(QColor("#d64545"), 2)
+                brush = QBrush(QColor("#fff0f0"))
+                text_color = QColor("#992525")
+            else:
+                pen = QPen(QColor("#9aa3ad"), 1)
+                brush = QBrush(QColor("#f4f6f8"))
+                text_color = QColor("#7a828a")
 
             rect: QGraphicsRectItem = self.addRect(
-                x, 0.0,
+                x, y,
                 float(self._BLOCK_WIDTH), float(self._BLOCK_HEIGHT),
-                inactive_pen,
+                pen,
+                brush,
             )
-            label = self.addText(actor_id)
-            label.setPos(x + 2.0, 2.0)
+            self._default_pens[actor_id] = QPen(pen)
+
+            label = self.addText(label_text)
+            label.setDefaultTextColor(text_color)
+            label.setFont(base_font)
+            text_rect = label.boundingRect()
+            label_x = x + (self._BLOCK_WIDTH - text_rect.width()) / 2.0
+            label_y = y + (self._BLOCK_HEIGHT - text_rect.height()) / 2.0
+            label.setPos(label_x, label_y)
             label.setParentItem(rect)
             self._actor_rects[actor_id] = rect
 
+        scene_width = self._LEFT_PADDING + max(1, len(actors)) * self._pixels_per_unit + 20
+        scene_height = self._TOP_PADDING + self._BLOCK_HEIGHT + 20
+        self.setSceneRect(0.0, 0.0, float(scene_width), float(scene_height))
+
         # Vertical time cursor
-        x_cur: float = float(self._current_time * self._pixels_per_unit)
+        x_cur: float = float(
+            self._LEFT_PADDING
+            + self._current_time * self._pixels_per_unit
+            + self._BLOCK_WIDTH / 2
+        )
         self._time_line = self.addLine(
-            x_cur, -10.0,
-            x_cur, float(self._BLOCK_HEIGHT + 10),
+            x_cur,
+            float(self._TOP_PADDING - 8),
+            x_cur,
+            float(self._TOP_PADDING + self._BLOCK_HEIGHT + 8),
             QPen(Qt.GlobalColor.cyan, 2),
         )
 
@@ -87,9 +128,9 @@ class TimelineScene(QGraphicsScene):
         Safe to call when the scene has no actors yet (stores the id for later).
         """
         if self._selected_id is not None and self._selected_id in self._actor_rects:
-            self._actor_rects[self._selected_id].setPen(
-                QPen(Qt.GlobalColor.darkGray, 1)
-            )
+            old_pen: QPen | None = self._default_pens.get(self._selected_id)
+            if old_pen is not None:
+                self._actor_rects[self._selected_id].setPen(old_pen)
             self._actor_rects[self._selected_id].setZValue(0.0)
 
         self._selected_id = actor_id
@@ -103,13 +144,22 @@ class TimelineScene(QGraphicsScene):
         """
         self._current_time = new_time
         if self._time_line is not None:
-            x: float = float(new_time * self._pixels_per_unit)
-            self._time_line.setLine(x, -10.0, x, float(self._BLOCK_HEIGHT + 10))
+            x: float = float(
+                self._LEFT_PADDING
+                + new_time * self._pixels_per_unit
+                + self._BLOCK_WIDTH / 2
+            )
+            self._time_line.setLine(
+                x,
+                float(self._TOP_PADDING - 8),
+                x,
+                float(self._TOP_PADDING + self._BLOCK_HEIGHT + 8),
+            )
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _apply_highlight(self, actor_id: str) -> None:
         """Applies active-actor styling to *actor_id*'s rect."""
         rect: QGraphicsRectItem = self._actor_rects[actor_id]
-        rect.setPen(QPen(Qt.GlobalColor.yellow, 3))
+        rect.setPen(QPen(QColor("#f59e0b"), 3))
         rect.setZValue(1.0)

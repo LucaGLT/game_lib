@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPainter
 from PySide6.QtWidgets import (
     QGraphicsView,
     QHBoxLayout,
@@ -41,8 +41,10 @@ class GmFlowModule(BaseModule):
 
     def __init__(self) -> None:
         super().__init__()
-        self._turn_count: int = 0
+        self._session_count: int = 0
         self._round_count: int = 0
+        self._turn_count: int = 0
+        self._turn_actors: list[str] = []  # Track actor for each turn
         self._log_visible: bool = True
 
     @property
@@ -124,6 +126,10 @@ class GmFlowModule(BaseModule):
         self._timeline_scene: TimelineScene = TimelineScene()
         timeline_view = QGraphicsView(self._timeline_scene)
         timeline_view.setFixedHeight(100)
+        timeline_view.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        timeline_view.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         timeline_view.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
@@ -199,14 +205,19 @@ class GmFlowModule(BaseModule):
 
         if tid == "gmFlow.session.started":
             session_id: str = str(data.get("session_id", "?"))
-            self._lbl_session.setText(f"👥 Session: {session_id}")
-            self._turn_count = 0
+            self._session_count += 1
+            self._lbl_session.setText(f"👥 Session: {self._session_count}")
             self._round_count = 0
+            self._turn_count = 0
+            self._turn_actors = []
+            self._lbl_round.setText(f"🔄 Round: —")
+            self._lbl_turn.setText(f"⏱ Turn: —")
+            self._init_timeline()
             self._btn_pause.setEnabled(True)
             self._btn_stop.setEnabled(True)
             self._btn_resume.setEnabled(False)
             self._status_msg.setText("")
-            self._append_log(f"▶ Session started: {session_id}")
+            self._append_log(f"▶ Session {self._session_count} started: {session_id}")
 
         elif tid == "gmFlow.session.paused":
             self._btn_pause.setEnabled(False)
@@ -231,7 +242,6 @@ class GmFlowModule(BaseModule):
 
         elif tid == "gmFlow.round.started":
             self._round_count += 1
-            self._turn_count = 0
             self._lbl_round.setText(f"🔄 Round: {self._round_count}")
             self._append_log(f"🔄 Round {self._round_count} started")
 
@@ -241,10 +251,11 @@ class GmFlowModule(BaseModule):
         elif tid == "gmFlow.turn.started":
             self._turn_count += 1
             turn_id: str = str(data.get("turn_id", "?"))
-            self._lbl_turn.setText(f"⏱ Turn: {self._turn_count} ({turn_id})")
-            active: list = data.get("active_actors", [])
-            if active:
-                self._timeline_scene.select_actor(str(active[0]))
+            active_actors: list = data.get("active_actors", [])
+            active_name: str = str(active_actors[0]) if active_actors else "?"
+            self._turn_actors.append(active_name)
+            self._lbl_turn.setText(f"⏱ Turn: {self._turn_count}")
+            self._populate_timeline()
             self._append_log(f"⏱ Turn {self._turn_count}: {turn_id}")
 
         elif tid == "gmFlow.turn.ended":
@@ -255,6 +266,60 @@ class GmFlowModule(BaseModule):
 
         elif tid == "gmFlow.timeline.time_advanced":
             self._timeline_scene.advance_time(int(data.get("new_time", 0)))
+
+    # ── Timeline management ───────────────────────────────────────────────────
+
+    def _init_timeline(self) -> None:
+        """Initializes timeline with 9 placeholder turn blocks (for Tris max turns).
+        
+        Each block shows "—" and is in inactive (gray) state.
+        Uses unique slot IDs (slot_0 to slot_8) as dictionary keys.
+        """
+        placeholder_turns: list[dict] = []
+        for slot_idx in range(9):  # 0 to 8
+            placeholder_turns.append({
+                "actor_id": f"slot_{slot_idx}",  # Unique ID for dict key
+                "label": "—",                     # Display text
+                "timeline_position": slot_idx
+            })
+        
+        self._timeline_scene.set_actors(placeholder_turns)
+        self._timeline_scene.advance_time(0)
+
+    def _populate_timeline(self) -> None:
+        """Updates the timeline with actual turn data as turns are played.
+        
+        Each turn slot shows the actor name (X, O, etc) or placeholder (—).
+        Highlights the current active turn.
+        """
+        turns: list[dict] = []
+        
+        # Build 9 slots: filled with actors, rest with placeholders
+        for slot_idx in range(9):
+            if slot_idx < len(self._turn_actors):
+                # Slot has a real turn
+                actor_name = self._turn_actors[slot_idx]
+                turns.append({
+                    "actor_id": f"actor_{actor_name}_{slot_idx}",
+                    "label": actor_name,
+                    "timeline_position": slot_idx
+                })
+            else:
+                # Slot is empty, use placeholder
+                turns.append({
+                    "actor_id": f"placeholder_{slot_idx}",
+                    "label": "—",
+                    "timeline_position": slot_idx
+                })
+        
+        self._timeline_scene.set_actors(turns)
+        
+        # Highlight current turn actor
+        if self._turn_actors and self._turn_count <= len(self._turn_actors):
+            current_actor_id = f"actor_{self._turn_actors[self._turn_count - 1]}_{self._turn_count - 1}"
+            self._timeline_scene.select_actor(current_actor_id)
+        
+        self._timeline_scene.advance_time(self._turn_count - 1)
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
