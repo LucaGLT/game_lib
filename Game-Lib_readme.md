@@ -15,81 +15,40 @@ the `gmRules` DSL.
 
 ---
 
-## Libraries at a Glance (Updated)
+## Libraries at a Glance
 
-| Library | Namespace | Maturity | CMake root integration | API doc |
-| ------- | --------- | -------- | ---------------------- | ------- |
-| `gmAlea` | `gmAlea` | Production | Enabled | `gmAlea/gmAlea_API.md` |
-| `gmDispatch` | `GmDispatch` | Active | Enabled | `gmDispatch/gmDispatch_API.md` |
-| `gmFlow` | `gmFlow` | Core ready, ongoing | Enabled | `gmFlow/gmFlow_API.md` |
-| `gmLog` | `GmLog` | Production | Enabled | `gmLog/gmLog_API.md` |
-| `gmMap` | `gmMap` | In development | Disabled in root CMake | `gmMap/gmMap_API.md` |
-| `gmRules` | `gmRules` | Active | Enabled | `gmRules/gmRules_API.md` |
-| `gmSave` | `gmSave` | Production | Disabled in root CMake | `gmSave/gmSave_API.md` |
-| `gmActor` | `gmActor` | Early phases | Not integrated in root CMake | `gmActor/gmActor_API.md` |
+| Library | API Doc Link | Details |
+| ------- | ------------ | ------- |
+| `gmAlea` | [gmAlea_API.md](gmAlea/gmAlea_API.md) | v3.0 · Deterministic deck & dice toolkit |
+| `gmDispatch` | [gmDispatch_API.md](gmDispatch/gmDispatch_API.md) | v1.0 · Message/event dispatch layer |
+| `gmFlow` | [gmFlow_API.md](gmFlow/gmFlow_API.md) | v1.0 · Flow control framework |
+| `gmLog` | [gmLog_API.md](gmLog/gmLog_API.md) | v1.0 · Structured logging |
+| `gmMap` | [gmMap_API.md](gmMap/gmMap_API.md) | v1.0 (stub) · Topology-agnostic map model |
+| `gmRules` | [gmRules_API.md](gmRules/gmRules_API.md) | Rules toolkit (target/condition/effect/status) |
+| `gmSave` | [gmSave_API.md](gmSave/gmSave_API.md) | v1.0 · Generic JSON persistence |
+| `gmActor` | [gmActor_API.md](gmActor/gmActor_API.md) | v0.1.0 · Actor state management |
+
+> Each API doc contains the authoritative namespace, version, status, and detailed API reference.
 
 ---
 
-## Library Summaries
+## Library Details
 
-### gmAlea
+Each library has its own namespace, version, and detailed API reference.
+For complete information on any library, refer to its API document linked above.
 
-Deterministic deck and dice toolkit.
+### Quick Reference
 
-- Core components: `GmDeck`, `GmCompDeck`, `GmDice`, `StdDice`.
-- Supports seeded reproducibility, duplicate-token decks, and multi-zone card
-  lifecycle orchestration.
-
-### gmDispatch
-
-Message/event dispatch layer for decoupled engine components.
-
-- Components include dispatcher, routers, channels, serializers, and bridges.
-- `tests/` and `examples/` are present in the module.
-
-### gmFlow
-
-Flow controller framework (turns/phases/rounds/actions/event lifecycle).
-
-- Namespace: `gmFlow`.
-- API reports core infrastructure complete with `TimelineFlowController`.
-
-### gmLog
-
-Structured logging library with configurable sinks/formatters/dispatchers.
-
-- JSON Lines output.
-- Runtime and compile-time level filtering.
-
-### gmMap
-
-Topology-agnostic map model (`gmMap<ItemT>`) with locations, tiles, adjacency,
-items, and metadata.
-
-- Module contains implementation, tests, PLAN and REVIEW.
-- Currently not added at root CMake level.
-
-### gmRules
-
-Rules toolkit for targets, conditions, effects, and status lifecycle.
-
-- Public facade: `gmRules::gmRulesEngine`.
-- Includes `specs/` and dedicated tests.
-
-### gmSave
-
-Generic JSON save/load layer for C++ structs.
-
-- Versioned save envelope and `peek_version()`.
-- Uses vendored `nlohmann/json` (`json.hpp`).
-- Module is present but currently commented in root CMake.
-
-### gmActor
-
-Actor-state library (stats, statuses, modifiers, inventory, adapters).
-
-- API currently reports phase-based progress and pending implementations.
-- Not currently integrated in root CMake.
+| Library | Key Components | Main Use Case |
+| ------- | -------------- | ------------- |
+| **gmAlea** | `GmDeck`, `GmCompDeck`, `GmDice`, `StdDice` | Token shuffling, card zones, dice rolls |
+| **gmDispatch** | `Dispatcher`, `EventBusChannel`, `SyncDispatcher` | Event routing between engine components |
+| **gmFlow** | `GameSession`, `IFlowController`, `ActionQueue` | Turn/phase/action lifecycle management |
+| **gmLog** | `Logger`, `LoggerConfig`, `SyncDispatcher` | Structured JSON Lines logging |
+| **gmMap** | `gmMap<ItemT>`, `LocationId`, `TileId` | Board state without enforced coordinates |
+| **gmRules** | `gmRulesEngine`, `TargetResolver`, `ConditionEvaluator` | Target selection, condition checks, effects, status |
+| **gmSave** | `save()`, `load()`, `try_load()` | Generic JSON persistence with versioning |
+| **gmActor** | `ActorStore`, `StatBlock`, `InventoryState` | Actor state, stats, statuses, modifiers |
 
 ---
 
@@ -139,32 +98,51 @@ pip install -e tools/
 
 ---
 
-## Root CMake Status (Current)
+## Root CMake Integration Status
 
 According to `CMakeLists.txt` at repository root:
 
-- Enabled: `gmAlea`, `gmLog`, `gmDispatch`, `gmFlow`, `gmRules`
-- Disabled/commented: `gmMap`, `gmSave`
-- Not yet added: `gmActor`
+- **Enabled (built by default):**
+  - `gmAlea`
+  - `gmLog`
+  - `gmDispatch`
+  - `gmFlow`
+  - `gmRules`
+
+- **Disabled (commented, not built):**
+  - `gmMap` — in development, excluded to avoid build issues
+  - `gmSave` — production-ready, but excluded to limit root dependencies
+
+- **Not yet integrated:**
+  - `gmActor` — early-phase development, awaiting full API stabilization
 
 ---
 
-## What Was Missing or Outdated (Now Updated)
+## Updates in This README
 
-The previous README had these gaps now corrected:
+**Design change:** This README is now primarily a **navigation hub** and **CMake integration status** document.
+All authoritative information (namespace, version, API details, status, features) lives in each library's dedicated `*_API.md` file.
 
-- Missing libraries in the overview table:
-  - `gmFlow`
-  - `gmRules`
-  - `gmActor`
-- Missing tooling section for `grs` CLI (`tools/grs`), now added.
-- Incorrect global statement claiming all libs are dependency-free:
-  - corrected with explicit `gmSave/json.hpp` note.
-- Build section examples referenced old paths (`gmDeck/...`) not aligned with
-  current module layout (`gmAlea/...`), replaced with current high-level
-  root CMake integration status.
-- Status/integration visibility was incomplete:
-  - now explicitly split by maturity and root CMake integration state.
+### Why This Structure
+
+- **Single source of truth:** Library maintainers update only the API doc; README links remain valid.
+- **No duplication:** Namespace, version, and feature lists are *authored once* in the API doc.
+- **Easy discovery:** Readers know exactly where to find complete documentation for each library.
+
+### What Changed
+
+| Aspect | Before | After |
+| ------ | ------- | ----- |
+| Namespace/version in README | Duplicated from API docs | Link + version in quick reference |
+| Library summaries | Full feature lists | Quick reference table with main use case |
+| Single source of truth | Fragmented | Centralized in each `*_API.md` |
+| CMake integration state | Not visible | New dedicated section with clear status |
+
+### Validation
+
+To ensure consistency:
+- Read the API doc link for complete namespace, version, and status.
+- Refer to the [Root CMake Status](#root-cmake-status-current) section to see which libraries are built.
 
 ---
 
