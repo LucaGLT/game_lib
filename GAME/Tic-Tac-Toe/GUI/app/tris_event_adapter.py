@@ -13,9 +13,10 @@ Mapping summary
 - ``gmActor.actor.status_added``  → ``gmActor.actor.status_added`` (+stacks)
 - ``gmActor.actor.status_removed``→ ``gmActor.actor.status_removed`` (status_id)
 - ``gmFlow.session.started``      → ``gmFlow.session.started`` + ``gmFlow.phase.entered``
+                                     + ``gmAlea.dice.setup`` (1D2, locked)
 - ``gmFlow.session.phase_changed``→ ``gmFlow.phase.entered`` (+ ``gmFlow.session.completed``
                                      when the phase is ``GAME_OVER``)
-- ``gmAlea.dice_rolled``          → ``gmAlea.dice.roll_result``
+- ``gmAlea.dice_rolled``          → ``gmAlea.dice.setup`` (1D2, locked, with result)
 - everything else (map / rules)   → no dashboard translation (handled natively by
                                      :class:`GmTrisBoardModule`)
 
@@ -127,6 +128,14 @@ class TrisEventAdapter:
         ]
         if phase:
             envelopes.append(_envelope("gmFlow.phase.entered", {"phase_id": phase}))
+        # In Tris the dice are owned by the engine (1d2 starter): configure the
+        # dice panel as 1D2 and lock the manual controls so the user cannot roll.
+        envelopes.append(
+            _envelope(
+                "gmAlea.dice.setup",
+                {"mode": "standard", "count": 1, "faces": 2, "locked": True},
+            )
+        )
         return envelopes
 
     def _phase_changed(self, data: dict) -> list[dict]:
@@ -141,7 +150,19 @@ class TrisEventAdapter:
     # ── gmAlea translations ───────────────────────────────────────────────────
 
     def _dice_rolled(self, data: dict) -> list[dict]:
+        # The engine already rolled the 1d2: drive the dice panel with a single
+        # setup message that both configures it (1D2, locked) and shows the
+        # result, keeping the displayed dice consistent with what was rolled.
         value: int = int(data.get("value", 0))
         return [
-            _envelope("gmAlea.dice.roll_result", {"dice": [value], "total": value})
+            _envelope(
+                "gmAlea.dice.setup",
+                {
+                    "mode": "standard",
+                    "count": 1,
+                    "faces": 2,
+                    "locked": True,
+                    "result": {"dice": [value], "total": value},
+                },
+            )
         ]
