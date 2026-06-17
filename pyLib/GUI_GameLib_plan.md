@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.5.0
-**Status:** Phase 5 – Planned ⏳
+**Version:** 0.6.0
+**Status:** Phase 6 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -290,43 +290,40 @@ pyLib/
 
 ---
 
-### Phase 5 — GmActorModule ⏳
+### Phase 5 — GmActorModule ✅
 
 **typeId sottoscritti** (da `ActorEvents.hpp`):
-`gmActor.actor.hp_changed`, `gmActor.actor.status_added`, `gmActor.actor.status_removed`,
+`gmActor.snapshot`, `gmActor.actor.hp_changed`, `gmActor.actor.status_added`, `gmActor.actor.status_removed`,
 `gmActor.actor.moved_area`, `gmActor.actor.life_state_changed`,
 `gmActor.actor.item_equipped`, `gmActor.actor.item_unequipped`
 
-- [ ] Implementare `widgets/hp_bar.py` — `HpBar(QWidget)`
-  - `paintEvent`: disegna rettangolo pieno proporzionale a `current/max`
+- [x] Implementare `widgets/hp_bar.py` — `HpBar(QWidget)`
+  - `paintEvent`: disegna background grigio scuro + rettangolo fill colorato proporzionale a `current/max`
   - Colore: verde `> 50%`, giallo `20–50%`, rosso `< 20%`
-  - Metodo: `set_hp(current: int, max_hp: int)` con `QPropertyAnimation` sull'opacity al cambio
-- [ ] Implementare `GmActorModule._build_widget()`
-  - Layout orizzontale (splitter):
-    - Pannello sinistro: `QComboBox` filtro (`Tutti / Eroi / Mostri / Alleati`) + `QTreeWidget`
-      - Colonne: `Nome`, `HP`, `Stato`
-      - Raggruppamento per fazione (`FactionId`) come nodi radice
-    - Pannello destro (dettaglio attore selezionato):
-      - `QLabel` nome, `HpBar`, `QFormLayout` stats
-      - `QListWidget` status effetti (`StatusId`, stacks)
-      - `QListWidget` equipaggiamento (`ItemInstanceId`, slot)
-- [ ] Implementare `GmActorModule.on_envelope(msg)`
-  - `hp_changed`: aggiorna riga albero + `HpBar` pannello dettaglio
-  - `status_added` / `status_removed`: aggiorna colonna Stato + lista status
-  - `moved_area`: aggiorna tooltip riga (mostra `new_area`)
-  - `life_state_changed`: colorazione riga (`DEAD` → grigio, `DYING` → rosso)
-  - `item_equipped` / `item_unequipped`: aggiorna lista equipaggiamento
-- [ ] `QTreeWidget.itemSelectionChanged` → aggiorna pannello dettaglio
-- [ ] `QComboBox` filtro → filtra riga per fazione (mostra/nasconde `QTreeWidgetItem`)
-- [ ] Smoke test `test_gm_actor.py`
-  - Inietta sequenza: `hp_changed` (da 100 a 40), `status_added` (Avvelenato x2), `life_state_changed` (ALIVE→DYING)
-  - Verifica HpBar value, colore rosso, status presente in lista
+  - Metodo `set_hp(current, max_hp)`: aggiorna valori, `update()`, avvia animazione opacity 0.3→1.0 via `QGraphicsOpacityEffect`
+  - Metodi pubblici: `ratio() -> float`, `bar_color() -> QColor`
+- [x] Implementare `GmActorModule._build_widget()`
+  - Layout `QSplitter` orizzontale:
+    - Pannello sinistro: `QComboBox` filtro (dinamico da snapshot) + `QTreeWidget` 3 colonne (Nome/HP/Stato)
+    - Pannello destro: `QLabel` nome + `HpBar` + `QGroupBox` Status (`QListWidget`) + `QGroupBox` Equipaggiamento (`QListWidget`)
+- [x] Implementare `GmActorModule.on_envelope(msg)`
+  - `gmActor.snapshot` → crea item fazione radice + item attore foglia; popola `_actor_data`
+  - `hp_changed` → aggiorna colonna HP albero + `HpBar` se attore selezionato
+  - `status_added` / `status_removed` → aggiorna colonna Stato (contatore) + lista status se selezionato
+  - `moved_area` → imposta tooltip sull'item albero
+  - `life_state_changed` → colore riga (`DEAD` → grigio, `DYING` → rosso, `ALIVE` → default)
+  - `item_equipped` / `item_unequipped` → aggiorna lista equipaggiamento se selezionato
+- [x] `QTreeWidget.itemSelectionChanged` → `_refresh_detail()` aggiorna pannello destro
+- [x] `QComboBox` filtro → `setHidden()` sui nodi fazione radice
+- [x] Test suite `test_gm_actor.py` — **26/26 PASSED**
 
 **Notes:**
 
-- `QTreeWidget` usa un dizionario interno `_actor_items: dict[ActorId, QTreeWidgetItem]` per aggiornamenti O(1).
-- Il pannello dettaglio non ha un modello dati proprio: viene popolato direttamente al cambio di selezione rileggendo i dati dall'item dell'albero.
-- `FactionId` non arriva negli event payload; viene comunicato con un envelope `gmActor.snapshot` alla connessione iniziale.
+- `gmActor.snapshot` aggiunto a `subscribed_type_ids()` (non nel piano originale): necessario per ricevere lo stato iniziale degli attori con `faction_id`.
+- `_actor_items`, `_faction_items`, `_actor_data` sono inizializzati in `_build_widget()` (mai prima): `on_envelope` è sempre chiamato dopo `widget()`.
+- Fazioni aggiunte dinamicamente al `QComboBox` dal snapshot; `findText()` evita duplicati.
+- `QGraphicsOpacityEffect` (non `windowOpacity`): funziona anche su widget figlio.
+- Il pannello di dettaglio viene aggiornato solo per l'attore selezionato; albero sempre aggiornato.
 
 ---
 
