@@ -32,7 +32,16 @@ _MAX_HISTORY: int = 10
 class GmDiceModule(BaseModule):
     """Provides Standard (NdF) and Custom (weighted-face) dice rolling UI.
 
-    TypeIds: ``gmAlea.dice.roll_result``, ``gmAlea.dice.profiles_snapshot``.
+    The module can be driven manually (the user picks the mode/dice and presses
+    *LANCIA*) **or** entirely by the Core Engine through a single ad-hoc setup
+    message — see :meth:`_apply_setup`.
+
+    Subscribed typeIds
+    ------------------
+    - ``gmAlea.dice.setup``: engine-driven auto-configuration (mode, dice count,
+      faces, custom profiles) and, optionally, the roll itself.
+    - ``gmAlea.dice.roll_result``: a roll result to display.
+    - ``gmAlea.dice.profiles_snapshot``: the list of available custom profiles.
     """
 
     @property
@@ -49,6 +58,7 @@ class GmDiceModule(BaseModule):
 
     def subscribed_type_ids(self) -> list[str]:
         return [
+            "gmAlea.dice.setup",
             "gmAlea.dice.roll_result",
             "gmAlea.dice.profiles_snapshot",
         ]
@@ -177,33 +187,122 @@ class GmDiceModule(BaseModule):
                 "gmAlea.dice.roll_custom_request", {"profile": profile, "count": n}
             )
 
+    # ── Engine-driven configuration ───────────────────────────────────────────
+
+    def _set_controls_locked(self, locked: bool) -> None:
+        """Enables/disables every manual control so the engine can own the dice.
+
+        When *locked* is true the user can no longer change the mode, the dice
+        count/faces, the custom profile or press *LANCIA*: the Core Engine drives
+        configuration and rolls through ``gmAlea.dice.setup`` messages.
+        """
+        for control in (
+            self._mode_combo,
+            self._count_spin,
+            self._faces_spin,
+            self._profile_combo,
+            self._custom_count_spin,
+            self._roll_btn,
+        ):
+            control.setEnabled(not locked)
+
+    def _apply_setup(self, data: dict) -> None:
+        """Auto-configures the widgets from an engine ``gmAlea.dice.setup`` message.
+
+        Recognised payload fields (all optional)::
+
+            {
+                "mode":      "standard" | "custom",   # which page to show
+                "count":     int,                     # number of dice
+                "faces":     int,                     # faces per die (standard)
+                "profiles":  [str],                   # fill the custom profile combo
+                "profile":   str,                     # selected custom profile
+                "locked":    bool,                    # disable manual controls
+                "auto_roll": bool,                    # perform the roll immediately
+                "result":    {"dice": [int], "total": int}  # show a precomputed roll
+            }
+
+        Rolling is driven by the same message: if ``result`` is present it is
+        displayed directly (the engine already rolled); otherwise, when
+        ``auto_roll`` is true, the standard roll-request flow is triggered.
+        """
+        # ── Custom profiles list ──────────────────────────────────────────────
+        if "profiles" in data:
+            profiles: list[str] = [str(p) for p in data.get("profiles", [])]
+            self._profile_combo.clear()
+            for profile in profiles:
+                self._profile_combo.addItem(profile)
+
+        # ── Mode (standard / custom) ──────────────────────────────────────────
+        mode = str(data.get("mode", "")).lower()
+        if mode == "standard":
+            self._mode_combo.setCurrentIndex(0)
+        elif mode == "custom":
+            self._mode_combo.setCurrentIndex(1)
+
+        # ── Dice count / faces ────────────────────────────────────────────────
+        if "count" in data:
+            count = int(data.get("count", 1))
+            self._count_spin.setValue(count)
+            self._custom_count_spin.setValue(count)
+        if "faces" in data:
+            self._faces_spin.setValue(int(data.get("faces", 6)))
+
+        # ── Selected custom profile ───────────────────────────────────────────
+        if "profile" in data:
+            index = self._profile_combo.findText(str(data.get("profile", "")))
+            if index >= 0:
+                self._profile_combo.setCurrentIndex(index)
+
+        # ── Lock manual controls when the engine owns the dice ────────────────
+        self._set_controls_locked(bool(data.get("locked", False)))
+
+        # ── Roll, driven by the same message ──────────────────────────────────
+        result = data.get("result")
+        if isinstance(result, dict):
+            self._show_result(
+                [int(d) for d in result.get("dice", [])],
+                int(result.get("total", 0)),
+            )
+        elif bool(data.get("auto_roll", False)):
+            self._on_roll_clicked()
+
+    def _show_result(self, dice: list[int], total: int) -> None:
+        """Displays a roll result with the fade-in animation and history entry."""
+        self._result_label.setText(str(total))
+        self._detail_label.setText(" + ".join(str(d) for d in dice))
+
+        # Opacity fade-in animation on result label.
+        self._result_anim.stop()
+        self._result_anim.setStartValue(0.3)
+        self._result_anim.setEndValue(1.0)
+        self._result_anim.start()
+
+        # Insert at top of history, cap at MAX_HISTORY.
+        detail_str = ", ".join(str(d) for d in dice)
+        self._history_list.insertItem(0, f"{total}  [{detail_str}]")
+        while self._history_list.count() > _MAX_HISTORY:
+            self._history_list.takeItem(self._history_list.count() - 1)
+
     # ── Envelope routing ──────────────────────────────────────────────────────
 
     def on_envelope(self, msg: dict) -> None:
         tid = msg.get("typeId", "")
-        raw = msg.get("headers", {}).get("data", "{}")
+        raw = msg.get("headers", {}).get("data", None)
+        if raw is None:
+            raw = msg.get("data", {})
         try:
             data: dict = _json.loads(raw) if isinstance(raw, str) else raw
         except Exception:
             data = {}
 
-        if tid == "gmAlea.dice.roll_result":
+        if tid == "gmAlea.dice.setup":
+            self._apply_setup(data)
+
+        elif tid == "gmAlea.dice.roll_result":
             dice: list[int] = [int(d) for d in data.get("dice", [])]
             total: int = int(data.get("total", 0))
-            self._result_label.setText(str(total))
-            self._detail_label.setText(" + ".join(str(d) for d in dice))
-
-            # Opacity fade-in animation on result label.
-            self._result_anim.stop()
-            self._result_anim.setStartValue(0.3)
-            self._result_anim.setEndValue(1.0)
-            self._result_anim.start()
-
-            # Insert at top of history, cap at MAX_HISTORY.
-            detail_str = ", ".join(str(d) for d in dice)
-            self._history_list.insertItem(0, f"{total}  [{detail_str}]")
-            while self._history_list.count() > _MAX_HISTORY:
-                self._history_list.takeItem(self._history_list.count() - 1)
+            self._show_result(dice, total)
 
         elif tid == "gmAlea.dice.profiles_snapshot":
             profiles: list[str] = [str(p) for p in data.get("profiles", [])]
