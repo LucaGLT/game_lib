@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.6.0
-**Status:** Phase 6 – Planned ⏳
+**Version:** 0.7.0
+**Status:** Phase 7 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -327,39 +327,35 @@ pyLib/
 
 ---
 
-### Phase 6 — GmCompDeckModule ⏳
+### Phase 6 — GmCompDeckModule ✅
 
 **typeId sottoscritti** (eventi custom deck):
 `gmAlea.deck.card_moved`, `gmAlea.deck.zone_changed`, `gmAlea.deck.shuffled`, `gmAlea.deck.drawn`
 
-- [ ] Implementare `widgets/zone_list.py` — `ZoneList(QListWidget)`
-  - `setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)`
-  - `setDefaultDropAction(Qt.DropAction.MoveAction)`
-  - Segnale personalizzato `card_dropped = Signal(str, str, str)` — `(card_id, from_zone, to_zone)`
-  - Override `dropEvent`: emette `card_dropped` + chiama super
-- [ ] Implementare `GmCompDeckModule._build_widget()`
-  - `QComboBox` selezione deck (per supporto multi-player futuro)
-  - 5 colonne `ZoneList` (MainDeck, CardHand, PlayArea, DiscardPile, BanishZone)
-  - Etichetta contatore sotto ogni zona (`N carte`)
-  - Pulsanti contestuali: `[Draw 1]` (MainDeck), `[Shuffle Discard→Main]`
-- [ ] Implementare `GmCompDeckModule.on_envelope(msg)`
-  - `card_moved`: sposta `QListWidgetItem` dalla zona sorgente a quella destinazione
-  - `zone_changed`: full-refresh della zona indicata (replace tutti gli item)
-  - `shuffled`: aggiorna etichetta MainDeck + animazione breve (opacity flash)
-  - `drawn`: come `card_moved` da MainDeck a CardHand
-- [ ] Collegare `ZoneList.card_dropped` → `send_command("gmAlea.deck.move_card", {"card_id":..., "from":..., "to":...})`
-- [ ] Collegare `[Draw 1]` → `send_command("gmAlea.deck.draw", {"count": 1})`
-- [ ] Collegare `[Shuffle Discard→Main]` → `send_command("gmAlea.deck.recycle_discard", {})`
-- [ ] Smoke test `test_gm_comp_deck.py`
-  - `zone_changed` su MainDeck con 3 carte → verifica contatore = 3
-  - `card_moved` da MainDeck a CardHand → verifica contatori aggiornati
-  - Drag & drop simulato → verifica `send_command` chiamato con parametri corretti
+- [x] Implementare `widgets/zone_list.py` — `ZoneList(QListWidget)`
+  - `setDragDropMode(DragDrop)` default, `setDefaultDropAction(MoveAction)`
+  - `BanishZone` usa `setDragDropMode(NoDragDrop)` (imposto da `GmCompDeckModule`)
+  - Override `dropEvent`: per drop inter-zona emette `card_dropped` e chiama `event.ignore()` (il move visivo è guidato dalla risposta engine via `card_moved`); drop intra-zona chiama `super()`
+- [x] Implementare `GmCompDeckModule._build_widget()`
+  - `QComboBox` deck selector + 5 colonne `ZoneList` in `QGroupBox` individuali
+  - Contatore `QLabel` per zona (aggiornato a ogni modifica); opacity flash via `QGraphicsOpacityEffect`
+  - Pulsanti `[Draw 1]` e `[Shuffle Discard→Main]`
+- [x] Implementare `GmCompDeckModule.on_envelope(msg)`
+  - `zone_changed` → `clear()` + ripopolamento completo con `_add_card_item()` + `_update_counter()`
+  - `card_moved` → `takeItem()` dalla zona sorgente + `addItem()` nella zona destinazione + aggiorna entrambi i contatori
+  - `shuffled` → `_update_counter()` + `_flash_zone()` per effetto visivo
+  - `drawn` → delegato a `_handle_card_moved(MainDeck → CardHand)`
+- [x] Collegare `ZoneList.card_dropped` → `send_command("gmAlea.deck.move_card", {"card_id", "from", "to"})`
+- [x] Collegare `[Draw 1]` → `send_command("gmAlea.deck.draw", {"count": 1})`
+- [x] Collegare `[Shuffle Discard→Main]` → `send_command("gmAlea.deck.recycle_discard", {})`
+- [x] Test suite `test_gm_comp_deck.py` — **20/20 PASSED**
 
 **Notes:**
 
-- Gli item del `ZoneList` hanno `setData(Qt.ItemDataRole.UserRole, card_id)` per identificazione sicura.
-- La zona BanishZone ha `setDragDropMode(NoDragDrop)` lato drop: si può trascinare fuori ma non dentro (rispecchia `BanishPolicy` C++: `is_insert_only = true`).
-- Il contatore sotto la zona è un `QLabel` aggiornato ad ogni modifica.
+- Ogni `QListWidgetItem` ha `setData(Qt.ItemDataRole.UserRole, card_id)` per ricerca O(n) tramite `_find_item()`.
+- Pattern request/response: il drop lato GUI non sposta visivamente la carta (event.ignore()); il motore risponde con `card_moved` che aggiorna la UI. Questo previene inconsistenze di stato.
+- Il test del drag-drop simula la signal (`card_dropped.emit(...)`) senza veri eventi mouse: testa la connessione signal→send_command in modo pulito e affidabile.
+- Contatore: ‘0 carte’ / ‘1 carta’ (singolare) / ‘N carte’ (plurale).
 
 ---
 
