@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.4.0
-**Status:** Phase 4 – Planned ⏳
+**Version:** 0.5.0
+**Status:** Phase 5 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -244,7 +244,7 @@ pyLib/
 
 ---
 
-### Phase 4 — GmFlowModule ⏳
+### Phase 4 — GmFlowModule ✅
 
 **typeId sottoscritti** (da `FlowEvents.hpp` + `TimelineEvents.hpp`):
 `gmFlow.session.started`, `gmFlow.session.paused`, `gmFlow.session.completed`,
@@ -253,41 +253,40 @@ pyLib/
 `gmFlow.turn.started`, `gmFlow.turn.ended`,
 `gmFlow.timeline.actor_selected`, `gmFlow.timeline.time_advanced`
 
-- [ ] Implementare `widgets/timeline_scene.py` — `TimelineScene(QGraphicsScene)`
+- [x] Implementare `widgets/timeline_scene.py` — `TimelineScene(QGraphicsScene)`
   - Asse X = `TimelineValue` (da `TimelineActorSelectedEvent.timeline_position`)
   - Ogni attore = `QGraphicsRectItem` con label `actor_id`
-  - Attore attivo evidenziato con bordo colorato e z-order elevato
+  - Attore attivo evidenziato con bordo giallo e z-order elevato
   - Metodi: `set_actors(actors: list[dict])`, `select_actor(actor_id)`, `advance_time(new_time)`
-  - Linea verticale "tempo corrente" aggiornata da `advance_time()`
-- [ ] Implementare `GmFlowModule._build_widget()`
+  - Linea verticale ciano “tempo corrente” aggiornata da `advance_time()`
+- [x] Implementare `GmFlowModule._build_widget()`
   - Layout verticale:
     - Riga 1: label `Session`, label `Phase`, label `Round`, label `Turn`
     - Riga 2: `QGraphicsView` su `TimelineScene` (altezza 120px)
-    - Riga 3: pulsanti `[▶ RESUME]` `[■ PAUSE]` `[■ STOP]`
+    - Riga 3: pulsanti `[▶ RESUME]` `[⏸ PAUSE]` `[⏹ STOP]`
     - Riga 4: `QListWidget` log eventi (ultimi 20, insert-top)
-- [ ] Implementare `GmFlowModule.on_envelope(msg)`
-  - `gmFlow.session.started` → aggiorna label Session, abilita pulsanti
+- [x] Implementare `GmFlowModule.on_envelope(msg)`
+  - `gmFlow.session.started` → aggiorna label Session, abilita PAUSE e STOP
   - `gmFlow.session.paused` → disabilita PAUSE, abilita RESUME
   - `gmFlow.session.completed` → disabilita tutti i pulsanti
   - `gmFlow.phase.entered` → aggiorna label Phase, appende log
   - `gmFlow.round.started/ended` → aggiorna label Round
-  - `gmFlow.turn.started` → aggiorna label Turn + `timeline_scene.select_actor()`
+  - `gmFlow.turn.started` → aggiorna label Turn + `timeline_scene.select_actor(active_actors[0])`
   - `gmFlow.timeline.actor_selected` → `timeline_scene.select_actor()`
   - `gmFlow.timeline.time_advanced` → `timeline_scene.advance_time()`
-- [ ] Collegare pulsanti a `send_command()`
+- [x] Collegare pulsanti a `send_command()`
   - PAUSE → `send_command("gmFlow.session.pause", {})`
   - RESUME → `send_command("gmFlow.session.resume", {})`
   - STOP → `send_command("gmFlow.session.stop", {})`
-- [ ] Smoke test `test_gm_flow.py`
-  - Costruisce `GmFlowModule` standalone
-  - Inietta mock envelopes: `session.started`, `phase.entered`, `round.started`, `turn.started`, `timeline.actor_selected`
-  - Verifica che label e scene riflettano i valori attesi
+- [x] Test suite `test_gm_flow.py` — **21/21 PASSED**
 
 **Notes:**
 
-- `TimelineValue` è un intero (da `TimelineTypes.hpp`); l'asse X della scena è scalato con `pixels_per_unit = 8`.
-- Il log eventi usa `QListWidget.insertItem(0, text)` + `setMaximumCount(20)`.
+- `TimelineValue` è un intero (da `TimelineTypes.hpp`); l'asse X della scena è scalato con `_pixels_per_unit = 8`.
+- Il log eventi usa `QListWidget.insertItem(0, text)` + loop `takeItem` per mantenere al massimo 20 voci. `QListWidget` non espone `setMaximumCount()`.
 - I pulsanti vengono disabilitati all'avvio e abilitati al primo `session.started`.
+- `select_actor()` è sicuro da chiamare su scena vuota: salva `_selected_id` e lo riapplica al successivo `set_actors()`.
+- `advance_time()` prima di `set_actors()` aggiorna `_current_time` senza crash (`_time_line is None` check).
 
 ---
 
