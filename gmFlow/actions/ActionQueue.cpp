@@ -34,50 +34,50 @@ void ActionQueue::push(std::unique_ptr<IAction> action, ActionPriority priority)
     e.action   = std::move(action);
 
     // Insert before the first entry with a strictly lower priority to preserve FIFO.
-    const auto it = std::find_if(entries_.begin(), entries_.end(),
+    const auto it = std::find_if(_entries.begin(), _entries.end(),
         [&](const Entry& existing) {
             return higher_priority(priority, existing.priority);
         });
-    entries_.insert(it, std::move(e));
+    _entries.insert(it, std::move(e));
 }
 
 IAction& ActionQueue::front()
 {
-    if (entries_.empty()) {
+    if (_entries.empty()) {
         throw std::runtime_error("ActionQueue::front(): queue is empty");
     }
-    return *entries_.front().action;
+    return *_entries.front().action;
 }
 
 const IAction& ActionQueue::front() const
 {
-    if (entries_.empty()) {
+    if (_entries.empty()) {
         throw std::runtime_error("ActionQueue::front(): queue is empty");
     }
-    return *entries_.front().action;
+    return *_entries.front().action;
 }
 
 void ActionQueue::pop()
 {
-    if (entries_.empty()) {
+    if (_entries.empty()) {
         throw std::runtime_error("ActionQueue::pop(): queue is empty");
     }
-    entries_.erase(entries_.begin());
+    _entries.erase(_entries.begin());
 }
 
 bool ActionQueue::empty() const
 {
-    return entries_.empty();
+    return _entries.empty();
 }
 
 std::size_t ActionQueue::size() const
 {
-    return entries_.size();
+    return _entries.size();
 }
 
 void ActionQueue::clear()
 {
-    entries_.clear();
+    _entries.clear();
 }
 
 } // namespace gmFlow

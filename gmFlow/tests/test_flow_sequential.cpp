@@ -71,21 +71,21 @@ struct SimpleState : public gmFlow::GameState {
     int  actions_executed = 0;
     bool complete         = false;
 
-    const gmFlow::SessionId& session_id() const override { return id_; }
-    void on_session_started(const gmFlow::SessionId& id)  override { id_ = id; }
+    const gmFlow::SessionId& session_id() const override { return _id; }
+    void on_session_started(const gmFlow::SessionId& id)  override { _id = id; }
     void on_session_completed()                           override {}
 
 private:
-    gmFlow::SessionId id_;
+    gmFlow::SessionId _id;
 };
 
 // Phase that completes after `n` turns (counts ActionCompletedEvents).
 class CountingPhase : public gmFlow::IPhase {
 public:
     explicit CountingPhase(std::string id, int turns_to_complete)
-        : id_(std::move(id)), turns_needed_(turns_to_complete) {}
+        : _id(std::move(id)), _turns_needed(turns_to_complete) {}
 
-    gmFlow::PhaseId id() const override { return id_; }
+    gmFlow::PhaseId id() const override { return _id; }
 
     void on_enter(gmFlow::GameContext&) override { ++entered; }
     void on_exit(gmFlow::GameContext&)  override { ++exited;  }
@@ -96,26 +96,26 @@ public:
     }
     bool is_complete(const gmFlow::GameContext& ctx) const override {
         const SimpleState& s = static_cast<const SimpleState&>(ctx.state());
-        return s.actions_executed >= turns_needed_;
+        return s.actions_executed >= _turns_needed;
     }
 
     int entered = 0;
     int exited  = 0;
 
 private:
-    std::string id_;
-    int         turns_needed_;
+    std::string _id;
+    int         _turns_needed;
 };
 
 // Simple action that increments SimpleState::actions_executed.
 class CountAction : public gmFlow::IAction {
 public:
     CountAction(std::string id, std::string owner)
-        : id_(std::move(id)), owner_(std::move(owner)) {}
+        : _id(std::move(id)), _owner(std::move(owner)) {}
 
-    gmFlow::ActionId     id()     const override { return id_; }
-    gmFlow::ActorId      owner()  const override { return owner_; }
-    gmFlow::ActionStatus status() const override { return status_; }
+    gmFlow::ActionId     id()     const override { return _id; }
+    gmFlow::ActorId      owner()  const override { return _owner; }
+    gmFlow::ActionStatus status() const override { return _status; }
 
     gmFlow::ValidationResult validate(const gmFlow::GameContext&) const override {
         return gmFlow::ValidationResult::ok();
@@ -123,7 +123,7 @@ public:
     gmFlow::ActionResult execute(gmFlow::GameContext& ctx) override {
         SimpleState& s = static_cast<SimpleState&>(ctx.state());
         ++s.actions_executed;
-        status_ = gmFlow::ActionStatus::COMPLETED;
+        _status = gmFlow::ActionStatus::COMPLETED;
         return gmFlow::ActionResult::success();
     }
 
@@ -132,9 +132,9 @@ public:
     bool is_multi_step() const override { return false; }
 
 private:
-    gmFlow::ActionId     id_;
-    gmFlow::ActorId      owner_;
-    gmFlow::ActionStatus status_ = gmFlow::ActionStatus::CREATED;
+    gmFlow::ActionId     _id;
+    gmFlow::ActorId      _owner;
+    gmFlow::ActionStatus _status = gmFlow::ActionStatus::CREATED;
 };
 
 // Factory: build a GameSession with one or two actors and the given phases.
@@ -466,7 +466,7 @@ static void test_double_start_throws() {
         session->start();
         session->start(); // should throw
         fail(T, "second start() should have thrown");
-    } catch (const gmFlow::GameSessionError&) {
+    } catch (const gmFlow::EGameSessionError&) {
         pass(T);
     } catch (...) {
         fail(T, "wrong exception type");

@@ -15,6 +15,7 @@ add_subdirectory(gmAlea)
 # Other libraries (gmDispatch, gmLog, gmMap, …) can be added here when ready.
 add_subdirectory(gmLog)
 add_subdirectory(gmDispatch)
+add_subdirectory(gmFlow)
 # add_subdirectory(gmMap)
 add_subdirectory(gmRules)
 # add_subdirectory(gmSave)

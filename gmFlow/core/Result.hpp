@@ -77,9 +77,9 @@ public:
     const std::string& message() const;
 
 private:
-    bool            valid_   = true;
-    ValidationError error_   = ValidationError::NONE;
-    std::string     message_;
+    bool            _valid   = true;
+    ValidationError _error   = ValidationError::NONE;
+    std::string     _message;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,8 +117,8 @@ public:
     const std::string& reason() const;
 
 private:
-    bool        succeeded_ = true;
-    std::string reason_;
+    bool        _succeeded = true;
+    std::string _reason;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,11 +190,11 @@ public:
     const std::string& reason() const;
 
 private:
-    bool        complete_    = false;
-    bool        needs_input_ = false;
-    bool        failed_      = false;
-    std::string prompt_;
-    std::string reason_;
+    bool        _complete    = false;
+    bool        _needs_input = false;
+    bool        _failed      = false;
+    std::string _prompt;
+    std::string _reason;
 };
 
 } // namespace gmFlow

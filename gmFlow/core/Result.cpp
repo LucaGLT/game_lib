@@ -14,23 +14,23 @@ namespace gmFlow {
 ValidationResult ValidationResult::ok()
 {
     ValidationResult r;
-    r.valid_   = true;
-    r.error_   = ValidationError::NONE;
+    r._valid   = true;
+    r._error   = ValidationError::NONE;
     return r;
 }
 
 ValidationResult ValidationResult::fail(ValidationError error, std::string message)
 {
     ValidationResult r;
-    r.valid_   = false;
-    r.error_   = error;
-    r.message_ = std::move(message);
+    r._valid   = false;
+    r._error   = error;
+    r._message = std::move(message);
     return r;
 }
 
-bool                   ValidationResult::valid()   const { return valid_;   }
-ValidationError        ValidationResult::error()   const { return error_;   }
-const std::string&     ValidationResult::message() const { return message_; }
+bool                   ValidationResult::valid()   const { return _valid;   }
+ValidationError        ValidationResult::error()   const { return _error;   }
+const std::string&     ValidationResult::message() const { return _message; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ActionResult
@@ -39,20 +39,20 @@ const std::string&     ValidationResult::message() const { return message_; }
 ActionResult ActionResult::success()
 {
     ActionResult r;
-    r.succeeded_ = true;
+    r._succeeded = true;
     return r;
 }
 
 ActionResult ActionResult::failure(std::string reason)
 {
     ActionResult r;
-    r.succeeded_ = false;
-    r.reason_    = std::move(reason);
+    r._succeeded = false;
+    r._reason    = std::move(reason);
     return r;
 }
 
-bool               ActionResult::succeeded() const { return succeeded_; }
-const std::string& ActionResult::reason()    const { return reason_;    }
+bool               ActionResult::succeeded() const { return _succeeded; }
+const std::string& ActionResult::reason()    const { return _reason;    }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // StepResult
@@ -61,36 +61,36 @@ const std::string& ActionResult::reason()    const { return reason_;    }
 StepResult StepResult::done()
 {
     StepResult r;
-    r.complete_    = true;
-    r.needs_input_ = false;
-    r.failed_      = false;
+    r._complete    = true;
+    r._needs_input = false;
+    r._failed      = false;
     return r;
 }
 
 StepResult StepResult::needs_input(std::string prompt)
 {
     StepResult r;
-    r.complete_    = false;
-    r.needs_input_ = true;
-    r.failed_      = false;
-    r.prompt_      = std::move(prompt);
+    r._complete    = false;
+    r._needs_input = true;
+    r._failed      = false;
+    r._prompt      = std::move(prompt);
     return r;
 }
 
 StepResult StepResult::failed(std::string reason)
 {
     StepResult r;
-    r.complete_    = false;
-    r.needs_input_ = false;
-    r.failed_      = true;
-    r.reason_      = std::move(reason);
+    r._complete    = false;
+    r._needs_input = false;
+    r._failed      = true;
+    r._reason      = std::move(reason);
     return r;
 }
 
-bool               StepResult::complete()    const { return complete_;    }
-bool               StepResult::needs_input() const { return needs_input_; }
-bool               StepResult::failed()      const { return failed_;      }
-const std::string& StepResult::prompt()      const { return prompt_;      }
-const std::string& StepResult::reason()      const { return reason_;      }
+bool               StepResult::complete()    const { return _complete;    }
+bool               StepResult::needs_input() const { return _needs_input; }
+bool               StepResult::failed()      const { return _failed;      }
+const std::string& StepResult::prompt()      const { return _prompt;      }
+const std::string& StepResult::reason()      const { return _reason;      }
 
 } // namespace gmFlow

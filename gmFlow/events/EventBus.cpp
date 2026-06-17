@@ -22,17 +22,17 @@
 namespace gmFlow {
 
 EventBus::EventBus(std::shared_ptr<gmDispatch::GmDispatcher> dispatcher)
-    : dispatcher_(std::move(dispatcher))
+    : _dispatcher(std::move(dispatcher))
 {
-    if (!dispatcher_) {
+    if (!_dispatcher) {
         throw std::invalid_argument("EventBus: dispatcher must not be null");
     }
 }
 
 EventBus::~EventBus()
 {
-    for (auto& sub : subscriptions_) {
-        dispatcher_->unsubscribe(sub.first, sub.second);
+    for (auto& sub : _subscriptions) {
+        _dispatcher->unsubscribe(sub.first, sub.second);
     }
 }
 
@@ -49,8 +49,8 @@ void EventBus::subscribe(const EventType& event_type, Handler handler)
             std::any_cast<std::reference_wrapper<const IEvent>>(env.payload).get();
         h(ev);
     });
-    dispatcher_->subscribe(event_type, channel);
-    subscriptions_.emplace_back(event_type, std::move(channel));
+    _dispatcher->subscribe(event_type, channel);
+    _subscriptions.emplace_back(event_type, std::move(channel));
 }
 
 void EventBus::publish(const IEvent& event)
@@ -60,7 +60,7 @@ void EventBus::publish(const IEvent& event)
     env.source  = "gmFlow";
     // std::cref is safe: SyncDispatcher calls all handlers before returning.
     env.payload = std::cref(event);
-    dispatcher_->dispatch(env);
+    _dispatcher->dispatch(env);
 }
 
 } // namespace gmFlow

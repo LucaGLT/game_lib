@@ -12,10 +12,10 @@
 namespace gmFlow {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GameSessionError
+// EGameSessionError
 // ─────────────────────────────────────────────────────────────────────────────
 
-GameSessionError::GameSessionError(const std::string& message)
+EGameSessionError::EGameSessionError(const std::string& message)
     : std::runtime_error("GameSession: " + message)
 {}
 
@@ -27,96 +27,94 @@ GameSession::GameSession(SessionConfig                           config,
                          std::unique_ptr<IFlowController>        flow_controller,
                          std::unique_ptr<GameState>              state,
 				 std::shared_ptr<gmDispatch::GmDispatcher> dispatcher)
-    : config_(std::move(config))
-    , game_state_(std::move(state))
-    , event_bus_(std::move(dispatcher))
-    , context_(config_.session_id, *game_state_, actor_registry_, event_bus_)
-    , flow_controller_(std::move(flow_controller))
+    : _config(std::move(config))
+    , _game_state(std::move(state))
+    , _event_bus(std::move(dispatcher))
+    , _context(_config.session_id, *_game_state, _actor_registry, _event_bus)
+    , _flow_controller(std::move(flow_controller))
 {
-    if (!flow_controller_) {
+    if (!_flow_controller) {
         throw std::invalid_argument("GameSession: flow_controller must not be null");
     }
-    if (!game_state_) {
+    if (!_game_state) {
         throw std::invalid_argument("GameSession: state must not be null");
     }
 }
 
 void GameSession::start()
 {
-    if (session_state_ != SessionState::CREATED) {
-        throw GameSessionError("start() called on a session that is not in CREATED state");
+    if (_session_state != SessionState::CREATED) {
+        throw EGameSessionError("start() called on a session that is not in CREATED state");
     }
 
     // Populate actor registry from config.
-    for (Actor actor : config_.actors) {
-        actor_registry_.add(std::move(actor));
+    for (Actor actor : _config.actors) {
+        _actor_registry.add(std::move(actor));
     }
 
     // Notify state.
-    game_state_->on_session_started(config_.session_id);
+    _game_state->on_session_started(_config.session_id);
 
-    session_state_ = SessionState::RUNNING;
+    _session_state = SessionState::RUNNING;
 
     // TODO: Phase 4.7 — log session start via gmLog
-    flow_controller_->start(context_);
+    _flow_controller->start(_context);
 }
 
 void GameSession::tick()
 {
-    if (session_state_ != SessionState::RUNNING) {
-        throw GameSessionError("tick() called on a session that is not RUNNING");
+    if (_session_state != SessionState::RUNNING) {
+        throw EGameSessionError("tick() called on a session that is not RUNNING");
     }
 
     // Drain the deferred/reaction action queue.
-    // Normal turn actions are stored inside the ActionWindow and executed
-    // by ActionWindow::resolve() which is called from process() below.
-    while (!action_queue_.empty()) {
-        IAction& action = action_queue_.front();
-        const ActionResult result = action.execute(context_);
-        action_queue_.pop();
-        flow_controller_->on_action_completed(context_, result);
+    while (!_action_queue.empty()) {
+        IAction& action = _action_queue.front();
+        const ActionResult result = action.execute(_context);
+        _action_queue.pop();
+        _flow_controller->on_action_completed(_context, result);
     }
 
-    // Advance flow state (checks window completion, advances turn/phase/round).
-    flow_controller_->process(context_);
+    // Advance flow state.
+    _flow_controller->process(_context);
 
-    if (flow_controller_->is_session_complete(context_)) {
-        session_state_ = SessionState::COMPLETED;
-        game_state_->on_session_completed();
+    if (_flow_controller->is_session_complete(_context)) {
+        _session_state = SessionState::COMPLETED;
+        _game_state->on_session_completed();
         // EVT_SESSION_COMPLETED is published by the flow controller.
     }
 }
 
 void GameSession::pause()
 {
-    if (session_state_ != SessionState::RUNNING) {
-        throw GameSessionError("pause() called on a session that is not RUNNING");
+    if (_session_state != SessionState::RUNNING) {
+        throw EGameSessionError("pause() called on a session that is not RUNNING");
     }
-    session_state_ = SessionState::PAUSED;
+    _session_state = SessionState::PAUSED;
 
     // TODO: Phase 4.7 — serialise state snapshot via gmSave.
     SessionPausedEvent ev;
-    ev.session_id = config_.session_id;
-    event_bus_.publish(ev);
+    ev.session_id = _config.session_id;
+    _event_bus.publish(ev);
 }
 
 void GameSession::resume()
 {
-    if (session_state_ != SessionState::PAUSED) {
-        throw GameSessionError("resume() called on a session that is not PAUSED");
+    if (_session_state != SessionState::PAUSED) {
+        throw EGameSessionError("resume() called on a session that is not PAUSED");
     }
     // TODO: Phase 4.7 — restore state snapshot via gmSave.
-    session_state_ = SessionState::RUNNING;
+    _session_state = SessionState::RUNNING;
 
     SessionResumedEvent ev;
-    ev.session_id = config_.session_id;
-    event_bus_.publish(ev);
+    ev.session_id = _config.session_id;
+    _event_bus.publish(ev);
 }
 
 ValidationResult GameSession::submit_action(const ActorId&           actor,
                                              std::unique_ptr<IAction> action)
 {
-    if (session_state_ != SessionState::RUNNING) {
+    if (_session_state != SessionState::RUNNING) {
         return ValidationResult::fail(
             ValidationError::ACTION_WINDOW_CLOSED,
             "Session is not running.");
@@ -128,14 +126,14 @@ ValidationResult GameSession::submit_action(const ActorId&           actor,
     }
 
     // Stage 1: turn/window eligibility.
-    if (!flow_controller_->can_actor_act(context_, actor)) {
+    if (!_flow_controller->can_actor_act(_context, actor)) {
         return ValidationResult::fail(
             ValidationError::NOT_ACTOR_TURN,
             "Actor '" + actor + "' is not eligible to act right now.");
     }
 
     // Stage 2: game-rule validation.
-    ValidationResult vr = action->validate(context_);
+    ValidationResult vr = action->validate(_context);
     if (!vr.valid()) {
         return vr;
     }
@@ -144,41 +142,41 @@ ValidationResult GameSession::submit_action(const ActorId&           actor,
     ActionSubmittedEvent ev;
     ev.action_id = action->id();
     ev.actor_id  = actor;
-    event_bus_.publish(ev);
+    _event_bus.publish(ev);
 
     // The flow controller routes the action to the current ActionWindow.
-    return flow_controller_->accept_action(context_, actor, std::move(action));
+    return _flow_controller->accept_action(_context, actor, std::move(action));
 }
 
 bool GameSession::is_finished() const
 {
-    return session_state_ == SessionState::COMPLETED
-        || session_state_ == SessionState::FAILED;
+    return _session_state == SessionState::COMPLETED
+        || _session_state == SessionState::FAILED;
 }
 
 bool GameSession::is_paused() const
 {
-    return session_state_ == SessionState::PAUSED;
+    return _session_state == SessionState::PAUSED;
 }
 
 SessionState GameSession::state() const
 {
-    return session_state_;
+    return _session_state;
 }
 
 const GameContext& GameSession::context() const
 {
-    return context_;
+    return _context;
 }
 
 EventBus& GameSession::event_bus()
 {
-    return event_bus_;
+    return _event_bus;
 }
 
 const SessionId& GameSession::session_id() const
 {
-    return config_.session_id;
+    return _config.session_id;
 }
 
 } // namespace gmFlow

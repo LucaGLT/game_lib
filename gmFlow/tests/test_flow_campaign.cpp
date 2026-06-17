@@ -134,8 +134,8 @@ static void test_campaign_start_locked_throws() {
 
         gmFlow::Campaign c(std::move(defs));
         c.start_session("s2"); // s2 not yet unlocked
-        fail(T, "should have thrown CampaignError");
-    } catch (const gmFlow::CampaignError&) {
+        fail(T, "should have thrown ECampaignError");
+    } catch (const gmFlow::ECampaignError&) {
         pass(T);
     } catch (...) {
         fail(T, "wrong exception type");
@@ -273,8 +273,8 @@ static void test_complete_without_active_throws() {
 
         gmFlow::Campaign c(std::move(defs));
         c.complete_current_session(true); // no active session
-        fail(T, "should have thrown CampaignError");
-    } catch (const gmFlow::CampaignError&) {
+        fail(T, "should have thrown ECampaignError");
+    } catch (const gmFlow::ECampaignError&) {
         pass(T);
     } catch (...) {
         fail(T, "wrong exception type");
@@ -287,8 +287,8 @@ static void test_empty_definitions_throws() {
     const std::string T = "empty_definitions_throws";
     try {
         gmFlow::Campaign c({});
-        fail(T, "should have thrown CampaignError");
-    } catch (const gmFlow::CampaignError&) {
+        fail(T, "should have thrown ECampaignError");
+    } catch (const gmFlow::ECampaignError&) {
         pass(T);
     } catch (...) {
         fail(T, "wrong exception type");

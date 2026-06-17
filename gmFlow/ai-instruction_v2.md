@@ -2,13 +2,16 @@
 
 **Version:** 2.0
 **Date:** 2026-06-11
-**Status:** Planning
+**Status:** ⚠️ DEPRECATED — Use `.github/instructions/` rules instead
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 
-> This document supersedes `ai-instruction.md` and translates its design concepts
-> into a concrete, phased implementation plan aligned with the conventions of the
-> existing `game_lib` libraries (`gmLog`, `gmSave`, `gmDispatch`, `gmDeck`, `gmMap`).
+> ⚠️ **DEPRECATION NOTICE:** This document is superseded by the authoritative rules in
+> `.github/instructions/cpp-style.instructions.md` and workspace conventions in
+> `.github/copilot-instructions.md`. Refer to this file for **historical context only**.
+>
+> Historical role: Translated design concepts into a phased implementation plan aligned
+> with the conventions of the existing `game_lib` libraries (`gmLog`, `gmSave`, `gmDispatch`, `gmDeck`, `gmMap`).
 
 ---
 

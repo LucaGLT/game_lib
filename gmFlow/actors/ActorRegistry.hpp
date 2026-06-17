@@ -28,16 +28,16 @@
 namespace gmFlow {
 
 /**
- * @class UnknownActorError
+ * @class EUnknownActorError
  * @brief Thrown when an ActorId is not found in the registry.
  */
-class UnknownActorError : public std::runtime_error {
+class EUnknownActorError : public std::runtime_error {
 public:
     /**
      * @brief Constructs the error with the missing actor ID embedded in the message.
      * @param actor_id The ActorId that was not found.
      */
-    explicit UnknownActorError(const ActorId& actor_id);
+    explicit EUnknownActorError(const ActorId& actor_id);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ public:
      *
      * @param actor_id ID to look up.
      * @return const reference to the Actor.
-     * @throws UnknownActorError if the actor is not registered.
+     * @throws EUnknownActorError if the actor is not registered.
      */
     const Actor& get(const ActorId& actor_id) const;
 
@@ -93,8 +93,8 @@ public:
     std::size_t count() const;
 
 private:
-    std::unordered_map<ActorId, Actor> actors_;
-    std::vector<ActorId>               insertion_order_; ///< Preserves add() order for turn sequencing.
+    std::unordered_map<ActorId, Actor> _actors;
+    std::vector<ActorId>               _insertion_order; ///< Preserves add() order for turn sequencing.
 };
 
 } // namespace gmFlow
