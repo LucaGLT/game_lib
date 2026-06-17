@@ -1,7 +1,7 @@
 # gmFlow — Game Flow Control Framework
 
 **Version:** 2.0
-**Status:** Phase 5–7 — FlowPhase implemented (PhaseContext + FlowPhase + SequentialFlowController routing)
+**Status:** Phase 5–15 — FlowPhase + bridges/ (FlowRulesGateway + ActionGateway) implemented
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Source directory:** `gmFlow/`
@@ -68,6 +68,15 @@
     - [Minimal Sequential Session](#minimal-sequential-session)
     - [Multi-step Action](#multi-step-action)
     - [Campaign with Unlock Conditions](#campaign-with-unlock-conditions)
+  - [bridges/ — Rules Integration](#bridges--rules-integration)
+    - [FlowRulesGateway](#flowrulesgateway)
+      - [FlowRulesPayload](#flowrulespayload)
+      - [FlowRulesCallback](#flowrulescallback)
+      - [register\_flow\_rules\_gateway](#register_flow_rules_gateway)
+    - [ActionGateway](#actiongateway)
+      - [Supporting types](#supporting-types)
+      - [ActionGateway class](#actiongateway-class)
+    - [End-to-end Usage Example](#end-to-end-usage-example)
   - [Event Reference](#event-reference)
   - [Architectural Invariants](#architectural-invariants)
   - [Future Extensions (V2+)](#future-extensions-v2)
@@ -1455,6 +1464,215 @@ session.event_bus().subscribe(gmFlow::EVT_ACTION_FAILED,
 
 See [EventType.hpp](#eventtypehpp) for the full constant list and
 [FlowEvents.hpp](#floweventshpp) for all struct definitions.
+
+---
+
+## bridges/ — Rules Integration
+
+The `bridges/` folder provides opt-in adapters that connect gmFlow lifecycle
+events and actions to external rules engines.  No gmFlow core header
+depends on any bridge header.
+
+### FlowRulesGateway
+
+`gmFlow/bridges/FlowRulesGateway.hpp`
+
+Subscribes typed callbacks to the `EventBus` so an external rules engine
+can observe and optionally veto lifecycle transitions.
+
+#### FlowRulesPayload
+
+Flattened, copyable description of the context in which a lifecycle event
+occurred.  All fields are `std::string`; unused fields remain empty.
+
+```cpp
+struct FlowRulesPayload {
+    std::string actor_id;     // active actor (turn events) or submitter (actions)
+    std::string action_id;    // action being processed (action events only)
+    std::string phase_id;     // current phase at publication time
+    std::string round_id;     // current round at publication time
+    std::string turn_id;      // current turn at publication time
+    std::string scope_prefix; // non-empty when inside a FlowPhase sub-controller
+    std::string event_type;   // the EVT_* constant that triggered the callback
+};
+```
+
+#### FlowRulesCallback
+
+```cpp
+using FlowRulesCallback = std::function<bool(const FlowRulesPayload&)>;
+```
+
+Return `true` to allow the event to proceed; return `false` to signal a
+veto (informational only — the EventBus delivers the event regardless;
+veto semantics are enforced by the caller).  A `nullptr` callback is silently
+skipped.
+
+#### register_flow_rules_gateway
+
+```cpp
+void register_flow_rules_gateway(
+    EventBus&            bus,
+    FlowRulesCallback    on_turn_started,
+    FlowRulesCallback    on_turn_ended,
+    FlowRulesCallback    on_round_started,
+    FlowRulesCallback    on_round_ended,
+    FlowRulesCallback    on_phase_entered,
+    FlowRulesCallback    on_phase_exited,
+    FlowRulesCallback    on_window_opened,
+    FlowRulesCallback    on_window_closed,
+    FlowRulesCallback    on_action_submitted,
+    FlowRulesCallback    on_action_completed);
+```
+
+Subscribes up to ten callbacks in a single call.  Each non-null callback is
+registered as a permanent subscriber on `bus` for the corresponding event.
+
+| Parameter | Event constant subscribed |
+| --------- | ------------------------- |
+| `on_turn_started` | `EVT_TURN_STARTED` |
+| `on_turn_ended` | `EVT_TURN_ENDED` |
+| `on_round_started` | `EVT_ROUND_STARTED` |
+| `on_round_ended` | `EVT_ROUND_ENDED` |
+| `on_phase_entered` | `EVT_PHASE_ENTERED` |
+| `on_phase_exited` | `EVT_PHASE_EXITED` |
+| `on_window_opened` | `EVT_WINDOW_OPENED` |
+| `on_window_closed` | `EVT_WINDOW_CLOSED` |
+| `on_action_submitted` | `EVT_ACTION_SUBMITTED` |
+| `on_action_completed` | `EVT_ACTION_COMPLETED` |
+
+**Precondition:** `bus` must remain valid for the lifetime of the session.
+
+---
+
+### ActionGateway
+
+`gmFlow/bridges/ActionGateway.hpp`
+
+Decorator around `IAction` that adds a pre-check (in `validate()`) and a
+post-hook (in `execute()`).  Ownership of the inner action is transferred
+to the gateway.
+
+#### Supporting types
+
+```cpp
+using ActionPreCheck = std::function<ValidationResult(const FlowRulesPayload&)>;
+using ActionPostHook = std::function<void(const FlowRulesPayload&,
+                                          const ActionResult&)>;
+```
+
+- **`ActionPreCheck`** — Called inside `validate()` after the inner action's
+  own validation succeeds.  Returns `ValidationResult::ok()` to allow, or
+  `ValidationResult::fail(error, reason)` to block.  A `nullptr` pre-check
+  always passes.
+- **`ActionPostHook`** — Called inside `execute()` after the inner action
+  completes, regardless of success or failure.  The payload's `event_type`
+  field is set to `EVT_ACTION_COMPLETED` on success or `EVT_ACTION_FAILED`
+  on failure.  A `nullptr` post-hook is silently skipped.
+
+#### ActionGateway class
+
+```cpp
+class ActionGateway : public IAction {
+public:
+    ActionGateway(std::unique_ptr<IAction> inner,
+                  FlowRulesPayload         payload,
+                  ActionPreCheck           pre_check,
+                  ActionPostHook           post_hook);
+
+    // IAction overrides — all delegate to *_inner except where noted.
+    ActionId             id()     const override;
+    ActorId              owner()  const override;
+    ActionStatus         status() const override;
+    ValidationResult     validate(const GameContext& ctx) const override;
+    ActionResult         execute(GameContext& ctx) override;
+    bool is_async()      const override;
+    bool requires_turn() const override;
+    bool is_multi_step() const override;
+};
+```
+
+**Blocking principle (R6):** Only `validate()` may block an action.
+`execute()` always calls the inner action and then the post-hook;
+it never aborts based on post-hook output.
+
+---
+
+### End-to-end Usage Example
+
+Full turn sequence with lifecycle observation and a guarded action.
+
+```cpp
+#include "gmFlow/session/GameSession.hpp"
+#include "gmFlow/bridges/FlowRulesGateway.hpp"
+#include "gmFlow/bridges/ActionGateway.hpp"
+
+// 1. Build and start the session normally.
+auto session = make_session(cfg, std::move(controller),
+                            std::move(state), dispatcher);
+
+// 2. Register lifecycle callbacks.
+gmFlow::register_flow_rules_gateway(
+    session->event_bus(),
+    /* on_turn_started */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Turn started for actor: " + p.actor_id);
+        return true;
+    },
+    /* on_turn_ended   */ nullptr,
+    /* on_round_started */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Round: " + p.round_id);
+        return true;
+    },
+    nullptr, nullptr, nullptr, nullptr, nullptr,
+    /* on_action_submitted */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Action submitted: " + p.action_id);
+        return true;
+    },
+    /* on_action_completed */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Action completed: " + p.action_id);
+        return true;
+    });
+
+session->start(); // fires EVT_ROUND_STARTED, EVT_TURN_STARTED
+
+// 3. Wrap an action with a pre-check and post-hook.
+gmFlow::FlowRulesPayload base_payload;
+base_payload.actor_id = "hero";
+
+auto guarded = std::make_unique<gmFlow::ActionGateway>(
+    std::make_unique<AttackAction>("hero"),
+    base_payload,
+    /* pre_check */
+    [](const gmFlow::FlowRulesPayload&) -> gmFlow::ValidationResult {
+        // Consult external rules engine here.
+        bool allowed = rules_engine::can_attack();
+        if (!allowed)
+            return gmFlow::ValidationResult::fail(
+                gmFlow::ValidationError::RULE_VIOLATION, "attack not allowed");
+        return gmFlow::ValidationResult::ok();
+    },
+    /* post_hook */
+    [](const gmFlow::FlowRulesPayload& p,
+       const gmFlow::ActionResult&     r) {
+        if (r.succeeded())
+            rules_engine::notify_attack_completed(p.actor_id);
+        else
+            rules_engine::notify_attack_failed(p.actor_id, r.reason());
+    });
+
+// 4. Submit and tick — gateway pre-check runs inside validate().
+auto vr = session->submit_action("hero", std::move(guarded));
+if (!vr.valid()) {
+    // RULE_VIOLATION: action blocked; session still open, hero can retry.
+    log("Action blocked: " + vr.reason());
+} else {
+    session->tick(); // execute runs; post-hook fires; turn ends
+}
+```
 
 ---
 

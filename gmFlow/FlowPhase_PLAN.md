@@ -1,7 +1,7 @@
 # gmFlow — FlowPhase Extension Plan
 
 **Version:** 2.0
-**Status:** Phase 5–15 — Planned ⏳
+**Status:** Phase 5–15 — Completato ✅
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Scope:** Extension of existing gmFlow infrastructure (additive, backward-compatible)
@@ -431,58 +431,58 @@ chiamante può passare il `PhaseContext` corrente per ottenere gli ID locali.
 
 ---
 
-### Phase 13 — Integration Tests ⏳
+### Phase 13 — Integration Tests ✅
 
 **Goal:** Verificare il contratto completo gmFlow → gmRules su turno e round.
 
-- [ ] Creare `gmFlow/tests/test_flow_rules_integration.cpp`
-- [ ] **Test 1** — Gateway registrato: `EVT_TURN_STARTED` chiama il callback con
+- [x] Creare `gmFlow/tests/test_flow_rules_integration.cpp`
+- [x] **Test 1** — Gateway registrato: `EVT_TURN_STARTED` chiama il callback con
   `actor_id` corretto
-- [ ] **Test 2** — Gateway registrato: `EVT_ROUND_STARTED` chiama il callback con
+- [x] **Test 2** — Gateway registrato: `EVT_ROUND_STARTED` chiama il callback con
   `round_id` corretto
-- [ ] **Test 3** — `ActionGateway` pre-check che ritorna `fail` → azione **non**
+- [x] **Test 3** — `ActionGateway` pre-check che ritorna `fail` → azione **non**
   arriva in `execute()`
-- [ ] **Test 4** — `ActionGateway` pre-check che ritorna `ok` → `execute()` viene
+- [x] **Test 4** — `ActionGateway` pre-check che ritorna `ok` → `execute()` viene
   chiamato
-- [ ] **Test 5** — `ActionGateway` post-hook chiamato con `ActionResult::success()`
+- [x] **Test 5** — `ActionGateway` post-hook chiamato con `ActionResult::success()`
   dopo esecuzione riuscita
-- [ ] **Test 6** — `ActionGateway` post-hook chiamato con `ActionResult::failure()`
+- [x] **Test 6** — `ActionGateway` post-hook chiamato con `ActionResult::failure()`
   dopo esecuzione fallita
-- [ ] **Test 7** — Sequenza completa su un turno: `TURN_STARTED` → submit →
+- [x] **Test 7** — Sequenza completa su un turno: `TURN_STARTED` → submit →
   pre-check ok → execute → post-hook → `TURN_ENDED` — tutti i callback invocati
   nell'ordine corretto
-- [ ] **Test 8** — Blocco da pre-check: `TURN_STARTED` scatta, azione bloccata da
+- [x] **Test 8** — Blocco da pre-check: `TURN_STARTED` scatta, azione bloccata da
   `RULE_VIOLATION`, `TURN_ENDED` scatta comunque
-- [ ] **Test 9** — Con `FlowPhase`: eventi del sub-controller includono
+- [x] **Test 9** — Con `FlowPhase`: eventi del sub-controller includono
   `scope_prefix` nel payload
-- [ ] **Test 10** — Regressione: senza `ActionGateway`, il comportamento originale
+- [x] **Test 10** — Regressione: senza `ActionGateway`, il comportamento originale
   di `SequentialFlowController` è invariato
-- [ ] Aggiornare `gmFlow/CMakeLists.txt` con test target
+- [x] Aggiornare `gmFlow/CMakeLists.txt` con test target
   `gmFlow_flow_rules_integration`
 
 ---
 
-### Phase 14 — Build Integration (Cap 2) ⏳
+### Phase 14 — Build Integration (Cap 2) ✅
 
-- [ ] In `gmFlow/CMakeLists.txt`:
+- [x] In `gmFlow/CMakeLists.txt`:
   - Aggiungere `bridges/FlowRulesGateway.cpp`
   - Aggiungere `bridges/ActionGateway.cpp`
   - Aggiungere test target `gmFlow_flow_rules_integration`
-- [ ] `cmake --build build --config Debug` — 0 errori
-- [ ] `ctest --test-dir build -R gmFlow` — tutti i test passano (regressione zero)
-- [ ] `ctest --test-dir build -R gmFlow_flow_rules` — 10/10 PASS
+- [x] `cmake --build build --config Release` — 0 errori
+- [x] `ctest --test-dir build -R gmFlow` — 7/7 test passano (regressione zero)
+- [x] `ctest --test-dir build -R gmFlow_flow_rules` — 10/10 PASS
 
 ---
 
-### Phase 15 — Documentation (Cap 2) ⏳
+### Phase 15 — Documentation (Cap 2) ✅
 
-- [ ] Aggiornare `gmFlow/gmFlow_API.md`:
+- [x] Aggiornare `gmFlow/gmFlow_API.md`:
   - Aggiungere sezione `bridges/ — Rules Integration`
   - Documentare `FlowRulesGateway` con tabella eventi + payload
   - Documentare `ActionGateway` con sequenza pre/post check
   - Aggiungere esempio d'uso end-to-end (turno completo con regole)
-- [ ] Aggiornare `gmRules/specs/grs-integration-implementation-plan.md`:
-  - Marcare Capitolo 2 come completato quando Fase 14 è done
+- [x] Aggiornare `gmRules/specs/grs-integration-implementation-plan.md`:
+  - Capitolo 2 marcato come completato
 
 ---
 
