@@ -202,7 +202,7 @@ guidato ogni tick dalla sessione esterna; il genitore chiama `process()` sulla
 
 ---
 
-### Phase 8 — Unit Tests ⏳
+### Phase 8 — Unit Tests ✅
 
 **Goal:** Verificare isolamento dei contesti, condivisione dello stato, nesting.
 
@@ -235,34 +235,34 @@ esterne. Ogni test è indipendente (no shared fixtures state).
 
 ---
 
-### Phase 9 — Build Integration ⏳
+### Phase 9 — Build Integration ✅
 
 **Goal:** Aggiungere nuovi file al sistema di build CMake.
 
-- [ ] In `gmFlow/CMakeLists.txt`:
-  - Aggiungere `flow/PhaseContext.cpp` alla lista sorgenti della libreria
-  - Aggiungere `flow/FlowPhase.cpp` alla lista sorgenti della libreria
-  - Aggiungere target test `gmFlow_flow_phase` con `tests/test_flow_phase.cpp`
-- [ ] Eseguire `cmake --build build --config Debug`
-- [ ] Eseguire `ctest --test-dir build -R gmFlow` — tutti i test esistenti devono
+- [x] In `gmFlow/CMakeLists.txt`:
+  - Aggiunto `flow/PhaseContext.cpp` alla lista sorgenti della libreria
+  - Aggiunto `flow/FlowPhase.cpp` alla lista sorgenti della libreria
+  - Aggiunto target test `gmFlow_flow_phase` con `tests/test_flow_phase.cpp`
+- [x] Eseguire `cmake --build build --config Debug`
+- [x] Eseguire `ctest --test-dir build -R gmFlow` — tutti i test esistenti devono
   passare (regressione zero)
-- [ ] Eseguire `ctest --test-dir build -R gmFlow_flow_phase` — nuovi 10 test passano
+- [x] Eseguire `ctest --test-dir build -R gmFlow_flow_phase` — nuovi 10 test passano
 
 ---
 
-### Phase 10 — Documentation ⏳
+### Phase 10 — Documentation ✅
 
 **Goal:** Aggiornare la documentazione pubblica di gmFlow.
 
-- [ ] Aggiornare `gmFlow/gmFlow_API.md`:
-  - Aggiornare **Status** a `Phase 5 — FlowPhase implemented`
-  - Aggiungere sezione `PhaseContext` nella parte `flow/ — Flow Control`
-  - Aggiungere sezione `FlowPhase` nella parte `flow/ — Flow Control`
-  - Aggiungere esempio d'uso in `Usage Examples`:
-    "Epoch annidata con FlowPhase" (Session → Epoch → Morning/Evening)
-  - Aggiornare diagramma Architecture con `FlowPhase` e `PhaseContext`
-- [ ] Aggiungere `PhaseContextId` (alias `ScopeId`) in `gmFlow/core/Ids.hpp`
-  se ritenuto utile (opzionale)
+- [x] Aggiornato `gmFlow/gmFlow_API.md`:
+  - Aggiornato **Status** a `Phase 5–7 — FlowPhase implemented`
+  - Aggiornato **File Structure** con `PhaseContext.hpp/.cpp` e `FlowPhase.hpp/.cpp`
+  - Aggiornato **Table of Contents** con `PhaseContext` e `FlowPhase`
+  - Aggiunta sezione `PhaseContext` nella parte `flow/ — Flow Control`
+  - Aggiunta sezione `FlowPhase` nella parte `flow/ — Flow Control`
+  - Aggiornata sezione `SequentialFlowController` con V2 API (`current_phase()`, `_round_index` protected, `advance_phase()` virtual)
+  - Aggiunto esempio d’uso `Epoch Nested with FlowPhase` in `Usage Examples`
+- [ ] Aggiungere `PhaseContextId` (alias `ScopeId`) in `gmFlow/core/Ids.hpp` (opzionale)
 
 ---
 

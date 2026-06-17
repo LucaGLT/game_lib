@@ -1,7 +1,7 @@
 # gmFlow — Game Flow Control Framework
 
-**Version:** 1.0
-**Status:** Phase 3-4 — Core infrastructure complete (TimelineFlowController implemented)
+**Version:** 2.0
+**Status:** Phase 5–7 — FlowPhase implemented (PhaseContext + FlowPhase + SequentialFlowController routing)
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Source directory:** `gmFlow/`
@@ -53,6 +53,8 @@
       - [Round](#round)
       - [IPhase](#iphase)
       - [IFlowController](#iflowcontroller)
+      - [PhaseContext](#phasecontext)
+      - [FlowPhase](#flowphase)
       - [SequentialFlowController](#sequentialflowcontroller)
       - [TimelineFlowController](#timelineflowcontroller)
     - [session/ — Session Façade](#session--session-façade)
@@ -155,7 +157,7 @@ clang++ -std=c++17 -I. \
 ```text
 gmFlow/
 ├── ai-instructions.md             ← coding conventions for this library
-├── ai-instruction_v2.md           ← authoritative implementation plan
+├── FlowPhase_PLAN.md              ← V2 extension plan (FlowPhase + gmRules integration)
 ├── gmFlow_API.md                  ← this file
 │
 ├── core/
@@ -180,7 +182,9 @@ gmFlow/
 │   ├── Round.hpp / .cpp           ← round container with 1-based index
 │   ├── IPhase.hpp                 ← interface: on_enter, on_exit, available_actions
 │   ├── IFlowController.hpp        ← interface: start, process, can_actor_act
-│   └── SequentialFlowController.hpp / .cpp ← default sequential implementation
+│   ├── SequentialFlowController.hpp / .cpp ← default sequential implementation
+│   ├── PhaseContext.hpp / .cpp    ← [V2] GameContext subclass with isolated IDs
+│   └── FlowPhase.hpp / .cpp       ← [V2] IPhase that owns an IFlowController
 │
 ├── actors/
 │   ├── Actor.hpp                  ← ActorId + ActorType
@@ -205,7 +209,9 @@ gmFlow/
     ├── test_action_queue.cpp
     ├── test_action_window.cpp
     ├── test_flow_sequential.cpp
-    └── test_flow_campaign.cpp
+    ├── test_flow_campaign.cpp
+    ├── test_timeline_flow_controller.cpp
+    └── test_flow_phase.cpp        ← [V2] 10 tests for PhaseContext + FlowPhase
 ```
 
 ---
@@ -854,7 +860,10 @@ public:
 
 #### SequentialFlowController
 
-Default implementation for classic sequential-turn games.
+Default implementation for classic sequential-turn games.  In V2 it transparently
+recognises `FlowPhase` instances and routes `accept_action()`, `can_actor_act()`,
+and per-tick `process()` into the inner controller without exposing the nesting
+to `GameSession`.
 
 ```cpp
 class SequentialFlowController : public IFlowController {
@@ -864,10 +873,18 @@ public:
 
     // IFlowController — see interface above.
 
+    // [V2] Returns the currently active IPhase*, nullptr if session is complete.
+    IPhase* current_phase() const;
+
 protected:
+    int _round_index;  // [V2] promoted to protected for FlowPhase subclasses
+
     // Override to customise actor ordering per phase (initiative, priority, etc.).
     virtual std::vector<ActorId>
         determine_turn_order(const GameContext& ctx) const;
+
+    // [V2] Made virtual so subclasses can hook phase-transition timing.
+    virtual void advance_phase(GameContext& ctx);
 };
 ```
 
@@ -885,7 +902,82 @@ Supported game archetypes without subclassing:
 
 ---
 
-#### TimelineFlowController
+#### PhaseContext
+
+`[V2]` A `GameContext` subclass that provides **isolated** phase/round/turn IDs
+for an inner `IFlowController` while **sharing** `GameState`, `ActorRegistry`,
+and `EventBus` from the parent context by reference.
+
+```cpp
+class PhaseContext : public GameContext
+{
+public:
+    // Constructs a PhaseContext borrowing all services from parent.
+    // scope_prefix must not be empty (e.g. "epoch_1", "encounter_2").
+    PhaseContext(GameContext& parent, std::string scope_prefix);
+
+    // Returns the scope prefix supplied at construction.
+    const std::string& scope_prefix() const;
+};
+```
+
+`set_current_round_id()`, `set_current_phase_id()`, `set_current_turn_id()` are
+inherited from `GameContext` and write **only** into this object — the parent
+context is never modified.  Mutations to `GameState` (via `state()`) are visible
+at every nesting level because both contexts hold a reference to the same object.
+
+---
+
+#### FlowPhase
+
+`[V2]` An `IPhase` implementation that owns an `IFlowController` and a
+`PhaseContext`.  From the enclosing controller's perspective it is a plain
+`IPhase`; internally it runs a complete sub-flow (rounds, turns, actions).
+
+```cpp
+class FlowPhase : public IPhase
+{
+public:
+    // scope_prefix becomes the phase ID returned by id().
+    // controller must not be null.
+    FlowPhase(std::string                      scope_prefix,
+              std::unique_ptr<IFlowController> controller);
+
+    // IPhase overrides.
+    PhaseId id()                                                  const override;
+    void    on_enter(GameContext& parent_ctx)                           override;
+    void    on_exit(GameContext& ctx)                                   override;
+    std::vector<std::unique_ptr<IAction>>
+            available_actions(const GameContext& ctx,
+                              const ActorId& actor)               const override;
+    bool    is_complete(const GameContext& ctx)                   const override;
+
+    // FlowPhase-specific: drive the inner controller one tick.
+    void tick(GameContext& ctx);
+
+    // Routing helpers used by SequentialFlowController.
+    ValidationResult accept_action(GameContext& ctx,
+                                   const ActorId& actor,
+                                   std::unique_ptr<IAction> action);
+    bool             can_actor_act(const GameContext& ctx,
+                                   const ActorId& actor) const;
+
+    // Returns the owned PhaseContext. Throws std::logic_error before on_enter().
+    const PhaseContext& phase_context() const;
+    const std::string&  scope_prefix()  const;
+};
+```
+
+| Invariant | Guarantee |
+| --------- | --------- |
+| `GameState` shared | Mutations by inner actions visible at all nesting levels |
+| IDs isolated | `PhaseContext.current_round_id()` never overwrites parent `GameContext` |
+| EventBus shared | Inner events (ROUND_STARTED, TURN_STARTED…) arrive on the root session bus |
+| Backward compatible | `GameSession`, `IPhase`, `IFlowController` are unchanged |
+
+---
+
+
 
 Continuous-timeline turn selection.  The actor with the **lowest timeline position**
 acts next.  Ties are broken by a secondary rank, then by insertion order (stable sort).
@@ -1265,6 +1357,85 @@ campaign.set_event_callback([](const std::string& type, const gmFlow::SessionId&
 campaign.start_session("scenario_1");
 campaign.complete_current_session(true);  // unlocks scenario_2
 ```
+
+---
+
+### Epoch Nested with FlowPhase
+
+Demonstrates a two-level hierarchy: Session → Epoch → Morning/Evening.
+The outer session only calls `start()`, `submit_action()`, and `tick()`;
+it has no knowledge of the inner Epoch structure.
+
+```cpp
+#include "gmFlow/flow/FlowPhase.hpp"
+#include "gmFlow/flow/PhaseContext.hpp"
+
+// Inner sub-phases of the Epoch.
+class MorningPhase : public gmFlow::IPhase {
+public:
+    gmFlow::PhaseId id() const override { return "morning"; }
+    void on_enter(gmFlow::GameContext&) override {}
+    void on_exit(gmFlow::GameContext&)  override {}
+    std::vector<std::unique_ptr<gmFlow::IAction>>
+    available_actions(const gmFlow::GameContext&,
+                      const gmFlow::ActorId&) const override { return {}; }
+    bool is_complete(const gmFlow::GameContext& ctx) const override {
+        return static_cast<const MyState&>(ctx.state()).morning_done;
+    }
+};
+
+class EveningPhase : public gmFlow::IPhase {
+public:
+    gmFlow::PhaseId id() const override { return "evening"; }
+    void on_enter(gmFlow::GameContext&) override {}
+    void on_exit(gmFlow::GameContext&)  override {}
+    std::vector<std::unique_ptr<gmFlow::IAction>>
+    available_actions(const gmFlow::GameContext&,
+                      const gmFlow::ActorId&) const override { return {}; }
+    bool is_complete(const gmFlow::GameContext& ctx) const override {
+        return static_cast<const MyState&>(ctx.state()).evening_done;
+    }
+};
+
+// Build the Epoch FlowPhase.
+std::vector<std::unique_ptr<gmFlow::IPhase>> epoch_sub;
+epoch_sub.push_back(std::make_unique<MorningPhase>());
+epoch_sub.push_back(std::make_unique<EveningPhase>());
+
+auto epoch = std::make_unique<gmFlow::FlowPhase>(
+    "epoch_1",
+    std::make_unique<gmFlow::SequentialFlowController>(std::move(epoch_sub)));
+
+// Wire into the outer session (plain IPhase).
+std::vector<std::unique_ptr<gmFlow::IPhase>> outer;
+outer.push_back(std::make_unique<SetupPhase>());
+outer.push_back(std::move(epoch));          // FlowPhase used as IPhase
+outer.push_back(std::make_unique<EndPhase>());
+
+auto ctrl = std::make_unique<gmFlow::SequentialFlowController>(std::move(outer));
+gmFlow::GameSession session(cfg, std::move(ctrl), std::move(state), dispatcher);
+
+// Subscribe to events on the root bus — inner events arrive here too.
+session.event_bus().subscribe(gmFlow::EVT_ROUND_STARTED,
+    [](const gmFlow::IEvent& e) {
+        const auto& ev = static_cast<const gmFlow::RoundStartedEvent&>(e);
+        std::cout << "Round started: " << ev.round_id << "\n";
+    });
+
+session.start();
+while (!session.is_finished()) {
+    session.submit_action("player_1", std::make_unique<MyAction>("player_1"));
+    session.tick();
+}
+```
+
+**Key points:**
+- `epoch_1.current_round_id()` tracks only the Epoch-level rounds;
+  the root `session.context().current_round_id()` tracks root-level IDs.
+- All `EVT_ROUND_STARTED`, `EVT_TURN_STARTED`, etc. published by the inner
+  controller arrive on the single shared `EventBus` of the root session.
+- To add deeper nesting (e.g. Session → Epoch → Day), repeat the same
+  pattern: build inner FlowPhase, pass to outer FlowPhase controller.
 
 ---
 
