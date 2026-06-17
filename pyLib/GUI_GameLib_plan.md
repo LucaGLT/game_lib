@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.2.0
-**Status:** Phase 2 – Planned ⏳
+**Version:** 0.3.0
+**Status:** Phase 3 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -157,42 +157,43 @@ pyLib/
 
 ---
 
-### Phase 2 — TCP Bridge (framing + EngineReceiver + EngineSender) ⏳
+### Phase 2 — TCP Bridge (framing + EngineReceiver + EngineSender) ✅
 
-- [ ] Implementare `framing.send_frame(sock, payload: str) -> None`
+- [x] Implementare `framing.send_frame(sock, payload: str) -> None`
   - Codifica `payload` in UTF-8
   - Scrive `struct.pack(">I", len(data)) + data` con `sock.sendall()`
-- [ ] Implementare `framing._recv_exact(sock, n: int) -> bytes`
+- [x] Implementare `framing._recv_exact(sock, n: int) -> bytes`
   - Loop su `sock.recv()` fino a `n` byte esatti
   - Solleva `ConnectionError` se il socket chiude prima
-- [ ] Implementare `framing.recv_frame(sock) -> str`
+- [x] Implementare `framing.recv_frame(sock) -> str`
   - Legge 4 byte big-endian → lunghezza
   - Chiama `_recv_exact(sock, length)` → decodifica UTF-8
-- [ ] Implementare `EngineReceiver.run()`
+- [x] Implementare `EngineReceiver.run()`
   - Crea `socket.socket(AF_INET, SOCK_STREAM)` con `SO_REUSEADDR`
   - `bind(host, 9000)` → `listen(1)` → `settimeout(1.0)` per `stop()` non-bloccante
   - Loop: `accept()` → `recv_frame()` → `json.loads()` → estrae `headers["data"]` se presente → `envelope_received.emit(msg)`
   - Gestione `socket.timeout`: `continue`
   - Gestione `ConnectionError` / `OSError`: emette `connection_lost`, `client = None` (attende riconnessione)
-- [ ] Implementare `EngineReceiver.stop()`
+- [x] Implementare `EngineReceiver.stop()`
   - `self._running = False` → `self.wait()`
-- [ ] Implementare `EngineSender._ensure_connected()`
+- [x] Implementare `EngineSender._ensure_connected()`
   - `socket.connect((host, 9001))` lazy
-- [ ] Implementare `EngineSender.send_command(type_id, data)`
+- [x] Implementare `EngineSender.send_command(type_id, data)`
   - `_ensure_connected()` → `send_frame(sock, json.dumps({"typeId": type_id, "source": "GUI", "data": data}))`
-- [ ] Implementare `EngineSender.close()`
+  - `OSError` → `self.close()` (reset silenzioso, GUI resiliente)
+- [x] Implementare `EngineSender.close()`
   - Chiude il socket se aperto, `_sock = None`
-- [ ] Smoke test: test loopback `test_framing.py`
-  - Apre due socket collegati via `socket.socketpair()`
-  - Verifica `recv_frame(send_frame(s, "hello"))` == `"hello"`
-  - Verifica round-trip con payload JSON 1 KB e 100 KB
+- [x] Smoke test: test loopback `test_framing.py` — **9/9 PASSED**
+  - Round-trip piccolo, JSON dict, 100 KB (thread), 3 frame sequenziali
+  - Verifica big-endian, lunghezza in byte UTF-8
+  - `ConnectionError` su socket chiuso mid-frame, `_recv_exact(n=0)`, consegna parziale
 
 **Notes:**
 
-- `EngineReceiver` è un TCP **server** (porta 9000): il C++ `IpSocketChannel` si connette ad esso.
-- `EngineSender` è un TCP **client** (porta 9001): si connette al `CmdServer` C++.
-- La porta 9000 è in ascolto **prima** che il motore C++ venga avviato — il C++ si connette quando esegue il primo `dispatch()`.
-- `socket.settimeout(1.0)` sul server permette al thread di controllare `_running` ogni secondo senza busy-wait.
+- `socket.timeout` è sottoclasse di `OSError`; va catturata **prima** di `OSError` nel loop di `run()` per distinguere timeout (→ `continue`) da errore reale (→ `connection_lost`).
+- Il client socket dentro `run()` riceve `settimeout(1.0)` al pari del server: permette a `stop()` di interrompere il thread entro ~1 s senza chiudere socket da un thread esterno.
+- Il test 100 KB avvia il thread reader **prima** di chiamare `send_frame`: elude il potenziale deadlock su kernel buffer < payload. Tentare `join` prima di `send_frame` causa timeout perché nessun dato è ancora arrivato.
+- `EngineSender.send_command` cattura `OSError` e chiama `close()` senza sollevare: la GUI rimane reattiva se il motore non è avviato; al prossimo comando il socket viene ricreato (lazy reconnect).
 
 ---
 
