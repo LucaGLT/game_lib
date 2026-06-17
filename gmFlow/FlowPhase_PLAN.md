@@ -109,11 +109,11 @@ gmFlow/
 
 ## Development Phases
 
-### Phase 5 — PhaseContext ⏳
+### Phase 5 — PhaseContext ✅
 
 **Goal:** Classe che estende `GameContext` con IDs locali isolati e scope prefix.
 
-- [ ] Creare `gmFlow/flow/PhaseContext.hpp`
+- [x] Creare `gmFlow/flow/PhaseContext.hpp`
   - `class PhaseContext : public GameContext`
   - Costruttore `PhaseContext(GameContext& parent, std::string scope_prefix)`
     chiama `GameContext(parent.session_id(), parent.state(), parent.actor_registry(), parent.event_bus())`
@@ -121,11 +121,11 @@ gmFlow/
   - Metodo `const std::string& scope_prefix() const`
   - Include guard: `#ifndef GMFLOW_PHASECONTEXT_HPP`
   - Doxygen su tutti i simboli pubblici
-- [ ] Creare `gmFlow/flow/PhaseContext.cpp`
+- [x] Creare `gmFlow/flow/PhaseContext.cpp`
   - Implementazione costruttore e metodi
-- [ ] Verificare che `PhaseContext` accetti i metodi `set_current_round_id()` etc.
+- [x] Verificare che `PhaseContext` accetti i metodi `set_current_round_id()` etc.
   di `GameContext` senza override aggiuntivi
-- [ ] Compilare senza errori (nessuna modifica al resto)
+- [x] Compilare senza errori (nessuna modifica al resto)
 
 **Notes:**
 `GameContext` non è copiabile ma il costruttore `GameContext(SessionId, GameState&,
@@ -137,18 +137,18 @@ sulla `PhaseContext` senza toccare il `GameContext` radice.
 
 ---
 
-### Phase 6 — SequentialFlowController Refactoring ⏳
+### Phase 6 — SequentialFlowController Refactoring ✅
 
 **Goal:** Tre modifiche minori per abilitare subclassing e accesso alla fase corrente.
 
-- [ ] In `SequentialFlowController.hpp`:
+- [x] In `SequentialFlowController.hpp`:
   - Spostare `_round_index` da `private` a `protected`
   - Rendere `advance_phase(GameContext& ctx)` `virtual` (era `private void`)
   - Aggiungere metodo pubblico `const IPhase* current_phase() const`
     (ritorna `_phases[_current_phase_index].get()`, o `nullptr` se fuori range)
-- [ ] In `SequentialFlowController.cpp`:
+- [x] In `SequentialFlowController.cpp`:
   - Implementare `current_phase()`
-- [ ] Aggiungere Doxygen al nuovo metodo e al campo promosso
+- [x] Aggiungere Doxygen al nuovo metodo e al campo promosso
 - [ ] Verificare che tutti i test esistenti (`test_flow_sequential.cpp`) passino
   senza modifiche
 

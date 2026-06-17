@@ -158,6 +158,15 @@ bool SequentialFlowController::is_session_complete(const GameContext& /*ctx*/) c
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+IPhase* SequentialFlowController::current_phase() const
+{
+    if (_current_phase_index < _phases.size())
+        return _phases[_current_phase_index].get();
+    return nullptr;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 std::vector<ActorId> SequentialFlowController::determine_turn_order(
     const GameContext& ctx) const
 {

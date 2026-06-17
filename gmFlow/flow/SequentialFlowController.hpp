@@ -81,6 +81,18 @@ public:
                                    std::unique_ptr<IAction> action) override;
     bool             is_session_complete(const GameContext& ctx) const override;
 
+    /**
+     * @brief Returns a pointer to the phase currently being executed.
+     *
+     * Returns the phase at the current phase index, or @c nullptr if the
+     * session is complete (all phases have been exited).
+     * Useful for FlowPhase to delegate available_actions() to its active
+     * inner phase.
+     *
+     * @return Pointer to the active IPhase, or @c nullptr.
+     */
+    IPhase* current_phase() const;
+
 protected:
     /**
      * @brief Returns the ordered list of actor IDs for the current turn.
@@ -93,10 +105,17 @@ protected:
      */
     virtual std::vector<ActorId> determine_turn_order(const GameContext& ctx) const;
 
-private:
-    /// @brief Transitions the controller to the next phase, or ends the session.
-    void advance_phase(GameContext& ctx);
+    /**
+     * @brief Transitions the controller to the next phase, or ends the session.
+     *
+     * Made protected-virtual so FlowPhase subclasses (e.g. a custom
+     * PhaseController) can hook the transition point if needed.
+     *
+     * @param ctx Mutable session context.
+     */
+    virtual void advance_phase(GameContext& ctx);
 
+private:
     /// @brief Opens a new turn for the next actor in the turn order.
     void open_next_turn(GameContext& ctx);
 
@@ -105,7 +124,13 @@ private:
     RoundPolicy                          _round_policy;
     std::size_t                          _current_phase_index = 0;
     std::size_t                          _current_actor_index = 0;
+
+protected:
+    /// @brief Index of the current round (1-based). Protected to allow
+    ///        subclasses (e.g. FlowPhase sub-controllers) to read/reset it.
     int                                  _round_index         = 0;
+
+private:
     bool                                 _session_complete    = false;
     bool                                 _rounds_exhausted    = false;
 

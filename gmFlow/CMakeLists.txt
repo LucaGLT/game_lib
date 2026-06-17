@@ -14,6 +14,7 @@ add_library(gmFlow STATIC
     flow/Round.cpp
     flow/SequentialFlowController.cpp
     flow/TimelineFlowController.cpp
+    flow/PhaseContext.cpp
 
     events/EventBus.cpp
 
