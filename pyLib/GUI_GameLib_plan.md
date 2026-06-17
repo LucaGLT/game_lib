@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.7.0
-**Status:** Phase 7 – Planned ⏳
+**Version:** 0.9.0
+**Status:** Phase 9 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -359,11 +359,11 @@ pyLib/
 
 ---
 
-### Phase 7 — GmDiceModule ⏳
+### Phase 7 — GmDiceModule ✅
 
 **typeId sottoscritti**: `gmAlea.dice.roll_result`
 
-- [ ] Implementare `GmDiceModule._build_widget()`
+- [x] Implementare `GmDiceModule._build_widget()`
   - `QComboBox` tipo dado: `Standard` / `Custom`
   - Modalità Standard: `QSpinBox` numero dadi (1–20), `QSpinBox` facce (2–100)
   - Modalità Custom: `QComboBox` profilo dado (`d_combat`, `d_event`, …), `QSpinBox` n (1–10)
@@ -372,20 +372,21 @@ pyLib/
   - `QLabel` dettaglio singoli dadi (`3 + 5 + 2`)
   - `QListWidget` storico (ultimi 10 risultati, read-only)
   - Pulsante `[Clear storico]`
-- [ ] Collegare `QComboBox` tipo → mostra/nasconde widget Standard vs Custom con `QStackedWidget`
-- [ ] Collegare `[LANCIA]`
+- [x] Collegare `QComboBox` tipo → mostra/nasconde widget Standard vs Custom con `QStackedWidget`
+- [x] Collegare `[LANCIA]`
   - Modalità Standard: `send_command("gmAlea.dice.roll_request", {"count": n, "faces": f})`
   - Modalità Custom: `send_command("gmAlea.dice.roll_custom_request", {"profile": p, "count": n})`
-- [ ] Implementare `GmDiceModule.on_envelope(msg)`
+- [x] Implementare `GmDiceModule.on_envelope(msg)`
   - `roll_result`: estrae `data["dice"]` (list) e `data["total"]`
   - Aggiorna label dettaglio: `" + ".join(str(d) for d in dice)`
   - Aggiorna label risultato: `str(total)`
   - Avvia `QPropertyAnimation` su `opacity` del label risultato (0.0 → 1.0, 400ms)
   - Inserisce in cima allo storico: `f"{total}  [{', '.join(...)}]"`
-- [ ] Smoke test `test_gm_dice.py`
-  - Simula click `[LANCIA]` → verifica `send_command` chiamato
-  - Inietta `roll_result` con `{"dice": [3, 5, 2], "total": 10}` → verifica label = "10", dettaglio = "3 + 5 + 2"
-  - Verifica storico ha 1 voce dopo il primo lancio
+- [x] Test suite `test_gm_dice.py` — **4/4 PASSED**
+  - Click `[LANCIA]` → verifica `send_command` chiamato
+  - `roll_result` con `{"dice": [3, 5, 2], "total": 10}` → label = "10", dettaglio = "3 + 5 + 2"
+  - Storico ha 1 voce dopo il primo lancio
+  - Storico non supera 10 voci
 
 **Notes:**
 
@@ -394,13 +395,13 @@ pyLib/
 
 ---
 
-### Phase 8 — GmMapModule ⏳
+### Phase 8 — GmMapModule ✅
 
 **typeId sottoscritti**:
 `gmMap.map.loaded`, `gmMap.location.item_added`, `gmMap.location.item_removed`,
 `gmMap.location.metadata_changed`, `gmActor.actor.moved_area`, `gmActor.actor.position_changed`
 
-- [ ] Implementare `widgets/map_scene.py` — `MapScene(QGraphicsScene)`
+- [x] Implementare `widgets/map_scene.py` — `MapScene(QGraphicsScene)`
   - `LocationNode(QGraphicsEllipseItem)` — diameter 32px
     - Colore fill da metadata `terrain` (dizionario `terrain → QColor` configurabile)
     - Label `LocationId` centrata
@@ -411,22 +412,24 @@ pyLib/
     - `load_map(locations: list[dict], edges: list[tuple])` — costruisce scena da zero
     - `move_actor(actor_id, new_location_id)` — sposta marker
     - `update_location(loc_id, metadata: dict)` — aggiorna colore/tooltip nodo
-- [ ] Implementare `GmMapModule._build_widget()`
-  - `QGraphicsView` su `MapScene` con scroll e zoom tramite `wheelEvent`
+- [x] Implementare `GmMapModule._build_widget()`
+  - `QGraphicsView` su `MapScene` con scroll e drag mode
   - Barra superiore: `[Zoom -]` `[Zoom +]` `[Fit]` + `QComboBox` layer (`terrain`, `items`, `actors`)
-  - Barra inferiore: label selezione (`Location#N — terrain: X — Items: [Y]`)
-- [ ] Collegare `MapScene.selectionChanged` → aggiorna barra inferiore con metadata location
-- [ ] Implementare `GmMapModule.on_envelope(msg)`
+  - Barra inferiore: label selezione (`Location #N`)
+- [x] Collegare `MapScene.selectionChanged` → aggiorna barra inferiore con metadata location
+- [x] Implementare `GmMapModule.on_envelope(msg)`
   - `map.loaded`: chiama `map_scene.load_map()` con dati snapshot completo
   - `location.item_added/removed`: aggiorna tooltip nodo
   - `location.metadata_changed`: aggiorna colore nodo
   - `actor.moved_area`: `map_scene.move_actor(actor_id, new_location_id)`
-  - `actor.position_changed`: aggiorna sotto-posizione marker (offset fine nel nodo)
-- [ ] Zoom: `QGraphicsView.scale(factor, factor)` con limiti `[0.25, 4.0]`
-- [ ] `[Fit]`: `QGraphicsView.fitInView(scene.itemsBoundingRect(), Qt.KeepAspectRatio)`
-- [ ] Smoke test `test_gm_map.py`
-  - Inietta `map.loaded` con 5 location e 4 edge → verifica 5 nodi e 4 archi nella scena
-  - Inietta `actor.moved_area` → verifica marker spostato sul nodo corretto
+  - `actor.position_changed`: aggiorna posizione marker
+- [x] Zoom: `QGraphicsView.scale(factor, factor)` con limiti `[0.25, 4.0]`
+- [x] `[Fit]`: `QGraphicsView.fitInView(scene.itemsBoundingRect(), Qt.KeepAspectRatio)`
+- [x] Test suite `test_gm_map.py` — **4/4 PASSED**
+  - `map.loaded` con 5 location e 4 edge → 5 nodi e 4 archi nella scena
+  - `actor.moved_area` → marker spostato sul nodo corretto
+  - `metadata_changed` → `update_location()` chiamato con argomenti corretti
+  - Zoom limits rispettati: livello sempre in [0.25, 4.0]
 
 **Notes:**
 
