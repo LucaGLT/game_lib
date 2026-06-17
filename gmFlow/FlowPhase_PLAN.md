@@ -290,7 +290,7 @@ esterne. Ogni test è indipendente (no shared fixtures state).
 
 ---
 
-### Phase 11 — FlowRulesGateway ⏳
+### Phase 11 — FlowRulesGateway ✅
 
 **Goal:** Interfaccia che connette il lifecycle di gmFlow al motore di regole gmRules.
 Nessuna modifica ai file esistenti di gmFlow o gmRules.
@@ -335,20 +335,20 @@ void register_flow_rules_gateway(
 
 Checklist:
 
-- [ ] Creare `gmFlow/bridges/` directory
-- [ ] Creare `gmFlow/bridges/FlowRulesGateway.hpp`
+- [x] Creare `gmFlow/bridges/` directory
+- [x] Creare `gmFlow/bridges/FlowRulesGateway.hpp`
   - Definire `struct FlowRulesPayload` con i campi R5
   - Definire `using FlowRulesCallback`
   - Dichiarare `register_flow_rules_gateway()`
   - Include guard `#ifndef GMFLOW_FLOWRULESGATEWAY_HPP`
   - Doxygen completo
-- [ ] Creare `gmFlow/bridges/FlowRulesGateway.cpp`
+- [x] Creare `gmFlow/bridges/FlowRulesGateway.cpp`
   - Implementare `register_flow_rules_gateway()`:
-    sottoscrive all'`EventBus` per ogni evento elencato
-    chiama il callback corrispondente con payload costruito dall'evento
-  - Costruire `FlowRulesPayload` castando l'`IEvent` al tipo concreto
+    sottoscrive all’`EventBus` per ogni evento elencato
+    chiama il callback corrispondente con payload costruito dall’evento
+  - Costruire `FlowRulesPayload` castando l’`IEvent` al tipo concreto
     (`TurnStartedEvent`, `RoundStartedEvent`, `ActionSubmittedEvent`, ecc.)
-- [ ] Aggiungere `bridges/FlowRulesGateway.cpp` a `gmFlow/CMakeLists.txt`
+- [x] Aggiungere `bridges/FlowRulesGateway.cpp` a `gmFlow/CMakeLists.txt`
 
 **Notes:**
 `register_flow_rules_gateway()` non ritorna nulla e non lancia — se un callback
@@ -359,7 +359,7 @@ con FlowPhase ma non ne dipende).
 
 ---
 
-### Phase 12 — ActionGateway (pre/post check) ⏳
+### Phase 12 — ActionGateway (pre/post check) ✅
 
 **Goal:** Meccanismo per bloccare o modificare un'azione prima e dopo l'esecuzione
 tramite gmRules, senza modificare `IAction` o `GameSession`.
@@ -408,18 +408,18 @@ public:
 
 Checklist:
 
-- [ ] Creare `gmFlow/bridges/ActionGateway.hpp`
+- [x] Creare `gmFlow/bridges/ActionGateway.hpp`
   - Dichiarare `using ActionPreCheck` e `using ActionPostHook`
   - Dichiarare `class ActionGateway : public IAction`
   - Include guard `#ifndef GMFLOW_ACTIONGATEWAY_HPP`
   - Doxygen su tutti i simboli pubblici
-- [ ] Creare `gmFlow/bridges/ActionGateway.cpp`
+- [x] Creare `gmFlow/bridges/ActionGateway.cpp`
   - `validate()`: chiama prima `_inner->validate()`; se ok chiama `_pre_check(_payload)`;
     ritorna il primo fallimento
   - `execute()`: chiama `_inner->execute()`; poi chiama `_post_hook(_payload, result)`;
-    ritorna il result dell'inner
+    ritorna il result dell’inner
   - Tutti gli altri metodi delegano a `*_inner`
-- [ ] Aggiungere `bridges/ActionGateway.cpp` a `gmFlow/CMakeLists.txt`
+- [x] Aggiungere `bridges/ActionGateway.cpp` a `gmFlow/CMakeLists.txt`
 
 **Notes:**
 `ActionGateway` **non blocca** in `execute()` — il post-hook è informativo.
