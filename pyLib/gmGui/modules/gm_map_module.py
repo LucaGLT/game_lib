@@ -105,6 +105,31 @@ class GmMapModule(BaseModule):
 
         return container
 
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def save_state(self) -> dict:
+        """Returns zoom level and active layer for QSettings persistence."""
+        if self._widget is None:
+            return {}
+        return {
+            "zoom_level": self._zoom_level,
+            "layer": self._layer_combo.currentText(),
+        }
+
+    def restore_state(self, state: dict) -> None:
+        """Restores zoom level and active layer from a previously saved state dict."""
+        if self._widget is None:
+            return
+        zoom = state.get("zoom_level")
+        if isinstance(zoom, (int, float)) and zoom > 0:
+            self._map_view.resetTransform()
+            self._zoom_level = 1.0
+            self._zoom(float(zoom))
+        layer = state.get("layer", "")
+        idx = self._layer_combo.findText(layer)
+        if idx >= 0:
+            self._layer_combo.setCurrentIndex(idx)
+
     # ── Zoom helpers ──────────────────────────────────────────────────────────
 
     def _zoom(self, factor: float) -> None:

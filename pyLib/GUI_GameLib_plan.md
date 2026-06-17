@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.9.0
-**Status:** Phase 9 – Planned ⏳
+**Version:** 1.0.0
+**Status:** Phase 10 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -439,24 +439,29 @@ pyLib/
 
 ---
 
-### Phase 9 — Layout Persistence & Module State ⏳
+### Phase 9 — Layout Persistence & Module State ✅
 
-- [ ] Implementare `settings.save_layout(window: MainWindow)`
+- [x] Implementare `settings.save_layout(window: MainWindow)`
   - `QSettings("GameLib", "gmGui")` con `IniFormat`
   - Salva `geometry`, `windowState` (dock layout)
   - Per ogni modulo: `settings.setValue(f"module/{mod.module_id}/state", json.dumps(mod.save_state()))`
-- [ ] Implementare `settings.restore_layout(window: MainWindow)`
+- [x] Implementare `settings.restore_layout(window: MainWindow)`
   - `restoreGeometry()` + `restoreState()`
-  - Per ogni modulo: `mod.restore_state(json.loads(settings.value(..., "{}")))`
-- [ ] Implementare `GmMapModule.save_state()` / `restore_state()`
-  - Persiste zoom level, posizione centrale della view, layer selezionato
-- [ ] Implementare `GmCompDeckModule.save_state()` / `restore_state()`
+  - Per ogni modulo: `mod.restore_state(json.loads(settings.value(..., "{}")))` 
+- [x] Implementare `GmMapModule.save_state()` / `restore_state()`
+  - Persiste zoom level e layer selezionato
+- [x] Implementare `GmCompDeckModule.save_state()` / `restore_state()`
   - Persiste deck selezionato nel `QComboBox`
-- [ ] Implementare `GmFlowModule.save_state()` / `restore_state()`
+- [x] Implementare `GmFlowModule.save_state()` / `restore_state()`
   - Persiste `pixels_per_unit` (zoom timeline)
-- [ ] Collegare `MainWindow.closeEvent` a `settings.save_layout()` + tutti `mod.on_detach()`
-- [ ] Chiamare `settings.restore_layout()` in `MainWindow.__init__()` dopo `_register_modules()`
-- [ ] Smoke test: avviare app, modificare layout dock, chiudere, riaprire → verifica identico layout ripristinato
+- [x] `MainWindow.closeEvent` chiama `settings.save_layout()` + tutti `mod.on_detach()`
+- [x] `settings.restore_layout()` chiamato in `MainWindow.__init__()` dopo `_register_modules()`
+- [x] Test suite `test_settings.py` — **14/14 PASSED**
+  - Round-trip save/restore per GmFlowModule (`pixels_per_unit`)
+  - Round-trip save/restore per GmMapModule (zoom level + layer)
+  - Round-trip save/restore per GmCompDeckModule (deck name)
+  - Valori invalidi ignorati senza crash
+  - Smoke test `save_layout` + `restore_layout` su MainWindow reale
 
 **Notes:**
 

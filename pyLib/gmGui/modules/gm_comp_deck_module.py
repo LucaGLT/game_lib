@@ -209,6 +209,23 @@ class GmCompDeckModule(BaseModule):
             "to_zone": "CardHand",
         })
 
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def save_state(self) -> dict:
+        """Returns the selected deck name for QSettings persistence."""
+        if self._widget is None:
+            return {}
+        return {"deck": self._deck_combo.currentText()}
+
+    def restore_state(self, state: dict) -> None:
+        """Restores the selected deck combo entry from a previously saved state dict."""
+        if self._widget is None:
+            return
+        deck = state.get("deck", "")
+        idx = self._deck_combo.findText(deck)
+        if idx >= 0:
+            self._deck_combo.setCurrentIndex(idx)
+
     def _on_card_dropped(self, card_id: str, from_zone: str, to_zone: str) -> None:
         """Slot connected to ZoneList.card_dropped — forwards to engine."""
         self.send_command(

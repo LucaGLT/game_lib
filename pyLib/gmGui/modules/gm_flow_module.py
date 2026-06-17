@@ -189,6 +189,22 @@ class GmFlowModule(BaseModule):
         elif tid == "gmFlow.timeline.time_advanced":
             self._timeline_scene.advance_time(int(data.get("new_time", 0)))
 
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def save_state(self) -> dict:
+        """Returns the current timeline zoom level for QSettings persistence."""
+        if self._widget is None:
+            return {}
+        return {"pixels_per_unit": self._timeline_scene._pixels_per_unit}
+
+    def restore_state(self, state: dict) -> None:
+        """Restores timeline zoom level from a previously saved state dict."""
+        if self._widget is None:
+            return
+        ppu = state.get("pixels_per_unit")
+        if isinstance(ppu, int) and ppu > 0:
+            self._timeline_scene._pixels_per_unit = ppu
+
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _append_log(self, text: str) -> None:
