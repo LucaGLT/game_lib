@@ -1,7 +1,7 @@
 # Tic-Tac-Toe – Development Plan
 
 **Version:** 0.2.0
-**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Domain logic ✅ (Phase 3 next ⏳)
+**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Domain logic ✅ · Phase 3 – GUI interattiva ✅ (Phase 4 next ⏳)
 **Language:** C++17 Standard (CoreEngine) + Python 3 / PySide6 (GUI)
 **Namespace:** `gmTris` (C++) / `gmtris_gui` (Python)
 
@@ -149,12 +149,19 @@ GAME/Tic-Tac-Toe/
 - [x] Emissione eventi: snapshot iniziali + update incrementali (wire-contract identico).
 - [x] **Smoke test:** partita completa via comandi simulati → win (`row_1`) e draw verificati E2E.
 
-### Phase 3 — GUI interattiva ⏳
+### Phase 3 — GUI interattiva ✅
 
-- [ ] `board_widget`: render X/O, click → `gmTris.move`.
-- [ ] `turn_state_widget` / `log_widget` / `error_bar_widget` da eventi.
-- [ ] Blocco input in `GAME_OVER`, pulsante nuova partita.
-- [ ] **Smoke test:** partita giocabile end-to-end Engine↔GUI.
+- [x] Tabellone cliccabile (`GmTrisBoardModule`): render X/O, click → `gmTris.move`.
+- [x] Stato turni / log / errori dalle dashboard generiche `gmGui` (Flow/Actor/Dice)
+  alimentate da `TrisEventAdapter`.
+- [x] Blocco input in `GAME_OVER`, pulsante nuova partita (toolbar).
+- [x] **Smoke test:** suite headless offscreen verde (11/11), vedi
+  `GUI/tests/smoke_test_gui.py`.
+
+> **Override Decisione 4:** la GUI è stata riscritta riusando i moduli generici
+> `GmXxxModule` come dashboard read-only + un tabellone cliccabile, con un adapter
+> Python lato GUI che traduce il contratto eventi Tris in quello dei moduli
+> (engine C++ e wire-contract invariati). Vedi Decisione 9.
 
 ### Phase 4 — Test & robustezza ⏳
 
@@ -189,3 +196,12 @@ GAME/Tic-Tac-Toe/
    identici `typeId` e payload degli eventi verso la GUI; l'`ActorStore` e il
    `TurnFlow` gmFlow restano fonti di verità interne, rispecchiate (non
    sostituite) dagli eventi già emessi nella Phase 1.
+9. **GUI ibrida sui moduli generici** (Phase 3, override della Decisione 4): la
+   GUI riusa i moduli generici `GmFlowModule`/`GmActorModule`/`GmDiceModule` come
+   dashboard read-only (QDockWidget) e un `GmTrisBoardModule` — adattamento
+   cliccabile del ruolo `GmMapModule` — come tabellone centrale. Un
+   `TrisEventAdapter` lato GUI traduce gli eventi nativi Tris nel contratto dei
+   moduli (payload esposto sia in `data` sia in `headers.data`), così l'engine
+   C++ e il wire-contract restano invariati. I vecchi widget custom
+   (`tris_window`, `turn_state_widget`, `log_widget`, `error_bar_widget`)
+   diventano orfani; `board_widget` è riusato dal nuovo modulo tabellone.

@@ -6,10 +6,12 @@ sender) without pulling in the rest of the gmGui application. The folder
 imported as a top-level package (its modules use relative imports internally).
 
 Responsibilities:
-    - Run an :class:`EngineReceiver` server on port 9000 (engine → GUI events).
+    - Run an :class:`EngineReceiver` server on port 9100 (engine → GUI events).
     - Own an :class:`EngineSender` client to port 9001 (GUI → engine commands).
     - Re-emit every received envelope as :attr:`envelope_received`.
     - Offer typed helpers :meth:`send_move` and :meth:`send_new_game`.
+    - Expose the underlying :class:`EngineSender` via :attr:`sender` so gmGui
+      modules can be wired to it.
 """
 from __future__ import annotations
 
@@ -45,6 +47,11 @@ class TrisBridge(QObject):
         self._sender: EngineSender = EngineSender(port=command_port)
         self._receiver.envelope_received.connect(self.envelope_received)
         self._receiver.connection_lost.connect(self.connection_lost)
+
+    @property
+    def sender(self) -> EngineSender:
+        """The underlying command sender, for wiring gmGui modules."""
+        return self._sender
 
     def start(self) -> None:
         """Starts the receiver server thread (waits for the engine to connect)."""
