@@ -11,12 +11,16 @@ and updates a compact top-docked panel:
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QPainter
 from PySide6.QtWidgets import (
     QGraphicsView,
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QListWidgetItem,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -32,7 +36,16 @@ class GmFlowModule(BaseModule):
     """Visualises gmFlow session, phase, round, turn, and timeline state.
 
     TypeIds from ``FlowEvents.hpp`` and ``TimelineEvents.hpp``.
+    Tracks turn count and round count (partite) for the Tris game.
     """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._session_count: int = 0
+        self._round_count: int = 0
+        self._turn_count: int = 0
+        self._turn_actors: list[str] = []  # Track actor for each turn
+        self._log_visible: bool = True
 
     @property
     def module_id(self) -> str:
@@ -66,31 +79,57 @@ class GmFlowModule(BaseModule):
     def _build_widget(self) -> QWidget:
         container = QWidget()
         vbox = QVBoxLayout(container)
-        vbox.setContentsMargins(4, 4, 4, 4)
-        vbox.setSpacing(4)
+        vbox.setContentsMargins(8, 8, 8, 8)
+        vbox.setSpacing(6)
 
         # ── Row 1: status labels ──────────────────────────────────────────────
-        self._lbl_session: QLabel = QLabel("Session: —")
-        self._lbl_phase: QLabel = QLabel("Phase: —")
-        self._lbl_round: QLabel = QLabel("Round: —")
-        self._lbl_turn: QLabel = QLabel("Turn: —")
-
         row1 = QHBoxLayout()
-        for lbl in (
-            self._lbl_session,
-            self._lbl_phase,
-            self._lbl_round,
-            self._lbl_turn,
-        ):
-            row1.addWidget(lbl)
-            row1.addWidget(QLabel("|"))
+        row1.setSpacing(12)
+
+        self._lbl_session: QLabel = QLabel("👥 Session: —")
+        self._lbl_session.setStyleSheet(
+            "QLabel { font-weight: bold; color: #2c3e50; font-size: 10pt; }"
+        )
+
+        self._lbl_phase: QLabel = QLabel("📍 Phase: —")
+        self._lbl_phase.setStyleSheet(
+            "QLabel { padding: 4px 8px; border-radius: 4px; background: #ecf0f1; "
+            "font-weight: bold; color: #2980b9; font-size: 10pt; }"
+        )
+
+        self._lbl_round: QLabel = QLabel("🔄 Round: —")
+        self._lbl_round.setStyleSheet(
+            "QLabel { font-weight: bold; color: #27ae60; font-size: 10pt; }"
+        )
+
+        self._lbl_turn: QLabel = QLabel("⏱ Turn: —")
+        self._lbl_turn.setStyleSheet(
+            "QLabel { font-weight: bold; color: #8e44ad; font-size: 10pt; }"
+        )
+
+        row1.addWidget(self._lbl_session)
+        row1.addWidget(self._lbl_phase)
+        row1.addWidget(self._lbl_round)
+        row1.addWidget(self._lbl_turn)
         row1.addStretch()
         vbox.addLayout(row1)
 
-        # ── Row 2: timeline scene ─────────────────────────────────────────────
+        # ── Row 2: timeline scene with title ──────────────────────────────────
+        timeline_title = QLabel("⏳ Timeline turni")
+        timeline_title_font = QFont()
+        timeline_title_font.setPointSize(9)
+        timeline_title_font.setBold(True)
+        timeline_title.setFont(timeline_title_font)
+        timeline_title.setStyleSheet("color: #34495e;")
+        vbox.addWidget(timeline_title)
+
         self._timeline_scene: TimelineScene = TimelineScene()
         timeline_view = QGraphicsView(self._timeline_scene)
-        timeline_view.setFixedHeight(120)
+        timeline_view.setFixedHeight(100)
+        timeline_view.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        timeline_view.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         timeline_view.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
@@ -117,16 +156,43 @@ class GmFlowModule(BaseModule):
             lambda: self.send_command("gmFlow.session.stop", {})
         )
 
+        self._status_msg: QLabel = QLabel("")
+        self._status_msg.setStyleSheet(
+            "QLabel { color: #7f8c8d; font-size: 9pt; font-style: italic; }"
+        )
+
         row3 = QHBoxLayout()
+        row3.setSpacing(8)
         row3.addWidget(self._btn_resume)
         row3.addWidget(self._btn_pause)
         row3.addWidget(self._btn_stop)
         row3.addStretch()
+        row3.addWidget(self._status_msg)
         vbox.addLayout(row3)
 
-        # ── Row 4: event log ──────────────────────────────────────────────────
+        # ── Row 4: event log with collapsible header ──────────────────────────
+        log_header = QHBoxLayout()
+        log_title = QLabel("📋 Log eventi")
+        log_title_font = QFont()
+        log_title_font.setPointSize(9)
+        log_title_font.setBold(True)
+        log_title.setFont(log_title_font)
+        log_title.setStyleSheet("color: #34495e;")
+        log_header.addWidget(log_title)
+        log_header.addStretch()
+
+        self._btn_toggle_log: QPushButton = QPushButton("Nascondi ▲")
+        self._btn_toggle_log.setMaximumWidth(100)
+        self._btn_toggle_log.clicked.connect(self._toggle_log_visibility)
+        log_header.addWidget(self._btn_toggle_log)
+        vbox.addLayout(log_header)
+
         self._log: QListWidget = QListWidget()
-        self._log.setMaximumHeight(120)
+        self._log.setMaximumHeight(140)
+        self._log.setStyleSheet(
+            "QListWidget { border: 1px solid #bdc3c7; border-radius: 4px; "
+            "background: #ffffff; }"
+        )
         vbox.addWidget(self._log)
 
         return container
@@ -139,46 +205,58 @@ class GmFlowModule(BaseModule):
 
         if tid == "gmFlow.session.started":
             session_id: str = str(data.get("session_id", "?"))
-            self._lbl_session.setText(f"Session: {session_id}")
+            self._session_count += 1
+            self._lbl_session.setText(f"👥 Session: {self._session_count}")
+            self._round_count = 0
+            self._turn_count = 0
+            self._turn_actors = []
+            self._lbl_round.setText(f"🔄 Round: —")
+            self._lbl_turn.setText(f"⏱ Turn: —")
+            self._init_timeline()
             self._btn_pause.setEnabled(True)
             self._btn_stop.setEnabled(True)
             self._btn_resume.setEnabled(False)
-            self._append_log(f"Session started: {session_id}")
+            self._status_msg.setText("")
+            self._append_log(f"▶ Session {self._session_count} started: {session_id}")
 
         elif tid == "gmFlow.session.paused":
             self._btn_pause.setEnabled(False)
             self._btn_resume.setEnabled(True)
-            self._append_log("Session paused")
+            self._status_msg.setText("Sessione in pausa")
+            self._append_log("⏸ Session paused")
 
         elif tid == "gmFlow.session.completed":
             self._btn_pause.setEnabled(False)
             self._btn_resume.setEnabled(False)
             self._btn_stop.setEnabled(False)
-            self._append_log("Session completed")
+            self._status_msg.setText("Sessione terminata")
+            self._append_log("⏹ Session completed")
 
         elif tid == "gmFlow.phase.entered":
             phase_id: str = str(data.get("phase_id", "?"))
-            self._lbl_phase.setText(f"Phase: {phase_id}")
-            self._append_log(f"Phase entered: {phase_id}")
+            self._lbl_phase.setText(f"📍 Phase: {phase_id}")
+            self._append_log(f"📍 Phase entered: {phase_id}")
 
         elif tid == "gmFlow.phase.exited":
             self._append_log(f"Phase exited: {data.get('phase_id', '?')}")
 
         elif tid == "gmFlow.round.started":
-            index: object = data.get("index", "?")
-            self._lbl_round.setText(f"Round: {index}")
-            self._append_log(f"Round {index} started")
+            self._round_count += 1
+            self._lbl_round.setText(f"🔄 Round: {self._round_count}")
+            self._append_log(f"🔄 Round {self._round_count} started")
 
         elif tid == "gmFlow.round.ended":
-            self._append_log(f"Round {data.get('index', '?')} ended")
+            self._append_log(f"Round {self._round_count} ended")
 
         elif tid == "gmFlow.turn.started":
+            self._turn_count += 1
             turn_id: str = str(data.get("turn_id", "?"))
-            self._lbl_turn.setText(f"Turn: {turn_id}")
-            active: list = data.get("active_actors", [])
-            if active:
-                self._timeline_scene.select_actor(str(active[0]))
-            self._append_log(f"Turn started: {turn_id}")
+            active_actors: list = data.get("active_actors", [])
+            active_name: str = str(active_actors[0]) if active_actors else "?"
+            self._turn_actors.append(active_name)
+            self._lbl_turn.setText(f"⏱ Turn: {self._turn_count}")
+            self._populate_timeline()
+            self._append_log(f"⏱ Turn {self._turn_count}: {turn_id}")
 
         elif tid == "gmFlow.turn.ended":
             self._append_log(f"Turn ended: {data.get('turn_id', '?')}")
@@ -188,6 +266,60 @@ class GmFlowModule(BaseModule):
 
         elif tid == "gmFlow.timeline.time_advanced":
             self._timeline_scene.advance_time(int(data.get("new_time", 0)))
+
+    # ── Timeline management ───────────────────────────────────────────────────
+
+    def _init_timeline(self) -> None:
+        """Initializes timeline with 9 placeholder turn blocks (for Tris max turns).
+        
+        Each block shows "—" and is in inactive (gray) state.
+        Uses unique slot IDs (slot_0 to slot_8) as dictionary keys.
+        """
+        placeholder_turns: list[dict] = []
+        for slot_idx in range(9):  # 0 to 8
+            placeholder_turns.append({
+                "actor_id": f"slot_{slot_idx}",  # Unique ID for dict key
+                "label": "—",                     # Display text
+                "timeline_position": slot_idx
+            })
+        
+        self._timeline_scene.set_actors(placeholder_turns)
+        self._timeline_scene.advance_time(0)
+
+    def _populate_timeline(self) -> None:
+        """Updates the timeline with actual turn data as turns are played.
+        
+        Each turn slot shows the actor name (X, O, etc) or placeholder (—).
+        Highlights the current active turn.
+        """
+        turns: list[dict] = []
+        
+        # Build 9 slots: filled with actors, rest with placeholders
+        for slot_idx in range(9):
+            if slot_idx < len(self._turn_actors):
+                # Slot has a real turn
+                actor_name = self._turn_actors[slot_idx]
+                turns.append({
+                    "actor_id": f"actor_{actor_name}_{slot_idx}",
+                    "label": actor_name,
+                    "timeline_position": slot_idx
+                })
+            else:
+                # Slot is empty, use placeholder
+                turns.append({
+                    "actor_id": f"placeholder_{slot_idx}",
+                    "label": "—",
+                    "timeline_position": slot_idx
+                })
+        
+        self._timeline_scene.set_actors(turns)
+        
+        # Highlight current turn actor
+        if self._turn_actors and self._turn_count <= len(self._turn_actors):
+            current_actor_id = f"actor_{self._turn_actors[self._turn_count - 1]}_{self._turn_count - 1}"
+            self._timeline_scene.select_actor(current_actor_id)
+        
+        self._timeline_scene.advance_time(self._turn_count - 1)
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
@@ -207,8 +339,18 @@ class GmFlowModule(BaseModule):
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
+    def _toggle_log_visibility(self) -> None:
+        """Toggles the event log visibility."""
+        self._log_visible = not self._log_visible
+        self._log.setVisible(self._log_visible)
+        self._btn_toggle_log.setText("Nascondi ▲" if self._log_visible else "Mostra ▼")
+
     def _append_log(self, text: str) -> None:
-        """Prepends *text* to the event log, keeping at most ``_MAX_LOG`` entries."""
-        self._log.insertItem(0, text)
+        """Prepends *text* with timestamp to the event log."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        full_text = f"{timestamp}  {text}"
+        item = QListWidgetItem(full_text)
+        item.setFont(QFont("Courier", 8))
+        self._log.insertItem(0, item)
         while self._log.count() > _MAX_LOG:
             self._log.takeItem(self._log.count() - 1)

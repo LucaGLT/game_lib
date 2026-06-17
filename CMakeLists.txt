@@ -19,3 +19,6 @@ add_subdirectory(gmFlow)
 # add_subdirectory(gmMap)
 add_subdirectory(gmRules)
 # add_subdirectory(gmSave)
+
+# ── Games ──────────────────────────────────────────────────────────────────────
+add_subdirectory(GAME/Tic-Tac-Toe/CoreEngine)
