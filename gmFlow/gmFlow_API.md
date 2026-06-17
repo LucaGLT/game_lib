@@ -1,7 +1,7 @@
 # gmFlow — Game Flow Control Framework
 
-**Version:** 1.0
-**Status:** Phase 3-4 — Core infrastructure complete (TimelineFlowController implemented)
+**Version:** 2.0
+**Status:** Phase 5–15 — FlowPhase + bridges/ (FlowRulesGateway + ActionGateway) implemented
 **Language:** C++17 Standard
 **Namespace:** `gmFlow`
 **Source directory:** `gmFlow/`
@@ -53,6 +53,8 @@
       - [Round](#round)
       - [IPhase](#iphase)
       - [IFlowController](#iflowcontroller)
+      - [PhaseContext](#phasecontext)
+      - [FlowPhase](#flowphase)
       - [SequentialFlowController](#sequentialflowcontroller)
       - [TimelineFlowController](#timelineflowcontroller)
     - [session/ — Session Façade](#session--session-façade)
@@ -66,6 +68,15 @@
     - [Minimal Sequential Session](#minimal-sequential-session)
     - [Multi-step Action](#multi-step-action)
     - [Campaign with Unlock Conditions](#campaign-with-unlock-conditions)
+  - [bridges/ — Rules Integration](#bridges--rules-integration)
+    - [FlowRulesGateway](#flowrulesgateway)
+      - [FlowRulesPayload](#flowrulespayload)
+      - [FlowRulesCallback](#flowrulescallback)
+      - [register\_flow\_rules\_gateway](#register_flow_rules_gateway)
+    - [ActionGateway](#actiongateway)
+      - [Supporting types](#supporting-types)
+      - [ActionGateway class](#actiongateway-class)
+    - [End-to-end Usage Example](#end-to-end-usage-example)
   - [Event Reference](#event-reference)
   - [Architectural Invariants](#architectural-invariants)
   - [Future Extensions (V2+)](#future-extensions-v2)
@@ -155,7 +166,7 @@ clang++ -std=c++17 -I. \
 ```text
 gmFlow/
 ├── ai-instructions.md             ← coding conventions for this library
-├── ai-instruction_v2.md           ← authoritative implementation plan
+├── FlowPhase_PLAN.md              ← V2 extension plan (FlowPhase + gmRules integration)
 ├── gmFlow_API.md                  ← this file
 │
 ├── core/
@@ -180,7 +191,9 @@ gmFlow/
 │   ├── Round.hpp / .cpp           ← round container with 1-based index
 │   ├── IPhase.hpp                 ← interface: on_enter, on_exit, available_actions
 │   ├── IFlowController.hpp        ← interface: start, process, can_actor_act
-│   └── SequentialFlowController.hpp / .cpp ← default sequential implementation
+│   ├── SequentialFlowController.hpp / .cpp ← default sequential implementation
+│   ├── PhaseContext.hpp / .cpp    ← [V2] GameContext subclass with isolated IDs
+│   └── FlowPhase.hpp / .cpp       ← [V2] IPhase that owns an IFlowController
 │
 ├── actors/
 │   ├── Actor.hpp                  ← ActorId + ActorType
@@ -205,7 +218,9 @@ gmFlow/
     ├── test_action_queue.cpp
     ├── test_action_window.cpp
     ├── test_flow_sequential.cpp
-    └── test_flow_campaign.cpp
+    ├── test_flow_campaign.cpp
+    ├── test_timeline_flow_controller.cpp
+    └── test_flow_phase.cpp        ← [V2] 10 tests for PhaseContext + FlowPhase
 ```
 
 ---
@@ -854,7 +869,10 @@ public:
 
 #### SequentialFlowController
 
-Default implementation for classic sequential-turn games.
+Default implementation for classic sequential-turn games.  In V2 it transparently
+recognises `FlowPhase` instances and routes `accept_action()`, `can_actor_act()`,
+and per-tick `process()` into the inner controller without exposing the nesting
+to `GameSession`.
 
 ```cpp
 class SequentialFlowController : public IFlowController {
@@ -864,10 +882,18 @@ public:
 
     // IFlowController — see interface above.
 
+    // [V2] Returns the currently active IPhase*, nullptr if session is complete.
+    IPhase* current_phase() const;
+
 protected:
+    int _round_index;  // [V2] promoted to protected for FlowPhase subclasses
+
     // Override to customise actor ordering per phase (initiative, priority, etc.).
     virtual std::vector<ActorId>
         determine_turn_order(const GameContext& ctx) const;
+
+    // [V2] Made virtual so subclasses can hook phase-transition timing.
+    virtual void advance_phase(GameContext& ctx);
 };
 ```
 
@@ -885,7 +911,82 @@ Supported game archetypes without subclassing:
 
 ---
 
-#### TimelineFlowController
+#### PhaseContext
+
+`[V2]` A `GameContext` subclass that provides **isolated** phase/round/turn IDs
+for an inner `IFlowController` while **sharing** `GameState`, `ActorRegistry`,
+and `EventBus` from the parent context by reference.
+
+```cpp
+class PhaseContext : public GameContext
+{
+public:
+    // Constructs a PhaseContext borrowing all services from parent.
+    // scope_prefix must not be empty (e.g. "epoch_1", "encounter_2").
+    PhaseContext(GameContext& parent, std::string scope_prefix);
+
+    // Returns the scope prefix supplied at construction.
+    const std::string& scope_prefix() const;
+};
+```
+
+`set_current_round_id()`, `set_current_phase_id()`, `set_current_turn_id()` are
+inherited from `GameContext` and write **only** into this object — the parent
+context is never modified.  Mutations to `GameState` (via `state()`) are visible
+at every nesting level because both contexts hold a reference to the same object.
+
+---
+
+#### FlowPhase
+
+`[V2]` An `IPhase` implementation that owns an `IFlowController` and a
+`PhaseContext`.  From the enclosing controller's perspective it is a plain
+`IPhase`; internally it runs a complete sub-flow (rounds, turns, actions).
+
+```cpp
+class FlowPhase : public IPhase
+{
+public:
+    // scope_prefix becomes the phase ID returned by id().
+    // controller must not be null.
+    FlowPhase(std::string                      scope_prefix,
+              std::unique_ptr<IFlowController> controller);
+
+    // IPhase overrides.
+    PhaseId id()                                                  const override;
+    void    on_enter(GameContext& parent_ctx)                           override;
+    void    on_exit(GameContext& ctx)                                   override;
+    std::vector<std::unique_ptr<IAction>>
+            available_actions(const GameContext& ctx,
+                              const ActorId& actor)               const override;
+    bool    is_complete(const GameContext& ctx)                   const override;
+
+    // FlowPhase-specific: drive the inner controller one tick.
+    void tick(GameContext& ctx);
+
+    // Routing helpers used by SequentialFlowController.
+    ValidationResult accept_action(GameContext& ctx,
+                                   const ActorId& actor,
+                                   std::unique_ptr<IAction> action);
+    bool             can_actor_act(const GameContext& ctx,
+                                   const ActorId& actor) const;
+
+    // Returns the owned PhaseContext. Throws std::logic_error before on_enter().
+    const PhaseContext& phase_context() const;
+    const std::string&  scope_prefix()  const;
+};
+```
+
+| Invariant | Guarantee |
+| --------- | --------- |
+| `GameState` shared | Mutations by inner actions visible at all nesting levels |
+| IDs isolated | `PhaseContext.current_round_id()` never overwrites parent `GameContext` |
+| EventBus shared | Inner events (ROUND_STARTED, TURN_STARTED…) arrive on the root session bus |
+| Backward compatible | `GameSession`, `IPhase`, `IFlowController` are unchanged |
+
+---
+
+
 
 Continuous-timeline turn selection.  The actor with the **lowest timeline position**
 acts next.  Ties are broken by a secondary rank, then by insertion order (stable sort).
@@ -1268,6 +1369,85 @@ campaign.complete_current_session(true);  // unlocks scenario_2
 
 ---
 
+### Epoch Nested with FlowPhase
+
+Demonstrates a two-level hierarchy: Session → Epoch → Morning/Evening.
+The outer session only calls `start()`, `submit_action()`, and `tick()`;
+it has no knowledge of the inner Epoch structure.
+
+```cpp
+#include "gmFlow/flow/FlowPhase.hpp"
+#include "gmFlow/flow/PhaseContext.hpp"
+
+// Inner sub-phases of the Epoch.
+class MorningPhase : public gmFlow::IPhase {
+public:
+    gmFlow::PhaseId id() const override { return "morning"; }
+    void on_enter(gmFlow::GameContext&) override {}
+    void on_exit(gmFlow::GameContext&)  override {}
+    std::vector<std::unique_ptr<gmFlow::IAction>>
+    available_actions(const gmFlow::GameContext&,
+                      const gmFlow::ActorId&) const override { return {}; }
+    bool is_complete(const gmFlow::GameContext& ctx) const override {
+        return static_cast<const MyState&>(ctx.state()).morning_done;
+    }
+};
+
+class EveningPhase : public gmFlow::IPhase {
+public:
+    gmFlow::PhaseId id() const override { return "evening"; }
+    void on_enter(gmFlow::GameContext&) override {}
+    void on_exit(gmFlow::GameContext&)  override {}
+    std::vector<std::unique_ptr<gmFlow::IAction>>
+    available_actions(const gmFlow::GameContext&,
+                      const gmFlow::ActorId&) const override { return {}; }
+    bool is_complete(const gmFlow::GameContext& ctx) const override {
+        return static_cast<const MyState&>(ctx.state()).evening_done;
+    }
+};
+
+// Build the Epoch FlowPhase.
+std::vector<std::unique_ptr<gmFlow::IPhase>> epoch_sub;
+epoch_sub.push_back(std::make_unique<MorningPhase>());
+epoch_sub.push_back(std::make_unique<EveningPhase>());
+
+auto epoch = std::make_unique<gmFlow::FlowPhase>(
+    "epoch_1",
+    std::make_unique<gmFlow::SequentialFlowController>(std::move(epoch_sub)));
+
+// Wire into the outer session (plain IPhase).
+std::vector<std::unique_ptr<gmFlow::IPhase>> outer;
+outer.push_back(std::make_unique<SetupPhase>());
+outer.push_back(std::move(epoch));          // FlowPhase used as IPhase
+outer.push_back(std::make_unique<EndPhase>());
+
+auto ctrl = std::make_unique<gmFlow::SequentialFlowController>(std::move(outer));
+gmFlow::GameSession session(cfg, std::move(ctrl), std::move(state), dispatcher);
+
+// Subscribe to events on the root bus — inner events arrive here too.
+session.event_bus().subscribe(gmFlow::EVT_ROUND_STARTED,
+    [](const gmFlow::IEvent& e) {
+        const auto& ev = static_cast<const gmFlow::RoundStartedEvent&>(e);
+        std::cout << "Round started: " << ev.round_id << "\n";
+    });
+
+session.start();
+while (!session.is_finished()) {
+    session.submit_action("player_1", std::make_unique<MyAction>("player_1"));
+    session.tick();
+}
+```
+
+**Key points:**
+- `epoch_1.current_round_id()` tracks only the Epoch-level rounds;
+  the root `session.context().current_round_id()` tracks root-level IDs.
+- All `EVT_ROUND_STARTED`, `EVT_TURN_STARTED`, etc. published by the inner
+  controller arrive on the single shared `EventBus` of the root session.
+- To add deeper nesting (e.g. Session → Epoch → Day), repeat the same
+  pattern: build inner FlowPhase, pass to outer FlowPhase controller.
+
+---
+
 ## Event Reference
 
 All events are structs inheriting from `IEvent`.  Subscribe by string constant;
@@ -1284,6 +1464,215 @@ session.event_bus().subscribe(gmFlow::EVT_ACTION_FAILED,
 
 See [EventType.hpp](#eventtypehpp) for the full constant list and
 [FlowEvents.hpp](#floweventshpp) for all struct definitions.
+
+---
+
+## bridges/ — Rules Integration
+
+The `bridges/` folder provides opt-in adapters that connect gmFlow lifecycle
+events and actions to external rules engines.  No gmFlow core header
+depends on any bridge header.
+
+### FlowRulesGateway
+
+`gmFlow/bridges/FlowRulesGateway.hpp`
+
+Subscribes typed callbacks to the `EventBus` so an external rules engine
+can observe and optionally veto lifecycle transitions.
+
+#### FlowRulesPayload
+
+Flattened, copyable description of the context in which a lifecycle event
+occurred.  All fields are `std::string`; unused fields remain empty.
+
+```cpp
+struct FlowRulesPayload {
+    std::string actor_id;     // active actor (turn events) or submitter (actions)
+    std::string action_id;    // action being processed (action events only)
+    std::string phase_id;     // current phase at publication time
+    std::string round_id;     // current round at publication time
+    std::string turn_id;      // current turn at publication time
+    std::string scope_prefix; // non-empty when inside a FlowPhase sub-controller
+    std::string event_type;   // the EVT_* constant that triggered the callback
+};
+```
+
+#### FlowRulesCallback
+
+```cpp
+using FlowRulesCallback = std::function<bool(const FlowRulesPayload&)>;
+```
+
+Return `true` to allow the event to proceed; return `false` to signal a
+veto (informational only — the EventBus delivers the event regardless;
+veto semantics are enforced by the caller).  A `nullptr` callback is silently
+skipped.
+
+#### register_flow_rules_gateway
+
+```cpp
+void register_flow_rules_gateway(
+    EventBus&            bus,
+    FlowRulesCallback    on_turn_started,
+    FlowRulesCallback    on_turn_ended,
+    FlowRulesCallback    on_round_started,
+    FlowRulesCallback    on_round_ended,
+    FlowRulesCallback    on_phase_entered,
+    FlowRulesCallback    on_phase_exited,
+    FlowRulesCallback    on_window_opened,
+    FlowRulesCallback    on_window_closed,
+    FlowRulesCallback    on_action_submitted,
+    FlowRulesCallback    on_action_completed);
+```
+
+Subscribes up to ten callbacks in a single call.  Each non-null callback is
+registered as a permanent subscriber on `bus` for the corresponding event.
+
+| Parameter | Event constant subscribed |
+| --------- | ------------------------- |
+| `on_turn_started` | `EVT_TURN_STARTED` |
+| `on_turn_ended` | `EVT_TURN_ENDED` |
+| `on_round_started` | `EVT_ROUND_STARTED` |
+| `on_round_ended` | `EVT_ROUND_ENDED` |
+| `on_phase_entered` | `EVT_PHASE_ENTERED` |
+| `on_phase_exited` | `EVT_PHASE_EXITED` |
+| `on_window_opened` | `EVT_WINDOW_OPENED` |
+| `on_window_closed` | `EVT_WINDOW_CLOSED` |
+| `on_action_submitted` | `EVT_ACTION_SUBMITTED` |
+| `on_action_completed` | `EVT_ACTION_COMPLETED` |
+
+**Precondition:** `bus` must remain valid for the lifetime of the session.
+
+---
+
+### ActionGateway
+
+`gmFlow/bridges/ActionGateway.hpp`
+
+Decorator around `IAction` that adds a pre-check (in `validate()`) and a
+post-hook (in `execute()`).  Ownership of the inner action is transferred
+to the gateway.
+
+#### Supporting types
+
+```cpp
+using ActionPreCheck = std::function<ValidationResult(const FlowRulesPayload&)>;
+using ActionPostHook = std::function<void(const FlowRulesPayload&,
+                                          const ActionResult&)>;
+```
+
+- **`ActionPreCheck`** — Called inside `validate()` after the inner action's
+  own validation succeeds.  Returns `ValidationResult::ok()` to allow, or
+  `ValidationResult::fail(error, reason)` to block.  A `nullptr` pre-check
+  always passes.
+- **`ActionPostHook`** — Called inside `execute()` after the inner action
+  completes, regardless of success or failure.  The payload's `event_type`
+  field is set to `EVT_ACTION_COMPLETED` on success or `EVT_ACTION_FAILED`
+  on failure.  A `nullptr` post-hook is silently skipped.
+
+#### ActionGateway class
+
+```cpp
+class ActionGateway : public IAction {
+public:
+    ActionGateway(std::unique_ptr<IAction> inner,
+                  FlowRulesPayload         payload,
+                  ActionPreCheck           pre_check,
+                  ActionPostHook           post_hook);
+
+    // IAction overrides — all delegate to *_inner except where noted.
+    ActionId             id()     const override;
+    ActorId              owner()  const override;
+    ActionStatus         status() const override;
+    ValidationResult     validate(const GameContext& ctx) const override;
+    ActionResult         execute(GameContext& ctx) override;
+    bool is_async()      const override;
+    bool requires_turn() const override;
+    bool is_multi_step() const override;
+};
+```
+
+**Blocking principle (R6):** Only `validate()` may block an action.
+`execute()` always calls the inner action and then the post-hook;
+it never aborts based on post-hook output.
+
+---
+
+### End-to-end Usage Example
+
+Full turn sequence with lifecycle observation and a guarded action.
+
+```cpp
+#include "gmFlow/session/GameSession.hpp"
+#include "gmFlow/bridges/FlowRulesGateway.hpp"
+#include "gmFlow/bridges/ActionGateway.hpp"
+
+// 1. Build and start the session normally.
+auto session = make_session(cfg, std::move(controller),
+                            std::move(state), dispatcher);
+
+// 2. Register lifecycle callbacks.
+gmFlow::register_flow_rules_gateway(
+    session->event_bus(),
+    /* on_turn_started */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Turn started for actor: " + p.actor_id);
+        return true;
+    },
+    /* on_turn_ended   */ nullptr,
+    /* on_round_started */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Round: " + p.round_id);
+        return true;
+    },
+    nullptr, nullptr, nullptr, nullptr, nullptr,
+    /* on_action_submitted */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Action submitted: " + p.action_id);
+        return true;
+    },
+    /* on_action_completed */
+    [](const gmFlow::FlowRulesPayload& p) -> bool {
+        log("Action completed: " + p.action_id);
+        return true;
+    });
+
+session->start(); // fires EVT_ROUND_STARTED, EVT_TURN_STARTED
+
+// 3. Wrap an action with a pre-check and post-hook.
+gmFlow::FlowRulesPayload base_payload;
+base_payload.actor_id = "hero";
+
+auto guarded = std::make_unique<gmFlow::ActionGateway>(
+    std::make_unique<AttackAction>("hero"),
+    base_payload,
+    /* pre_check */
+    [](const gmFlow::FlowRulesPayload&) -> gmFlow::ValidationResult {
+        // Consult external rules engine here.
+        bool allowed = rules_engine::can_attack();
+        if (!allowed)
+            return gmFlow::ValidationResult::fail(
+                gmFlow::ValidationError::RULE_VIOLATION, "attack not allowed");
+        return gmFlow::ValidationResult::ok();
+    },
+    /* post_hook */
+    [](const gmFlow::FlowRulesPayload& p,
+       const gmFlow::ActionResult&     r) {
+        if (r.succeeded())
+            rules_engine::notify_attack_completed(p.actor_id);
+        else
+            rules_engine::notify_attack_failed(p.actor_id, r.reason());
+    });
+
+// 4. Submit and tick — gateway pre-check runs inside validate().
+auto vr = session->submit_action("hero", std::move(guarded));
+if (!vr.valid()) {
+    // RULE_VIOLATION: action blocked; session still open, hero can retry.
+    log("Action blocked: " + vr.reason());
+} else {
+    session->tick(); // execute runs; post-hook fires; turn ends
+}
+```
 
 ---
 

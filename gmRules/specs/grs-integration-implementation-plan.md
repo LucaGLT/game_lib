@@ -74,7 +74,7 @@ L'ordine segue la priorità tecnica di intervento, partendo da `gmRules`.
 
 ---
 
-## Capitolo 2 - gmFlow (P1)
+## Capitolo 2 - gmFlow (P1) ✅ Completato
 
 ### Cosa implementare
 
@@ -96,15 +96,22 @@ L'ordine segue la priorità tecnica di intervento, partendo da `gmRules`.
    - post-check trigger (`ACTION_COMPLETED`)
 4. Mappare motivi di blocco in outcome consumabile da state machine gmFlow.
 
-### Deliverable
+### Deliverable ✅
 
-- Adapter di orchestrazione gmFlow-gmRules.
-- Test di integrazione su un intero turno e un intero round.
+- `gmFlow/bridges/FlowRulesGateway.hpp` / `.cpp` — subscrive fino a 10 callback
+  al lifecycle EventBus; payload `FlowRulesPayload` (flat struct, copiabile).
+- `gmFlow/bridges/ActionGateway.hpp` / `.cpp` — decorator `IAction` con
+  `ActionPreCheck` (blocco in `validate()`) e `ActionPostHook` (in `execute()`).
+- `gmFlow/tests/test_flow_rules_integration.cpp` — 10 test di integrazione
+  (callback dispatch, blocking, post-hook, full-turn order, regression).
+- `gmFlow/CMakeLists.txt` aggiornato con target `test_gmFlow_flow_rules_integration`.
+- `gmFlow/gmFlow_API.md` aggiornato con sezione `bridges/`.
 
-### Criteri di accettazione
+### Criteri di accettazione ✅
 
 - Le transizioni fase non bypassano i trigger.
 - Un blocco azione da trigger produce outcome deterministico.
+- 7/7 test CTest gmFlow_ passano senza regressioni.
 
 ---
 
