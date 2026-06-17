@@ -45,6 +45,16 @@ class GmDiceModule(BaseModule):
       faces, custom profiles) and, optionally, the roll itself.
     - ``gmAlea.dice.roll_result``: a roll result to display.
     - ``gmAlea.dice.profiles_snapshot``: the list of available custom profiles.
+    The module can be driven manually (the user picks the mode/dice and presses
+    *LANCIA*) **or** entirely by the Core Engine through a single ad-hoc setup
+    message — see :meth:`_apply_setup`.
+
+    Subscribed typeIds
+    ------------------
+    - ``gmAlea.dice.setup``: engine-driven auto-configuration (mode, dice count,
+      faces, custom profiles) and, optionally, the roll itself.
+    - ``gmAlea.dice.roll_result``: a roll result to display.
+    - ``gmAlea.dice.profiles_snapshot``: the list of available custom profiles.
     """
 
     @property
@@ -61,6 +71,7 @@ class GmDiceModule(BaseModule):
 
     def subscribed_type_ids(self) -> list[str]:
         return [
+            "gmAlea.dice.setup",
             "gmAlea.dice.setup",
             "gmAlea.dice.roll_result",
             "gmAlea.dice.profiles_snapshot",
@@ -469,6 +480,26 @@ class GmDiceModule(BaseModule):
         self._history_list.setItemWidget(item, entry)
         while self._history_list.count() > _MAX_HISTORY:
             self._history_list.takeItem(self._history_list.count() - 1)
+
+    # ── Envelope routing ──────────────────────────────────────────────────────
+
+    def on_envelope(self, msg: dict) -> None:
+        tid = msg.get("typeId", "")
+        raw = msg.get("headers", {}).get("data", None)
+        if raw is None:
+            raw = msg.get("data", {})
+        try:
+            data: dict = _json.loads(raw) if isinstance(raw, str) else raw
+        except Exception:
+            data = {}
+
+        if tid == "gmAlea.dice.setup":
+            self._apply_setup(data)
+
+        elif tid == "gmAlea.dice.roll_result":
+            dice: list[int] = [int(d) for d in data.get("dice", [])]
+            total: int = int(data.get("total", 0))
+            self._show_result(dice, total)
 
     # ── Envelope routing ──────────────────────────────────────────────────────
 
