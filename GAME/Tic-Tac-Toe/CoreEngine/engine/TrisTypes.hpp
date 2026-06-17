@@ -84,6 +84,20 @@ inline std::string mark_to_string(Mark mark)
 	}
 }
 
+/// @brief Parses a mark symbol ("X"/"O") into a Mark; anything else is EMPTY.
+inline Mark mark_from_string(const std::string& symbol)
+{
+	if (symbol == "X")
+	{
+		return Mark::X;
+	}
+	if (symbol == "O")
+	{
+		return Mark::O;
+	}
+	return Mark::EMPTY;
+}
+
 /// @brief Returns a stable string identifier for a phase.
 inline std::string phase_to_string(Phase phase)
 {

@@ -5,8 +5,8 @@
  * @file rules/WinRules.hpp
  * @brief Win/draw evaluation for a Tic-Tac-Toe board.
  *
- * @note Phase 1 evaluates the 8 winning lines directly. Phase 2 will express
- *       the same conditions through a gmRules engine instance.
+ * Phase 2 expresses the 8 winning lines as gmRules LOCATION_HAS_TAG conditions
+ * evaluated by a gmRules::gmRulesEngine over a TrisRuleContext adapter.
  */
 
 #include "board/Board.hpp"

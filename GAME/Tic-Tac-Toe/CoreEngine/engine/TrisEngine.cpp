@@ -70,6 +70,7 @@ nlohmann::json TrisEngine::build_board_snapshot() const
 void TrisEngine::start_game(StarterMode mode)
 {
 	_board.reset();
+	_players.reset_statuses();
 
 	const StarterResult start = _starter.choose(mode);
 	_starter_mark             = start.first;
@@ -156,6 +157,7 @@ void TrisEngine::handle_move(const nlohmann::json& data)
 
 	if (eval.outcome == Outcome::WIN)
 	{
+		_players.mark_winner(player);
 		_gui.send_event(event_id::STATUS_REMOVED,
 		                {{"actor_id", _players.actor_id(player)},
 		                 {"status", "ACTIVE_TURN"}});
@@ -172,6 +174,7 @@ void TrisEngine::handle_move(const nlohmann::json& data)
 
 	if (eval.outcome == Outcome::DRAW)
 	{
+		_players.mark_draw();
 		_gui.send_event(event_id::STATUS_REMOVED,
 		                {{"actor_id", _players.actor_id(player)},
 		                 {"status", "ACTIVE_TURN"}});

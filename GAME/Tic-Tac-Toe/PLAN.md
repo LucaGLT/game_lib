@@ -1,7 +1,7 @@
 # Tic-Tac-Toe – Development Plan
 
 **Version:** 0.2.0
-**Status:** Phase 1 – Interfaces & Stubs ✅ (Phase 2 next ⏳)
+**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Domain logic ✅ (Phase 3 next ⏳)
 **Language:** C++17 Standard (CoreEngine) + Python 3 / PySide6 (GUI)
 **Namespace:** `gmTris` (C++) / `gmtris_gui` (Python)
 
@@ -138,16 +138,16 @@ GAME/Tic-Tac-Toe/
   linka `gmDispatch`/`gmLog`/`gmAlea` (+ `ws2_32` su Windows) e include la
   root per gli header `gmXxx`/`gmSave`.
 
-### Phase 2 — Domain logic (board, players, flow, rules) ⏳
+### Phase 2 — Domain logic (board, players, flow, rules) ✅
 
-- [ ] `Board` su `gmMap`: 9 location, metadata `mark` per cella.
-- [ ] `Players` su `gmActor`: attori X/O, status `ACTIVE_TURN`/`WINNER`/`DRAW`.
-- [ ] `TurnFlow` su `gmFlow`: fasi `PLAYER1_TURN`/`PLAYER2_TURN`/`GAME_OVER`.
-- [ ] `WinRules` su `gmRules`: valutazione 8 linee vincenti + draw.
-- [ ] `Starter` su `gmAlea`: 1d2 per scelta primo giocatore.
-- [ ] `TrisEngine.handle_command`: `gmTris.move` / `gmTris.new_game`.
-- [ ] Emissione eventi: snapshot iniziali + update incrementali.
-- [ ] **Smoke test:** partita completa via comandi simulati → win e draw.
+- [x] `Board` su `gmMap`: 9 location, metadata `mark` per cella, adiacenze ortogonali.
+- [x] `Players` su `gmActor`: `ActorStore` con due eroi X/O, status `ACTIVE_TURN`/`WINNER`/`DRAW`.
+- [x] `TurnFlow` su `gmFlow`: `ActorRegistry` + `Turn`/`Round` per fase, fasi `PLAYER1_TURN`/`PLAYER2_TURN`/`GAME_OVER`.
+- [x] `WinRules` su `gmRules`: 8 linee come `ALL_OF` di `LOCATION_HAS_TAG` valutate da `gmRulesEngine` su `TrisRuleContext`, + draw.
+- [x] `Starter` su `gmAlea`: 1d2 per scelta primo giocatore (invariato dalla Phase 1).
+- [x] `TrisEngine.handle_command`: `gmTris.move` / `gmTris.new_game` (contratto eventi invariato).
+- [x] Emissione eventi: snapshot iniziali + update incrementali (wire-contract identico).
+- [x] **Smoke test:** partita completa via comandi simulati → win (`row_1`) e draw verificati E2E.
 
 ### Phase 3 — GUI interattiva ⏳
 
@@ -180,3 +180,12 @@ GAME/Tic-Tac-Toe/
    occupata da software proxy/agent locale (listener `0.0.0.0:9000`), che
    "rubava" le connessioni di loopback all'engine. Spostando il canale eventi su
    9100 il loop Engine→GUI funziona; i comandi restano su 9001.
+7. **Wiring librerie Phase 2** (senza toccare il build root): `gmFlow` e
+   `gmRules` sono già subdirectory del root e vengono linkati; le sorgenti core
+   di `gmActor` (no serializzazione/adapter gmFlow) sono compilate direttamente
+   nell'eseguibile; `gmMap` e `gmSave` sono header-only via include path. Flag
+   MSVC `/Zc:__cplusplus` necessaria per lo `static_assert` di `gmSave`.
+8. **Contratto eventi invariato**: la migrazione ai sottosistemi reali mantiene
+   identici `typeId` e payload degli eventi verso la GUI; l'`ActorStore` e il
+   `TurnFlow` gmFlow restano fonti di verità interne, rispecchiate (non
+   sostituite) dagli eventi già emessi nella Phase 1.
