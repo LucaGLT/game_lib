@@ -1,7 +1,7 @@
 # Tic-Tac-Toe – Development Plan
 
 **Version:** 0.2.0
-**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Domain logic ✅ · Phase 3 – GUI interattiva ✅ (Phase 4 next ⏳)
+**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Domain logic ✅ · Phase 3 – GUI interattiva ✅ · Phase 4 – Test & robustezza ✅
 **Language:** C++17 Standard (CoreEngine) + Python 3 / PySide6 (GUI)
 **Namespace:** `gmTris` (C++) / `gmtris_gui` (Python)
 
@@ -163,12 +163,25 @@ GAME/Tic-Tac-Toe/
 > Python lato GUI che traduce il contratto eventi Tris in quello dei moduli
 > (engine C++ e wire-contract invariati). Vedi Decisione 9.
 
-### Phase 4 — Test & robustezza ⏳
+### Phase 4 — Test & robustezza ✅
 
-- [ ] Unit test C++ regole mossa/win/draw.
-- [ ] Test bridge: frame validi e malformati, disconnessione GUI.
-- [ ] Test integrazione E2E.
-- [ ] **Smoke test:** suite completa verde.
+- [x] Unit test C++ regole mossa/win/draw
+  (`CoreEngine/tests/test_rules.cpp`: Board + tutte le 8 linee vincenti X/O,
+  pareggio, in-progress).
+- [x] Unit test identità/stati giocatori + starter
+  (`CoreEngine/tests/test_players.cpp`: gmActor statuses + gmAlea 1d2).
+- [x] Test bridge: frame validi e malformati, typeId mancante, riconnessione
+  dopo disconnessione (`CoreEngine/tests/test_cmdserver.cpp`, round-trip su
+  socket loopback reale).
+- [x] Test integrazione E2E sull'eseguibile reale
+  (`GUI/tests/e2e_test.py`: new_game, mosse fuori range / turno errato / cella
+  occupata, vittoria + `GAME_OVER`, comando durante game over, restart,
+  pareggio a tabellone pieno, starter 1d2).
+- [x] **Suite completa verde:** 4/4 test registrati in CTest
+  (`tris_rules`, `tris_players`, `tris_bridge`, `tris_e2e`).
+
+> I widget Python non più usati dalla GUI ibrida non sono coperti dai test
+> (scelta dell'utente: mantenerli ma non testarli).
 
 ---
 
