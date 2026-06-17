@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.1.0
-**Status:** Phase 1 – Planned ⏳
+**Version:** 0.2.0
+**Status:** Phase 2 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -113,34 +113,41 @@ pyLib/
 
 ---
 
-### Phase 1 — Interfaces & Stubs ⏳
+### Phase 1 — Interfaces & Stubs ✅
 
-- [ ] Creare la directory `pyLib/gmGui/` con tutti i `__init__.py`
-- [ ] Definire `IGmGuiModule` (ABC) in `modules/base_module.py`
+- [x] Creare la directory `pyLib/gmGui/` con tutti i `__init__.py`
+- [x] Definire `IGmGuiModule` (ABC) in `modules/base_module.py`
   - Proprietà astratte: `module_id`, `title`, `default_area`
   - Metodi astratti: `widget()`, `subscribed_type_ids()`, `on_envelope(msg)`
   - Metodi con default: `on_attach()`, `on_detach()`, `save_state()`, `restore_state()`
   - Metodo concreto: `send_command()` (delegato a `_sender`)
-- [ ] Definire `BaseModule(IGmGuiModule, ABC)` in `modules/base_module.py`
+- [x] Definire `BaseModule(IGmGuiModule, ABC)` in `modules/base_module.py`
   - Costruttore: `_sender = None`, `_widget = None`
   - `set_sender(sender)` — iniettato da MainWindow
   - `widget()` — chiama `_build_widget()` una sola volta (cache)
   - `_build_widget()` astratto
-- [ ] Creare stub di `EngineReceiver(QThread)` in `engine_bridge/receiver.py`
+- [x] Creare stub di `EngineReceiver(QThread)` in `engine_bridge/receiver.py`
   - Signal `envelope_received = Signal(dict)`
   - Signal `connection_lost = Signal()`
   - Metodi stub: `run()`, `stop()`
-- [ ] Creare stub di `EngineSender` in `engine_bridge/sender.py`
+- [x] Creare stub di `EngineSender` in `engine_bridge/sender.py`
   - Metodi stub: `send_command(type_id, data)`, `close()`
-- [ ] Creare stub di `framing.py`
+- [x] Creare stub di `framing.py`
   - `send_frame(sock, payload)`, `recv_frame(sock)`, `_recv_exact(sock, n)` — raise `NotImplementedError`
-- [ ] Creare stub di tutti e 5 i moduli (solo `module_id`, `title`, `default_area`, `subscribed_type_ids()` e `_build_widget()` con `QLabel("stub")`)
+- [x] Creare stub di tutti e 5 i moduli (solo `module_id`, `title`, `default_area`, `subscribed_type_ids()` e `_build_widget()` con `QLabel("stub")`)
   - `GmFlowModule`, `GmActorModule`, `GmCompDeckModule`, `GmDiceModule`, `GmMapModule`
-- [ ] Creare stub di `MainWindow(QMainWindow)` in `main_window.py`
-  - `_register_modules()`, `_add_dock()`, `_on_envelope()` — corpi vuoti
-- [ ] Creare stub di `settings.py` — `save_layout()`, `restore_layout()` — corpi vuoti
-- [ ] Creare `main.py` — `QApplication` + `MainWindow.show()`
-- [ ] Smoke test: `python -m gmGui` avvia senza eccezioni con 5 dock stub visibili
+- [x] Creare stub di `MainWindow(QMainWindow)` in `main_window.py`
+  - `_register_modules()`, `_add_dock()`, `_on_envelope()` — implementati e funzionanti
+- [x] Creare stub di `settings.py` — `save_layout()`, `restore_layout()` — corpi no-op
+- [x] Creare `main.py` — `QApplication` + `MainWindow.show()`
+- [x] Smoke test: `python -m gmGui` avvia senza eccezioni con 5 dock stub visibili
+
+**Notes:**
+- `IGmGuiModule` e `BaseModule` sono nel medesimo file `base_module.py`; `TYPE_CHECKING` usato per evitare import circolare con `EngineSender`.
+- `MainWindow._register_modules()` è già funzionante: istanzia i 5 moduli, costruisce la routing table e aggiunge i dock widget. Le fasi successive completano i singoli moduli senza modificare `MainWindow`.
+- `GmActorModule` e `GmCompDeckModule` sono tabificati sulla `RightDockWidgetArea` tramite `tabifyDockWidget()`.
+- `EngineReceiver.run()` esce immediatamente in Phase 1; il loop TCP viene implementato in Phase 2.
+- Tutti i test sono presenti come stub `@pytest.mark.skip` con reason che indica la fase di implementazione.
 
 **Notes:**
 
