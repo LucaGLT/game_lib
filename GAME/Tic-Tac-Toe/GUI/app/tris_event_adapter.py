@@ -154,7 +154,7 @@ class TrisEventAdapter:
         envelopes.append(
             _envelope(
                 "gmAlea.dice.setup",
-                {"mode": "standard", "count": 1, "faces": 2, "locked": True},
+                {"mode": "standard", "count": 1, "faces": 2, "locked": False},
             )
         )
         return envelopes
@@ -193,7 +193,7 @@ class TrisEventAdapter:
                     "mode": "standard",
                     "count": 1,
                     "faces": 2,
-                    "locked": True,
+                    "locked": False,
                     "result": {"dice": [value], "total": value},
                 },
             )

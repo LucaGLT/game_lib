@@ -365,12 +365,10 @@ class GmDiceModule(BaseModule):
     def _set_controls_locked(self, locked: bool) -> None:
         """Enables/disables the manual configuration controls.
 
-        When *locked* is true the user can no longer change the mode, the dice
-        count/faces or the custom profile: the Core Engine drives configuration
-        through ``gmAlea.dice.setup`` messages. The *LANCIA* button is **never**
-        disabled, so the user can always roll manually even if the resulting roll
-        is not used by the game.
+        In this workspace the dice panel must stay user-configurable at all
+        times, so incoming engine lock requests are intentionally ignored.
         """
+        _ = locked
         for control in (
             self._mode_combo,
             self._count_spin,
@@ -378,8 +376,8 @@ class GmDiceModule(BaseModule):
             self._profile_combo,
             self._custom_count_spin,
         ):
-            control.setEnabled(not locked)
-        # LANCIA stays always enabled — manual rolls are allowed at any time.
+            control.setEnabled(True)
+        # LANCIA stays always enabled.
         self._roll_btn.setEnabled(True)
 
     def _apply_setup(self, data: dict) -> None:
