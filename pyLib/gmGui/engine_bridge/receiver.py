@@ -61,15 +61,13 @@ class EngineReceiver(QThread):
         super().__init__()
         self._host: str = host
         self._port: int = port
-        self._running: bool = False
+        self._running: bool = True  # set to False by stop()
 
     def run(self) -> None:
         """TCP server loop: accept, read frames, emit Signals.
 
         Thread entry point — do not call directly; use ``start()``.
         """
-        self._running = True
-
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind((self._host, self._port))

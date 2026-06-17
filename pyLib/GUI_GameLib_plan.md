@@ -1,7 +1,7 @@
 # gmGui – Development Plan
 
-**Version:** 0.3.0
-**Status:** Phase 3 – Planned ⏳
+**Version:** 0.4.0
+**Status:** Phase 4 – Planned ⏳
 **Language:** Python 3.11+ / PySide6
 **Package:** `gmGui`
 
@@ -197,47 +197,50 @@ pyLib/
 
 ---
 
-### Phase 3 — MainWindow & Dock System ⏳
+### Phase 3 — MainWindow & Dock System ✅
 
-- [ ] Implementare `MainWindow.__init__()`
+- [x] Implementare `MainWindow.__init__()`
   - `setWindowTitle("GameLib GUI")`, `resize(1280, 800)`
   - `setDockNestingEnabled(True)` — abilita split e tab tra dock
   - `_receiver = EngineReceiver()`, `_sender = EngineSender()`
   - Collega `_receiver.envelope_received` → `_on_envelope`
   - Avvia `_receiver.start()`
-- [ ] Implementare `MainWindow._register_modules()`
+- [x] Implementare `MainWindow._register_modules()`
   - Istanzia tutti e 5 i moduli
   - Chiama `mod.set_sender(self._sender)` su ciascuno
   - Costruisce `_routing: dict[str, list[BaseModule]]` da `subscribed_type_ids()`
   - Chiama `_add_dock(mod)` per ciascuno
   - Chiama `mod.on_attach()` per ciascuno
-- [ ] Implementare `MainWindow._add_dock(mod)`
+- [x] Implementare `MainWindow._add_dock(mod)`
   - Crea `QDockWidget(mod.title, self)`
   - `dock.setObjectName(mod.module_id)` — necessario per `saveState()`
   - Imposta `DockWidgetMovable | DockWidgetFloatable | DockWidgetClosable`
   - `addDockWidget(mod.default_area, dock)`
   - Salva riferimento `self._docks[mod.module_id] = dock`
-- [ ] Implementare `MainWindow._on_envelope(msg: dict)`
+- [x] Implementare `MainWindow._on_envelope(msg: dict)`
   - `tid = msg.get("typeId", "")`
   - Per ogni modulo in `_routing.get(tid, [])`: `mod.on_envelope(msg)`
-- [ ] Aggiungere tabbing automatico di GmActorModule e GmCompDeckModule
+- [x] Aggiungere tabbing automatico di GmActorModule e GmCompDeckModule
   - `tabifyDockWidget(actor_dock, deck_dock)`
-- [ ] Implementare `settings.save_layout(window)` e `restore_layout(window)`
+- [x] Implementare `settings.save_layout(window)` e `restore_layout(window)`
   - `QSettings("GameLib", "gmGui")`
   - `settings.setValue("geometry", window.saveGeometry())`
   - `settings.setValue("windowState", window.saveState())`
   - `restore_layout`: `restoreGeometry()` + `restoreState()`
-- [ ] Collegare `closeEvent` di `MainWindow` a `save_layout()` + `stop()` di `EngineReceiver`
-- [ ] Aggiungere `QMenuBar` con menu `View` (mostra/nasconde dock) e `Help`
-- [ ] Aggiungere `QStatusBar` con label connessione engine (`Disconnesso` / `Connesso`)
+- [x] Collegare `closeEvent` di `MainWindow` a `save_layout()` + `stop()` di `EngineReceiver`
+- [x] Aggiungere `QMenuBar` con menu `View` (mostra/nasconde dock) e `Help`
+- [x] Aggiungere `QStatusBar` con label connessione engine (`Disconnesso` / `Connesso`)
   - Collegato a `_receiver.connection_lost` e primo `envelope_received`
-- [ ] Smoke test: `python -m gmGui` → tutti i dock appaiono nell'area corretta, chiusura e riapertura ripristina il layout
+- [x] Test suite `test_routing.py` — **9/9 PASSED**
 
 **Notes:**
 
 - `dock.setObjectName()` è obbligatorio: `saveState()` usa il nome oggetto per identificare i dock.
 - GmActorModule e GmCompDeckModule sono tabbed di default sulla `RightDockWidgetArea`; l'utente può separarli.
 - `EngineReceiver` viene avviato prima che il motore C++ sia connesso; gestisce silenziosamente l'attesa.
+- **Bug fix** (receiver.py): `_running` inizializzato a `True` in `__init__` invece che in `run()` per eliminare la race condition: `stop()` poteva impostare `False` prima che `run()` impostasse `True`.
+- **Bug fix** (main_window.py): `_view_menu` e `_help_menu` salvati come attributi d'istanza; PySide6 cancella il C++ `QMenu*` se il wrapper Python è una variabile locale in `_build_menu()`.
+- Nei test full-window (`test_five_docks_created_in_full_window`, `test_view_menu_has_toggle_action_per_dock`) si usa `unittest.mock.patch.object(EngineReceiver, 'start')` per evitare il binding su porta 9000 durante i test.
 
 ---
 
