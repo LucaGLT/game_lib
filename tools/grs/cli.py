@@ -2,11 +2,11 @@
 cli.py — Interfaccia a riga di comando per il tool GRS.
 
 Sottocomandi disponibili:
-    lint      <file.grs>   Controlli strutturali (L-xxx)
-    validate  <file.grs>   Validazioni semantiche (V-xxx)
-    check     <file.grs>   lint + validate insieme
-    yaml      <file.grs>   (stub) Genera YAML canonico
-    grapho    <file.grs>   (stub) Genera diagramma Mermaid
+    lint      <file.grs>                Controlli strutturali (L-xxx)
+    validate  <file.grs>                Validazioni semantiche (V-xxx)
+    check     <file.grs>                lint + validate insieme
+    yaml      <file.grs> [-o out.yaml]  Genera YAML canonico
+    grapho    <file.grs> [-o out.md] [--rule NAME]  Genera diagramma Mermaid
 """
 
 from __future__ import annotations
@@ -79,9 +79,9 @@ def _cmd_lint(args: argparse.Namespace) -> int:
     if not diags:
         print("  lint: OK — nessun problema strutturale")
     else:
-        _emit(diags, getattr(args, "format", "text"), getattr(args, "output", None))
+        _emit(diags, args.format, args.output)
         errors = sum(1 for d in diags if d.severity == "ERROR")
-        warns = sum(1 for d in diags if d.severity == "WARNING")
+        warns  = sum(1 for d in diags if d.severity == "WARNING")
         print(f"  lint: {errors} error(i), {warns} warning(s)")
     return _exit_code(diags)
 
@@ -95,9 +95,9 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     if not diags:
         print("  validate: OK — nessun problema semantico")
     else:
-        _emit(diags, getattr(args, "format", "text"), getattr(args, "output", None))
+        _emit(diags, args.format, args.output)
         errors = sum(1 for d in diags if d.severity == "ERROR")
-        warns = sum(1 for d in diags if d.severity == "WARNING")
+        warns  = sum(1 for d in diags if d.severity == "WARNING")
         print(f"  validate: {errors} error(i), {warns} warning(s)")
     return _exit_code(diags)
 
@@ -112,9 +112,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if not diags:
         print("  check: OK — nessun problema")
     else:
-        _emit(diags, getattr(args, "format", "text"), getattr(args, "output", None))
+        _emit(diags, args.format, args.output)
         errors = sum(1 for d in diags if d.severity == "ERROR")
-        warns = sum(1 for d in diags if d.severity == "WARNING")
+        warns  = sum(1 for d in diags if d.severity == "WARNING")
         print(f"  check: {errors} error(i), {warns} warning(s)")
     return _exit_code(diags)
 
@@ -124,8 +124,7 @@ def _cmd_yaml(args: argparse.Namespace) -> int:
     if doc is None:
         return 1
     yaml_text = yaml_generate(doc)
-    if getattr(args, "output", None):
-        from pathlib import Path
+    if args.output:
         Path(args.output).write_text(yaml_text, encoding="utf-8")
         print(f"  → {args.output}")
     else:
@@ -142,8 +141,7 @@ def _cmd_grapho(args: argparse.Namespace) -> int:
         md_text = grapho_rule(doc, rule_name)
     else:
         md_text = grapho_all(doc)
-    if getattr(args, "output", None):
-        from pathlib import Path
+    if args.output:
         Path(args.output).write_text(md_text, encoding="utf-8")
         print(f"  → {args.output}")
     else:
