@@ -162,63 +162,32 @@ ogni ciclo di Turn — cfr. discussione architetturale).
 
 ---
 
-### Phase 7 — FlowPhase Implementation ⏳
+### Phase 7 — FlowPhase Implementation ✅
 
 **Goal:** `IPhase` che possiede un controller interno e un `PhaseContext` isolato.
 
-- [ ] Creare `gmFlow/flow/FlowPhase.hpp`
-
-```cpp
-class FlowPhase : public IPhase {
-public:
-    FlowPhase(std::string                          scope_prefix,
-              std::unique_ptr<IFlowController>     controller,
-              std::vector<std::unique_ptr<IPhase>> sub_phases);
-
-    PhaseId id() const override;
-
-    void on_enter(GameContext& ctx) override;
-    void on_exit(GameContext& ctx) override;
-
-    std::vector<std::unique_ptr<IAction>>
-        available_actions(const GameContext& ctx,
-                          const ActorId& actor) const override;
-
-    bool is_complete(const GameContext& ctx) const override;
-
-    void tick(GameContext& ctx);          // chiamato da on_enter o dal tick esterno
-
-    const PhaseContext& phase_context() const;
-    const std::string&  scope_prefix()  const;
-
-private:
-    std::string                      _scope_prefix;
-    std::unique_ptr<IFlowController> _controller;
-    PhaseContext                     _phase_ctx;   // costruito in on_enter
-    bool                             _entered = false;
-};
-```
-
-- [ ] Costruttore: riceve scope_prefix, controller, sub_phases (le passa al controller
-  se è `SequentialFlowController`)
-- [ ] `on_enter(GameContext& parent_ctx)`:
+- [x] Creare `gmFlow/flow/FlowPhase.hpp`
+- [x] Costruttore: riceve scope_prefix e controller (il controller è già costruito con le sub_phases)
+- [x] `on_enter(GameContext& parent_ctx)`:
   - Costruisce `_phase_ctx` da `parent_ctx` e `_scope_prefix`
     (`_phase_ctx = PhaseContext(parent_ctx, _scope_prefix)`)
   - Chiama `_controller->start(_phase_ctx)`
   - Imposta `_entered = true`
-- [ ] `on_exit(GameContext&)`: resetta `_entered = false`, cleanup opzionale
-- [ ] `is_complete(const GameContext&)`:
+- [x] `on_exit(GameContext&)`: resetta `_entered = false`, cleanup opzionale
+- [x] `is_complete(const GameContext&)`:
   ritorna `_entered && _controller->is_session_complete(_phase_ctx)`
-- [ ] `available_actions(const GameContext&, actor)`:
+- [x] `available_actions(const GameContext&, actor)`:
   - Ottiene la fase interna corrente via `SequentialFlowController::current_phase()`
     (cast dinamico se necessario)
   - Delega `current_phase->available_actions(_phase_ctx, actor)`
   - Ritorna vuoto se `!_entered` o fase corrente non disponibile
-- [ ] `tick(GameContext&)`: chiama `_controller->process(_phase_ctx)` — necessario
+- [x] `tick(GameContext&)`: chiama `_controller->process(_phase_ctx)` — necessario
   se il genitore non chiama `process` abbastanza frequentemente
-- [ ] Include guard: `#ifndef GMFLOW_FLOWPHASE_HPP`
-- [ ] Doxygen completo su tutti i simboli pubblici
-- [ ] Creare `gmFlow/flow/FlowPhase.cpp` con tutte le implementazioni
+- [x] Include guard: `#ifndef GMFLOW_FLOWPHASE_HPP`
+- [x] Doxygen completo su tutti i simboli pubblici
+- [x] Creare `gmFlow/flow/FlowPhase.cpp` con tutte le implementazioni
+- [x] `accept_action()` e `can_actor_act()`: routing trasparente alla FlowPhase
+  da `SequentialFlowController::accept_action()` e `can_actor_act()` (via dynamic_cast nel .cpp)
 - [ ] Verificare compilazione pulita
 
 **Notes:**
