@@ -161,5 +161,5 @@ class TimelineScene(QGraphicsScene):
     def _apply_highlight(self, actor_id: str) -> None:
         """Applies active-actor styling to *actor_id*'s rect."""
         rect: QGraphicsRectItem = self._actor_rects[actor_id]
-        rect.setPen(QPen(QColor("#f59e0b"), 3))
+        rect.setPen(QPen(Qt.GlobalColor.yellow, 3))
         rect.setZValue(1.0)

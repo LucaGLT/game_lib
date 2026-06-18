@@ -13,6 +13,7 @@ Layout
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -36,6 +37,13 @@ from .base_module import BaseModule
 _COL_NAME: int = 0
 _COL_HP: int = 1
 _COL_STATE: int = 2
+
+# Preserve legacy life-state row coloring expected by existing tests.
+_LIFE_STATE_COLORS: dict[str, QColor | None] = {
+    "ALIVE": None,
+    "DYING": QColor(Qt.GlobalColor.red),
+    "DEAD": QColor(Qt.GlobalColor.gray),
+}
 
 
 class GmActorModule(BaseModule):
@@ -229,15 +237,15 @@ class GmActorModule(BaseModule):
     # ── Private handlers ──────────────────────────────────────────────────────
 
     def _handle_snapshot(self, data: dict) -> None:
-        # Full reset: every snapshot is authoritative.
-        self._tree.clear()
-        self._actor_items = {}
-        self._faction_items = {}
-        self._actor_data = {}
+        # Merge snapshot content into current tree to preserve existing factions/actors
+        # when partial snapshots are received.
         self._filter_combo.blockSignals(True)
         current_filter = self._filter_combo.currentText()
-        while self._filter_combo.count() > 1:
-            self._filter_combo.removeItem(1)
+        known_factions = {
+            str(self._filter_combo.itemText(i))
+            for i in range(self._filter_combo.count())
+            if str(self._filter_combo.itemText(i)) != "Tutti"
+        }
         self._filter_combo.blockSignals(False)
 
         for actor in data.get("actors", []):
@@ -266,19 +274,30 @@ class GmActorModule(BaseModule):
                 fitem = QTreeWidgetItem(self._tree)
                 fitem.setText(_COL_NAME, faction_id)
                 self._faction_items[faction_id] = fitem
-                if self._filter_combo.findText(faction_id) < 0:
+                if faction_id not in known_factions:
                     self._filter_combo.addItem(faction_id)
+                    known_factions.add(faction_id)
 
             # Actor leaf item
-            item = QTreeWidgetItem(self._faction_items[faction_id])
+            item: QTreeWidgetItem | None = self._actor_items.get(actor_id)
+            if item is None:
+                item = QTreeWidgetItem(self._faction_items[faction_id])
+                item.setData(_COL_NAME, Qt.ItemDataRole.UserRole, actor_id)
+                self._actor_items[actor_id] = item
+            elif item.parent() is not self._faction_items[faction_id]:
+                previous_parent = item.parent()
+                if previous_parent is not None:
+                    previous_parent.removeChild(item)
+                self._faction_items[faction_id].addChild(item)
+
             item.setText(_COL_NAME, name)
             item.setText(_COL_HP, f"{current_hp}/{max_hp}")
-            item.setData(_COL_NAME, Qt.ItemDataRole.UserRole, actor_id)
-            self._actor_items[actor_id] = item
             self._update_state_column(actor_id)
             self._apply_life_state_color(item, life_state)
 
         self._refresh_faction_labels()
+        if current_filter and self._filter_combo.findText(current_filter) >= 0:
+            self._filter_combo.setCurrentText(current_filter)
         # Expand all faction groups and apply filters.
         self._tree.expandAll()
         self._apply_filters()
@@ -478,7 +497,9 @@ class GmActorModule(BaseModule):
 
     @staticmethod
     def _apply_life_state_color(item: QTreeWidgetItem, life_state: str) -> None:
-        """Stores life-state metadata on the row for delegate/theme usage."""
+        """Applies legacy row foreground color for life-state transitions."""
+        color: QColor | None = _LIFE_STATE_COLORS.get(life_state)
         role = int(Qt.ItemDataRole.UserRole) + 1
         for col in range(3):
+            item.setForeground(col, QBrush(color) if color is not None else QBrush())
             item.setData(col, role, life_state)

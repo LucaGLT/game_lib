@@ -189,7 +189,7 @@ class GmFlowModule(BaseModule):
         if tid == "gmFlow.session.started":
             session_id: str = str(data.get("session_id", "?"))
             self._session_count += 1
-            self._lbl_session.setText(f"👥 Session: {self._session_count}")
+            self._lbl_session.setText(f"👥 Session: {session_id}")
             self._round_count = 0
             self._turn_count = 0
             self._turn_actors = []
@@ -224,7 +224,12 @@ class GmFlowModule(BaseModule):
             self._append_log(f"Phase exited: {data.get('phase_id', '?')}")
 
         elif tid == "gmFlow.round.started":
-            self._round_count += 1
+            if "index" in data:
+                self._round_count = int(data.get("index", 1))
+            elif "round_number" in data:
+                self._round_count = int(data.get("round_number", 1))
+            else:
+                self._round_count += 1
             self._lbl_round.setText(f"🔄 Round: {self._round_count}")
             self._append_log(f"🔄 Round {self._round_count} started")
 
@@ -234,11 +239,15 @@ class GmFlowModule(BaseModule):
         elif tid == "gmFlow.turn.started":
             self._turn_count += 1
             turn_id: str = str(data.get("turn_id", "?"))
+            if turn_id == "?" and "turn_number" in data:
+                turn_id = str(data.get("turn_number", "?"))
             active_actors: list = data.get("active_actors", [])
             active_name: str = str(active_actors[0]) if active_actors else "?"
             self._turn_actors.append(active_name)
-            self._lbl_turn.setText(f"⏱ Turn: {self._turn_count}")
+            self._lbl_turn.setText(f"⏱ Turn: {turn_id}")
             self._populate_timeline()
+            if active_name != "?":
+                self._timeline_scene.select_actor(active_name)
             self._append_log(f"⏱ Turn {self._turn_count}: {turn_id}")
 
         elif tid == "gmFlow.turn.ended":

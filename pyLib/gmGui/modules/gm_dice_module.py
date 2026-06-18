@@ -155,6 +155,11 @@ class GmDiceModule(BaseModule):
         self._result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_vbox.addWidget(self._result_label)
 
+        self._detail_label: QLabel = QLabel("—")
+        self._detail_label.setProperty("text_role", "body")
+        self._detail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        result_vbox.addWidget(self._detail_label)
+
         # Row of individual dice boxes (repopulated on every roll).
         self._dice_row_widget: QWidget = QWidget()
         self._dice_row: QHBoxLayout = QHBoxLayout(self._dice_row_widget)
@@ -410,6 +415,7 @@ class GmDiceModule(BaseModule):
     def _show_result(self, dice: list[int], total: int) -> None:
         """Displays a roll result with stats, dice boxes and a history entry."""
         self._result_label.setText(str(total))
+        self._detail_label.setText(" + ".join(str(d) for d in dice) if dice else "—")
 
         # Compute aggregate statistics (MEDIA is rounded down).
         if dice:
