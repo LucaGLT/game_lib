@@ -8,12 +8,14 @@ A vertical cyan line marks the current minimum timeline position.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPen
+from PySide6.QtGui import QBrush, QFont, QPen
 from PySide6.QtWidgets import (
     QGraphicsLineItem,
     QGraphicsRectItem,
     QGraphicsScene,
 )
+
+from ..theme_manager import resolve_semantic_color
 
 
 class TimelineScene(QGraphicsScene):
@@ -58,7 +60,8 @@ class TimelineScene(QGraphicsScene):
         self._time_line = None
         self._default_pens = {}
 
-        base_font: QFont = QFont("Segoe UI", 10)
+        base_font: QFont = QFont()
+        base_font.setPointSize(10)
         base_font.setBold(True)
 
         for actor in actors:
@@ -69,17 +72,17 @@ class TimelineScene(QGraphicsScene):
             y: float = float(self._TOP_PADDING)
 
             if label_text == "X":
-                pen: QPen = QPen(QColor("#1f78d1"), 2)
-                brush: QBrush = QBrush(QColor("#eaf4ff"))
-                text_color = QColor("#0b4f9c")
+                pen: QPen = QPen(resolve_semantic_color("accent"), 2)
+                brush: QBrush = QBrush(resolve_semantic_color("panel"))
+                text_color = resolve_semantic_color("text")
             elif label_text == "O":
-                pen = QPen(QColor("#d64545"), 2)
-                brush = QBrush(QColor("#fff0f0"))
-                text_color = QColor("#992525")
+                pen = QPen(resolve_semantic_color("state_error"), 2)
+                brush = QBrush(resolve_semantic_color("panel"))
+                text_color = resolve_semantic_color("text")
             else:
-                pen = QPen(QColor("#9aa3ad"), 1)
-                brush = QBrush(QColor("#f4f6f8"))
-                text_color = QColor("#7a828a")
+                pen = QPen(resolve_semantic_color("border"), 1)
+                brush = QBrush(resolve_semantic_color("panel"))
+                text_color = resolve_semantic_color("text")
 
             rect: QGraphicsRectItem = self.addRect(
                 x, y,
@@ -114,7 +117,7 @@ class TimelineScene(QGraphicsScene):
             float(self._TOP_PADDING - 8),
             x_cur,
             float(self._TOP_PADDING + self._BLOCK_HEIGHT + 8),
-            QPen(Qt.GlobalColor.cyan, 2),
+            QPen(resolve_semantic_color("accent"), 2),
         )
 
         # Re-apply existing selection if the actor is still in the scene.

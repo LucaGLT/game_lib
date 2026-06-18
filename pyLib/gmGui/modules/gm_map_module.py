@@ -67,6 +67,7 @@ class GmMapModule(BaseModule):
         self._zoom_level: float = 1.0
 
         container = QWidget()
+        container.setObjectName("gm_map_module")
         vbox = QVBoxLayout(container)
         vbox.setContentsMargins(4, 4, 4, 4)
         vbox.setSpacing(4)

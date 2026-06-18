@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QPen
+from PySide6.QtGui import QBrush, QPen
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
@@ -17,19 +17,23 @@ from PySide6.QtWidgets import (
     QGraphicsSimpleTextItem,
 )
 
-# ── Terrain colour palette ────────────────────────────────────────────────────
+from ..theme_manager import resolve_semantic_color
 
-_TERRAIN_COLORS: dict[str, QColor] = {
-    "grass":  QColor("#4caf50"),
-    "water":  QColor("#2196f3"),
-    "forest": QColor("#388e3c"),
-    "desert": QColor("#ffeb3b"),
-    "rock":   QColor("#9e9e9e"),
-    "road":   QColor("#a1887f"),
-}
-_DEFAULT_NODE_COLOR: QColor = QColor("#90a4ae")
 _NODE_DIAMETER: int = 32
 _ACTOR_DIAMETER: int = 16
+
+
+def _terrain_token(terrain: str) -> str:
+    """Maps terrain metadata to semantic color token names."""
+    if terrain in ("grass", "forest"):
+        return "state_success"
+    if terrain in ("water",):
+        return "accent"
+    if terrain in ("desert",):
+        return "state_warning"
+    if terrain in ("rock", "road"):
+        return "state_disabled"
+    return "panel"
 
 
 def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]]:
@@ -81,9 +85,9 @@ class LocationNode(QGraphicsEllipseItem):
         self._update_tooltip()
 
     def _apply_terrain(self, terrain: str) -> None:
-        color = _TERRAIN_COLORS.get(terrain, _DEFAULT_NODE_COLOR)
+        color = resolve_semantic_color(_terrain_token(terrain))
         self.setBrush(QBrush(color))
-        self.setPen(QPen(Qt.GlobalColor.darkGray, 1))
+        self.setPen(QPen(resolve_semantic_color("border"), 1))
 
     def _update_tooltip(self) -> None:
         parts = [f"Location #{self.loc_id}"]
@@ -127,12 +131,12 @@ class ActorMarker(QGraphicsEllipseItem):
     - (other)     → slate
     """
 
-    _FACTION_COLORS: dict[str, QColor] = {
-        "heroes":   QColor("#1565c0"),
-        "enemies":  QColor("#b71c1c"),
-        "neutral":  QColor("#6a1f8a"),
+    _FACTION_TOKENS: dict[str, str] = {
+        "heroes": "accent",
+        "enemies": "state_error",
+        "neutral": "state_warning",
     }
-    _DEFAULT_COLOR: QColor = QColor("#546e7a")
+    _DEFAULT_TOKEN: str = "border"
 
     def __init__(
         self,
@@ -147,14 +151,15 @@ class ActorMarker(QGraphicsEllipseItem):
         mx = cx + float(_NODE_DIAMETER) / 4.0 - d / 2.0
         my = cy - float(_NODE_DIAMETER) / 2.0 - d / 2.0
         super().__init__(mx, my, d, d, parent)
-        color = self._FACTION_COLORS.get(faction, self._DEFAULT_COLOR)
+        color_token = self._FACTION_TOKENS.get(faction, self._DEFAULT_TOKEN)
+        color = resolve_semantic_color(color_token)
         self.setBrush(QBrush(color))
-        self.setPen(QPen(Qt.GlobalColor.white, 1))
+        self.setPen(QPen(resolve_semantic_color("text"), 1))
         self.setZValue(2.0)
 
         initial = actor_id[0].upper() if actor_id else "?"
         lbl = QGraphicsSimpleTextItem(initial, self)
-        lbl.setBrush(QBrush(Qt.GlobalColor.white))
+        lbl.setBrush(QBrush(resolve_semantic_color("text")))
         br = lbl.boundingRect()
         lbl.setPos(mx + (d - br.width()) / 2.0, my + (d - br.height()) / 2.0)
 
@@ -224,7 +229,7 @@ class MapScene(QGraphicsScene):
                 cx_b, cy_b = self._nodes[b].center()
                 line = self.addLine(
                     cx_a, cy_a, cx_b, cy_b,
-                    QPen(Qt.GlobalColor.gray, 1),
+                    QPen(resolve_semantic_color("border"), 1),
                 )
                 line.setZValue(-1.0)
                 self._edges.append(line)

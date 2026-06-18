@@ -13,7 +13,7 @@ Layout
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -31,20 +31,13 @@ from PySide6.QtWidgets import (
 )
 
 from ..widgets.hp_bar import HpBar
+from ..theme_manager import resolve_semantic_color
 from .base_module import BaseModule
 
 # ── Tree column indices ────────────────────────────────────────────────────────
 _COL_NAME: int = 0
 _COL_HP: int = 1
 _COL_STATE: int = 2
-
-# Preserve legacy life-state row coloring expected by existing tests.
-_LIFE_STATE_COLORS: dict[str, QColor | None] = {
-    "ALIVE": None,
-    "DYING": QColor(Qt.GlobalColor.red),
-    "DEAD": QColor(Qt.GlobalColor.gray),
-}
-
 
 class GmActorModule(BaseModule):
     """Visualises gmActor state: actor tree, HP bar, statuses, equipment.
@@ -497,8 +490,12 @@ class GmActorModule(BaseModule):
 
     @staticmethod
     def _apply_life_state_color(item: QTreeWidgetItem, life_state: str) -> None:
-        """Applies legacy row foreground color for life-state transitions."""
-        color: QColor | None = _LIFE_STATE_COLORS.get(life_state)
+        """Applies semantic life-state row color from theme tokens."""
+        color = None
+        if life_state == "DYING":
+            color = resolve_semantic_color("state_error")
+        elif life_state == "DEAD":
+            color = resolve_semantic_color("state_disabled")
         role = int(Qt.ItemDataRole.UserRole) + 1
         for col in range(3):
             item.setForeground(col, QBrush(color) if color is not None else QBrush())

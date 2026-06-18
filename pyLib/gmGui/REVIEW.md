@@ -222,6 +222,8 @@ Deliverable:
 
 ## Phase 2 — Refactor modules to semantic styling only
 
+Status: Completed (2026-06-18)
+
 - gm_actor_module: remove inline style strings; use object names and dynamic properties.
 - gm_dice_module: remove inline style and hardcoded fonts/colors.
 - gm_flow_module: remove inline style and hardcoded fonts/colors.
@@ -233,12 +235,18 @@ Deliverable:
 
 ## Phase 3 — Refactor graphics widgets to token-driven paint
 
+Status: Completed (2026-06-18)
+
 - map_scene, timeline_scene, hp_bar: replace QColor literals with theme token resolution.
 - Introduce semantic mapping from domain state to token key, not token value.
 
 Deliverable:
 
 - QGraphics-based drawing follows active theme tokens.
+
+Validation:
+
+- Test suite executed in offscreen mode: 116 passed.
 
 ## Phase 4 — Grid and typography normalization
 

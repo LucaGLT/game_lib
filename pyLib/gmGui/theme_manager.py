@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication
 
 
@@ -77,6 +79,8 @@ _THEMES: dict[str, ThemePalette] = {
     ),
 }
 
+_THEME_ID_PROPERTY: str = "gm_theme_id"
+
 
 class ThemeManager:
     """Applies and tracks the active gmGui theme on QApplication."""
@@ -101,6 +105,7 @@ class ThemeManager:
             raise ValueError(f"Unknown theme id: {theme_id}")
 
         app: QApplication = self._resolve_app()
+        app.setProperty(_THEME_ID_PROPERTY, theme.theme_id)
         app.setStyleSheet(self._build_stylesheet(theme))
         self._current_theme_id = theme.theme_id
 
@@ -279,3 +284,50 @@ QToolTip {{
     padding: 4px 8px;
 }}
 """.strip()
+
+
+def resolve_active_theme_id(app: QApplication | None = None) -> str:
+    """Returns active theme id from QApplication property, defaulting to scroll."""
+    qapp = app or QApplication.instance()
+    if qapp is None:
+        return "scroll"
+    value = qapp.property(_THEME_ID_PROPERTY)
+    if isinstance(value, str) and value in _THEMES:
+        return value
+    return "scroll"
+
+
+def resolve_active_palette(app: QApplication | None = None) -> ThemePalette:
+    """Returns the active ThemePalette for custom-painted widgets."""
+    return _THEMES[resolve_active_theme_id(app)]
+
+
+def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor:
+    """Returns a semantic QColor token derived from the active theme."""
+    palette = resolve_active_palette(app)
+
+    if name == "text":
+        return QColor(palette.text)
+    if name == "background":
+        return QColor(palette.background)
+    if name == "panel":
+        return QColor(palette.panel)
+    if name == "border":
+        return QColor(palette.border)
+    if name == "accent":
+        return QColor(palette.accent)
+
+    # State tokens used by logic widgets and custom-painted scenes.
+    if name == "state_success":
+        return QColor(Qt.GlobalColor.green)
+    if name == "state_warning":
+        return QColor(Qt.GlobalColor.yellow)
+    if name == "state_error":
+        return QColor(Qt.GlobalColor.red)
+    if name == "state_disabled":
+        return QColor(Qt.GlobalColor.gray)
+    if name == "state_active":
+        return QColor(Qt.GlobalColor.yellow)
+
+    # Fallback for unknown semantic token names.
+    return QColor(palette.text)
