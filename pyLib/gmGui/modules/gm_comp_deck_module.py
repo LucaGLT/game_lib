@@ -80,6 +80,7 @@ class GmCompDeckModule(BaseModule):
         self._flash_anims: dict[str, QPropertyAnimation] = {}
 
         container = QWidget()
+        container.setObjectName("gm_comp_deck_module")
         vbox = QVBoxLayout(container)
         vbox.setContentsMargins(4, 4, 4, 4)
         vbox.setSpacing(4)
@@ -95,7 +96,7 @@ class GmCompDeckModule(BaseModule):
 
         for zone_name in _ZONE_NAMES:
             col = QVBoxLayout()
-            col.setSpacing(2)
+            col.setSpacing(4)
 
             header = QLabel(zone_name)
             header.setAlignment(Qt.AlignmentFlag.AlignCenter)
