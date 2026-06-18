@@ -1,6 +1,6 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.5.0
+**Version:** 0.6.0
 **Status:** Phase 2 – Body Implementation 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
@@ -124,8 +124,8 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - [x] Implementare i body reali di `DungeonMap` e `DungeonMapLoader` con caricamento mappa JSON via `gmSave`.
 - [x] Implementare `ActorRoster` con Hero, Monster, Monster Elite, BossMonster su `gmActor`.
 - [x] Implementare `TurnFlow` con `gmFlow` e collegare stato partita.
-- [ ] Implementare `DungeonRuleAdapter` e `ActionV1` su `gmRules` solo per Move, Heal, Equip.
-- [ ] Implementare `GuiBridge`/`CmdServer` e routing eventi/comandi mantenendo invariato il contratto v1.
+- [x] Implementare `DungeonRuleAdapter` e `ActionV1` su `gmRules` solo per Move, Heal, Equip.
+- [x] Implementare `GuiBridge`/`CmdServer` e routing eventi/comandi mantenendo invariato il contratto v1.
 - [ ] Completare GUI interattiva PySide6 in parallelo al Core, senza introdurre nuovi campi fuori contratto.
 - [ ] Integrare logging, test unitari, test E2E e registrazione CTest.
 - [ ] Pianificare Attack/Defend come estensione successiva solo dopo approvazione contratti v2.
@@ -136,6 +136,8 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - Ogni modifica al contratto congelato richiede approvazione esplicita.
 - Attack e Defend restano fuori dallo scope di questa fase.
 - Loader JSON: supporto risoluzione path primaria + fallback in `.cache/` per file mappa.
+- RuleAdapter/ActionV1: validazione/effetti Move-Heal-Equip collegati a gmRules (`ConditionSpec` + `EffectResolver`).
+- Bridge v1: `GuiBridge` invia envelope con `source="DungeonCore"` e `headers.data` serializzato; `CmdServer` decodifica frame TCP (4-byte big-endian + JSON UTF-8).
 
 ---
 
