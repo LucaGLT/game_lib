@@ -7,8 +7,9 @@ QSettings.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
+    QApplication,
     QDockWidget,
     QLabel,
     QMainWindow,
@@ -25,11 +26,13 @@ from .modules.gm_comp_deck_module import GmCompDeckModule
 from .modules.gm_dice_module import GmDiceModule
 from .modules.gm_flow_module import GmFlowModule
 from .modules.gm_map_module import GmMapModule
+from .theme_manager import ThemeManager
 
 # Text shown in the status bar when the C++ engine is not connected.
 _STATUS_DISCONNECTED = "Engine: Disconnesso"
 # Text shown after the first envelope arrives from the engine.
 _STATUS_CONNECTED = "Engine: Connesso"
+_DEFAULT_THEME_ID = "scroll"
 
 
 class MainWindow(QMainWindow):
@@ -62,6 +65,8 @@ class MainWindow(QMainWindow):
         self._modules: list[BaseModule] = []
         self._routing: dict[str, list[BaseModule]] = {}
         self._docks: dict[str, QDockWidget] = {}
+        self._theme_manager: ThemeManager = ThemeManager(QApplication.instance())
+        self._theme_actions: dict[str, QAction] = {}
 
         # ── Central placeholder ───────────────────────────────────────────────
         central = QLabel("GameLib – Engine View")
@@ -72,6 +77,7 @@ class MainWindow(QMainWindow):
         self._register_modules()
         self._build_menu()
         self._build_status_bar()
+        self._set_theme(_DEFAULT_THEME_ID)
 
         # ── Wire bridge signals ───────────────────────────────────────────────
         self._receiver.envelope_received.connect(self._on_envelope)
@@ -144,6 +150,21 @@ class MainWindow(QMainWindow):
             # shows/hides the dock and keeps its checked state in sync.
             self._view_menu.addAction(dock.toggleViewAction())
 
+        # Theme submenu (single-choice, app-wide stylesheet).
+        self._theme_menu: QMenu = self._view_menu.addMenu("&Theme")
+        self._theme_group: QActionGroup = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        for theme in self._theme_manager.available_themes():
+            action = QAction(theme.display_name, self)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda checked, theme_id=theme.theme_id: self._set_theme(theme_id)
+                if checked else None
+            )
+            self._theme_group.addAction(action)
+            self._theme_menu.addAction(action)
+            self._theme_actions[theme.theme_id] = action
+
         # ── Help menu ─────────────────────────────────────────────────────────
         self._help_menu: QMenu = menu_bar.addMenu("&Help")
         about_action = QAction("&About gmGui", self)
@@ -159,6 +180,12 @@ class MainWindow(QMainWindow):
         self._conn_label = QLabel(_STATUS_DISCONNECTED)
         # Permanent widget: right-aligned, never overwritten by showMessage().
         status_bar.addPermanentWidget(self._conn_label)
+
+    def _set_theme(self, theme_id: str) -> None:
+        """Applies a global UI theme and keeps menu checks in sync."""
+        self._theme_manager.apply_theme(theme_id)
+        for current_id, action in self._theme_actions.items():
+            action.setChecked(current_id == theme_id)
 
     # ── Envelope routing ──────────────────────────────────────────────────────
 

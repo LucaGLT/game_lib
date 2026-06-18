@@ -1,0 +1,209 @@
+"""Theme manager for gmGui global QSS styling.
+
+Applies one of the five predefined themes from .github/specs/gui-theme.yml
+to the QApplication instance.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from PySide6.QtWidgets import QApplication
+
+
+@dataclass(frozen=True)
+class ThemePalette:
+    """Palette tokens used to build an application-wide stylesheet."""
+
+    theme_id: str
+    display_name: str
+    background: str
+    panel: str
+    border: str
+    accent: str
+    text: str
+    corner_radius_px: int
+
+
+_THEMES: dict[str, ThemePalette] = {
+    "scroll": ThemePalette(
+        theme_id="scroll",
+        display_name="Scroll",
+        background="#E8DFC8",
+        panel="#F1E8D0",
+        border="#7B6444",
+        accent="#A8873A",
+        text="#2E2418",
+        corner_radius_px=4,
+    ),
+    "stone": ThemePalette(
+        theme_id="stone",
+        display_name="Stone",
+        background="#BDB8AF",
+        panel="#D2CEC6",
+        border="#59544D",
+        accent="#7A7A6B",
+        text="#1E1E1E",
+        corner_radius_px=2,
+    ),
+    "dark_moon": ThemePalette(
+        theme_id="dark_moon",
+        display_name="Dark Moon",
+        background="#1A1A1E",
+        panel="#26262D",
+        border="#54546A",
+        accent="#A89CC8",
+        text="#E5E5E5",
+        corner_radius_px=6,
+    ),
+    "blood": ThemePalette(
+        theme_id="blood",
+        display_name="Blood",
+        background="#140A0A",
+        panel="#241111",
+        border="#6B1515",
+        accent="#B52A2A",
+        text="#F2E6E6",
+        corner_radius_px=8,
+    ),
+    "techno": ThemePalette(
+        theme_id="techno",
+        display_name="Techno",
+        background="#08131E",
+        panel="#10202D",
+        border="#00C8FF",
+        accent="#00E5FF",
+        text="#D8F8FF",
+        corner_radius_px=12,
+    ),
+}
+
+
+class ThemeManager:
+    """Applies and tracks the active gmGui theme on QApplication."""
+
+    def __init__(self, app: QApplication | None = None) -> None:
+        self._app: QApplication | None = app
+        self._current_theme_id: str | None = None
+
+    def available_themes(self) -> list[ThemePalette]:
+        """Returns all available themes in deterministic order."""
+        ordered_ids: list[str] = ["scroll", "stone", "dark_moon", "blood", "techno"]
+        return [_THEMES[theme_id] for theme_id in ordered_ids]
+
+    def current_theme_id(self) -> str | None:
+        """Returns currently applied theme id, or None if not applied yet."""
+        return self._current_theme_id
+
+    def apply_theme(self, theme_id: str) -> None:
+        """Applies the selected theme to QApplication via a global stylesheet."""
+        theme: ThemePalette | None = _THEMES.get(theme_id)
+        if theme is None:
+            raise ValueError(f"Unknown theme id: {theme_id}")
+
+        app: QApplication = self._resolve_app()
+        app.setStyleSheet(self._build_stylesheet(theme))
+        self._current_theme_id = theme.theme_id
+
+    def _resolve_app(self) -> QApplication:
+        app: QApplication | None = self._app or QApplication.instance()
+        if app is None:
+            raise RuntimeError("QApplication instance is required before applying a theme")
+        self._app = app
+        return app
+
+    @staticmethod
+    def _build_stylesheet(theme: ThemePalette) -> str:
+        radius: int = theme.corner_radius_px
+        return f"""
+QWidget {{
+    background-color: {theme.background};
+    color: {theme.text};
+}}
+
+QMainWindow, QDockWidget, QMenuBar, QMenu, QStatusBar {{
+    background-color: {theme.background};
+    color: {theme.text};
+}}
+
+QGroupBox, QFrame {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 4px;
+    color: {theme.text};
+}}
+
+QLabel {{
+    color: {theme.text};
+}}
+
+QLineEdit, QComboBox, QSpinBox, QListWidget, QTreeWidget, QTableView, QTextEdit, QPlainTextEdit {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 4px 8px;
+}}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus, QTreeWidget:focus, QTableView:focus {{
+    border: 2px solid {theme.accent};
+}}
+
+QPushButton {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 4px 8px;
+}}
+
+QPushButton:hover {{
+    border: 2px solid {theme.accent};
+}}
+
+QPushButton:pressed {{
+    background-color: {theme.background};
+}}
+
+QPushButton:disabled {{
+    color: {theme.border};
+    border: 1px solid {theme.border};
+}}
+
+QTabWidget::pane {{
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+}}
+
+QTabBar::tab {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-bottom: none;
+    border-top-left-radius: {radius}px;
+    border-top-right-radius: {radius}px;
+    padding: 4px 8px;
+}}
+
+QTabBar::tab:hover {{
+    border-color: {theme.accent};
+}}
+
+QTabBar::tab:selected {{
+    background-color: {theme.background};
+    border-color: {theme.accent};
+}}
+
+QToolTip {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 4px 8px;
+}}
+""".strip()
