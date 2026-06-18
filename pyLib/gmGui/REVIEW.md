@@ -267,12 +267,23 @@ Validation:
 
 ## Phase 5 — Verification and regression guard
 
+Status: Completed (2026-06-18)
+
 - Add tests for theme switching and visual state consistency.
 - Add checks for forbidden patterns (hex literals, QColor literals, inline setStyleSheet with visual values, hardcoded QFont setup).
 
 Deliverable:
 
 - Automated conformance gate for GUI-1..GUI-10, SP-1, TY-1, WS-1.
+
+Validation:
+
+- Added [pyLib/gmGui/tests/test_theme_guard.py](pyLib/gmGui/tests/test_theme_guard.py) with:
+  - runtime theme-switch coverage for `scroll`, `stone`, `dark_moon`, `blood`, `techno`;
+  - multi-theme state invariants for core modules and custom-painted widgets;
+  - static guard against forbidden visual literals in `modules/`, `widgets/`, and `main_window.py`.
+- Targeted test run: 4 passed.
+- Full suite run in offscreen mode: 120 passed.
 
 ---
 
