@@ -1,0 +1,14 @@
+# gmGui development and test dependencies (pinned for reproducibility)
+# Generated for Python 3.13 virtual environment on Windows.
+
+PySide6==6.11.1
+PySide6_Addons==6.11.1
+PySide6_Essentials==6.11.1
+shiboken6==6.11.1
+
+pytest==9.1.0
+colorama==0.4.6
+iniconfig==2.3.0
+packaging==26.2
+pluggy==1.6.0
+pygments==2.20.0

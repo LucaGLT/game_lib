@@ -9,6 +9,8 @@ from PySide6.QtCore import QPropertyAnimation, QRect, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QWidget
 
+from ..theme_manager import resolve_semantic_color
+
 
 class HpBar(QWidget):
     """Draws a colour-coded HP bar with animated opacity change on update.
@@ -62,15 +64,15 @@ class HpBar(QWidget):
         """Returns the fill colour determined by the current HP ratio."""
         r: float = self.ratio()
         if r > 0.5:
-            return QColor(Qt.GlobalColor.green)
+            return resolve_semantic_color("state_success")
         if r >= 0.2:
-            return QColor(Qt.GlobalColor.yellow)
-        return QColor(Qt.GlobalColor.red)
+            return resolve_semantic_color("state_warning")
+        return resolve_semantic_color("state_error")
 
     def paintEvent(self, event) -> None:  # type: ignore[override]
         """Draws a background rect and a coloured fill scaled to current/max HP."""
         painter: QPainter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(Qt.GlobalColor.darkGray))
+        painter.fillRect(self.rect(), resolve_semantic_color("border"))
         fill_width: int = int(self.width() * self.ratio())
         if fill_width > 0:
             painter.fillRect(QRect(0, 0, fill_width, self.height()), self.bar_color())
