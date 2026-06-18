@@ -61,6 +61,29 @@ fs::path resolve_path(const std::string& file_path)
 		return cache_candidate;
 	}
 
+	fs::path current = fs::current_path();
+	while (!current.empty())
+	{
+		const fs::path upward_original = current / original;
+		if (fs::exists(upward_original))
+		{
+			return upward_original;
+		}
+
+		const fs::path upward_cache = current / ".cache" / original;
+		if (fs::exists(upward_cache))
+		{
+			return upward_cache;
+		}
+
+		if (current == current.root_path())
+		{
+			break;
+		}
+
+		current = current.parent_path();
+	}
+
 	return original;
 }
 

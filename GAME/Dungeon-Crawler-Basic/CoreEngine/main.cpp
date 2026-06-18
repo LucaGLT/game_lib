@@ -45,7 +45,16 @@ int main()
 	gmDungeonBasic::CmdServer server(
 	    gmDungeonBasic::ports::COMMANDS,
 	    [&engine](const std::string& typeId, const nlohmann::json& data)
-	    { engine.handle_command(typeId, data); });
+	    {
+			try
+			{
+				engine.handle_command(typeId, data);
+			}
+			catch (const std::exception& ex)
+			{
+				std::cerr << "[DungeonEngine] Command handling failed: " << ex.what() << "\n";
+			}
+	    });
 
 	server.start();
 
