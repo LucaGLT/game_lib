@@ -13,8 +13,11 @@
  * @note Not thread-safe.
  */
 
+#include "gmMap/gmMap.hpp"
+
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace gmDungeonBasic
@@ -126,6 +129,14 @@ public:
 
 	/// @brief Removes all rooms, connections and tags. Resets to empty state.
 	void reset();
+
+private:
+	gmMap::LocationId location_of(const std::string& room_id) const;
+
+	gmMap::gmMap<std::string> _map;
+	std::unordered_map<std::string, gmMap::LocationId> _room_to_location;
+	std::unordered_map<gmMap::LocationId, std::string> _location_to_room;
+	gmMap::LocationId _next_location_id = 1;
 };
 
 } // namespace gmDungeonBasic

@@ -1,7 +1,7 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.4.0
-**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Body Implementation ⏳
+**Version:** 0.5.0
+**Status:** Phase 2 – Body Implementation 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
 
@@ -121,9 +121,9 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 
 ### Phase 2 — Body Implementation (FASE B) ⏳
 
-- [ ] Implementare i body reali di `DungeonMap` e `DungeonMapLoader` con caricamento mappa JSON via `gmSave`.
-- [ ] Implementare `ActorRoster` con Hero, Monster, Monster Elite, BossMonster su `gmActor`.
-- [ ] Implementare `TurnFlow` con `gmFlow` e collegare stato partita.
+- [x] Implementare i body reali di `DungeonMap` e `DungeonMapLoader` con caricamento mappa JSON via `gmSave`.
+- [x] Implementare `ActorRoster` con Hero, Monster, Monster Elite, BossMonster su `gmActor`.
+- [x] Implementare `TurnFlow` con `gmFlow` e collegare stato partita.
 - [ ] Implementare `DungeonRuleAdapter` e `ActionV1` su `gmRules` solo per Move, Heal, Equip.
 - [ ] Implementare `GuiBridge`/`CmdServer` e routing eventi/comandi mantenendo invariato il contratto v1.
 - [ ] Completare GUI interattiva PySide6 in parallelo al Core, senza introdurre nuovi campi fuori contratto.
@@ -135,6 +135,7 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - La GUI può iniziare sviluppo parallelo subito dopo il freeze della Phase 1.
 - Ogni modifica al contratto congelato richiede approvazione esplicita.
 - Attack e Defend restano fuori dallo scope di questa fase.
+- Loader JSON: supporto risoluzione path primaria + fallback in `.cache/` per file mappa.
 
 ---
 

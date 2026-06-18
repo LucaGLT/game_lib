@@ -13,6 +13,10 @@
  * @note Not thread-safe.
  */
 
+#include "gmFlow/flow/Round.hpp"
+#include "gmFlow/flow/Turn.hpp"
+
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -112,6 +116,16 @@ public:
 
 	/// @brief Resets to idle state (no session, no turn).
 	void reset();
+
+private:
+	bool _session_active = false;
+	bool _turn_active = false;
+	int _round_index = 0;
+	std::size_t _turn_index = 0;
+	std::vector<std::string> _actor_order;
+	std::string _current_actor_id;
+	std::unique_ptr<gmFlow::Round> _current_round;
+	std::unique_ptr<gmFlow::Turn> _current_turn;
 };
 
 } // namespace gmDungeonBasic

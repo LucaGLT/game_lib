@@ -20,8 +20,10 @@
  */
 
 #include "engine/DungeonTypes.hpp"
+#include "gmActor/actors/ActorStore.hpp"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace gmDungeonBasic
@@ -184,6 +186,15 @@ public:
 
 	/// @brief Removes all actors. Resets to empty state.
 	void reset();
+
+private:
+	ActorInfo snapshot_actor(const std::string& actor_id) const;
+	gmActor::ActorStateCommon& common_ref(const std::string& actor_id);
+	const gmActor::ActorStateCommon& common_ref(const std::string& actor_id) const;
+
+	gmActor::ActorStore _store;
+	std::vector<std::string> _insertion_order;
+	std::unordered_map<std::string, DungeonActorKind> _kinds;
 };
 
 } // namespace gmDungeonBasic
