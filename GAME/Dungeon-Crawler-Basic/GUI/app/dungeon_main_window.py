@@ -28,6 +28,8 @@ from widgets.hero_panel_widget import HeroPanelWidget
 from widgets.action_panel_widget import ActionPanelWidget
 from widgets.log_widget import LogWidget
 from widgets.error_bar_widget import ErrorBarWidget
+from PySide6.QtWidgets import QApplication
+from gmGui.theme_manager import ThemeManager
 
 
 class DungeonMainWindow(QMainWindow):
@@ -41,6 +43,11 @@ class DungeonMainWindow(QMainWindow):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Initialises the window, creates all child widgets and wires the bridge."""
         super().__init__(parent)
+        app = QApplication.instance()
+        if app is not None:
+            theme_manager = ThemeManager(app)
+            theme_manager.apply_theme("scroll")
+
         self.setWindowTitle("Dungeon Crawler Basic — GameLib")
         self.resize(1024, 700)
         self._build_layout()

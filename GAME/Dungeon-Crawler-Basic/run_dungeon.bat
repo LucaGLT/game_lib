@@ -39,7 +39,7 @@ if not exist "%ENGINE%" (
 
 REM --- 1) Avvio della GUI (server eventi porta 9200) --------------------------
 echo [Dungeon] 1/2 Avvio GUI (porta eventi 9200)...
-start "Dungeon GUI" cmd /c "cd /d "%GUI_DIR%" && python main.py"
+start "Dungeon GUI" cmd /k "cd /d "%GUI_DIR%" && python main.py || (echo. & echo [Dungeon GUI] Avvio GUI fallito. & pause)"
 
 REM Attende che la GUI apra il socket server prima di avviare il CoreEngine.
 echo [Dungeon] Attendo l'avvio della GUI (3 secondi)...
@@ -47,7 +47,7 @@ timeout /t 3 /nobreak >nul
 
 REM --- 2) Avvio del CoreEngine ------------------------------------------------
 echo [Dungeon] 2/2 Avvio CoreEngine (porta comandi 9201)...
-start "Dungeon CoreEngine" cmd /c ""%ENGINE%""
+start "Dungeon CoreEngine" cmd /k ""%ENGINE%" || (echo. & echo [Dungeon CoreEngine] Avvio CoreEngine fallito. & pause)"
 
 echo.
 echo [Dungeon] Entrambi i processi avviati.

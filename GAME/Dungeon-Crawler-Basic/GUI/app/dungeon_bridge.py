@@ -67,9 +67,7 @@ class DungeonBridge:
             type_id: Command typeId string (e.g. ``"dungeon.move"``).
             data:    Command payload dict.
         """
-        # ToBeImplemented //
-        frame = {"typeId": type_id, "source": "GUI", "data": data}
-        self._sender.send(frame)
+        self._sender.send_command(type_id, data)
 
     def set_on_event(self, handler: Callable[[dict], None]) -> None:
         """Registers the callback invoked for every incoming engine event.
