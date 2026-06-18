@@ -83,6 +83,9 @@ Always create or update a human-written API manual in Markdown when public
 classes/functions are added or changed. The API manual must live in the module
 root (for example `gmFlow/gmFlow_API.md`) and must document class purpose,
 public methods, parameters, return values, errors, and a minimal usage example.
+Use Mermaid diagrams for architecture/flow sections. Extract function-level
+details from Doxygen comments (`@brief`, `@param`, `@return`, `@throws`) into
+the API Markdown reference tables.
 Do not require PDF/HTML generation and do not require running Doxygen tools for
 this deliverable.
 
