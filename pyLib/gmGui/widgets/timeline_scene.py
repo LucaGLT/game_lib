@@ -7,7 +7,6 @@ A vertical cyan line marks the current minimum timeline position.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QPen
 from PySide6.QtWidgets import (
     QGraphicsLineItem,
@@ -59,6 +58,9 @@ class TimelineScene(QGraphicsScene):
         self._actor_rects = {}
         self._time_line = None
         self._default_pens = {}
+        
+        # Set scene background to theme panel color.
+        self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
 
         base_font = build_typography_font("subtitle")
 
@@ -74,7 +76,7 @@ class TimelineScene(QGraphicsScene):
                 brush: QBrush = QBrush(resolve_semantic_color("panel"))
                 text_color = resolve_semantic_color("text")
             elif label_text == "O":
-                pen = QPen(resolve_semantic_color("state_error"), 2)
+                pen = QPen(resolve_semantic_color("border"), 2)
                 brush = QBrush(resolve_semantic_color("panel"))
                 text_color = resolve_semantic_color("text")
             else:
@@ -162,5 +164,5 @@ class TimelineScene(QGraphicsScene):
     def _apply_highlight(self, actor_id: str) -> None:
         """Applies active-actor styling to *actor_id*'s rect."""
         rect: QGraphicsRectItem = self._actor_rects[actor_id]
-        rect.setPen(QPen(Qt.GlobalColor.yellow, 3))
+        rect.setPen(QPen(resolve_semantic_color("state_active"), 3))
         rect.setZValue(1.0)

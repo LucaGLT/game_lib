@@ -26,7 +26,7 @@ from .modules.gm_comp_deck_module import GmCompDeckModule
 from .modules.gm_dice_module import GmDiceModule
 from .modules.gm_flow_module import GmFlowModule
 from .modules.gm_map_module import GmMapModule
-from .theme_manager import ThemeManager
+from .theme_manager import ThemeManager, _THEMES
 
 # Text shown in the status bar when the C++ engine is not connected.
 _STATUS_DISCONNECTED = "Engine: Disconnesso"
@@ -77,7 +77,15 @@ class MainWindow(QMainWindow):
         self._register_modules()
         self._build_menu()
         self._build_status_bar()
+        
+        # Apply theme AFTER all widgets are created to ensure proper propagation.
         self._set_theme(_DEFAULT_THEME_ID)
+        
+        # Force palette propagation to all child widgets (critical for Windows).
+        self._theme_manager._propagate_theme_to_all_widgets(
+            QApplication.instance(),
+            self._theme_manager._build_palette(_THEMES[_DEFAULT_THEME_ID])
+        )
 
         # ── Wire bridge signals ───────────────────────────────────────────────
         self._receiver.envelope_received.connect(self._on_envelope)

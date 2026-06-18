@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 from .base_module import BaseModule
 
 _MAX_HISTORY: int = 10
+_TOGGLE_EXPANDED_ICON: str = "▾"
+_TOGGLE_COLLAPSED_ICON: str = "▸"
 
 
 class GmDiceModule(BaseModule):
@@ -71,26 +73,31 @@ class GmDiceModule(BaseModule):
         container = QWidget()
         container.setObjectName("gm_dice_module")
         outer = QHBoxLayout(container)
-        outer.setContentsMargins(8, 8, 8, 8)
-        outer.setSpacing(8)
+        outer.setContentsMargins(12, 12, 12, 12)
+        outer.setSpacing(12)
 
         # ══ Left column: configuration, roll, result ═════════════════════════
         left_widget = QWidget()
         vbox = QVBoxLayout(left_widget)
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(8)
+        vbox.setSpacing(12)
 
         # ── Top bar with the history toggle ───────────────────────────────────
         top_bar = QHBoxLayout()
         top_bar.addStretch()
-        self._toggle_history_btn: QPushButton = QPushButton("◄ Storico")
+        self._toggle_history_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._toggle_history_btn.setToolTip("Mostra/Nascondi storico")
+        self._toggle_history_btn.setProperty("toggle_icon", "true")
+        self._toggle_history_btn.setFixedWidth(20)
         self._toggle_history_btn.clicked.connect(self._toggle_history)
         top_bar.addWidget(self._toggle_history_btn)
         vbox.addLayout(top_bar)
 
         # ── Configuration group ───────────────────────────────────────────────
-        config_box = QGroupBox("Configurazione")
+        config_box = QGroupBox("")
+        config_box.setObjectName("dice_config_group")
         config_vbox = QVBoxLayout(config_box)
+        config_vbox.setSpacing(8)
 
         self._mode_combo: QComboBox = QComboBox()
         self._mode_combo.addItem("Standard")
@@ -105,6 +112,7 @@ class GmDiceModule(BaseModule):
         std_page = QWidget()
         std_row = QHBoxLayout(std_page)
         std_row.setContentsMargins(0, 0, 0, 0)
+        std_row.setSpacing(8)
         std_row.addWidget(QLabel("Dadi:"))
         self._count_spin: QSpinBox = QSpinBox()
         self._count_spin.setRange(1, 20)
@@ -122,6 +130,7 @@ class GmDiceModule(BaseModule):
         custom_page = QWidget()
         custom_row = QHBoxLayout(custom_page)
         custom_row.setContentsMargins(0, 0, 0, 0)
+        custom_row.setSpacing(8)
         custom_row.addWidget(QLabel("Profilo:"))
         self._profile_combo: QComboBox = QComboBox()
         custom_row.addWidget(self._profile_combo)
@@ -142,33 +151,48 @@ class GmDiceModule(BaseModule):
         vbox.addWidget(self._roll_btn)
 
         # ── Result area ───────────────────────────────────────────────────────
-        result_box = QGroupBox("Risultato")
+        result_box = QGroupBox("")
+        result_box.setObjectName("dice_result_group")
         result_vbox = QVBoxLayout(result_box)
+        result_vbox.setContentsMargins(12, 12, 12, 12)
+        result_vbox.setSpacing(8)
 
         self._sum_caption: QLabel = QLabel("SUM")
-        self._sum_caption.setProperty("text_role", "secondary")
+        self._sum_caption.setProperty("text_role", "caption")
+        self._sum_caption.setProperty("tone", "muted")
+        self._sum_caption.setProperty("weight", "bold")
+        self._sum_caption.setProperty("dice_plain", "true")
         self._sum_caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_vbox.addWidget(self._sum_caption)
 
         self._result_label: QLabel = QLabel("—")
-        self._result_label.setProperty("text_role", "title")
+        self._result_label.setProperty("text_role", "display")
+        self._result_label.setProperty("tone", "accent")
+        self._result_label.setProperty("weight", "bold")
+        self._result_label.setProperty("dice_plain", "true")
         self._result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_vbox.addWidget(self._result_label)
 
         self._detail_label: QLabel = QLabel("—")
-        self._detail_label.setProperty("text_role", "body")
+        self._detail_label.setProperty("text_role", "body_sm")
+        self._detail_label.setProperty("tone", "neutral")
+        self._detail_label.setProperty("dice_plain", "true")
         self._detail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._detail_label.setVisible(False)
         result_vbox.addWidget(self._detail_label)
 
         # Row of individual dice boxes (repopulated on every roll).
         self._dice_row_widget: QWidget = QWidget()
+        self._dice_row_widget.setProperty("dice_plain", "true")
         self._dice_row: QHBoxLayout = QHBoxLayout(self._dice_row_widget)
-        self._dice_row.setContentsMargins(0, 0, 0, 0)
+        self._dice_row.setContentsMargins(0, 4, 0, 4)
+        self._dice_row.setSpacing(8)
         self._dice_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_vbox.addWidget(self._dice_row_widget)
 
         # MIN / MAX / MEDIA stat row.
         stats_row = QHBoxLayout()
+        stats_row.setSpacing(12)
         self._min_label = self._add_stat_column(stats_row, "MIN")
         self._max_label = self._add_stat_column(stats_row, "MAX")
         self._avg_label = self._add_stat_column(stats_row, "MEDIA")
@@ -194,15 +218,19 @@ class GmDiceModule(BaseModule):
         self._history_widget: QWidget = QWidget()
         right_vbox = QVBoxLayout(self._history_widget)
         right_vbox.setContentsMargins(0, 0, 0, 0)
+        right_vbox.setSpacing(8)
 
         hist_header = QHBoxLayout()
         hist_title = QLabel("Storico")
         hist_title.setProperty("text_role", "subtitle")
         hist_header.addWidget(hist_title)
         hist_header.addStretch()
-        hide_btn = QPushButton("Nascondi ►")
-        hide_btn.clicked.connect(self._toggle_history)
-        hist_header.addWidget(hide_btn)
+        self._hide_history_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._hide_history_btn.setToolTip("Mostra/Nascondi storico")
+        self._hide_history_btn.setProperty("toggle_icon", "true")
+        self._hide_history_btn.setFixedWidth(20)
+        self._hide_history_btn.clicked.connect(self._toggle_history)
+        hist_header.addWidget(self._hide_history_btn)
         right_vbox.addLayout(hist_header)
 
         self._history_list: QListWidget = QListWidget()
@@ -229,11 +257,18 @@ class GmDiceModule(BaseModule):
     def _add_stat_column(self, row: QHBoxLayout, caption: str) -> QLabel:
         """Adds a *caption / value* column to *row* and returns the value label."""
         column = QVBoxLayout()
+        column.setSpacing(2)
         cap = QLabel(caption)
         cap.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cap.setProperty("text_role", "secondary")
+        cap.setProperty("text_role", "caption")
+        cap.setProperty("tone", "muted")
+        cap.setProperty("weight", "bold")
+        cap.setProperty("dice_plain", "true")
         value = QLabel("—")
-        value.setProperty("text_role", "subtitle")
+        value.setProperty("text_role", "metric")
+        value.setProperty("tone", "neutral")
+        value.setProperty("weight", "bold")
+        value.setProperty("dice_plain", "true")
         value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         column.addWidget(cap)
         column.addWidget(value)
@@ -262,7 +297,9 @@ class GmDiceModule(BaseModule):
         """Shows or hides the side history panel to widen/narrow the dialog."""
         visible = not self._history_widget.isVisible()
         self._history_widget.setVisible(visible)
-        self._toggle_history_btn.setText("◄ Storico" if not visible else "Storico ►")
+        icon = _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
+        self._toggle_history_btn.setText(icon)
+        self._hide_history_btn.setText(icon)
 
     def _spec_label(self, n_dice: int) -> str:
         """Returns the dice specification label (e.g. ``4d6`` or ``2× profilo``)."""
@@ -284,25 +321,36 @@ class GmDiceModule(BaseModule):
         """Builds a rich history row: spec, time, each die and SUM/MIN/MAX/MEDIA."""
         entry = QWidget()
         layout = QVBoxLayout(entry)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(6)
 
         top = QHBoxLayout()
+        top.setSpacing(8)
         spec_lbl = QLabel(spec)
         spec_lbl.setProperty("text_role", "subtitle")
+        spec_lbl.setProperty("tone", "neutral")
+        spec_lbl.setProperty("weight", "bold")
+        spec_lbl.setProperty("dice_plain", "true")
         top.addWidget(spec_lbl)
         top.addStretch()
         time_lbl = QLabel(timestamp)
-        time_lbl.setProperty("text_role", "secondary")
+        time_lbl.setProperty("text_role", "micro")
+        time_lbl.setProperty("tone", "muted")
+        time_lbl.setProperty("dice_plain", "true")
         top.addWidget(time_lbl)
         layout.addLayout(top)
 
         dice_lbl = QLabel(", ".join(str(d) for d in dice))
         dice_lbl.setProperty("text_role", "body")
+        dice_lbl.setProperty("tone", "neutral")
+        dice_lbl.setProperty("dice_plain", "true")
         layout.addWidget(dice_lbl)
 
         stats = QLabel(f"SUM {total}   MIN {dmin}   MAX {dmax}   MEDIA {davg}")
-        stats.setProperty("text_role", "secondary")
+        stats.setProperty("text_role", "caption")
+        stats.setProperty("tone", "muted")
+        stats.setProperty("weight", "bold")
+        stats.setProperty("dice_plain", "true")
         layout.addWidget(stats)
         return entry
 
