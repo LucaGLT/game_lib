@@ -22,3 +22,4 @@ add_subdirectory(gmRules)
 
 # ── Games ──────────────────────────────────────────────────────────────────────
 add_subdirectory(GAME/Tic-Tac-Toe/CoreEngine)
+add_subdirectory(GAME/Dungeon-Crawler-Basic/CoreEngine)

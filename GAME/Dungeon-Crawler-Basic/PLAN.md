@@ -1,7 +1,7 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.2.0
-**Status:** Phase 1 – Interfaces & Stubs ⏳
+**Version:** 0.4.0
+**Status:** Phase 1 – Interfaces & Stubs ✅ · Phase 2 – Body Implementation ⏳
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
 
@@ -100,21 +100,24 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 
 ## Development Phases
 
-### Phase 1 — Interfaces & Stubs (FASE A) ⏳
+### Phase 1 — Interfaces & Stubs (FASE A) ✅
 
-- [ ] Creare la struttura iniziale `CoreEngine/` e `GUI/` nel nuovo gioco.
-- [ ] Definire in header tutte le classi e le firme funzione per: `DungeonMap`, `DungeonMapLoader`, `ActorRoster`, `TurnFlow`, `DungeonRuleAdapter`, `ActionV1`, `GameLog`, `GuiBridge`, `CmdServer`.
-- [ ] Implementare body placeholder senza logica di business con marker obbligatorio `//ToBeImplemented//`.
-- [ ] Nei body placeholder, restituire `"Tutto ok"` dove il tipo di ritorno è stringa e default neutro coerente negli altri casi.
-- [ ] Scrivere descrizioni Doxygen complete per classi, metodi pubblici e parametri (input/output/errore atteso).
-- [ ] Generare il manuale d'uso in Markdown (API + wire contract) in `GAME/Dungeon-Crawler-Basic/info/`.
-- [ ] Definire e congelare il contratto v1 Core ↔ GUI (command/event IDs, payload minimi, errori standard).
-- [ ] **Smoke test:** CoreEngine compila con soli stub e la GUI shell si avvia in headless validando il contratto v1 congelato.
+- [x] Creare la struttura iniziale `CoreEngine/` e `GUI/` nel nuovo gioco.
+- [x] Definire in header tutte le classi e le firme funzione per: `DungeonMap`, `DungeonMapLoader`, `ActorRoster`, `TurnFlow`, `DungeonRuleAdapter`, `ActionV1`, `GameLog`, `GuiBridge`, `CmdServer`.
+- [x] Implementare body placeholder senza logica di business con marker obbligatorio `// ToBeImplemented //`.
+- [x] Nei body placeholder, restituire `"Tutto ok"` dove il tipo di ritorno è stringa e default neutro coerente negli altri casi.
+- [x] Scrivere descrizioni Doxygen complete per classi, metodi pubblici e parametri (input/output/errore atteso).
+- [x] Generare il manuale d'uso in Markdown (API + wire contract) in `GAME/Dungeon-Crawler-Basic/info/`.
+- [x] Definire e congelare il contratto v1 Core ↔ GUI (command/event IDs, payload minimi, errori standard).
+- [x] **Smoke test:** CoreEngine compila con soli stub (`dungeon_engine.exe` generato); GUI shell si avvia in headless senza eccezioni Python.
 
 **Notes:**
 - Questa fase produce artefatti stabili per lavorare in parallelo: header, contratti, documentazione e skeleton compilabile.
 - Nessuna logica reale deve entrare nei body in questa fase.
 - Il manuale .md è parte del deliverable obbligatorio della fase.
+- **Porte scelte:** eventi CoreEngine→GUI su **9200**, comandi GUI→CoreEngine su **9201** (evitano conflitti con Tris 9100/9001 e con la porta 9000 occupata da proxy Windows).
+- Inizializzazione in DungeonEngine: `_rules` e `_actions` usano initializer list per passare i riferimenti a `_map` e `_actors` (necessario perché le classi hanno costruttori con parametri senza default).
+- Smoke test CoreEngine: `dungeon_engine.exe` compilato e linkato senza errori. GUI shell avviata offscreen senza eccezioni Python.
 
 ### Phase 2 — Body Implementation (FASE B) ⏳
 

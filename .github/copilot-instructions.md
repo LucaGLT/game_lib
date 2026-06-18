@@ -79,6 +79,13 @@ Use `.github/prompts/new-class.prompt.md` to scaffold a new class from scratch.
 
 Apply `.github/instructions/documentation.instructions.md` for any Doxygen comment block.
 
+Always create or update a human-written API manual in Markdown when public
+classes/functions are added or changed. The API manual must live in the module
+root (for example `gmFlow/gmFlow_API.md`) and must document class purpose,
+public methods, parameters, return values, errors, and a minimal usage example.
+Do not require PDF/HTML generation and do not require running Doxygen tools for
+this deliverable.
+
 For Markdown files (`*.md`), apply `.github/instructions/markdown-style.instructions.md`
 and enforce markdownlint-compatible formatting.
 
