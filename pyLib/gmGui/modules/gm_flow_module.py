@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPainter
+from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QGraphicsView,
     QHBoxLayout,
@@ -78,34 +78,30 @@ class GmFlowModule(BaseModule):
 
     def _build_widget(self) -> QWidget:
         container = QWidget()
+        container.setObjectName("gm_flow_module")
         vbox = QVBoxLayout(container)
         vbox.setContentsMargins(8, 8, 8, 8)
-        vbox.setSpacing(6)
+        vbox.setSpacing(8)
 
         # ── Row 1: status labels ──────────────────────────────────────────────
         row1 = QHBoxLayout()
         row1.setSpacing(12)
 
         self._lbl_session: QLabel = QLabel("👥 Session: —")
-        self._lbl_session.setStyleSheet(
-            "QLabel { font-weight: bold; color: #2c3e50; font-size: 10pt; }"
-        )
+        self._lbl_session.setProperty("flow_badge", "true")
+        self._lbl_session.setProperty("flow_kind", "session")
 
         self._lbl_phase: QLabel = QLabel("📍 Phase: —")
-        self._lbl_phase.setStyleSheet(
-            "QLabel { padding: 4px 8px; border-radius: 4px; background: #ecf0f1; "
-            "font-weight: bold; color: #2980b9; font-size: 10pt; }"
-        )
+        self._lbl_phase.setProperty("flow_badge", "true")
+        self._lbl_phase.setProperty("flow_kind", "phase")
 
         self._lbl_round: QLabel = QLabel("🔄 Round: —")
-        self._lbl_round.setStyleSheet(
-            "QLabel { font-weight: bold; color: #27ae60; font-size: 10pt; }"
-        )
+        self._lbl_round.setProperty("flow_badge", "true")
+        self._lbl_round.setProperty("flow_kind", "round")
 
         self._lbl_turn: QLabel = QLabel("⏱ Turn: —")
-        self._lbl_turn.setStyleSheet(
-            "QLabel { font-weight: bold; color: #8e44ad; font-size: 10pt; }"
-        )
+        self._lbl_turn.setProperty("flow_badge", "true")
+        self._lbl_turn.setProperty("flow_kind", "turn")
 
         row1.addWidget(self._lbl_session)
         row1.addWidget(self._lbl_phase)
@@ -116,11 +112,7 @@ class GmFlowModule(BaseModule):
 
         # ── Row 2: timeline scene with title ──────────────────────────────────
         timeline_title = QLabel("⏳ Timeline turni")
-        timeline_title_font = QFont()
-        timeline_title_font.setPointSize(9)
-        timeline_title_font.setBold(True)
-        timeline_title.setFont(timeline_title_font)
-        timeline_title.setStyleSheet("color: #34495e;")
+        timeline_title.setProperty("text_role", "subtitle")
         vbox.addWidget(timeline_title)
 
         self._timeline_scene: TimelineScene = TimelineScene()
@@ -157,9 +149,7 @@ class GmFlowModule(BaseModule):
         )
 
         self._status_msg: QLabel = QLabel("")
-        self._status_msg.setStyleSheet(
-            "QLabel { color: #7f8c8d; font-size: 9pt; font-style: italic; }"
-        )
+        self._status_msg.setProperty("text_role", "secondary")
 
         row3 = QHBoxLayout()
         row3.setSpacing(8)
@@ -173,11 +163,7 @@ class GmFlowModule(BaseModule):
         # ── Row 4: event log with collapsible header ──────────────────────────
         log_header = QHBoxLayout()
         log_title = QLabel("📋 Log eventi")
-        log_title_font = QFont()
-        log_title_font.setPointSize(9)
-        log_title_font.setBold(True)
-        log_title.setFont(log_title_font)
-        log_title.setStyleSheet("color: #34495e;")
+        log_title.setProperty("text_role", "subtitle")
         log_header.addWidget(log_title)
         log_header.addStretch()
 
@@ -189,10 +175,7 @@ class GmFlowModule(BaseModule):
 
         self._log: QListWidget = QListWidget()
         self._log.setMaximumHeight(140)
-        self._log.setStyleSheet(
-            "QListWidget { border: 1px solid #bdc3c7; border-radius: 4px; "
-            "background: #ffffff; }"
-        )
+        self._log.setObjectName("flow_event_log")
         vbox.addWidget(self._log)
 
         return container
@@ -350,7 +333,6 @@ class GmFlowModule(BaseModule):
         timestamp = datetime.now().strftime("%H:%M:%S")
         full_text = f"{timestamp}  {text}"
         item = QListWidgetItem(full_text)
-        item.setFont(QFont("Courier", 8))
         self._log.insertItem(0, item)
         while self._log.count() > _MAX_LOG:
             self._log.takeItem(self._log.count() - 1)

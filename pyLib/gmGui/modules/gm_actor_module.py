@@ -13,7 +13,6 @@ Layout
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -37,13 +36,6 @@ from .base_module import BaseModule
 _COL_NAME: int = 0
 _COL_HP: int = 1
 _COL_STATE: int = 2
-
-# ── Life-state → row foreground colour ───────────────────────────────────────
-_LIFE_STATE_COLORS: dict[str, QColor | None] = {
-    "ALIVE": None,
-    "DYING": QColor(Qt.GlobalColor.red),
-    "DEAD": QColor(Qt.GlobalColor.gray),
-}
 
 
 class GmActorModule(BaseModule):
@@ -85,26 +77,7 @@ class GmActorModule(BaseModule):
         self._actor_data: dict[str, dict] = {}
 
         container = QWidget()
-        container.setStyleSheet(
-            "QWidget { background: #f7f9fc; color: #1f2a37; }"
-            "QComboBox, QLineEdit {"
-            "  background: #ffffff; border: 1px solid #d7deea;"
-            "  border-radius: 8px; padding: 6px 10px; }"
-            "QPushButton {"
-            "  background: #ffffff; border: 1px solid #d7deea;"
-            "  border-radius: 8px; padding: 6px 12px; font-weight: 600; }"
-            "QPushButton:hover { background: #eef4ff; border-color: #9fc0ff; }"
-            "QTreeWidget {"
-            "  background: #ffffff; border: 1px solid #d7deea; border-radius: 10px;"
-            "  alternate-background-color: #f7faff; }"
-            "QTreeWidget::item { padding: 5px; }"
-            "QTreeWidget::item:selected { background: #e8f1ff; color: #0b58ca; }"
-            "QGroupBox {"
-            "  background: #ffffff; border: 1px solid #d7deea; border-radius: 10px;"
-            "  margin-top: 10px; padding-top: 8px; font-weight: 600; }"
-            "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
-            "QListWidget { background: #ffffff; border: none; }"
-        )
+        container.setObjectName("gm_actor_module")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         outer = QHBoxLayout(container)
@@ -161,31 +134,30 @@ class GmActorModule(BaseModule):
         vbox_right.setSpacing(8)
 
         header_card = QFrame()
-        header_card.setStyleSheet(
-            "QFrame { background: #ffffff; border: 1px solid #d7deea; border-radius: 10px; }"
-        )
+        header_card.setObjectName("actor_header_card")
         header_layout = QVBoxLayout(header_card)
-        header_layout.setContentsMargins(12, 10, 12, 10)
+        header_layout.setContentsMargins(16, 8, 16, 8)
         header_layout.setSpacing(4)
 
         self._detail_name: QLabel = QLabel("Seleziona un attore")
-        self._detail_name.setStyleSheet("font-size: 17px; font-weight: 700; color: #1f3c88;")
+        self._detail_name.setObjectName("actor_detail_name")
+        self._detail_name.setProperty("text_role", "title")
         header_layout.addWidget(self._detail_name)
 
         meta_row = QHBoxLayout()
         self._detail_faction: QLabel = QLabel("—")
-        self._detail_faction.setStyleSheet(
-            "QLabel { background: #eef4ff; color: #2251b3; border-radius: 10px; padding: 2px 8px; }"
-        )
+        self._detail_faction.setObjectName("actor_detail_faction")
+        self._detail_faction.setProperty("chip", "true")
         meta_row.addWidget(self._detail_faction)
         self._detail_state: QLabel = QLabel("ALIVE")
-        self._detail_state.setStyleSheet(
-            "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; padding: 2px 8px; font-weight: 700; }"
-        )
+        self._detail_state.setObjectName("actor_detail_state")
+        self._detail_state.setProperty("chip", "true")
         meta_row.addWidget(self._detail_state)
         meta_row.addStretch()
         header_layout.addLayout(meta_row)
         vbox_right.addWidget(header_card)
+
+        self._apply_detail_state("ALIVE")
 
         self._hp_bar: HpBar = HpBar()
         vbox_right.addWidget(self._hp_bar)
@@ -194,7 +166,7 @@ class GmActorModule(BaseModule):
         vbox_status = QVBoxLayout(status_group)
         status_header = QHBoxLayout()
         status_title = QLabel("Status")
-        status_title.setStyleSheet("font-weight: 700; color: #1f2a37;")
+        status_title.setProperty("text_role", "subtitle")
         status_header.addWidget(status_title)
         status_header.addStretch()
         self._btn_toggle_status: QPushButton = QPushButton("Nascondi ▲")
@@ -211,7 +183,7 @@ class GmActorModule(BaseModule):
         vbox_equip = QVBoxLayout(equip_group)
         equip_header = QHBoxLayout()
         equip_title = QLabel("Equipaggiamento")
-        equip_title.setStyleSheet("font-weight: 700; color: #1f2a37;")
+        equip_title.setProperty("text_role", "subtitle")
         equip_header.addWidget(equip_title)
         equip_header.addStretch()
         self._btn_toggle_equip: QPushButton = QPushButton("Nascondi ▲")
@@ -457,11 +429,7 @@ class GmActorModule(BaseModule):
         else:
             self._detail_name.setText("Seleziona un attore")
             self._detail_faction.setText("—")
-            self._detail_state.setText("ALIVE")
-            self._detail_state.setStyleSheet(
-                "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; "
-                "padding: 2px 8px; font-weight: 700; }"
-            )
+            self._apply_detail_state("ALIVE")
             self._hp_bar.set_hp(0, 1)
             self._status_list.clear()
             self._equip_list.clear()
@@ -478,25 +446,18 @@ class GmActorModule(BaseModule):
         self._detail_name.setText(d["name"])
         self._detail_faction.setText(d["faction_id"])
         state = str(d["life_state"])
-        self._detail_state.setText(state)
-        if state == "ALIVE":
-            self._detail_state.setStyleSheet(
-                "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; "
-                "padding: 2px 8px; font-weight: 700; }"
-            )
-        elif state == "DYING":
-            self._detail_state.setStyleSheet(
-                "QLabel { background: #fff4e5; color: #9a5a00; border-radius: 10px; "
-                "padding: 2px 8px; font-weight: 700; }"
-            )
-        else:
-            self._detail_state.setStyleSheet(
-                "QLabel { background: #f0f2f5; color: #58606b; border-radius: 10px; "
-                "padding: 2px 8px; font-weight: 700; }"
-            )
+        self._apply_detail_state(state)
         self._hp_bar.set_hp(d["current_hp"], d["max_hp"])
         self._refresh_status_list(actor_id)
         self._refresh_equip_list(actor_id)
+
+    def _apply_detail_state(self, state: str) -> None:
+        """Sets a semantic life-state property for theme-driven styling."""
+        normalized = state if state in ("ALIVE", "DYING", "DEAD") else "ALIVE"
+        self._detail_state.setText(normalized)
+        self._detail_state.setProperty("life_state", normalized.lower())
+        self._detail_state.style().unpolish(self._detail_state)
+        self._detail_state.style().polish(self._detail_state)
 
     def _refresh_status_list(self, actor_id: str) -> None:
         self._status_list.clear()
@@ -517,7 +478,7 @@ class GmActorModule(BaseModule):
 
     @staticmethod
     def _apply_life_state_color(item: QTreeWidgetItem, life_state: str) -> None:
-        """Applies DYING→red / DEAD→gray / ALIVE→default foreground to all columns."""
-        color: QColor | None = _LIFE_STATE_COLORS.get(life_state)
+        """Stores life-state metadata on the row for delegate/theme usage."""
+        role = int(Qt.ItemDataRole.UserRole) + 1
         for col in range(3):
-            item.setForeground(col, QBrush(color) if color is not None else QBrush())
+            item.setData(col, role, life_state)

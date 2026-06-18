@@ -10,7 +10,6 @@ import random as _random
 from datetime import datetime
 
 from PySide6.QtCore import QPropertyAnimation, Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -45,16 +44,6 @@ class GmDiceModule(BaseModule):
       faces, custom profiles) and, optionally, the roll itself.
     - ``gmAlea.dice.roll_result``: a roll result to display.
     - ``gmAlea.dice.profiles_snapshot``: the list of available custom profiles.
-    The module can be driven manually (the user picks the mode/dice and presses
-    *LANCIA*) **or** entirely by the Core Engine through a single ad-hoc setup
-    message — see :meth:`_apply_setup`.
-
-    Subscribed typeIds
-    ------------------
-    - ``gmAlea.dice.setup``: engine-driven auto-configuration (mode, dice count,
-      faces, custom profiles) and, optionally, the roll itself.
-    - ``gmAlea.dice.roll_result``: a roll result to display.
-    - ``gmAlea.dice.profiles_snapshot``: the list of available custom profiles.
     """
 
     @property
@@ -72,7 +61,6 @@ class GmDiceModule(BaseModule):
     def subscribed_type_ids(self) -> list[str]:
         return [
             "gmAlea.dice.setup",
-            "gmAlea.dice.setup",
             "gmAlea.dice.roll_result",
             "gmAlea.dice.profiles_snapshot",
         ]
@@ -81,15 +69,16 @@ class GmDiceModule(BaseModule):
 
     def _build_widget(self) -> QWidget:
         container = QWidget()
+        container.setObjectName("gm_dice_module")
         outer = QHBoxLayout(container)
-        outer.setContentsMargins(6, 6, 6, 6)
+        outer.setContentsMargins(8, 8, 8, 8)
         outer.setSpacing(8)
 
         # ══ Left column: configuration, roll, result ═════════════════════════
         left_widget = QWidget()
         vbox = QVBoxLayout(left_widget)
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(6)
+        vbox.setSpacing(8)
 
         # ── Top bar with the history toggle ───────────────────────────────────
         top_bar = QHBoxLayout()
@@ -149,10 +138,7 @@ class GmDiceModule(BaseModule):
 
         # ── LANCIA button ─────────────────────────────────────────────────────
         self._roll_btn: QPushButton = QPushButton("🎲  LANCIA")
-        roll_font = QFont()
-        roll_font.setPointSize(12)
-        roll_font.setBold(True)
-        self._roll_btn.setFont(roll_font)
+        self._roll_btn.setProperty("button_variant", "primary")
         vbox.addWidget(self._roll_btn)
 
         # ── Result area ───────────────────────────────────────────────────────
@@ -160,19 +146,12 @@ class GmDiceModule(BaseModule):
         result_vbox = QVBoxLayout(result_box)
 
         self._sum_caption: QLabel = QLabel("SUM")
-        sum_font = QFont()
-        sum_font.setPointSize(9)
-        sum_font.setBold(True)
-        self._sum_caption.setFont(sum_font)
+        self._sum_caption.setProperty("text_role", "secondary")
         self._sum_caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._sum_caption.setStyleSheet("color: #5b7cff;")
         result_vbox.addWidget(self._sum_caption)
 
         self._result_label: QLabel = QLabel("—")
-        result_font = QFont()
-        result_font.setPointSize(28)
-        result_font.setBold(True)
-        self._result_label.setFont(result_font)
+        self._result_label.setProperty("text_role", "title")
         self._result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_vbox.addWidget(self._result_label)
 
@@ -213,7 +192,7 @@ class GmDiceModule(BaseModule):
 
         hist_header = QHBoxLayout()
         hist_title = QLabel("Storico")
-        hist_title.setFont(sum_font)
+        hist_title.setProperty("text_role", "subtitle")
         hist_header.addWidget(hist_title)
         hist_header.addStretch()
         hide_btn = QPushButton("Nascondi ►")
@@ -229,6 +208,7 @@ class GmDiceModule(BaseModule):
         right_vbox.addWidget(self._history_list)
 
         self._clear_btn: QPushButton = QPushButton("🗑  Cancella storico")
+        self._clear_btn.setProperty("button_variant", "secondary")
         self._clear_btn.clicked.connect(self._history_list.clear)
         right_vbox.addWidget(self._clear_btn)
 
@@ -246,12 +226,9 @@ class GmDiceModule(BaseModule):
         column = QVBoxLayout()
         cap = QLabel(caption)
         cap.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cap.setStyleSheet("color: #8a93a6; font-size: 9pt;")
+        cap.setProperty("text_role", "secondary")
         value = QLabel("—")
-        value_font = QFont()
-        value_font.setPointSize(13)
-        value_font.setBold(True)
-        value.setFont(value_font)
+        value.setProperty("text_role", "subtitle")
         value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         column.addWidget(cap)
         column.addWidget(value)
@@ -263,13 +240,8 @@ class GmDiceModule(BaseModule):
         box = QLabel(str(value))
         box.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box.setFixedSize(40, 40)
-        box_font = QFont()
-        box_font.setPointSize(13)
-        box_font.setBold(True)
-        box.setFont(box_font)
-        box.setStyleSheet(
-            "border: 1px solid #c8d0e0; border-radius: 8px; background: #ffffff;"
-        )
+        box.setObjectName("dice_value_box")
+        box.setProperty("text_role", "subtitle")
         return box
 
     @staticmethod
@@ -307,31 +279,25 @@ class GmDiceModule(BaseModule):
         """Builds a rich history row: spec, time, each die and SUM/MIN/MAX/MEDIA."""
         entry = QWidget()
         layout = QVBoxLayout(entry)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(3)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
 
         top = QHBoxLayout()
         spec_lbl = QLabel(spec)
-        spec_font = QFont()
-        spec_font.setBold(True)
-        spec_lbl.setFont(spec_font)
+        spec_lbl.setProperty("text_role", "subtitle")
         top.addWidget(spec_lbl)
         top.addStretch()
         time_lbl = QLabel(timestamp)
-        time_lbl.setStyleSheet("color: #8a93a6; font-size: 8pt;")
+        time_lbl.setProperty("text_role", "secondary")
         top.addWidget(time_lbl)
         layout.addLayout(top)
 
         dice_lbl = QLabel(", ".join(str(d) for d in dice))
-        dice_lbl.setStyleSheet("color: #3a4253;")
+        dice_lbl.setProperty("text_role", "body")
         layout.addWidget(dice_lbl)
 
-        stats = QLabel(
-            f"<span style='color:#8a93a6'>SUM</span> <b>{total}</b>&nbsp;&nbsp;"
-            f"<span style='color:#8a93a6'>MIN</span> <b>{dmin}</b>&nbsp;&nbsp;"
-            f"<span style='color:#8a93a6'>MAX</span> <b>{dmax}</b>&nbsp;&nbsp;"
-            f"<span style='color:#8a93a6'>MEDIA</span> <b>{davg}</b>"
-        )
+        stats = QLabel(f"SUM {total}   MIN {dmin}   MAX {dmax}   MEDIA {davg}")
+        stats.setProperty("text_role", "secondary")
         layout.addWidget(stats)
         return entry
 
@@ -478,26 +444,6 @@ class GmDiceModule(BaseModule):
         self._history_list.setItemWidget(item, entry)
         while self._history_list.count() > _MAX_HISTORY:
             self._history_list.takeItem(self._history_list.count() - 1)
-
-    # ── Envelope routing ──────────────────────────────────────────────────────
-
-    def on_envelope(self, msg: dict) -> None:
-        tid = msg.get("typeId", "")
-        raw = msg.get("headers", {}).get("data", None)
-        if raw is None:
-            raw = msg.get("data", {})
-        try:
-            data: dict = _json.loads(raw) if isinstance(raw, str) else raw
-        except Exception:
-            data = {}
-
-        if tid == "gmAlea.dice.setup":
-            self._apply_setup(data)
-
-        elif tid == "gmAlea.dice.roll_result":
-            dice: list[int] = [int(d) for d in data.get("dice", [])]
-            total: int = int(data.get("total", 0))
-            self._show_result(dice, total)
 
     # ── Envelope routing ──────────────────────────────────────────────────────
 

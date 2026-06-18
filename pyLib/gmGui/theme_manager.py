@@ -131,6 +131,12 @@ QGroupBox, QFrame {{
     border-radius: {radius}px;
 }}
 
+QFrame#actor_header_card {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+}}
+
 QGroupBox::title {{
     subcontrol-origin: margin;
     left: 8px;
@@ -142,12 +148,61 @@ QLabel {{
     color: {theme.text};
 }}
 
+QLabel[text_role="title"] {{
+    font-weight: 700;
+}}
+
+QLabel[text_role="subtitle"] {{
+    font-weight: 600;
+}}
+
+QLabel[text_role="secondary"] {{
+    color: {theme.border};
+}}
+
+QLabel[chip="true"] {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 2px 8px;
+}}
+
+QLabel#actor_detail_state {{
+    font-weight: 700;
+}}
+
+QLabel#actor_detail_state[life_state="alive"] {{
+    border: 2px solid {theme.accent};
+}}
+
+QLabel#actor_detail_state[life_state="dying"] {{
+    border: 2px solid {theme.accent};
+}}
+
+QLabel#actor_detail_state[life_state="dead"] {{
+    border: 1px solid {theme.border};
+}}
+
+QLabel[flow_badge="true"] {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 4px 8px;
+    font-weight: 600;
+}}
+
 QLineEdit, QComboBox, QSpinBox, QListWidget, QTreeWidget, QTableView, QTextEdit, QPlainTextEdit {{
     background-color: {theme.panel};
     color: {theme.text};
     border: 1px solid {theme.border};
     border-radius: {radius}px;
     padding: 4px 8px;
+}}
+
+QListWidget#flow_event_log {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
 }}
 
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus, QTreeWidget:focus, QTableView:focus {{
@@ -173,6 +228,23 @@ QPushButton:pressed {{
 QPushButton:disabled {{
     color: {theme.border};
     border: 1px solid {theme.border};
+}}
+
+QPushButton[button_variant="primary"] {{
+    background-color: {theme.accent};
+    border: 2px solid {theme.accent};
+    font-weight: 700;
+}}
+
+QPushButton[button_variant="secondary"] {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+}}
+
+QLabel#dice_value_box {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
 }}
 
 QTabWidget::pane {{
