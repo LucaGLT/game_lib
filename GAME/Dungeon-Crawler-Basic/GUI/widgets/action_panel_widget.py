@@ -31,35 +31,71 @@ class ActionPanelWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Creates the panel with all action buttons disabled."""
         super().__init__(parent)
-        # ToBeImplemented //
+        from PySide6.QtWidgets import QHBoxLayout, QPushButton
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        self._btn_heal  = QPushButton("Heal (potion)")
+        self._btn_equip = QPushButton("Equip weapon")
+        layout.addWidget(self._btn_heal)
+        layout.addWidget(self._btn_equip)
+        layout.addStretch()
+        self._btn_heal.setEnabled(False)
+        self._btn_equip.setEnabled(False)
+        self._btn_heal.clicked.connect(self._on_heal_clicked)
+        self._btn_equip.clicked.connect(self._on_equip_clicked)
+        self._hero_id: str = ""
+        self._has_potion: bool = False
+        self._has_item: bool = False
+        self._weapon_equipped: bool = False
 
     def on_envelope(self, msg: dict) -> None:
-        """Receives a decoded engine event and updates button availability.
+        """Receives a decoded engine event and updates button availability."""
+        type_id = msg.get("typeId", "")
+        data = msg.get("data", {})
+        if type_id == "dungeon.actor.snapshot":
+            for actor in data.get("actors", []):
+                if actor.get("kind") == "HERO":
+                    self._hero_id = actor.get("id", "")
+                    tags = actor.get("tags", [])
+                    self._has_potion = "has_potion" in tags
+                    self._has_item = "bigword_available" in tags
+                    self._weapon_equipped = "equipped_weapon" in tags
+                    self._update_buttons()
+        elif type_id == "dungeon.turn.started":
+            actor_id = data.get("actor_id", "")
+            self._set_actions_enabled(actor_id == self._hero_id)
+        elif type_id in ("dungeon.turn.ended", "dungeon.game.over"):
+            self._set_actions_enabled(False)
+        elif type_id == "dungeon.session.started":
+            self.reset()
 
-        Handles: ``dungeon.actor.snapshot``, ``dungeon.actor.status_changed``,
-        ``dungeon.turn.started``, ``dungeon.turn.ended``, ``dungeon.game.over``.
-
-        Args:
-            msg: Decoded event dict with ``typeId`` and ``data`` keys.
-        """
-        # ToBeImplemented //
+    def _update_buttons(self) -> None:
+        self._btn_heal.setEnabled(self._has_potion)
+        self._btn_equip.setEnabled(self._has_item and not self._weapon_equipped)
 
     def _set_actions_enabled(self, enabled: bool) -> None:
-        """Enables or disables all action buttons at once.
-
-        Args:
-            enabled: True to enable all buttons, False to disable.
-        """
-        # ToBeImplemented //
+        """Enables or disables all action buttons at once."""
+        if enabled:
+            self._update_buttons()
+        else:
+            self._btn_heal.setEnabled(False)
+            self._btn_equip.setEnabled(False)
 
     def _on_heal_clicked(self) -> None:
         """Internal handler for the Heal button click."""
-        # ToBeImplemented //
+        if self._hero_id:
+            self.heal_requested.emit(self._hero_id, self._hero_id)
 
     def _on_equip_clicked(self) -> None:
         """Internal handler for the Equip button click."""
-        # ToBeImplemented //
+        if self._hero_id:
+            self.equip_requested.emit(self._hero_id, "bigword_available")
 
     def reset(self) -> None:
         """Disables all action buttons and clears selection state."""
-        # ToBeImplemented //
+        self._hero_id = ""
+        self._has_potion = False
+        self._has_item = False
+        self._weapon_equipped = False
+        self._btn_heal.setEnabled(False)
+        self._btn_equip.setEnabled(False)

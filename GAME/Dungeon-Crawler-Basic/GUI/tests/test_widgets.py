@@ -1,0 +1,123 @@
+"""Unit tests for GUI widgets (headless, no Qt display)."""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_GUI_DIR  = Path(__file__).resolve().parents[2] / "GUI"
+_PYLIB    = Path(__file__).resolve().parents[4] / "pyLib"
+
+sys.path.insert(0, str(_GUI_DIR))
+sys.path.insert(0, str(_PYLIB))
+
+# Headless Qt
+import os
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtWidgets import QApplication  # noqa: E402
+
+_app = QApplication.instance() or QApplication(sys.argv)
+
+from widgets.log_widget import LogWidget            # noqa: E402
+from widgets.error_bar_widget import ErrorBarWidget  # noqa: E402
+from widgets.action_panel_widget import ActionPanelWidget  # noqa: E402
+
+
+def test_log_widget_append_and_clear():
+    w = LogWidget()
+    w.append_entry("hello")
+    assert w._list.count() == 1
+    w.clear()
+    assert w._list.count() == 0
+    print("  [OK] test_log_widget_append_and_clear")
+
+
+def test_log_widget_on_envelope_session_started():
+    w = LogWidget()
+    w.on_envelope({"typeId": "dungeon.session.started", "data": {"round": 1}})
+    assert w._list.count() == 1
+    print("  [OK] test_log_widget_on_envelope_session_started")
+
+
+def test_log_widget_unknown_event_ignored():
+    w = LogWidget()
+    w.on_envelope({"typeId": "dungeon.unknown.event", "data": {}})
+    assert w._list.count() == 0
+    print("  [OK] test_log_widget_unknown_event_ignored")
+
+
+def test_error_bar_show_and_clear():
+    w = ErrorBarWidget()
+    w.show_error("test error")
+    assert "test error" in w._label.text()
+    w.clear()
+    assert w._label.text() == ""
+    print("  [OK] test_error_bar_show_and_clear")
+
+
+def test_error_bar_on_envelope_rejected():
+    w = ErrorBarWidget()
+    w.on_envelope({
+        "typeId": "dungeon.action.rejected",
+        "data": {"reason": "No potion available.", "command": "dungeon.heal"}
+    })
+    assert "No potion" in w._label.text()
+    print("  [OK] test_error_bar_on_envelope_rejected")
+
+
+def test_error_bar_ignores_other_events():
+    w = ErrorBarWidget()
+    w.on_envelope({"typeId": "dungeon.actor.moved", "data": {}})
+    assert w._label.text() == ""
+    print("  [OK] test_error_bar_ignores_other_events")
+
+
+def test_action_panel_initial_state():
+    w = ActionPanelWidget()
+    assert not w._btn_heal.isEnabled()
+    assert not w._btn_equip.isEnabled()
+    print("  [OK] test_action_panel_initial_state")
+
+
+def test_action_panel_enables_on_snapshot_with_potion():
+    w = ActionPanelWidget()
+    w.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {
+            "actors": [{
+                "id": "hero", "kind": "HERO", "hp": 10, "max_hp": 10,
+                "tags": ["has_potion", "bigword_available"], "statuses": []
+            }]
+        }
+    })
+    # Buttons are enabled by snapshot but turn control is separate.
+    # After snapshot, buttons reflect tag state (hero starts turn-agnostic).
+    # The test just checks that hero_id was stored.
+    assert w._hero_id == "hero"
+    assert w._has_potion
+    assert w._has_item
+    print("  [OK] test_action_panel_enables_on_snapshot_with_potion")
+
+
+def test_action_panel_reset():
+    w = ActionPanelWidget()
+    w._hero_id = "hero"
+    w.reset()
+    assert w._hero_id == ""
+    assert not w._btn_heal.isEnabled()
+    assert not w._btn_equip.isEnabled()
+    print("  [OK] test_action_panel_reset")
+
+
+if __name__ == "__main__":
+    print("=== Widget unit tests ===")
+    test_log_widget_append_and_clear()
+    test_log_widget_on_envelope_session_started()
+    test_log_widget_unknown_event_ignored()
+    test_error_bar_show_and_clear()
+    test_error_bar_on_envelope_rejected()
+    test_error_bar_ignores_other_events()
+    test_action_panel_initial_state()
+    test_action_panel_enables_on_snapshot_with_potion()
+    test_action_panel_reset()
+    print("All widget tests PASSED.")

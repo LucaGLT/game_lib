@@ -1,6 +1,6 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.6.0
+**Version:** 0.7.0
 **Status:** Phase 2 – Body Implementation 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
@@ -126,8 +126,8 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - [x] Implementare `TurnFlow` con `gmFlow` e collegare stato partita.
 - [x] Implementare `DungeonRuleAdapter` e `ActionV1` su `gmRules` solo per Move, Heal, Equip.
 - [x] Implementare `GuiBridge`/`CmdServer` e routing eventi/comandi mantenendo invariato il contratto v1.
-- [ ] Completare GUI interattiva PySide6 in parallelo al Core, senza introdurre nuovi campi fuori contratto.
-- [ ] Integrare logging, test unitari, test E2E e registrazione CTest.
+- [x] Completare GUI interattiva PySide6 in parallelo al Core, senza introdurre nuovi campi fuori contratto.
+- [x] Integrare logging, test unitari, test E2E e registrazione CTest.
 - [ ] Pianificare Attack/Defend come estensione successiva solo dopo approvazione contratti v2.
 - [ ] **Smoke test:** partita completa v1 (Move, Heal, Equip) con Core + GUI in esecuzione reale e test PASS.
 
@@ -138,6 +138,12 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - Loader JSON: supporto risoluzione path primaria + fallback in `.cache/` per file mappa.
 - RuleAdapter/ActionV1: validazione/effetti Move-Heal-Equip collegati a gmRules (`ConditionSpec` + `EffectResolver`).
 - Bridge v1: `GuiBridge` invia envelope con `source="DungeonCore"` e `headers.data` serializzato; `CmdServer` decodifica frame TCP (4-byte big-endian + JSON UTF-8).
+- GUI interattiva: board con stanze cliccabili e segnale move_requested; HeroPanel aggiorna HP/tag/status; ActionPanel abilita Heal/Equip in base ai tag hero.
+- Logging: `GameLog` usa `gmLog::GmLogger` (stdout, INFO) via `logger().log(Level, msg)` per evitare risoluzione template lazy-eval.
+- Test C++: `test_dungeon_map`, `test_actor_roster`, `test_turn_flow`, `test_dungeon_rules`, `test_map_loader` — tutti PASS.
+- Test Python: `test_event_router.py`, `test_widgets.py` — tutti PASS in headless offscreen.
+- CTest: tutti i test registrati in `CoreEngine/CMakeLists.txt`; test Python via `find_program(python)`.
+- Mappa test: `.cache/maps/dungeon_01.json` (3 stanze, hero + 2 nemici, tag pozione/spada).
 
 ---
 

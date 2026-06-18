@@ -23,34 +23,33 @@ class ErrorBarWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Creates the bar in its empty, neutral state."""
         super().__init__(parent)
-        # ToBeImplemented //
+        from PySide6.QtWidgets import QHBoxLayout, QLabel
+        from PySide6.QtCore import QTimer
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 0, 4, 0)
+        self._label = QLabel()
+        self._label.setWordWrap(False)
+        layout.addWidget(self._label)
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self.clear)
 
     def on_envelope(self, msg: dict) -> None:
-        """Receives a decoded engine event and shows feedback if relevant.
-
-        Handles: ``dungeon.action.rejected``.
-
-        Args:
-            msg: Decoded event dict with ``typeId`` and ``data`` keys.
-        """
-        # ToBeImplemented //
+        """Receives a decoded engine event and shows feedback if relevant."""
+        if msg.get("typeId") == "dungeon.action.rejected":
+            data = msg.get("data", {})
+            self.show_error(data.get("reason", "Action rejected"))
 
     def show_error(self, message: str) -> None:
-        """Displays an error message in the bar for a short duration.
-
-        Args:
-            message: Human-readable error string.
-        """
-        # ToBeImplemented //
+        """Displays an error message for 4 seconds."""
+        self._label.setText(f"⚠ {message}")
+        self._timer.start(4000)
 
     def show_info(self, message: str) -> None:
-        """Displays a neutral informational message in the bar.
-
-        Args:
-            message: Human-readable info string.
-        """
-        # ToBeImplemented //
+        """Displays a neutral informational message for 3 seconds."""
+        self._label.setText(message)
+        self._timer.start(3000)
 
     def clear(self) -> None:
-        """Hides any displayed message and returns the bar to neutral state."""
-        # ToBeImplemented //
+        """Hides any displayed message."""
+        self._label.clear()

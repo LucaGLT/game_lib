@@ -1,61 +1,77 @@
 /**
  * @file log/GameLog.cpp
- * @brief Stub implementation of GameLog.
- *
- * Real gmLog integration will be introduced in FASE B.
+ * @brief GameLog implementation using gmLog.
  */
 
 #include "log/GameLog.hpp"
 
-#include <iostream>
+#include "gmLog/Logger.hpp"
+#include "gmLog/LoggerFactory.hpp"
+#include "gmLog/LogLevel.hpp"
+
+#include <memory>
 
 namespace gmDungeonBasic
 {
 
+static std::unique_ptr<gmLog::GmLogger> g_logger;
+
+static gmLog::GmLogger& logger()
+{
+	if (!g_logger)
+	{
+		g_logger = std::make_unique<gmLog::GmLogger>(
+			gmLog::LoggerFactory::create_stdout_logger(
+				"DungeonEngine",
+				gmLog::LogLevel::INFO,
+				false));
+	}
+	return *g_logger;
+}
+
 GameLog::GameLog()
 {
-	// ToBeImplemented //
+	// Logger is initialised lazily on first use.
 }
 
 void GameLog::log_session_start(const std::string& session_id,
                                 const std::string& map_file)
 {
-	(void)session_id;
-	(void)map_file;
-	// ToBeImplemented //
-	std::cout << "[GameLog] session_start stub.\n";
+	const std::string _msg = "[session_start] id=" + session_id + " map=" + map_file;
+	logger().log(gmLog::LogLevel::INFO, _msg);
 }
 
 void GameLog::log_action(const std::string& actor_id,
                          const std::string& action,
                          const std::string& detail)
 {
-	(void)actor_id;
-	(void)action;
-	(void)detail;
-	// ToBeImplemented //
+	std::string msg = "[action] actor=" + actor_id + " action=" + action;
+	if (!detail.empty())
+	{
+		msg += " detail=" + detail;
+	}
+	logger().log(gmLog::LogLevel::INFO, msg);
 }
 
 void GameLog::log_rejection(const std::string& actor_id,
                             const std::string& command,
                             const std::string& reason)
 {
-	(void)actor_id;
-	(void)command;
-	(void)reason;
-	// ToBeImplemented //
+	const std::string reason_str = "[rejected] actor=" + actor_id +
+	                               " cmd=" + command +
+	                               " reason=" + reason;
+	logger().log(gmLog::LogLevel::WARNING, reason_str);
 }
 
 void GameLog::log_session_end(const std::string& outcome)
 {
-	(void)outcome;
-	// ToBeImplemented //
+	const std::string _msg_end = "[session_end] outcome=" + outcome;
+	logger().log(gmLog::LogLevel::INFO, _msg_end);
 }
 
 void GameLog::log_info(const std::string& message)
 {
-	(void)message;
-	// ToBeImplemented //
+	logger().log(gmLog::LogLevel::INFO, message);
 }
 
 } // namespace gmDungeonBasic
