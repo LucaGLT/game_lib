@@ -85,7 +85,7 @@ class GmFlowModule(BaseModule):
 
         # ── Row 1: status labels ──────────────────────────────────────────────
         row1 = QHBoxLayout()
-        row1.setSpacing(12)
+        row1.setSpacing(8)
 
         self._lbl_session: QLabel = QLabel("👥 Session: —")
         self._lbl_session.setProperty("flow_badge", "true")

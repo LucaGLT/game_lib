@@ -250,12 +250,20 @@ Validation:
 
 ## Phase 4 — Grid and typography normalization
 
+Status: Completed (2026-06-18)
+
 - Replace all non-conformant spacing values (2,3,6,10,12, etc.) with allowed scale policy.
 - Replace direct QFont setup with typography-role resolution.
 
 Deliverable:
 
 - Full SP-1 and TY-1 conformance.
+
+Validation:
+
+- Automatic audit executed on spacing + typography patterns.
+- Final targeted fix applied on remaining spacing/typography residuals.
+- Test suite executed in offscreen mode: 116 passed.
 
 ## Phase 5 — Verification and regression guard
 

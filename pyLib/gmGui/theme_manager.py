@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QApplication
 
 
@@ -331,3 +331,24 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
 
     # Fallback for unknown semantic token names.
     return QColor(palette.text)
+
+
+def resolve_typography(role: str) -> tuple[int, int]:
+    """Returns `(point_size, weight)` for a semantic typography role."""
+    if role == "title":
+        return (12, 700)
+    if role == "subtitle":
+        return (10, 600)
+    if role == "secondary":
+        return (9, 400)
+    # body
+    return (10, 400)
+
+
+def build_typography_font(role: str) -> QFont:
+    """Builds a QFont from semantic typography role tokens."""
+    point_size, weight = resolve_typography(role)
+    font = QFont()
+    font.setPointSize(point_size)
+    font.setBold(weight >= 600)
+    return font

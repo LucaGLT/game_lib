@@ -8,14 +8,14 @@ A vertical cyan line marks the current minimum timeline position.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QFont, QPen
+from PySide6.QtGui import QBrush, QPen
 from PySide6.QtWidgets import (
     QGraphicsLineItem,
     QGraphicsRectItem,
     QGraphicsScene,
 )
 
-from ..theme_manager import resolve_semantic_color
+from ..theme_manager import build_typography_font, resolve_semantic_color
 
 
 class TimelineScene(QGraphicsScene):
@@ -30,9 +30,9 @@ class TimelineScene(QGraphicsScene):
 
     _BLOCK_WIDTH: int = 70
     _BLOCK_HEIGHT: int = 42
-    _BLOCK_GAP: int = 10
+    _BLOCK_GAP: int = 8
     _LEFT_PADDING: int = 16
-    _TOP_PADDING: int = 10
+    _TOP_PADDING: int = 8
     _pixels_per_unit: int = _BLOCK_WIDTH + _BLOCK_GAP
 
     def __init__(self, parent: object = None) -> None:
@@ -60,9 +60,7 @@ class TimelineScene(QGraphicsScene):
         self._time_line = None
         self._default_pens = {}
 
-        base_font: QFont = QFont()
-        base_font.setPointSize(10)
-        base_font.setBold(True)
+        base_font = build_typography_font("subtitle")
 
         for actor in actors:
             actor_id: str = str(actor.get("actor_id", "?"))
