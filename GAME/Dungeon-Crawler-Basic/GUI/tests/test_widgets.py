@@ -21,6 +21,8 @@ _app = QApplication.instance() or QApplication(sys.argv)
 from widgets.log_widget import LogWidget            # noqa: E402
 from widgets.error_bar_widget import ErrorBarWidget  # noqa: E402
 from widgets.action_panel_widget import ActionPanelWidget  # noqa: E402
+from widgets.hero_panel_widget import HeroPanelWidget  # noqa: E402
+from widgets.dungeon_board_widget import DungeonBoardWidget  # noqa: E402
 
 
 def test_log_widget_append_and_clear():
@@ -109,6 +111,62 @@ def test_action_panel_reset():
     print("  [OK] test_action_panel_reset")
 
 
+def test_hero_panel_adapter_snapshot():
+    w = HeroPanelWidget()
+    w.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {
+            "actors": [{
+                "id": "hero",
+                "kind": "HERO",
+                "hp": 10,
+                "max_hp": 10,
+                "location": "room_1",
+                "tags": ["has_potion"],
+                "statuses": []
+            }]
+        }
+    })
+    assert w._module._actor_data["hero"]["faction_id"] == "heroes"
+    assert w._module._actor_data["hero"]["area_id"] == "room_1"
+    print("  [OK] test_hero_panel_adapter_snapshot")
+
+
+def test_dungeon_board_adapter_move_request():
+    w = DungeonBoardWidget()
+    moves: list[tuple[str, str]] = []
+    w.move_requested.connect(lambda hero_id, destination: moves.append((hero_id, destination)))
+
+    w.on_envelope({
+        "typeId": "dungeon.map.snapshot",
+        "data": {
+            "rooms": [
+                {"id": "room_1", "tags": ["start"], "adjacent": ["room_2"]},
+                {"id": "room_2", "tags": [], "adjacent": ["room_1"]},
+            ]
+        }
+    })
+    w.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {
+            "actors": [{
+                "id": "hero",
+                "kind": "HERO",
+                "hp": 10,
+                "max_hp": 10,
+                "location": "room_1",
+                "tags": [],
+                "statuses": []
+            }]
+        }
+    })
+
+    node = w._module._map_scene._nodes[w._room_index_by_id["room_2"]]
+    node.setSelected(True)
+    assert moves == [("hero", "room_2")]
+    print("  [OK] test_dungeon_board_adapter_move_request")
+
+
 if __name__ == "__main__":
     print("=== Widget unit tests ===")
     test_log_widget_append_and_clear()
@@ -120,4 +178,6 @@ if __name__ == "__main__":
     test_action_panel_initial_state()
     test_action_panel_enables_on_snapshot_with_potion()
     test_action_panel_reset()
+    test_hero_panel_adapter_snapshot()
+    test_dungeon_board_adapter_move_request()
     print("All widget tests PASSED.")

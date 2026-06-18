@@ -1,89 +1,150 @@
-"""Dungeon Crawler Basic — hero/actor panel widget.
+"""Dungeon Crawler Basic — hero/actor panel adapter.
 
-HeroPanelWidget displays the current state of all actors in the dungeon:
-hero HP, monster HP, active statuses and equipped items. It updates on
-``dungeon.actor.snapshot`` and ``dungeon.actor.hp_changed`` / ``status_changed``
-events from the CoreEngine.
-
-All visual styling is applied exclusively through QSS.
+HeroPanelWidget keeps the public Dungeon Crawler API but delegates rendering to
+the shared :class:`gmGui.modules.gm_actor_module.GmActorModule` widget so the
+actor panel reuses the existing GameLib GUI look and data presentation.
 """
 from __future__ import annotations
 
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
+
+from gmGui.modules.gm_actor_module import GmActorModule
 
 
 class HeroPanelWidget(QWidget):
-    """Scrollable panel listing all dungeon actors with their current state.
-
-    Displays for each actor: id, kind, current HP / max HP, active statuses
-    and relevant tags (has_potion, equipped_weapon, wounded, etc.).
-
-    The panel is read-only; user interaction for actions is handled by
-    :class:`ActionPanelWidget`.
-    """
+    """Adapter widget that maps dungeon actor events onto gmActor events."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        """Creates the panel with an empty actor list."""
         super().__init__(parent)
-        from PySide6.QtWidgets import QVBoxLayout, QScrollArea, QWidget as _W
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(2, 2, 2, 2)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        self._container = _W()
-        self._layout = QVBoxLayout(self._container)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(4, 4, 4, 4)
         self._layout.setSpacing(4)
-        self._layout.addStretch()
-        scroll.setWidget(self._container)
-        outer.addWidget(scroll)
-        self._actors: dict[str, "QLabel"] = {}
+        self._module: GmActorModule = GmActorModule()
+        self._module_widget = self._module.widget()
+        self._layout.addWidget(self._module_widget)
+        self._actor_cache: dict[str, dict] = {}
 
     def on_envelope(self, msg: dict) -> None:
-        """Receives a decoded engine event and refreshes the actor display."""
-        type_id = msg.get("typeId", "")
+        """Receives a dungeon envelope and forwards the translated actor event."""
+        type_id = str(msg.get("typeId", ""))
         data = msg.get("data", {})
-        if type_id == "dungeon.actor.snapshot":
-            for actor in data.get("actors", []):
-                self._refresh_actor(actor)
-        elif type_id in ("dungeon.actor.hp_changed", "dungeon.actor.status_changed"):
-            actor_id = data.get("actor_id", "")
-            if actor_id in self._actors:
-                lbl = self._actors[actor_id]
-                current_text = lbl.text()
-                # Update HP inline when hp_after present
-                if "hp_after" in data:
-                    parts = current_text.split(" | ")
-                    if parts:
-                        # rebuild minimal text keeping first part (id/kind)
-                        lbl.setText(parts[0] + f" | HP: {data['hp_after']}")
-        elif type_id == "dungeon.session.started":
-            self.reset()
 
-    def _refresh_actor(self, actor_data: dict) -> None:
-        """Updates the display row for a single actor."""
-        from PySide6.QtWidgets import QLabel
-        actor_id = actor_data.get("id", "?")
-        kind = actor_data.get("kind", "?")
-        hp = actor_data.get("hp", 0)
-        max_hp = actor_data.get("max_hp", 0)
-        tags = actor_data.get("tags", [])
-        statuses = actor_data.get("statuses", [])
-        text = f"{actor_id} [{kind}] | HP: {hp}/{max_hp}"
-        if tags:
-            text += f" | {', '.join(tags)}"
-        if statuses:
-            text += f" | status: {', '.join(statuses)}"
-        if actor_id in self._actors:
-            self._actors[actor_id].setText(text)
-        else:
-            lbl = QLabel(text)
-            lbl.setWordWrap(True)
-            self._actors[actor_id] = lbl
-            self._layout.insertWidget(self._layout.count() - 1, lbl)
+        if type_id == "dungeon.session.started":
+            self.reset()
+            return
+
+        if type_id == "dungeon.actor.snapshot":
+            self._module.on_envelope(
+                {"typeId": "gmActor.snapshot", "data": {"actors": self._translate_snapshot(data)}}
+            )
+        elif type_id == "dungeon.actor.hp_changed":
+            self._module.on_envelope(self._translate_hp_changed(data))
+        elif type_id == "dungeon.actor.status_changed":
+            translated = self._translate_status_changed(data)
+            if translated is not None:
+                self._module.on_envelope(translated)
+        elif type_id == "dungeon.actor.equipped":
+            translated = self._translate_equipped(data)
+            if translated is not None:
+                self._module.on_envelope(translated)
+        elif type_id == "dungeon.actor.moved":
+            translated = self._translate_moved(data)
+            if translated is not None:
+                self._module.on_envelope(translated)
 
     def reset(self) -> None:
-        """Removes all actor rows from the panel."""
-        for lbl in self._actors.values():
-            self._layout.removeWidget(lbl)
-            lbl.deleteLater()
-        self._actors.clear()
+        """Resets the embedded module to a clean actor state."""
+        self._actor_cache.clear()
+        self._module = GmActorModule()
+        self._layout.removeWidget(self._module_widget)
+        self._module_widget.setParent(None)
+        self._module_widget.deleteLater()
+        self._module_widget = self._module.widget()
+        self._layout.addWidget(self._module_widget)
+
+    def _translate_snapshot(self, data: dict) -> list[dict]:
+        actors: list[dict] = []
+        for actor in data.get("actors", []):
+            actor_id = str(actor.get("id", ""))
+            if not actor_id:
+                continue
+            current_hp = int(actor.get("hp", 0))
+            max_hp = int(actor.get("max_hp", 1))
+            tags = [str(tag) for tag in actor.get("tags", [])]
+            status_map: dict[str, int] = {}
+            for status_id in actor.get("statuses", []):
+                status_map[str(status_id)] = 1
+
+            entry = {
+                "actor_id": actor_id,
+                "faction_id": self._faction_for_kind(str(actor.get("kind", ""))),
+                "name": actor_id,
+                "current_hp": current_hp,
+                "max_hp": max_hp,
+                "life_state": "DEAD" if current_hp <= 0 else "ALIVE",
+                "statuses": status_map,
+                "equipment": self._equipment_from_tags(tags),
+                "area_id": str(actor.get("location", "")),
+            }
+            self._actor_cache[actor_id] = entry
+            actors.append(entry)
+        return actors
+
+    def _translate_hp_changed(self, data: dict) -> dict:
+        actor_id = str(data.get("actor_id", ""))
+        cached = self._actor_cache.get(actor_id, {})
+        return {
+            "typeId": "gmActor.actor.hp_changed",
+            "data": {
+                "actor_id": actor_id,
+                "new_hp": int(data.get("hp_after", data.get("new_hp", cached.get("current_hp", 0)))),
+                "max_hp": int(data.get("max_hp", cached.get("max_hp", 1))),
+            },
+        }
+
+    def _translate_status_changed(self, data: dict) -> dict | None:
+        actor_id = str(data.get("actor_id", ""))
+        status_id = str(data.get("status_id", ""))
+        if not actor_id or not status_id:
+            return None
+        added = bool(data.get("added", True))
+        return {
+            "typeId": "gmActor.actor.status_added" if added else "gmActor.actor.status_removed",
+            "data": {"actor_id": actor_id, "status_id": status_id, "stacks": 1},
+        }
+
+    def _translate_equipped(self, data: dict) -> dict | None:
+        actor_id = str(data.get("actor_id", ""))
+        item_tag = str(data.get("item_tag", ""))
+        if not actor_id or not item_tag:
+            return None
+        return {
+            "typeId": "gmActor.actor.item_equipped",
+            "data": {"actor_id": actor_id, "slot": "weapon", "item_instance_id": item_tag},
+        }
+
+    def _translate_moved(self, data: dict) -> dict | None:
+        actor_id = str(data.get("actor_id", ""))
+        destination = str(data.get("to", ""))
+        if not actor_id or not destination:
+            return None
+        return {
+            "typeId": "gmActor.actor.moved_area",
+            "data": {"actor_id": actor_id, "new_area_id": destination},
+        }
+
+    @staticmethod
+    def _faction_for_kind(kind: str) -> str:
+        kind = kind.upper()
+        if kind == "HERO":
+            return "heroes"
+        if kind in ("MONSTER", "MONSTER_ELITE", "BOSS_MONSTER"):
+            return "enemies"
+        return "neutral"
+
+    @staticmethod
+    def _equipment_from_tags(tags: list[str]) -> dict[str, str]:
+        equipment: dict[str, str] = {}
+        if "bigword_available" in tags:
+            equipment["weapon"] = "bigword_available"
+        return equipment
