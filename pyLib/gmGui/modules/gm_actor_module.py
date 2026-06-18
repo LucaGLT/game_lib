@@ -16,10 +16,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
+    QPushButton,
     QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
@@ -82,6 +85,27 @@ class GmActorModule(BaseModule):
         self._actor_data: dict[str, dict] = {}
 
         container = QWidget()
+        container.setStyleSheet(
+            "QWidget { background: #f7f9fc; color: #1f2a37; }"
+            "QComboBox, QLineEdit {"
+            "  background: #ffffff; border: 1px solid #d7deea;"
+            "  border-radius: 8px; padding: 6px 10px; }"
+            "QPushButton {"
+            "  background: #ffffff; border: 1px solid #d7deea;"
+            "  border-radius: 8px; padding: 6px 12px; font-weight: 600; }"
+            "QPushButton:hover { background: #eef4ff; border-color: #9fc0ff; }"
+            "QTreeWidget {"
+            "  background: #ffffff; border: 1px solid #d7deea; border-radius: 10px;"
+            "  alternate-background-color: #f7faff; }"
+            "QTreeWidget::item { padding: 5px; }"
+            "QTreeWidget::item:selected { background: #e8f1ff; color: #0b58ca; }"
+            "QGroupBox {"
+            "  background: #ffffff; border: 1px solid #d7deea; border-radius: 10px;"
+            "  margin-top: 10px; padding-top: 8px; font-weight: 600; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
+            "QListWidget { background: #ffffff; border: none; }"
+        )
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
         outer = QHBoxLayout(container)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -90,17 +114,37 @@ class GmActorModule(BaseModule):
         # ── Left pane ─────────────────────────────────────────────────────────
         left = QWidget()
         vbox_left = QVBoxLayout(left)
-        vbox_left.setContentsMargins(4, 4, 4, 4)
+        vbox_left.setContentsMargins(8, 8, 8, 8)
+        vbox_left.setSpacing(8)
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
 
         self._filter_combo: QComboBox = QComboBox()
         self._filter_combo.addItem("Tutti")
         self._filter_combo.currentTextChanged.connect(self._on_filter_changed)
-        vbox_left.addWidget(self._filter_combo)
+        self._filter_combo.setMinimumWidth(150)
+        top_row.addWidget(self._filter_combo)
+
+        self._search_edit: QLineEdit = QLineEdit()
+        self._search_edit.setPlaceholderText("Cerca attore...")
+        self._search_edit.textChanged.connect(self._on_search_changed)
+        top_row.addWidget(self._search_edit, 1)
+
+        self._toggle_details_btn: QPushButton = QPushButton("Nascondi dettagli")
+        self._toggle_details_btn.clicked.connect(self._toggle_details_panel)
+        top_row.addWidget(self._toggle_details_btn)
+        vbox_left.addLayout(top_row)
 
         self._tree: QTreeWidget = QTreeWidget()
         self._tree.setColumnCount(3)
         self._tree.setHeaderLabels(["Nome", "HP", "Stato"])
         self._tree.header().setStretchLastSection(True)
+        self._tree.setRootIsDecorated(True)
+        self._tree.setAlternatingRowColors(True)
+        self._tree.setUniformRowHeights(True)
+        self._tree.setColumnWidth(_COL_NAME, 230)
+        self._tree.setColumnWidth(_COL_HP, 90)
         self._tree.itemSelectionChanged.connect(self._on_selection_changed)
         vbox_left.addWidget(self._tree)
 
@@ -108,29 +152,82 @@ class GmActorModule(BaseModule):
 
         # ── Right pane: detail panel ──────────────────────────────────────────
         right = QWidget()
+        self._right_panel: QWidget = right
+        self._details_visible: bool = True
+        self._status_expanded: bool = True
+        self._equip_expanded: bool = True
         vbox_right = QVBoxLayout(right)
-        vbox_right.setContentsMargins(4, 4, 4, 4)
+        vbox_right.setContentsMargins(8, 8, 8, 8)
+        vbox_right.setSpacing(8)
 
-        self._detail_name: QLabel = QLabel("—")
-        vbox_right.addWidget(self._detail_name)
+        header_card = QFrame()
+        header_card.setStyleSheet(
+            "QFrame { background: #ffffff; border: 1px solid #d7deea; border-radius: 10px; }"
+        )
+        header_layout = QVBoxLayout(header_card)
+        header_layout.setContentsMargins(12, 10, 12, 10)
+        header_layout.setSpacing(4)
+
+        self._detail_name: QLabel = QLabel("Seleziona un attore")
+        self._detail_name.setStyleSheet("font-size: 17px; font-weight: 700; color: #1f3c88;")
+        header_layout.addWidget(self._detail_name)
+
+        meta_row = QHBoxLayout()
+        self._detail_faction: QLabel = QLabel("—")
+        self._detail_faction.setStyleSheet(
+            "QLabel { background: #eef4ff; color: #2251b3; border-radius: 10px; padding: 2px 8px; }"
+        )
+        meta_row.addWidget(self._detail_faction)
+        self._detail_state: QLabel = QLabel("ALIVE")
+        self._detail_state.setStyleSheet(
+            "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; padding: 2px 8px; font-weight: 700; }"
+        )
+        meta_row.addWidget(self._detail_state)
+        meta_row.addStretch()
+        header_layout.addLayout(meta_row)
+        vbox_right.addWidget(header_card)
 
         self._hp_bar: HpBar = HpBar()
         vbox_right.addWidget(self._hp_bar)
 
-        status_group = QGroupBox("Status")
+        status_group = QGroupBox()
         vbox_status = QVBoxLayout(status_group)
+        status_header = QHBoxLayout()
+        status_title = QLabel("Status")
+        status_title.setStyleSheet("font-weight: 700; color: #1f2a37;")
+        status_header.addWidget(status_title)
+        status_header.addStretch()
+        self._btn_toggle_status: QPushButton = QPushButton("Nascondi ▲")
+        self._btn_toggle_status.setMaximumWidth(110)
+        self._btn_toggle_status.clicked.connect(self._toggle_status_section)
+        status_header.addWidget(self._btn_toggle_status)
+        vbox_status.addLayout(status_header)
         self._status_list: QListWidget = QListWidget()
+        self._status_list.setMinimumHeight(90)
         vbox_status.addWidget(self._status_list)
         vbox_right.addWidget(status_group)
 
-        equip_group = QGroupBox("Equipaggiamento")
+        equip_group = QGroupBox()
         vbox_equip = QVBoxLayout(equip_group)
+        equip_header = QHBoxLayout()
+        equip_title = QLabel("Equipaggiamento")
+        equip_title.setStyleSheet("font-weight: 700; color: #1f2a37;")
+        equip_header.addWidget(equip_title)
+        equip_header.addStretch()
+        self._btn_toggle_equip: QPushButton = QPushButton("Nascondi ▲")
+        self._btn_toggle_equip.setMaximumWidth(110)
+        self._btn_toggle_equip.clicked.connect(self._toggle_equip_section)
+        equip_header.addWidget(self._btn_toggle_equip)
+        vbox_equip.addLayout(equip_header)
         self._equip_list: QListWidget = QListWidget()
+        self._equip_list.setMinimumHeight(90)
         vbox_equip.addWidget(self._equip_list)
         vbox_right.addWidget(equip_group)
 
         splitter.addWidget(right)
         splitter.setSizes([300, 200])
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 1)
 
         return container
 
@@ -160,6 +257,17 @@ class GmActorModule(BaseModule):
     # ── Private handlers ──────────────────────────────────────────────────────
 
     def _handle_snapshot(self, data: dict) -> None:
+        # Full reset: every snapshot is authoritative.
+        self._tree.clear()
+        self._actor_items = {}
+        self._faction_items = {}
+        self._actor_data = {}
+        self._filter_combo.blockSignals(True)
+        current_filter = self._filter_combo.currentText()
+        while self._filter_combo.count() > 1:
+            self._filter_combo.removeItem(1)
+        self._filter_combo.blockSignals(False)
+
         for actor in data.get("actors", []):
             actor_id: str = str(actor.get("actor_id", ""))
             if not actor_id:
@@ -197,6 +305,11 @@ class GmActorModule(BaseModule):
             self._actor_items[actor_id] = item
             self._update_state_column(actor_id)
             self._apply_life_state_color(item, life_state)
+
+        self._refresh_faction_labels()
+        # Expand all faction groups and apply filters.
+        self._tree.expandAll()
+        self._apply_filters()
 
     def _handle_hp_changed(self, data: dict) -> None:
         actor_id: str = str(data.get("actor_id", ""))
@@ -268,16 +381,87 @@ class GmActorModule(BaseModule):
     # ── UI helpers ────────────────────────────────────────────────────────────
 
     def _on_filter_changed(self, faction: str) -> None:
-        """Shows only the selected faction group; 'Tutti' shows all."""
+        """Applies faction filter combined with text search."""
+        _ = faction
+        self._apply_filters()
+
+    def _on_search_changed(self, _: str) -> None:
+        """Applies text search combined with faction filter."""
+        self._apply_filters()
+
+    def _toggle_details_panel(self) -> None:
+        """Shows/hides the right detail panel."""
+        self._details_visible = not self._details_visible
+        self._right_panel.setVisible(self._details_visible)
+        self._toggle_details_btn.setText(
+            "Nascondi dettagli" if self._details_visible else "Mostra dettagli"
+        )
+
+    def _toggle_status_section(self) -> None:
+        """Collapses/expands the Status section content."""
+        self._status_expanded = not self._status_expanded
+        self._status_list.setVisible(self._status_expanded)
+        self._btn_toggle_status.setText(
+            "Nascondi ▲" if self._status_expanded else "Mostra ▼"
+        )
+
+    def _toggle_equip_section(self) -> None:
+        """Collapses/expands the Equipaggiamento section content."""
+        self._equip_expanded = not self._equip_expanded
+        self._equip_list.setVisible(self._equip_expanded)
+        self._btn_toggle_equip.setText(
+            "Nascondi ▲" if self._equip_expanded else "Mostra ▼"
+        )
+
+    def _apply_filters(self) -> None:
+        """Applies faction and text filters to tree groups and actor rows."""
+        faction: str = self._filter_combo.currentText()
+        query: str = self._search_edit.text().strip().lower()
+
         for fid, fitem in self._faction_items.items():
-            fitem.setHidden(faction != "Tutti" and fid != faction)
+            faction_ok = (faction == "Tutti" or fid == faction)
+            visible_children = 0
+
+            for i in range(fitem.childCount()):
+                actor_item = fitem.child(i)
+                actor_id = str(actor_item.data(_COL_NAME, Qt.ItemDataRole.UserRole) or "")
+                actor_data = self._actor_data.get(actor_id, {})
+                actor_name = str(actor_data.get("name", "")).lower()
+                actor_faction = str(actor_data.get("faction_id", "")).lower()
+
+                text_ok = (
+                    not query
+                    or query in actor_name
+                    or query in actor_id.lower()
+                    or query in actor_faction
+                )
+                row_visible = faction_ok and text_ok
+                actor_item.setHidden(not row_visible)
+                if row_visible:
+                    visible_children += 1
+
+            fitem.setHidden(visible_children == 0)
+            if visible_children > 0:
+                fitem.setExpanded(True)
+
+    def _refresh_faction_labels(self) -> None:
+        """Updates faction root captions with actor counts."""
+        for faction_id, fitem in self._faction_items.items():
+            count = fitem.childCount()
+            fitem.setText(_COL_NAME, f"{faction_id} ({count})")
 
     def _on_selection_changed(self) -> None:
         actor_id: str | None = self._selected_actor_id()
         if actor_id is not None and actor_id in self._actor_data:
             self._refresh_detail(actor_id)
         else:
-            self._detail_name.setText("—")
+            self._detail_name.setText("Seleziona un attore")
+            self._detail_faction.setText("—")
+            self._detail_state.setText("ALIVE")
+            self._detail_state.setStyleSheet(
+                "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; "
+                "padding: 2px 8px; font-weight: 700; }"
+            )
             self._hp_bar.set_hp(0, 1)
             self._status_list.clear()
             self._equip_list.clear()
@@ -292,6 +476,24 @@ class GmActorModule(BaseModule):
     def _refresh_detail(self, actor_id: str) -> None:
         d: dict = self._actor_data[actor_id]
         self._detail_name.setText(d["name"])
+        self._detail_faction.setText(d["faction_id"])
+        state = str(d["life_state"])
+        self._detail_state.setText(state)
+        if state == "ALIVE":
+            self._detail_state.setStyleSheet(
+                "QLabel { background: #e9f8ef; color: #16814a; border-radius: 10px; "
+                "padding: 2px 8px; font-weight: 700; }"
+            )
+        elif state == "DYING":
+            self._detail_state.setStyleSheet(
+                "QLabel { background: #fff4e5; color: #9a5a00; border-radius: 10px; "
+                "padding: 2px 8px; font-weight: 700; }"
+            )
+        else:
+            self._detail_state.setStyleSheet(
+                "QLabel { background: #f0f2f5; color: #58606b; border-radius: 10px; "
+                "padding: 2px 8px; font-weight: 700; }"
+            )
         self._hp_bar.set_hp(d["current_hp"], d["max_hp"])
         self._refresh_status_list(actor_id)
         self._refresh_equip_list(actor_id)

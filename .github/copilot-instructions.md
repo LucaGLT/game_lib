@@ -17,6 +17,7 @@
 | `gmMap`       | `gmMap`        | Spatial map management                         |
 | `gmRules`     | `gmRules`      | Game rules engine                              |
 | `gmSave`      | `gmSave`       | Persistence and snapshot                       |
+| `gmGui`       | —              | PySide6 GUI front-end for game-master tooling  |
 
 Each library is fully standalone (no cross-library `#include` except through explicit bridge adapters).
 
@@ -36,6 +37,9 @@ Each library is fully standalone (no cross-library `#include` except through exp
 | Planning instructions        | `.github/instructions/planning.instructions.md`  |
 | Documentation instructions   | `.github/instructions/documentation.instructions.md` |
 | Code review instructions     | `.github/instructions/code-review.instructions.md` |
+| GUI visual style source      | `.github/GUI style.md`                             |
+| Python GUI style instructions | `.github/instructions/python-gui-style.instructions.md` |
+| GUI theme spec (machine-readable) | `.github/specs/gui-theme.yml`               |
 
 ---
 
@@ -90,3 +94,14 @@ Use `.github/specs/review-plan-schema.yml` for the output structure.
 Use the reusable prompt: `.github/prompts/review-code.prompt.md`.
 
 The review never modifies source files. It always produces a `REVIEW.md` correction plan first.
+
+---
+
+## When Writing Python GUI Code
+
+Apply `.github/instructions/python-gui-style.instructions.md` automatically for any `*.py` file.
+Validate theme token usage against `.github/specs/gui-theme.yml`.
+
+Use `.github/prompts/new-gui-widget.prompt.md` to scaffold a new PySide6 widget.
+Use `.github/prompts/new-gui-theme.prompt.md` to define a new visual theme.
+Use `.github/prompts/apply-gui-theme.prompt.md` to audit or refactor an existing widget for compliance.
