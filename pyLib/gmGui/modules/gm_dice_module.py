@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 from .base_module import BaseModule
 
 _MAX_HISTORY: int = 10
+_TOGGLE_EXPANDED_ICON: str = "▾"
+_TOGGLE_COLLAPSED_ICON: str = "▸"
 
 
 class GmDiceModule(BaseModule):
@@ -83,13 +85,16 @@ class GmDiceModule(BaseModule):
         # ── Top bar with the history toggle ───────────────────────────────────
         top_bar = QHBoxLayout()
         top_bar.addStretch()
-        self._toggle_history_btn: QPushButton = QPushButton("◄ Storico")
+        self._toggle_history_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._toggle_history_btn.setToolTip("Mostra/Nascondi storico")
+        self._toggle_history_btn.setProperty("toggle_icon", "true")
+        self._toggle_history_btn.setFixedWidth(20)
         self._toggle_history_btn.clicked.connect(self._toggle_history)
         top_bar.addWidget(self._toggle_history_btn)
         vbox.addLayout(top_bar)
 
         # ── Configuration group ───────────────────────────────────────────────
-        config_box = QGroupBox("Configurazione")
+        config_box = QGroupBox("")
         config_box.setObjectName("dice_config_group")
         config_vbox = QVBoxLayout(config_box)
         config_vbox.setSpacing(8)
@@ -146,7 +151,7 @@ class GmDiceModule(BaseModule):
         vbox.addWidget(self._roll_btn)
 
         # ── Result area ───────────────────────────────────────────────────────
-        result_box = QGroupBox("Risultato")
+        result_box = QGroupBox("")
         result_box.setObjectName("dice_result_group")
         result_vbox = QVBoxLayout(result_box)
         result_vbox.setContentsMargins(12, 12, 12, 12)
@@ -173,10 +178,12 @@ class GmDiceModule(BaseModule):
         self._detail_label.setProperty("tone", "neutral")
         self._detail_label.setProperty("dice_plain", "true")
         self._detail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._detail_label.setVisible(False)
         result_vbox.addWidget(self._detail_label)
 
         # Row of individual dice boxes (repopulated on every roll).
         self._dice_row_widget: QWidget = QWidget()
+        self._dice_row_widget.setProperty("dice_plain", "true")
         self._dice_row: QHBoxLayout = QHBoxLayout(self._dice_row_widget)
         self._dice_row.setContentsMargins(0, 4, 0, 4)
         self._dice_row.setSpacing(8)
@@ -218,9 +225,12 @@ class GmDiceModule(BaseModule):
         hist_title.setProperty("text_role", "subtitle")
         hist_header.addWidget(hist_title)
         hist_header.addStretch()
-        hide_btn = QPushButton("Nascondi ►")
-        hide_btn.clicked.connect(self._toggle_history)
-        hist_header.addWidget(hide_btn)
+        self._hide_history_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._hide_history_btn.setToolTip("Mostra/Nascondi storico")
+        self._hide_history_btn.setProperty("toggle_icon", "true")
+        self._hide_history_btn.setFixedWidth(20)
+        self._hide_history_btn.clicked.connect(self._toggle_history)
+        hist_header.addWidget(self._hide_history_btn)
         right_vbox.addLayout(hist_header)
 
         self._history_list: QListWidget = QListWidget()
@@ -287,7 +297,9 @@ class GmDiceModule(BaseModule):
         """Shows or hides the side history panel to widen/narrow the dialog."""
         visible = not self._history_widget.isVisible()
         self._history_widget.setVisible(visible)
-        self._toggle_history_btn.setText("◄ Storico" if not visible else "Storico ►")
+        icon = _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
+        self._toggle_history_btn.setText(icon)
+        self._hide_history_btn.setText(icon)
 
     def _spec_label(self, n_dice: int) -> str:
         """Returns the dice specification label (e.g. ``4d6`` or ``2× profilo``)."""

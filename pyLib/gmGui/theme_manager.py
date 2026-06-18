@@ -199,11 +199,15 @@ class ThemeManager:
     @staticmethod
     def _build_stylesheet(theme: ThemePalette) -> str:
         radius: int = theme.corner_radius_px
+        accent_color = QColor(theme.accent)
+        tone_success = accent_color.lighter(125).name()
+        tone_warning = accent_color.name()
+        tone_danger = accent_color.darker(135).name()
         return f"""
 QWidget {{
     background-color: {theme.background};
     color: {theme.text};
-    font-family: "Palatino Linotype", "Book Antiqua", serif;
+    font-family: "Georgia", "DejaVu Serif", "Noto Serif", "Times New Roman", serif;
     font-size: 10pt;
 }}
 
@@ -324,27 +328,6 @@ QLabel[text_role="display"] {{
     font-weight: 700;
 }}
 
-QLabel[textRole="display"] {{
-    font-size: 56px;
-    font-weight: 700;
-}}
-
-QLabel[textRole="metric"] {{
-    font-size: 20px;
-    font-weight: 700;
-}}
-
-QLabel[textRole="body"] {{
-    font-size: 10px;
-    font-weight: 400;
-}}
-
-QLabel[textRole="caption"] {{
-    font-size: 9px;
-    font-weight: 600;
-    color: {theme.border};
-}}
-
 QLabel[text_role="secondary"] {{
     font-size: 9px;
     font-weight: 400;
@@ -364,15 +347,15 @@ QLabel[tone="accent"] {{
 }}
 
 QLabel[tone="success"] {{
-    color: #2D7A3E;
+    color: {tone_success};
 }}
 
 QLabel[tone="warning"] {{
-    color: #9A6D0A;
+    color: {tone_warning};
 }}
 
 QLabel[tone="danger"] {{
-    color: #8A1F14;
+    color: {tone_danger};
 }}
 
 QLabel[tone="disabled"] {{
@@ -387,6 +370,11 @@ QLabel[dice_plain="true"] {{
     background-color: transparent;
     border: none;
     padding: 0;
+}}
+
+QWidget[dice_plain="true"] {{
+    background-color: transparent;
+    border: none;
 }}
 
 QLabel[chip="true"] {{
@@ -479,6 +467,18 @@ QPushButton[button_variant="secondary"] {{
     border: 1px solid {theme.border};
 }}
 
+QPushButton[toggle_icon="true"] {{
+    min-width: 18px;
+    max-width: 18px;
+    min-height: 16px;
+    max-height: 16px;
+    padding: 0;
+    border: 1px solid {theme.border};
+    border-radius: 2px;
+    font-size: 9px;
+    font-weight: 700;
+}}
+
 QPushButton[tris_cell="true"] {{
     min-width: 96px;
     min-height: 96px;
@@ -522,7 +522,7 @@ QLabel#tris_error_bar[severity="idle"] {{
 }}
 
 QLabel#tris_error_bar[severity="error"] {{
-    color: #B52A2A;
+    color: {tone_danger};
     font-weight: 700;
     padding: 8px;
 }}
