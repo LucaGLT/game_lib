@@ -38,6 +38,8 @@ from .base_module import BaseModule
 _COL_NAME: int = 0
 _COL_HP: int = 1
 _COL_STATE: int = 2
+_TOGGLE_EXPANDED_ICON: str = "▾"
+_TOGGLE_COLLAPSED_ICON: str = "▸"
 
 class GmActorModule(BaseModule):
     """Visualises gmActor state: actor tree, HP bar, statuses, equipment.
@@ -105,7 +107,10 @@ class GmActorModule(BaseModule):
         self._search_edit.textChanged.connect(self._on_search_changed)
         top_row.addWidget(self._search_edit, 1)
 
-        self._toggle_details_btn: QPushButton = QPushButton("Nascondi dettagli")
+        self._toggle_details_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._toggle_details_btn.setToolTip("Mostra/Nascondi pannello dettagli")
+        self._toggle_details_btn.setProperty("toggle_icon", "true")
+        self._toggle_details_btn.setFixedWidth(20)
         self._toggle_details_btn.clicked.connect(self._toggle_details_panel)
         top_row.addWidget(self._toggle_details_btn)
         vbox_left.addLayout(top_row)
@@ -170,8 +175,10 @@ class GmActorModule(BaseModule):
         status_title.setProperty("text_role", "subtitle")
         status_header.addWidget(status_title)
         status_header.addStretch()
-        self._btn_toggle_status: QPushButton = QPushButton("Nascondi ▲")
-        self._btn_toggle_status.setMaximumWidth(110)
+        self._btn_toggle_status: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._btn_toggle_status.setToolTip("Mostra/Nascondi sezione Status")
+        self._btn_toggle_status.setProperty("toggle_icon", "true")
+        self._btn_toggle_status.setFixedWidth(20)
         self._btn_toggle_status.clicked.connect(self._toggle_status_section)
         status_header.addWidget(self._btn_toggle_status)
         vbox_status.addLayout(status_header)
@@ -187,8 +194,10 @@ class GmActorModule(BaseModule):
         equip_title.setProperty("text_role", "subtitle")
         equip_header.addWidget(equip_title)
         equip_header.addStretch()
-        self._btn_toggle_equip: QPushButton = QPushButton("Nascondi ▲")
-        self._btn_toggle_equip.setMaximumWidth(110)
+        self._btn_toggle_equip: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._btn_toggle_equip.setToolTip("Mostra/Nascondi sezione Equipaggiamento")
+        self._btn_toggle_equip.setProperty("toggle_icon", "true")
+        self._btn_toggle_equip.setFixedWidth(20)
         self._btn_toggle_equip.clicked.connect(self._toggle_equip_section)
         equip_header.addWidget(self._btn_toggle_equip)
         vbox_equip.addLayout(equip_header)
@@ -378,7 +387,7 @@ class GmActorModule(BaseModule):
         self._details_visible = not self._details_visible
         self._right_panel.setVisible(self._details_visible)
         self._toggle_details_btn.setText(
-            "Nascondi dettagli" if self._details_visible else "Mostra dettagli"
+            _TOGGLE_EXPANDED_ICON if self._details_visible else _TOGGLE_COLLAPSED_ICON
         )
 
     def _toggle_status_section(self) -> None:
@@ -386,7 +395,7 @@ class GmActorModule(BaseModule):
         self._status_expanded = not self._status_expanded
         self._status_list.setVisible(self._status_expanded)
         self._btn_toggle_status.setText(
-            "Nascondi ▲" if self._status_expanded else "Mostra ▼"
+            _TOGGLE_EXPANDED_ICON if self._status_expanded else _TOGGLE_COLLAPSED_ICON
         )
 
     def _toggle_equip_section(self) -> None:
@@ -394,7 +403,7 @@ class GmActorModule(BaseModule):
         self._equip_expanded = not self._equip_expanded
         self._equip_list.setVisible(self._equip_expanded)
         self._btn_toggle_equip.setText(
-            "Nascondi ▲" if self._equip_expanded else "Mostra ▼"
+            _TOGGLE_EXPANDED_ICON if self._equip_expanded else _TOGGLE_COLLAPSED_ICON
         )
 
     def _apply_filters(self) -> None:

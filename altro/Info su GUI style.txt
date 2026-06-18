@@ -1,0 +1,91 @@
+Sì, è corretto. Serve un QSS più strutturato, ma non “più specifico sul contenuto”: più ricco sul sistema tipografico e sugli stati visuali.
+Devi definire classi/ruoli generici tipo:
+
+label.setProperty("textRole", "display")
+label.setProperty("tone", "accent")
+label.setProperty("weight", "bold")
+
+E poi QSS:
+
+QLabel[textRole="display"] {
+    font-size: 64px;
+}
+
+QLabel[textRole="metric"] {
+    font-size: 32px;
+}
+
+QLabel[textRole="body"] {
+    font-size: 16px;
+}
+
+QLabel[tone="neutral"] {
+    color: #2E2418;
+}
+
+QLabel[tone="accent"] {
+    color: #8A1F14;
+}
+
+QLabel[weight="bold"] {
+    font-weight: 700;
+}
+
+Quindi per il "15" delle immagini :
+altro\1000085844.png
+altro\1000085843.png
+
+
+sum_value.setProperty("textRole", "display")
+sum_value.setProperty("tone", "accent")
+sum_value.setProperty("weight", "bold")
+
+
+
+Per 1 / 6 / 3 delle info meno importanti 
+(ma più importanti del testo semplice)
+delle immagini:
+altro\1000085844.png
+altro\1000085843.png
+
+usa:
+
+
+metric_value.setProperty("textRole", "metric")
+metric_value.setProperty("tone", "neutral")
+
+
+Per SUM / MIN / MAX (titoletti) usa:
+
+
+metric_label.setProperty("textRole", "caption")
+metric_label.setProperty("tone", "muted")
+metric_label.setProperty("weight", "bold")
+
+
+Io aggiornerei il documento con una sezione obbligatoria di 
+Typography Tokens
+
+display-xl
+display-lg
+title
+subtitle
+body
+body-sm
+caption
+micro
+
+e una sezione di Tone Tokens:
+
+neutral
+muted
+accent
+success
+warning
+danger
+disabled
+
+
+Questo ti permette di ottenere schermate come il lancio dadi 
+senza creare classi specifiche tipo DiceResultLabel, 
+che sarebbe sbagliato. 

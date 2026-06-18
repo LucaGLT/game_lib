@@ -210,6 +210,9 @@ class MapScene(QGraphicsScene):
         self._edges = []
         self._markers = {}
         self._marker_locations = {}
+        
+        # Set scene background to theme panel color.
+        self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
 
         positions = _circle_positions(len(locations))
         for i, loc in enumerate(locations):

@@ -72,8 +72,9 @@ class GmTrisBoardModule(BaseModule):
         vbox = QVBoxLayout(container)
 
         self._status = QLabel("Premi «Nuova partita» per iniziare.")
+        self._status.setObjectName("tris_board_status")
+        self._status.setProperty("text_role", "subtitle")
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status.setStyleSheet("font-size: 16px; font-weight: bold;")
         vbox.addWidget(self._status)
 
         self._board = BoardWidget(size=3)

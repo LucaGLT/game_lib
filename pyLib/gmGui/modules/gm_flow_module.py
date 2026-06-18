@@ -30,6 +30,8 @@ from ..widgets.timeline_scene import TimelineScene
 from .base_module import BaseModule
 
 _MAX_LOG: int = 20
+_TOGGLE_EXPANDED_ICON: str = "▾"
+_TOGGLE_COLLAPSED_ICON: str = "▸"
 
 
 class GmFlowModule(BaseModule):
@@ -110,11 +112,7 @@ class GmFlowModule(BaseModule):
         row1.addStretch()
         vbox.addLayout(row1)
 
-        # ── Row 2: timeline scene with title ──────────────────────────────────
-        timeline_title = QLabel("⏳ Timeline turni")
-        timeline_title.setProperty("text_role", "subtitle")
-        vbox.addWidget(timeline_title)
-
+        # ── Row 2: timeline scene ─────────────────────────────────────────────
         self._timeline_scene: TimelineScene = TimelineScene()
         timeline_view = QGraphicsView(self._timeline_scene)
         timeline_view.setFixedHeight(100)
@@ -162,13 +160,12 @@ class GmFlowModule(BaseModule):
 
         # ── Row 4: event log with collapsible header ──────────────────────────
         log_header = QHBoxLayout()
-        log_title = QLabel("📋 Log eventi")
-        log_title.setProperty("text_role", "subtitle")
-        log_header.addWidget(log_title)
         log_header.addStretch()
 
-        self._btn_toggle_log: QPushButton = QPushButton("Nascondi ▲")
-        self._btn_toggle_log.setMaximumWidth(100)
+        self._btn_toggle_log: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._btn_toggle_log.setToolTip("Mostra/Nascondi log eventi")
+        self._btn_toggle_log.setProperty("toggle_icon", "true")
+        self._btn_toggle_log.setFixedWidth(20)
         self._btn_toggle_log.clicked.connect(self._toggle_log_visibility)
         log_header.addWidget(self._btn_toggle_log)
         vbox.addLayout(log_header)
@@ -335,7 +332,9 @@ class GmFlowModule(BaseModule):
         """Toggles the event log visibility."""
         self._log_visible = not self._log_visible
         self._log.setVisible(self._log_visible)
-        self._btn_toggle_log.setText("Nascondi ▲" if self._log_visible else "Mostra ▼")
+        self._btn_toggle_log.setText(
+            _TOGGLE_EXPANDED_ICON if self._log_visible else _TOGGLE_COLLAPSED_ICON
+        )
 
     def _append_log(self, text: str) -> None:
         """Prepends *text* with timestamp to the event log."""
