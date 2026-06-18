@@ -8,8 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtWidgets import QApplication, QStyleFactory
 
 
 @dataclass(frozen=True)
@@ -30,11 +30,11 @@ _THEMES: dict[str, ThemePalette] = {
     "scroll": ThemePalette(
         theme_id="scroll",
         display_name="Scroll",
-        background="#E8DFC8",
-        panel="#F1E8D0",
-        border="#7B6444",
-        accent="#A8873A",
-        text="#2E2418",
+        background="#F3E9D2",
+        panel="#E9DBBB",
+        border="#8A6A3F",
+        accent="#B88A3D",
+        text="#2F2115",
         corner_radius_px=4,
     ),
     "stone": ThemePalette(
@@ -99,15 +99,95 @@ class ThemeManager:
         return self._current_theme_id
 
     def apply_theme(self, theme_id: str) -> None:
-        """Applies the selected theme to QApplication via a global stylesheet."""
+        """Applies the selected theme to QApplication via stylesheet + QPalette."""
         theme: ThemePalette | None = _THEMES.get(theme_id)
         if theme is None:
             raise ValueError(f"Unknown theme id: {theme_id}")
 
         app: QApplication = self._resolve_app()
+        
+        # Try to set Fusion style; fallback to available style on error.
+        try:
+            fusion_style = QStyleFactory.create("Fusion")
+            if fusion_style is not None:
+                app.setStyle(fusion_style)
+        except Exception:
+            pass
+        
+        # Create and apply a custom QPalette to forcefully override defaults.
+        palette = self._build_palette(theme)
+        app.setPalette(palette)
+        
+        # Apply the stylesheet for fine-grained control.
         app.setProperty(_THEME_ID_PROPERTY, theme.theme_id)
+        app.setFont(build_typography_font("body"))
         app.setStyleSheet(self._build_stylesheet(theme))
+        
+        # Forcefully propagate palette and repolish ALL widgets in the entire widget tree.
+        # This is critical on Windows where native styles may override parent palette.
+        self._propagate_theme_to_all_widgets(app, palette)
+        
         self._current_theme_id = theme.theme_id
+
+    @staticmethod
+    def _propagate_theme_to_all_widgets(app: QApplication, palette: QPalette) -> None:
+        """Recursively apply palette and force repolish on all widgets."""
+        for widget in app.allWidgets():
+            # Apply palette directly to widget.
+            widget.setPalette(palette)
+            # Force repolish to pick up stylesheet changes.
+            if widget.style() is not None:
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
+            # Force immediate update to redraw with new palette.
+            widget.update()
+
+
+    @staticmethod
+    def _build_palette(theme: ThemePalette) -> QPalette:
+        """Builds a QPalette from theme tokens."""
+        palette = QPalette()
+        
+        bg_color = QColor(theme.background)
+        panel_color = QColor(theme.panel)
+        text_color = QColor(theme.text)
+        border_color = QColor(theme.border)
+        accent_color = QColor(theme.accent)
+        
+        # Base colors
+        palette.setColor(QPalette.ColorRole.Base, panel_color)
+        palette.setColor(QPalette.ColorRole.AlternateBase, bg_color)
+        palette.setColor(QPalette.ColorRole.Window, bg_color)
+        palette.setColor(QPalette.ColorRole.WindowText, text_color)
+        palette.setColor(QPalette.ColorRole.Text, text_color)
+        palette.setColor(QPalette.ColorRole.Button, panel_color)
+        palette.setColor(QPalette.ColorRole.ButtonText, text_color)
+        palette.setColor(QPalette.ColorRole.BrightText, text_color)
+        
+        # Highlight and interaction
+        palette.setColor(QPalette.ColorRole.Highlight, accent_color)
+        palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+        palette.setColor(QPalette.ColorRole.Link, accent_color)
+        palette.setColor(QPalette.ColorRole.LinkVisited, accent_color)
+        
+        # Shadow/edge colors for 3D effects
+        palette.setColor(QPalette.ColorRole.Mid, border_color)
+        palette.setColor(QPalette.ColorRole.Shadow, border_color)
+        palette.setColor(QPalette.ColorRole.Light, bg_color)
+        palette.setColor(QPalette.ColorRole.Dark, text_color)
+        palette.setColor(QPalette.ColorRole.Midlight, panel_color)
+        
+        # Tooltip
+        palette.setColor(QPalette.ColorRole.ToolTipBase, panel_color)
+        palette.setColor(QPalette.ColorRole.ToolTipText, text_color)
+        
+        # Disabled state
+        disabled_text = QColor(border_color)
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, disabled_text)
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, disabled_text)
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, disabled_text)
+        
+        return palette
 
     def _resolve_app(self) -> QApplication:
         app: QApplication | None = self._app or QApplication.instance()
@@ -123,11 +203,60 @@ class ThemeManager:
 QWidget {{
     background-color: {theme.background};
     color: {theme.text};
+    font-family: "Palatino Linotype", "Book Antiqua", serif;
+    font-size: 10pt;
 }}
 
 QMainWindow, QDockWidget, QMenuBar, QMenu, QStatusBar {{
     background-color: {theme.background};
     color: {theme.text};
+}}
+
+QToolBar {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    spacing: 8px;
+    padding: 4px;
+}}
+
+QToolBar QLabel {{
+    color: {theme.text};
+}}
+
+QMenuBar::item {{
+    background: transparent;
+    color: {theme.text};
+    padding: 4px 8px;
+}}
+
+QMenuBar::item:selected {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+}}
+
+QMenu::item:selected {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+}}
+
+QDockWidget::title {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-bottom: 1px solid {theme.border};
+    padding: 4px 8px;
+}}
+
+QHeaderView::section {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    padding: 4px 8px;
+}}
+
+QSplitter::handle {{
+    background-color: {theme.border};
 }}
 
 QGroupBox, QFrame {{
@@ -154,15 +283,110 @@ QLabel {{
 }}
 
 QLabel[text_role="title"] {{
+    font-size: 16px;
     font-weight: 700;
 }}
 
 QLabel[text_role="subtitle"] {{
+    font-size: 12px;
     font-weight: 600;
 }}
 
-QLabel[text_role="secondary"] {{
+QLabel[text_role="body"] {{
+    font-size: 10px;
+    font-weight: 400;
+}}
+
+QLabel[text_role="body_sm"] {{
+    font-size: 9px;
+    font-weight: 400;
+}}
+
+QLabel[text_role="caption"] {{
+    font-size: 9px;
+    font-weight: 600;
     color: {theme.border};
+}}
+
+QLabel[text_role="micro"] {{
+    font-size: 8px;
+    font-weight: 400;
+    color: {theme.border};
+}}
+
+QLabel[text_role="metric"] {{
+    font-size: 20px;
+    font-weight: 700;
+}}
+
+QLabel[text_role="display"] {{
+    font-size: 56px;
+    font-weight: 700;
+}}
+
+QLabel[textRole="display"] {{
+    font-size: 56px;
+    font-weight: 700;
+}}
+
+QLabel[textRole="metric"] {{
+    font-size: 20px;
+    font-weight: 700;
+}}
+
+QLabel[textRole="body"] {{
+    font-size: 10px;
+    font-weight: 400;
+}}
+
+QLabel[textRole="caption"] {{
+    font-size: 9px;
+    font-weight: 600;
+    color: {theme.border};
+}}
+
+QLabel[text_role="secondary"] {{
+    font-size: 9px;
+    font-weight: 400;
+    color: {theme.border};
+}}
+
+QLabel[tone="neutral"] {{
+    color: {theme.text};
+}}
+
+QLabel[tone="muted"] {{
+    color: {theme.border};
+}}
+
+QLabel[tone="accent"] {{
+    color: {theme.accent};
+}}
+
+QLabel[tone="success"] {{
+    color: #2D7A3E;
+}}
+
+QLabel[tone="warning"] {{
+    color: #9A6D0A;
+}}
+
+QLabel[tone="danger"] {{
+    color: #8A1F14;
+}}
+
+QLabel[tone="disabled"] {{
+    color: {theme.border};
+}}
+
+QLabel[weight="bold"] {{
+    font-weight: 700;
+}}
+
+QLabel[dice_plain="true"] {{
+    background-color: transparent;
+    border: none;
+    padding: 0;
 }}
 
 QLabel[chip="true"] {{
@@ -196,12 +420,19 @@ QLabel[flow_badge="true"] {{
     font-weight: 600;
 }}
 
-QLineEdit, QComboBox, QSpinBox, QListWidget, QTreeWidget, QTableView, QTextEdit, QPlainTextEdit {{
+QLineEdit, QComboBox, QSpinBox, QListWidget, QTreeWidget, QTableView, QGraphicsView, QTextEdit, QPlainTextEdit {{
     background-color: {theme.panel};
     color: {theme.text};
     border: 1px solid {theme.border};
     border-radius: {radius}px;
     padding: 4px 8px;
+}}
+
+QAbstractItemView {{
+    background-color: {theme.panel};
+    alternate-background-color: {theme.background};
+    color: {theme.text};
+    border: 1px solid {theme.border};
 }}
 
 QListWidget#flow_event_log {{
@@ -217,9 +448,11 @@ QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus, QTreeWidget
 QPushButton {{
     background-color: {theme.panel};
     color: {theme.text};
-    border: 1px solid {theme.border};
+    border: 2px solid {theme.border};
     border-radius: {radius}px;
     padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 600;
 }}
 
 QPushButton:hover {{
@@ -244,6 +477,54 @@ QPushButton[button_variant="primary"] {{
 QPushButton[button_variant="secondary"] {{
     background-color: {theme.panel};
     border: 1px solid {theme.border};
+}}
+
+QPushButton[tris_cell="true"] {{
+    min-width: 96px;
+    min-height: 96px;
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 2px solid {theme.border};
+    border-radius: 8px;
+    font-size: 40px;
+    font-weight: 700;
+}}
+
+QPushButton[tris_cell="true"][tris_cell_state="win"] {{
+    background-color: {theme.accent};
+    border: 3px solid {theme.accent};
+}}
+
+QLabel#tris_board_status {{
+    padding: 8px;
+}}
+
+QLabel#tris_turn_header {{
+    padding: 8px;
+}}
+
+QLabel[chip="true"][tris_status="winner"] {{
+    border: 2px solid {theme.accent};
+    font-weight: 700;
+}}
+
+QLabel[chip="true"][tris_status="active_turn"] {{
+    border: 2px solid {theme.accent};
+}}
+
+QLabel[chip="true"][tris_status="draw"] {{
+    border: 2px solid {theme.border};
+}}
+
+QLabel#tris_error_bar[severity="idle"] {{
+    color: {theme.border};
+    padding: 8px;
+}}
+
+QLabel#tris_error_bar[severity="error"] {{
+    color: #B52A2A;
+    font-weight: 700;
+    padding: 8px;
 }}
 
 QLabel#dice_value_box {{
@@ -282,6 +563,78 @@ QToolTip {{
     border: 1px solid {theme.border};
     border-radius: {radius}px;
     padding: 4px 8px;
+}}
+
+/* Aggressive rules for all button types */
+QToolButton {{
+    background-color: {theme.panel};
+    color: {theme.text};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    padding: 4px 8px;
+}}
+
+QToolButton:hover {{
+    border: 2px solid {theme.accent};
+}}
+
+QToolButton:pressed {{
+    background-color: {theme.background};
+}}
+
+/* Dial and slider */
+QDial {{
+    background-color: {theme.panel};
+}}
+
+QSlider::groove {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+}}
+
+QSlider::handle {{
+    background-color: {theme.accent};
+    border: 1px solid {theme.border};
+}}
+
+/* Progress bar */
+QProgressBar {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
+    border-radius: {radius}px;
+    text-align: center;
+    color: {theme.text};
+}}
+
+QProgressBar::chunk {{
+    background-color: {theme.accent};
+}}
+
+/* Combo box drop-down */
+QComboBox::drop-down {{
+    background-color: {theme.panel};
+    border-left: 1px solid {theme.border};
+}}
+
+QComboBox::down-arrow {{
+    image: url(none);
+    width: 12px;
+    height: 12px;
+    background-color: {theme.border};
+}}
+
+/* Custom game widgets */
+TimelineScene, TimelineBlock {{
+    background-color: {theme.panel};
+}}
+
+MapScene {{
+    background-color: {theme.panel};
+}}
+
+DicePanel, HpBar {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.border};
 }}
 """.strip()
 

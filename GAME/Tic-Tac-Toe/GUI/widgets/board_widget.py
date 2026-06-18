@@ -23,10 +23,6 @@ _LINE_CELLS: dict[str, list[tuple[int, int]]] = {
     "diag_anti": [(1, 3), (2, 2), (3, 1)],
 }
 
-_CELL_STYLE = "font-size: 40px; font-weight: bold;"
-_WIN_STYLE = "font-size: 40px; font-weight: bold; background-color: #b6e3b6;"
-
-
 class BoardWidget(QWidget):
     """Renders the grid and reports clicks via :attr:`cell_clicked`."""
 
@@ -34,6 +30,7 @@ class BoardWidget(QWidget):
 
     def __init__(self, size: int = 3, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("tris_board_root")
         self._size: int = size
         self._buttons: dict[tuple[int, int], QPushButton] = {}
 
@@ -46,12 +43,14 @@ class BoardWidget(QWidget):
                 button.setSizePolicy(
                     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
                 )
-                button.setStyleSheet(_CELL_STYLE)
+                button.setProperty("tris_cell", "true")
+                button.setProperty("tris_cell_state", "normal")
                 button.clicked.connect(
                     lambda _checked=False, r=row, c=col: self.cell_clicked.emit(r, c)
                 )
                 grid.addWidget(button, row - 1, col - 1)
                 self._buttons[(row, col)] = button
+                self._refresh_button_style(button)
 
     def set_cell(self, row: int, col: int, mark: str) -> None:
         """Sets the symbol shown in a cell (``"X"``, ``"O"`` or empty)."""
@@ -64,7 +63,8 @@ class BoardWidget(QWidget):
         for button in self._buttons.values():
             button.setText("")
             button.setEnabled(True)
-            button.setStyleSheet(_CELL_STYLE)
+            button.setProperty("tris_cell_state", "normal")
+            self._refresh_button_style(button)
 
     def set_enabled(self, enabled: bool) -> None:
         """Enables or disables all cells (e.g. when the game is over)."""
@@ -76,4 +76,14 @@ class BoardWidget(QWidget):
         for cell in _LINE_CELLS.get(line_id, []):
             button = self._buttons.get(cell)
             if button is not None:
-                button.setStyleSheet(_WIN_STYLE)
+                button.setProperty("tris_cell_state", "win")
+                self._refresh_button_style(button)
+
+    @staticmethod
+    def _refresh_button_style(button: QPushButton) -> None:
+        """Re-polishes a board cell after dynamic property updates."""
+        style = button.style()
+        if style is not None:
+            style.unpolish(button)
+            style.polish(button)
+        button.update()

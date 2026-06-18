@@ -30,8 +30,9 @@ class TurnHeaderWidget(QLabel):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("tris_turn_header")
+        self.setProperty("text_role", "title")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setStyleSheet("font-size: 18px; font-weight: bold; padding: 6px;")
         self.set_waiting()
 
     def set_waiting(self) -> None:
@@ -62,11 +63,9 @@ class TurnFooterWidget(QWidget):
         layout = QHBoxLayout(self)
         for mark in ("X", "O"):
             label = QLabel()
+            label.setProperty("chip", "true")
+            label.setProperty("text_role", "body")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setStyleSheet(
-                "font-size: 14px; padding: 6px; border: 1px solid #888;"
-                " border-radius: 4px;"
-            )
             actor_id = f"Player_{mark}"
             self._labels[actor_id] = label
             self._statuses[actor_id] = set()
@@ -108,8 +107,17 @@ class TurnFooterWidget(QWidget):
     def _render(self, actor_id: str) -> None:
         mark = _mark_of(actor_id)
         badge = "in attesa"
+        active_status = "idle"
         for status in _STATUS_PRIORITY:
             if status in self._statuses[actor_id]:
                 badge = _STATUS_LABEL[status]
+                active_status = status.lower()
                 break
-        self._labels[actor_id].setText(f"Player {mark}: {badge}")
+        label = self._labels[actor_id]
+        label.setProperty("tris_status", active_status)
+        label.setText(f"Player {mark}: {badge}")
+        style = label.style()
+        if style is not None:
+            style.unpolish(label)
+            style.polish(label)
+        label.update()

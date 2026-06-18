@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDockWidget,
     QLabel,
@@ -30,6 +31,7 @@ from gmGui.modules.base_module import BaseModule
 from gmGui.modules.gm_actor_module import GmActorModule
 from gmGui.modules.gm_dice_module import GmDiceModule
 from gmGui.modules.gm_flow_module import GmFlowModule
+from gmGui.theme_manager import ThemeManager
 
 from app.tris_bridge import TrisBridge
 from app.tris_event_adapter import TrisEventAdapter
@@ -37,6 +39,7 @@ from modules.gm_tris_board_module import GmTrisBoardModule
 
 _STATUS_CONNECTED = "Engine: Connesso"
 _STATUS_DISCONNECTED = "Engine: Disconnesso"
+_DEFAULT_THEME_ID = "scroll"
 
 
 class TrisMainWindow(QMainWindow):
@@ -50,6 +53,7 @@ class TrisMainWindow(QMainWindow):
 
         self._bridge: TrisBridge = TrisBridge()
         self._adapter: TrisEventAdapter = TrisEventAdapter()
+        self._theme_manager: ThemeManager = ThemeManager(QApplication.instance())
 
         # The clickable board is the interactive centrepiece.
         self._board_module: GmTrisBoardModule = GmTrisBoardModule()
@@ -65,6 +69,7 @@ class TrisMainWindow(QMainWindow):
         self._build_toolbar()
         self._build_central()
         self._build_docks()
+        self._theme_manager.apply_theme(_DEFAULT_THEME_ID)
         self._wire_signals()
 
         self.statusBar().showMessage(_STATUS_DISCONNECTED)
