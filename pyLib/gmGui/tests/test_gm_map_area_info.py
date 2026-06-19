@@ -117,20 +117,25 @@ def test_map_empty_area_id_sends_nothing(qapp: QApplication) -> None:
 
 def test_actor_tree_hidden_by_default(qapp: QApplication) -> None:
     mod = GmActorModule()
-    mod.widget()
+    root = mod.widget()
     assert mod._tree_visible is False
-    assert mod._tree.isVisible() is False
-    # Detail panel is always present and visible.
+    # The whole left pane (filters + tree) is collapsed; only the detail panel shows.
+    assert mod._left_panel.isVisibleTo(root) is False
+    assert mod._splitter.sizes()[0] == 0
     assert mod._right_panel is not None
 
 
 def test_actor_tree_toggle_shows_and_hides(qapp: QApplication) -> None:
     mod = GmActorModule()
-    mod.widget()
+    root = mod.widget()
     mod._toggle_actor_tree()
     assert mod._tree_visible is True
+    assert mod._left_panel.isVisibleTo(root) is True
+    assert mod._splitter.sizes()[0] > 0
     mod._toggle_actor_tree()
     assert mod._tree_visible is False
+    assert mod._left_panel.isVisibleTo(root) is False
+    assert mod._splitter.sizes()[0] == 0
 
 
 def test_actor_tree_state_persisted(qapp: QApplication) -> None:

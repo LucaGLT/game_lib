@@ -89,6 +89,7 @@ class GmActorModule(BaseModule):
 
         # ── Left pane ─────────────────────────────────────────────────────────
         left = QWidget()
+        self._left_panel: QWidget = left
         vbox_left = QVBoxLayout(left)
         vbox_left.setContentsMargins(8, 8, 8, 8)
         vbox_left.setSpacing(8)
@@ -106,13 +107,6 @@ class GmActorModule(BaseModule):
         self._search_edit.setPlaceholderText("Cerca attore...")
         self._search_edit.textChanged.connect(self._on_search_changed)
         top_row.addWidget(self._search_edit, 1)
-
-        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
-        self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
-        self._toggle_tree_btn.setProperty("toggle_icon", "true")
-        self._toggle_tree_btn.setFixedWidth(20)
-        self._toggle_tree_btn.clicked.connect(self._toggle_actor_tree)
-        top_row.addWidget(self._toggle_tree_btn)
         vbox_left.addLayout(top_row)
 
         self._tree: QTreeWidget = QTreeWidget()
@@ -125,10 +119,6 @@ class GmActorModule(BaseModule):
         self._tree.setColumnWidth(_COL_NAME, 230)
         self._tree.setColumnWidth(_COL_HP, 90)
         self._tree.itemSelectionChanged.connect(self._on_selection_changed)
-        # The actor list is collapsible and hidden by default; the detail panel
-        # on the right is always visible.
-        self._tree_visible: bool = False
-        self._tree.setVisible(False)
         vbox_left.addWidget(self._tree)
 
         splitter.addWidget(left)
@@ -148,10 +138,21 @@ class GmActorModule(BaseModule):
         header_layout.setContentsMargins(16, 8, 16, 8)
         header_layout.setSpacing(4)
 
+        name_row = QHBoxLayout()
         self._detail_name: QLabel = QLabel("Seleziona un attore")
         self._detail_name.setObjectName("actor_detail_name")
         self._detail_name.setProperty("text_role", "title")
-        header_layout.addWidget(self._detail_name)
+        name_row.addWidget(self._detail_name)
+        name_row.addStretch()
+        # The actor list is collapsible and hidden by default; the toggle lives
+        # in the detail header so it stays reachable when the left pane is gone.
+        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
+        self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
+        self._toggle_tree_btn.setProperty("toggle_icon", "true")
+        self._toggle_tree_btn.setFixedWidth(20)
+        self._toggle_tree_btn.clicked.connect(self._toggle_actor_tree)
+        name_row.addWidget(self._toggle_tree_btn)
+        header_layout.addLayout(name_row)
 
         meta_row = QHBoxLayout()
         self._detail_faction: QLabel = QLabel("—")
@@ -210,8 +211,12 @@ class GmActorModule(BaseModule):
         vbox_right.addWidget(equip_group)
 
         splitter.addWidget(right)
-        splitter.setSizes([300, 200])
-        splitter.setStretchFactor(0, 2)
+        self._splitter: QSplitter = splitter
+        # Default state: actor list hidden, only the detail panel is shown.
+        self._tree_visible: bool = False
+        self._left_panel.setVisible(False)
+        splitter.setSizes([0, 1])
+        splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
         return container
@@ -386,11 +391,21 @@ class GmActorModule(BaseModule):
         self._apply_filters()
 
     def _toggle_actor_tree(self) -> None:
-        """Shows/hides the actor list tree (hidden by default)."""
+        """Shows/hides the whole actor-list pane (filters + tree, hidden by default)."""
         self._tree_visible = not self._tree_visible
-        self._tree.setVisible(self._tree_visible)
+        self._apply_tree_visibility(self._tree_visible)
+
+    def _apply_tree_visibility(self, visible: bool) -> None:
+        """Applies the actor-list pane visibility and collapses its width to 0."""
+        self._left_panel.setVisible(visible)
+        if visible:
+            self._splitter.setSizes([260, 320])
+            self._splitter.setStretchFactor(0, 2)
+        else:
+            self._splitter.setSizes([0, 1])
+            self._splitter.setStretchFactor(0, 0)
         self._toggle_tree_btn.setText(
-            _TOGGLE_EXPANDED_ICON if self._tree_visible else _TOGGLE_COLLAPSED_ICON
+            _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
         )
 
     # ── Persistence ───────────────────────────────────────────────────────────
@@ -407,10 +422,7 @@ class GmActorModule(BaseModule):
             return
         visible = bool(state.get("tree_visible", False))
         self._tree_visible = visible
-        self._tree.setVisible(visible)
-        self._toggle_tree_btn.setText(
-            _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
-        )
+        self._apply_tree_visibility(visible)
 
     def _toggle_status_section(self) -> None:
         """Collapses/expands the Status section content."""

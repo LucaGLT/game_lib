@@ -16,15 +16,17 @@ from PySide6.QtCore import Signal
 
 
 class ActionPanelWidget(QWidget):
-    """Action palette for v1 hero actions: Heal and Equip.
+    """Action palette for v1 hero actions: Move, Heal and Equip.
 
-    Move is triggered from DungeonBoardWidget rather than here.
+    Move targets the room currently selected on the board.
 
     Signals:
+        move_requested(hero_id): Player pressed the Move button.
         heal_requested(hero_id, target_id): Player pressed the Heal button.
         equip_requested(hero_id, item_tag): Player pressed the Equip button.
     """
 
+    move_requested:  Signal = Signal(str)
     heal_requested:  Signal = Signal(str, str)
     equip_requested: Signal = Signal(str, str)
 
@@ -34,16 +36,21 @@ class ActionPanelWidget(QWidget):
         from PySide6.QtWidgets import QHBoxLayout, QPushButton
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
+        self._btn_move  = QPushButton("Move")
         self._btn_heal  = QPushButton("Heal (potion)")
         self._btn_equip = QPushButton("Equip weapon")
+        layout.addWidget(self._btn_move)
         layout.addWidget(self._btn_heal)
         layout.addWidget(self._btn_equip)
         layout.addStretch()
+        self._btn_move.setEnabled(False)
         self._btn_heal.setEnabled(False)
         self._btn_equip.setEnabled(False)
+        self._btn_move.clicked.connect(self._on_move_clicked)
         self._btn_heal.clicked.connect(self._on_heal_clicked)
         self._btn_equip.clicked.connect(self._on_equip_clicked)
         self._hero_id: str = ""
+        self._is_hero_turn: bool = False
         self._has_potion: bool = False
         self._has_item: bool = False
         self._weapon_equipped: bool = False
@@ -63,13 +70,16 @@ class ActionPanelWidget(QWidget):
                     self._update_buttons()
         elif type_id == "dungeon.turn.started":
             actor_id = data.get("actor_id", "")
-            self._set_actions_enabled(actor_id == self._hero_id)
+            self._is_hero_turn = actor_id == self._hero_id
+            self._set_actions_enabled(self._is_hero_turn)
         elif type_id in ("dungeon.turn.ended", "dungeon.game.over"):
+            self._is_hero_turn = False
             self._set_actions_enabled(False)
         elif type_id == "dungeon.session.started":
             self.reset()
 
     def _update_buttons(self) -> None:
+        self._btn_move.setEnabled(self._is_hero_turn)
         self._btn_heal.setEnabled(self._has_potion)
         self._btn_equip.setEnabled(self._has_item and not self._weapon_equipped)
 
@@ -78,8 +88,14 @@ class ActionPanelWidget(QWidget):
         if enabled:
             self._update_buttons()
         else:
+            self._btn_move.setEnabled(False)
             self._btn_heal.setEnabled(False)
             self._btn_equip.setEnabled(False)
+
+    def _on_move_clicked(self) -> None:
+        """Internal handler for the Move button click."""
+        if self._hero_id:
+            self.move_requested.emit(self._hero_id)
 
     def _on_heal_clicked(self) -> None:
         """Internal handler for the Heal button click."""
@@ -94,8 +110,10 @@ class ActionPanelWidget(QWidget):
     def reset(self) -> None:
         """Disables all action buttons and clears selection state."""
         self._hero_id = ""
+        self._is_hero_turn = False
         self._has_potion = False
         self._has_item = False
         self._weapon_equipped = False
+        self._btn_move.setEnabled(False)
         self._btn_heal.setEnabled(False)
         self._btn_equip.setEnabled(False)

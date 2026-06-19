@@ -135,7 +135,9 @@ def test_hero_panel_adapter_snapshot():
 def test_dungeon_board_adapter_move_request():
     w = DungeonBoardWidget()
     moves: list[tuple[str, str]] = []
+    areas: list[str] = []
     w.move_requested.connect(lambda hero_id, destination: moves.append((hero_id, destination)))
+    w.area_selected.connect(lambda area_id: areas.append(area_id))
 
     w.on_envelope({
         "typeId": "dungeon.map.snapshot",
@@ -163,6 +165,12 @@ def test_dungeon_board_adapter_move_request():
 
     node = w._module._map_scene._nodes[w._room_index_by_id["room_2"]]
     node.setSelected(True)
+    # A click is view-only: it selects the area, never auto-moves.
+    assert areas == ["room_2"]
+    assert moves == []
+    assert w.move_destination() == "room_2"
+    # The explicit Move action emits move_requested for the selected adjacent room.
+    w.request_move()
     assert moves == [("hero", "room_2")]
     print("  [OK] test_dungeon_board_adapter_move_request")
 

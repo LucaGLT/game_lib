@@ -30,6 +30,8 @@ from widgets.log_widget import LogWidget
 from widgets.error_bar_widget import ErrorBarWidget
 from PySide6.QtWidgets import QApplication
 from gmGui.theme_manager import ThemeManager
+from gmGui.message_ids import AREA_INFO_REQUEST, AREA_INFO_RESPONSE
+from gmGui.modules.gm_map_area_info_module import GmMapAreaInfoModule
 
 
 class DungeonMainWindow(QMainWindow):
@@ -59,17 +61,24 @@ class DungeonMainWindow(QMainWindow):
     def _build_layout(self) -> None:
         """Creates and arranges all child widgets."""
         # ToBeImplemented //
-        self._board   = DungeonBoardWidget()
-        self._heroes  = HeroPanelWidget()
-        self._actions = ActionPanelWidget()
-        self._log     = LogWidget()
-        self._errors  = ErrorBarWidget()
+        self._board     = DungeonBoardWidget()
+        self._heroes    = HeroPanelWidget()
+        self._actions   = ActionPanelWidget()
+        self._log       = LogWidget()
+        self._errors    = ErrorBarWidget()
+        self._area_info = GmMapAreaInfoModule()
 
         self.setCentralWidget(self._board)
 
         right_dock = QDockWidget("Actors", self)
         right_dock.setWidget(self._heroes)
         self.addDockWidget(Qt.RightDockWidgetArea, right_dock)
+
+        area_dock = QDockWidget("Area Info", self)
+        area_dock.setWidget(self._area_info.widget())
+        self.addDockWidget(Qt.RightDockWidgetArea, area_dock)
+        self.tabifyDockWidget(right_dock, area_dock)
+        right_dock.raise_()
 
         bottom_dock = QDockWidget("Actions", self)
         bottom_dock.setWidget(self._actions)
@@ -126,9 +135,12 @@ class DungeonMainWindow(QMainWindow):
             self._router.register(ev, self._log.on_envelope)
         # Error bar: rejections only
         self._router.register("dungeon.action.rejected", self._errors.on_envelope)
+        # Area Info: contents of the selected map area (shared contract)
+        self._router.register(AREA_INFO_RESPONSE, self._area_info.on_envelope)
 
         # Wire signals from widgets back to engine
-        self._board.move_requested.connect(self._on_move_requested)
+        self._board.area_selected.connect(self._on_area_selected)
+        self._actions.move_requested.connect(self._on_move_action)
         self._actions.heal_requested.connect(self._on_heal_requested)
         self._actions.equip_requested.connect(self._on_equip_requested)
 
@@ -153,6 +165,25 @@ class DungeonMainWindow(QMainWindow):
         """Forwards a move request to CoreEngine."""
         self._bridge.send_command("dungeon.move",
             {"hero_id": hero_id, "destination": destination})
+
+    def _on_area_selected(self, area_id: str) -> None:
+        """Requests the contents of the clicked area (view-only, no gameplay)."""
+        if area_id:
+            self._bridge.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
+
+    def _on_move_action(self, hero_id: str) -> None:
+        """Resolves the Move action against the area selected on the board."""
+        destination = self._board.move_destination()
+        if destination:
+            self._on_move_requested(hero_id, destination)
+        else:
+            self._errors.on_envelope({
+                "typeId": "dungeon.action.rejected",
+                "data": {
+                    "reason": "Seleziona un'area adiacente sulla mappa prima di muovere.",
+                    "command": "dungeon.move",
+                },
+            })
 
     def _on_heal_requested(self, hero_id: str, target_id: str) -> None:
         """Forwards a heal request to CoreEngine."""

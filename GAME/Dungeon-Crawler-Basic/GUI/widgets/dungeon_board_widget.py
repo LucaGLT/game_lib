@@ -9,7 +9,7 @@ from __future__ import annotations
 import json as _json
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from gmGui.modules.gm_map_module import GmMapModule
 from gmGui.widgets.map_scene import LocationNode
@@ -19,14 +19,19 @@ class DungeonBoardWidget(QWidget):
     """Adapter widget that maps dungeon map events onto gmMap events.
 
     Signals:
-        move_requested(hero_id, destination): Emitted when the player clicks a
-            room adjacent to the hero.
+        area_selected(area_id): Emitted when the player clicks any room. The
+            click is view-only and never triggers a gameplay action; the main
+            window uses it to request the area contents from the engine.
+        move_requested(hero_id, destination): Retained for the explicit Move
+            action; emitted by :meth:`request_move` only.
     """
 
+    area_selected:  Signal = Signal(str)
     move_requested: Signal = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(4, 4, 4, 4)
         self._layout.setSpacing(4)
@@ -38,6 +43,7 @@ class DungeonBoardWidget(QWidget):
         self._adjacent_by_room: dict[str, set[str]] = {}
         self._hero_id: str = ""
         self._hero_room: str = ""
+        self._selected_room: str = ""
         self._interaction_enabled: bool = True
         try:
             self._module._map_scene.selectionChanged.disconnect(self._module._on_selection_changed)
@@ -90,6 +96,7 @@ class DungeonBoardWidget(QWidget):
         self._adjacent_by_room.clear()
         self._hero_id = ""
         self._hero_room = ""
+        self._selected_room = ""
         self._interaction_enabled = True
         self._module = GmMapModule()
         self._layout.removeWidget(self._module_widget)
@@ -199,12 +206,32 @@ class DungeonBoardWidget(QWidget):
         return self._room_id_by_index.get(node.loc_id)
 
     def _on_selection_changed(self) -> None:
-        if not self._interaction_enabled or not self._hero_id or not self._hero_room:
+        if not self._interaction_enabled:
             return
         destination = self._selected_room_id()
-        if destination is None or destination == self._hero_room:
+        if destination is None:
+            self._selected_room = ""
             return
+        # A click is view-only: remember the selection and ask the engine for
+        # the area contents. It never triggers a gameplay action.
+        self._selected_room = destination
+        self.area_selected.emit(destination)
+
+    def move_destination(self) -> str:
+        """Returns the selected room if it is a valid adjacent move target, else ""."""
+        if not self._interaction_enabled or not self._hero_id or not self._hero_room:
+            return ""
+        destination = self._selected_room
+        if not destination or destination == self._hero_room:
+            return ""
         if destination in self._adjacent_by_room.get(self._hero_room, set()):
+            return destination
+        return ""
+
+    def request_move(self) -> None:
+        """Emits move_requested for the current valid selection (explicit Move action)."""
+        destination = self.move_destination()
+        if destination:
             self.move_requested.emit(self._hero_id, destination)
 
     def _room_index(self, room_id: str) -> int:
