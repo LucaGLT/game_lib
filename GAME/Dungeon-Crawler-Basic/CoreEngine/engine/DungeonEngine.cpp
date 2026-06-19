@@ -38,6 +38,8 @@ void DungeonEngine::start_game(const std::string& map_file)
 		throw std::runtime_error("Dungeon map load failed: " + _loader.last_error());
 	}
 
+	rebuild_interactables();
+
 	const std::vector<std::string> heroes = _actors.heroes();
 	const std::vector<std::string> enemies = _actors.enemies();
 	std::vector<std::string> order;
@@ -270,31 +272,42 @@ void DungeonEngine::handle_area_info_request(const nlohmann::json& data)
 nlohmann::json DungeonEngine::build_area_info(const std::string& area_id) const
 {
 	nlohmann::json actors = nlohmann::json::array();
-	for (const std::string& actor_id : _actors.all_actor_ids())
+	if (_map.has_room(area_id))
 	{
-		const ActorInfo info = _actors.get_actor(actor_id);
-		if (info.location != area_id)
+		// Presence is sourced from gmMap; display attributes from the roster.
+		for (const std::string& actor_id : _map.actors_in_room(area_id))
 		{
-			continue;
+			if (!_actors.has_actor(actor_id))
+			{
+				continue;
+			}
+			const ActorInfo info = _actors.get_actor(actor_id);
+			nlohmann::json row;
+			row["id"] = info.id;
+			row["name"] = info.id;
+			row["faction"] = actor_kind_to_string(info.kind);
+			row["state"] = info.statuses.empty() ? "ALIVE" : info.statuses.front();
+			actors.push_back(row);
 		}
-		nlohmann::json row;
-		row["id"] = info.id;
-		row["name"] = info.id;
-		row["faction"] = actor_kind_to_string(info.kind);
-		row["state"] = info.statuses.empty() ? "ALIVE" : info.statuses.front();
-		actors.push_back(row);
 	}
 
 	nlohmann::json interactables = nlohmann::json::array();
 	if (_map.has_room(area_id))
 	{
-		for (const std::string& tag : _map.tags_of_room(area_id))
+		// Interactables are sourced natively from gmMap + gmInteraction.
+		for (gmMap::InteractableObjectId obj_id : _map.interactables_in_room(area_id))
 		{
-			nlohmann::json obj;
-			obj["id"] = tag;
-			obj["name"] = tag;
-			obj["type"] = "tag";
-			interactables.push_back(obj);
+			if (!_interactables.has(obj_id))
+			{
+				continue;
+			}
+			const gmInteraction::InteractableObject& obj = _interactables.get(obj_id);
+			nlohmann::json entry;
+			entry["id"] = obj.type;
+			entry["name"] = obj.type;
+			entry["type"] = "object";
+			entry["state"] = gmInteraction::interaction_state_to_string(obj.state);
+			interactables.push_back(entry);
 		}
 	}
 
@@ -303,6 +316,22 @@ nlohmann::json DungeonEngine::build_area_info(const std::string& area_id) const
 	out["actors"] = actors;
 	out["interactables"] = interactables;
 	return out;
+}
+
+void DungeonEngine::rebuild_interactables()
+{
+	_interactables.clear();
+	_next_interactable_id = 1;
+
+	for (const std::string& room_id : _map.all_rooms())
+	{
+		for (const std::string& tag : _map.tags_of_room(room_id))
+		{
+			const gmMap::InteractableObjectId obj_id = _next_interactable_id++;
+			_interactables.create(obj_id, tag, gmInteraction::InteractionState::IDLE);
+			_map.place_interactable(room_id, obj_id);
+		}
+	}
 }
 
 } // namespace gmDungeonBasic

@@ -193,6 +193,10 @@ bool DungeonMapLoader::load_from_file(const std::string& file_path,
 				}
 
 				actors.add_actor(info);
+				if (map.has_room(info.location))
+				{
+					map.place_actor(info.location, info.id);
+				}
 			}
 		}
 

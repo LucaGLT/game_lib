@@ -447,6 +447,10 @@ void DungeonRuleAdapter::move_actor_to_location(const gmRules::ActorId& actor_id
 	if (_actors.has_actor(actor_id))
 	{
 		_actors.move_to(actor_id, location_id);
+		if (_map.has_room(location_id))
+		{
+			_map.move_actor(actor_id, location_id);
+		}
 	}
 }
 

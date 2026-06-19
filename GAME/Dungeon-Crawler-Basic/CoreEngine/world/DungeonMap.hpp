@@ -127,6 +127,79 @@ public:
 	 */
 	std::vector<std::string> tags_of_room(const std::string& room_id) const;
 
+	// ── Actor presence (delegates to gmMap native actor sets) ─────────────────
+
+	/**
+	 * @brief Records an actor's presence in a room.
+	 *
+	 * If the actor is already placed elsewhere it is moved to @p room_id. A
+	 * stable opaque @c gmMap::ActorId is assigned to each string actor id on
+	 * first placement.
+	 *
+	 * @param room_id   Destination room identifier.
+	 * @param actor_id  Actor string identifier.
+	 * @throws std::invalid_argument  If @p room_id does not exist.
+	 */
+	void place_actor(const std::string& room_id, const std::string& actor_id);
+
+	/**
+	 * @brief Moves an actor to a different room.
+	 *
+	 * Equivalent to @ref place_actor for an already-known actor; places the
+	 * actor if it was not yet present.
+	 *
+	 * @param actor_id     Actor to move.
+	 * @param to_room_id   Destination room identifier.
+	 * @throws std::invalid_argument  If @p to_room_id does not exist.
+	 */
+	void move_actor(const std::string& actor_id, const std::string& to_room_id);
+
+	/**
+	 * @brief Removes an actor's presence from the map (no-op if unknown).
+	 *
+	 * @param actor_id  Actor string identifier.
+	 */
+	void remove_actor(const std::string& actor_id);
+
+	/**
+	 * @brief Returns the ids of all actors currently in a room.
+	 *
+	 * @param room_id  Room identifier to query.
+	 * @return         Sorted vector of actor id strings.
+	 * @throws std::invalid_argument  If @p room_id does not exist.
+	 */
+	std::vector<std::string> actors_in_room(const std::string& room_id) const;
+
+	// ── Interactable placement (opaque ids owned by gmInteraction) ─────────────
+
+	/**
+	 * @brief Places an interactable object id in a room.
+	 *
+	 * @param room_id  Room identifier.
+	 * @param obj_id   Opaque interactable object id (owned by gmInteraction).
+	 * @throws std::invalid_argument  If @p room_id does not exist.
+	 */
+	void place_interactable(const std::string& room_id, gmMap::InteractableObjectId obj_id);
+
+	/**
+	 * @brief Removes an interactable object id from a room (no-op if absent).
+	 *
+	 * @param room_id  Room identifier.
+	 * @param obj_id   Opaque interactable object id.
+	 * @throws std::invalid_argument  If @p room_id does not exist.
+	 */
+	void remove_interactable(const std::string& room_id, gmMap::InteractableObjectId obj_id);
+
+	/**
+	 * @brief Returns the interactable object ids placed in a room.
+	 *
+	 * @param room_id  Room identifier to query.
+	 * @return         Vector of opaque interactable object ids.
+	 * @throws std::invalid_argument  If @p room_id does not exist.
+	 */
+	std::vector<gmMap::InteractableObjectId>
+	interactables_in_room(const std::string& room_id) const;
+
 	/// @brief Removes all rooms, connections and tags. Resets to empty state.
 	void reset();
 
@@ -137,6 +210,11 @@ private:
 	std::unordered_map<std::string, gmMap::LocationId> _room_to_location;
 	std::unordered_map<gmMap::LocationId, std::string> _location_to_room;
 	gmMap::LocationId _next_location_id = 1;
+
+	std::unordered_map<std::string, gmMap::ActorId> _actor_to_uid;
+	std::unordered_map<gmMap::ActorId, std::string> _uid_to_actor;
+	std::unordered_map<std::string, std::string>    _actor_room;
+	gmMap::ActorId _next_actor_uid = 1;
 };
 
 } // namespace gmDungeonBasic

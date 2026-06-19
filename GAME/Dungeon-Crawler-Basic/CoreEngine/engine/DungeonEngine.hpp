@@ -25,6 +25,7 @@
 #include "world/DungeonMap.hpp"
 #include "world/DungeonMapLoader.hpp"
 
+#include "gmInteraction/InteractableObjectStore.hpp"
 #include "gmSave/json.hpp"
 
 #include <string>
@@ -109,6 +110,15 @@ private:
 	/// @brief Builds the area-info payload (actors + interactables) for an area.
 	nlohmann::json build_area_info(const std::string& area_id) const;
 
+	/**
+	 * @brief Rebuilds the interactable object store from the loaded map.
+	 *
+	 * Creates one @c gmInteraction interactable per room tag and registers its
+	 * id on the map location, so area-info is sourced natively from gmMap +
+	 * gmInteraction rather than from ad-hoc tag scanning.
+	 */
+	void rebuild_interactables();
+
 	// ── Subsystems ────────────────────────────────────────────────────────────
 
 	DungeonMap          _map;      ///< gmMap-backed dungeon map.
@@ -119,6 +129,9 @@ private:
 	ActionV1            _actions;  ///< Action executor for v1 actions.
 	GameLog             _log;      ///< gmLog-backed session log.
 	GuiBridge           _gui;      ///< Outbound event channel to the GUI.
+
+	gmInteraction::InteractableObjectStore _interactables; ///< Interactable object data.
+	gmMap::InteractableObjectId _next_interactable_id = 1; ///< Id allocator for interactables.
 
 	GamePhase   _phase   = GamePhase::BOOTSTRAP;   ///< Current game phase.
 	GameOutcome _outcome = GameOutcome::NONE;       ///< Outcome once GAME_OVER.

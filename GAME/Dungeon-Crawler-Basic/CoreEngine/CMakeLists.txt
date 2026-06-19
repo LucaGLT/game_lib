@@ -59,6 +59,8 @@ target_link_libraries(dungeon_engine PRIVATE
     gmAlea
     gmFlow
     gmRules
+    gmMap
+    gmInteraction
 )
 
 # Winsock2 is required by IpSocketChannel and CmdServer on Windows.

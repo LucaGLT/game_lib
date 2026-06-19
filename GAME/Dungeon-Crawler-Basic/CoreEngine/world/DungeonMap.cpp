@@ -114,12 +114,102 @@ std::vector<std::string> DungeonMap::tags_of_room(const std::string& room_id) co
 	return out;
 }
 
+void DungeonMap::place_actor(const std::string& room_id, const std::string& actor_id)
+{
+	const gmMap::LocationId destination = location_of(room_id);
+
+	const auto known = _actor_to_uid.find(actor_id);
+	gmMap::ActorId uid = 0;
+	if (known == _actor_to_uid.end())
+	{
+		uid = _next_actor_uid++;
+		_actor_to_uid[actor_id] = uid;
+		_uid_to_actor[uid]      = actor_id;
+	}
+	else
+	{
+		uid = known->second;
+		const auto previous = _actor_room.find(actor_id);
+		if (previous != _actor_room.end() && has_room(previous->second))
+		{
+			_map.remove_actor(location_of(previous->second), uid);
+		}
+	}
+
+	_map.place_actor(destination, uid);
+	_actor_room[actor_id] = room_id;
+}
+
+void DungeonMap::move_actor(const std::string& actor_id, const std::string& to_room_id)
+{
+	place_actor(to_room_id, actor_id);
+}
+
+void DungeonMap::remove_actor(const std::string& actor_id)
+{
+	const auto known = _actor_to_uid.find(actor_id);
+	if (known == _actor_to_uid.end())
+	{
+		return;
+	}
+
+	const gmMap::ActorId uid = known->second;
+	const auto previous = _actor_room.find(actor_id);
+	if (previous != _actor_room.end() && has_room(previous->second))
+	{
+		_map.remove_actor(location_of(previous->second), uid);
+	}
+
+	_actor_to_uid.erase(actor_id);
+	_uid_to_actor.erase(uid);
+	_actor_room.erase(actor_id);
+}
+
+std::vector<std::string> DungeonMap::actors_in_room(const std::string& room_id) const
+{
+	const std::vector<gmMap::ActorId> uids = _map.actors_at(location_of(room_id));
+	std::vector<std::string> out;
+	out.reserve(uids.size());
+	for (gmMap::ActorId uid : uids)
+	{
+		const auto it = _uid_to_actor.find(uid);
+		if (it != _uid_to_actor.end())
+		{
+			out.push_back(it->second);
+		}
+	}
+	std::sort(out.begin(), out.end());
+	return out;
+}
+
+void DungeonMap::place_interactable(const std::string&          room_id,
+                                    gmMap::InteractableObjectId obj_id)
+{
+	_map.place_interactable(location_of(room_id), obj_id);
+}
+
+void DungeonMap::remove_interactable(const std::string&          room_id,
+                                     gmMap::InteractableObjectId obj_id)
+{
+	_map.remove_interactable(location_of(room_id), obj_id);
+}
+
+std::vector<gmMap::InteractableObjectId>
+DungeonMap::interactables_in_room(const std::string& room_id) const
+{
+	return _map.interactables_at(location_of(room_id));
+}
+
 void DungeonMap::reset()
 {
 	_map.clear();
 	_room_to_location.clear();
 	_location_to_room.clear();
 	_next_location_id = 1;
+	_actor_to_uid.clear();
+	_uid_to_actor.clear();
+	_actor_room.clear();
+	_next_actor_uid = 1;
 }
 
 gmMap::LocationId DungeonMap::location_of(const std::string& room_id) const

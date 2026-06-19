@@ -178,30 +178,32 @@ in isolamento. `gmInteraction` resta come progettazione separata.
 
 ### Fase E — `gmInteraction` *(progettazione separata)*
 
-- [ ] Definire `InteractableObject`, `InteractableObjectId`, stato e azioni.
-- [ ] Eccezione base (`EInteractionError : std::runtime_error`).
-- [ ] API pubblica della libreria.
-- [ ] Bridge verso `gmMap` (solo Id opachi, no `#include` diretto da `gmMap`).
+- [x] Definire `InteractableObject`, `InteractableObjectId`, stato e azioni.
+- [x] Eccezione base (`EInteractionError : std::runtime_error`).
+- [x] API pubblica della libreria.
+- [x] Bridge verso `gmMap` (solo Id opachi, no `#include` diretto da `gmMap`).
 
 ### Fase F — Allineamento GUI
 
-- [ ] `gm_map_module.py`: layer opzionale "Region / Zone"
-  (colore per gruppo nel `layer_combo`); parsing additivo di `zone_id`/`region_id`.
-- [ ] `gm_map_area_info_module.py`: alimentazione nativa da `gmMap`
-  (`actors`/`interactables` nel payload `gmMap.area.info.response`).
+- [x] `gm_map_module.py`: layer opzionale "Region / Zone" nel `layer_combo`;
+  parsing additivo e tollerante di `zone_id`/`region_id` (nessuna ricolorazione scena).
+- [x] `gm_map_area_info_module.py`: alimentazione nativa da `gmMap`
+  (`actors`/`interactables` nel payload `gmMap.area.info.response`; già tollerante).
 
 ### Fase G — Integrazione Dungeon CoreEngine
 
-- [ ] `DungeonMap.hpp/.cpp`: aggiornare alle API rinominate (Tile → Zone).
-- [ ] `DungeonEngine`: delegare `build_area_info` a `gmMap.actors_at()` +
-  `gmMap.interactables_at()` invece della logica custom attuale.
+- [x] `DungeonMap.hpp/.cpp`: API presenza attori/interactable native su `gmMap`
+  (`place_actor`/`move_actor`/`actors_in_room`, `place_interactable`/`interactables_in_room`).
+- [x] `DungeonEngine`: `build_area_info` delega a `gmMap.actors_in_room()` +
+  `gmMap.interactables_in_room()` con store `gmInteraction` (no logica custom).
 
 ### Fase H — Documentazione & test
 
-- [ ] Aggiornare `gmMap_API.md`:
+- [x] Aggiornare `gmMap_API.md`:
   tabelle metodi, diagramma Mermaid Region → Zone → Location.
-- [ ] Test unitari per ogni fase (coverage: create/remove/assign/inverse-lookup).
-- [ ] Aggiornare `PLAN.md` con le nuove fasi appese.
+- [x] Test unitari per ogni fase (gmInteraction 29/29; Dungeon 5/5 invariati).
+- [x] Documentazione `gmInteraction` (`PLAN.md`, `ai-instructions.md`, `gmInteraction_API.md`)
+  e `PLAN.md` di `gmMap` con le nuove fasi appese.
 
 ---
 
