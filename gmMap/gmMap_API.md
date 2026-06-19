@@ -286,7 +286,7 @@ this call the object is in the same state as a default-constructed instance.
 void create_location(LocationId id);
 ```
 
-Creates a new empty location.  The new location has no tile assignment, no
+Creates a new empty location. The new location has no tile assignment, no
 items, no metadata, and no neighbors.
 
 | Parameter | Description |
