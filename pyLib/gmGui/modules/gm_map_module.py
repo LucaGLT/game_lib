@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..message_ids import AREA_INFO_REQUEST, AREA_SELECTED
 from ..widgets.map_scene import LocationNode, MapScene
 from .base_module import BaseModule
 
@@ -160,6 +161,19 @@ class GmMapModule(BaseModule):
         node = items[0]
         if isinstance(node, LocationNode):
             self._info_label.setText(f"Location #{node.loc_id}")
+            self._request_area_info(str(node.loc_id))
+
+    def _request_area_info(self, area_id: str) -> None:
+        """Sends an area-info request to the Core for *area_id*.
+
+        Selecting an area is a **view-only** interaction: it never triggers an
+        actor action. The Core replies with a ``gmMap.area.info.response``
+        consumed by the Area Info module.
+        """
+        if not area_id:
+            return
+        self.send_command(AREA_SELECTED, {"area_id": area_id})
+        self.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
 
     # ── Envelope routing ──────────────────────────────────────────────────────
 

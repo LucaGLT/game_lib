@@ -91,6 +91,11 @@ void DungeonEngine::handle_command(const std::string& typeId, const nlohmann::js
 	{
 		handle_end_turn(data);
 	}
+	else if (typeId == command_id::AREA_INFO_REQUEST)
+	{
+		handle_area_info_request(data);
+	}
+	// AREA_SELECTED is a view-only hint with no engine side-effect; ignored here.
 	// Unknown commands are silently ignored.
 }
 
@@ -248,6 +253,55 @@ nlohmann::json DungeonEngine::build_actor_snapshot() const
 
 	nlohmann::json out;
 	out["actors"] = actors;
+	return out;
+}
+
+void DungeonEngine::handle_area_info_request(const nlohmann::json& data)
+{
+	const std::string area_id = data.value("area_id", "");
+	nlohmann::json response = build_area_info(area_id);
+	if (data.contains("request_id"))
+	{
+		response["request_id"] = data.value("request_id", "");
+	}
+	_gui.send_event(event_id::AREA_INFO_RESPONSE, response);
+}
+
+nlohmann::json DungeonEngine::build_area_info(const std::string& area_id) const
+{
+	nlohmann::json actors = nlohmann::json::array();
+	for (const std::string& actor_id : _actors.all_actor_ids())
+	{
+		const ActorInfo info = _actors.get_actor(actor_id);
+		if (info.location != area_id)
+		{
+			continue;
+		}
+		nlohmann::json row;
+		row["id"] = info.id;
+		row["name"] = info.id;
+		row["faction"] = actor_kind_to_string(info.kind);
+		row["state"] = info.statuses.empty() ? "ALIVE" : info.statuses.front();
+		actors.push_back(row);
+	}
+
+	nlohmann::json interactables = nlohmann::json::array();
+	if (_map.has_room(area_id))
+	{
+		for (const std::string& tag : _map.tags_of_room(area_id))
+		{
+			nlohmann::json obj;
+			obj["id"] = tag;
+			obj["name"] = tag;
+			obj["type"] = "tag";
+			interactables.push_back(obj);
+		}
+	}
+
+	nlohmann::json out;
+	out["area_id"] = area_id;
+	out["actors"] = actors;
+	out["interactables"] = interactables;
 	return out;
 }
 

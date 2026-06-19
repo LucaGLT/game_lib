@@ -95,13 +95,19 @@ private:
 	/// @brief Handles a dungeon.end_turn command.
 	void handle_end_turn(const nlohmann::json& data);
 
-	// ── Snapshot builders ─────────────────────────────────────────────────────
+	/// @brief Handles a gmMap.area.info.request command (view-only, no gameplay effect).
+	void handle_area_info_request(const nlohmann::json& data);
+
+	// ── Snapshot builders ─────────────────────────────────────
 
 	/// @brief Builds the full map snapshot payload for the GUI.
 	nlohmann::json build_map_snapshot() const;
 
 	/// @brief Builds the full actor roster snapshot payload for the GUI.
 	nlohmann::json build_actor_snapshot() const;
+
+	/// @brief Builds the area-info payload (actors + interactables) for an area.
+	nlohmann::json build_area_info(const std::string& area_id) const;
 
 	// ── Subsystems ────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.7.0
-**Status:** Phase 2 – Body Implementation 🔧
+**Version:** 0.8.0
+**Status:** Phase 3 – Shared GUI modules & area-info contract 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
 
@@ -144,6 +144,27 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 - Test Python: `test_event_router.py`, `test_widgets.py` — tutti PASS in headless offscreen.
 - CTest: tutti i test registrati in `CoreEngine/CMakeLists.txt`; test Python via `find_program(python)`.
 - Mappa test: `.cache/maps/dungeon_01.json` (3 stanze, hero + 2 nemici, tag pozione/spada).
+
+---
+
+### Phase 3 — Shared GUI modules & area-info contract ⏳
+
+- [ ] Definire un contratto messaggi **comune e riusabile** (typeId neutri `gmMap.*`/`gmMap.ui.*`) per la selezione area e la richiesta/risposta dei contenuti area, valido per qualunque game.
+- [ ] Creare un nuovo modulo GUI comune `gm_map_area_info` in `pyLib/gmGui/modules/` che mostra in un unico widget due liste separate: attori nell'area selezionata e oggetti interagibili nell'area selezionata.
+- [ ] Refactor di `gm_map_module`: il click su un'area **non** genera più azioni Actor; aggiorna solo lo stato visuale e invia una **richiesta dati** al Core (`gmMap.area.info.request`).
+- [ ] Refactor di `gm_actor_module`: pannello dettagli attore **sempre visibile**; albero/lista attori **collassabile** con Mostra/Nascondi e **default nascosto** (inversione del comportamento attuale).
+- [ ] Registrare il nuovo modulo e il routing in `pyLib/gmGui/main_window.py` (docking + tabella typeId) così ogni game ne beneficia senza codice game-specific.
+- [ ] Implementare nel CoreEngine l'handler della richiesta area-info che produce `gmMap.area.info.response` aggregando dati da `gmMap` (interagibili/oggetti) e `gmActor` (attori nell'area), **senza side-effect di gameplay**.
+- [ ] Test pyLib (layout/toggle attori, click=>request mappa, rendering area-info) e validazione headless.
+
+**Notes:**
+- Le modifiche sono nelle **librerie GUI comuni** (`pyLib/gmGui`) e nel contratto messaggi: nessuna logica è specifica del Dungeon e si riflette su tutti i game che riusano `MainWindow`/moduli.
+- Contratto area-info (riusabile):
+  - `gmMap.area.info.request` (GUI → Core): `{ "area_id": str, "request_id"?: str }`
+  - `gmMap.area.info.response` (Core → GUI): `{ "area_id": str, "actors": [...], "interactables": [...], "request_id"?: str }`
+  - `gmMap.ui.area_selected` (evento GUI interno opzionale): `{ "area_id": str }`
+- Principio: ogni interazione utente sulla mappa cambia solo visualizzazioni (proprio widget o altri widget), mai azioni Actor dirette.
+- Migrazione compatibile: i typeId esistenti restano; si aggiungono solo nuovi messaggi.
 
 ---
 

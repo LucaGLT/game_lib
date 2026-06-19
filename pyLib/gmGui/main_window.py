@@ -26,6 +26,7 @@ from .modules.gm_comp_deck_module import GmCompDeckModule
 from .modules.gm_dice_module import GmDiceModule
 from .modules.gm_flow_module import GmFlowModule
 from .modules.gm_map_module import GmMapModule
+from .modules.gm_map_area_info_module import GmMapAreaInfoModule
 from .theme_manager import ThemeManager, _THEMES
 
 # Text shown in the status bar when the C++ engine is not connected.
@@ -107,6 +108,7 @@ class MainWindow(QMainWindow):
         self._modules = [
             GmFlowModule(),
             GmMapModule(),
+            GmMapAreaInfoModule(),
             GmActorModule(),
             GmCompDeckModule(),
             GmDiceModule(),
@@ -124,6 +126,11 @@ class MainWindow(QMainWindow):
         deck_dock: QDockWidget | None = self._docks.get("gm_comp_deck")
         if actor_dock is not None and deck_dock is not None:
             self.tabifyDockWidget(actor_dock, deck_dock)
+
+        # GmMapAreaInfoModule shares the Right area as a tab next to the actor panel.
+        area_info_dock: QDockWidget | None = self._docks.get("gm_map_area_info")
+        if actor_dock is not None and area_info_dock is not None:
+            self.tabifyDockWidget(actor_dock, area_info_dock)
 
     def _add_dock(self, mod: BaseModule) -> None:
         """Creates a ``QDockWidget`` for *mod* and adds it to the layout.

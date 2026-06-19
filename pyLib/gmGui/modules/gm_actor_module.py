@@ -107,12 +107,12 @@ class GmActorModule(BaseModule):
         self._search_edit.textChanged.connect(self._on_search_changed)
         top_row.addWidget(self._search_edit, 1)
 
-        self._toggle_details_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
-        self._toggle_details_btn.setToolTip("Mostra/Nascondi pannello dettagli")
-        self._toggle_details_btn.setProperty("toggle_icon", "true")
-        self._toggle_details_btn.setFixedWidth(20)
-        self._toggle_details_btn.clicked.connect(self._toggle_details_panel)
-        top_row.addWidget(self._toggle_details_btn)
+        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
+        self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
+        self._toggle_tree_btn.setProperty("toggle_icon", "true")
+        self._toggle_tree_btn.setFixedWidth(20)
+        self._toggle_tree_btn.clicked.connect(self._toggle_actor_tree)
+        top_row.addWidget(self._toggle_tree_btn)
         vbox_left.addLayout(top_row)
 
         self._tree: QTreeWidget = QTreeWidget()
@@ -125,6 +125,10 @@ class GmActorModule(BaseModule):
         self._tree.setColumnWidth(_COL_NAME, 230)
         self._tree.setColumnWidth(_COL_HP, 90)
         self._tree.itemSelectionChanged.connect(self._on_selection_changed)
+        # The actor list is collapsible and hidden by default; the detail panel
+        # on the right is always visible.
+        self._tree_visible: bool = False
+        self._tree.setVisible(False)
         vbox_left.addWidget(self._tree)
 
         splitter.addWidget(left)
@@ -132,7 +136,6 @@ class GmActorModule(BaseModule):
         # ── Right pane: detail panel ──────────────────────────────────────────
         right = QWidget()
         self._right_panel: QWidget = right
-        self._details_visible: bool = True
         self._status_expanded: bool = True
         self._equip_expanded: bool = True
         vbox_right = QVBoxLayout(right)
@@ -382,12 +385,31 @@ class GmActorModule(BaseModule):
         """Applies text search combined with faction filter."""
         self._apply_filters()
 
-    def _toggle_details_panel(self) -> None:
-        """Shows/hides the right detail panel."""
-        self._details_visible = not self._details_visible
-        self._right_panel.setVisible(self._details_visible)
-        self._toggle_details_btn.setText(
-            _TOGGLE_EXPANDED_ICON if self._details_visible else _TOGGLE_COLLAPSED_ICON
+    def _toggle_actor_tree(self) -> None:
+        """Shows/hides the actor list tree (hidden by default)."""
+        self._tree_visible = not self._tree_visible
+        self._tree.setVisible(self._tree_visible)
+        self._toggle_tree_btn.setText(
+            _TOGGLE_EXPANDED_ICON if self._tree_visible else _TOGGLE_COLLAPSED_ICON
+        )
+
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def save_state(self) -> dict:
+        """Returns the actor-tree visibility for QSettings persistence."""
+        if self._widget is None:
+            return {}
+        return {"tree_visible": self._tree_visible}
+
+    def restore_state(self, state: dict) -> None:
+        """Restores the actor-tree visibility from a previously saved state dict."""
+        if self._widget is None:
+            return
+        visible = bool(state.get("tree_visible", False))
+        self._tree_visible = visible
+        self._tree.setVisible(visible)
+        self._toggle_tree_btn.setText(
+            _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
         )
 
     def _toggle_status_section(self) -> None:

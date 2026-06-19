@@ -201,7 +201,7 @@ def test_on_connection_lost_resets_status_bar(qapp: QApplication) -> None:
 
 
 def test_five_docks_created_in_full_window(qapp: QApplication) -> None:
-    """MainWindow creates exactly 5 QDockWidgets (one per real module)."""
+    """MainWindow creates one QDockWidget per real module."""
     from unittest.mock import patch
     from gmGui.main_window import MainWindow
     from gmGui.engine_bridge.receiver import EngineReceiver
@@ -210,7 +210,7 @@ def test_five_docks_created_in_full_window(qapp: QApplication) -> None:
         win = MainWindow()
     try:
         assert set(win._docks.keys()) == {
-            "gm_flow", "gm_map", "gm_actor", "gm_comp_deck", "gm_dice"
+            "gm_flow", "gm_map", "gm_map_area_info", "gm_actor", "gm_comp_deck", "gm_dice"
         }
     finally:
         win.close()
