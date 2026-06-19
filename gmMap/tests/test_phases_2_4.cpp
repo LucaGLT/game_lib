@@ -3,7 +3,7 @@
  * @brief Unit tests for gmMap Phases 2–4 (Private Helpers, Construction/Reset, Location Management)
  *
  * This test suite validates:
- * - Phase 2: Private helpers (_require_location, _require_tile) indirectly
+ * - Phase 2: Private helpers (_require_location, _require_zone) indirectly
  * - Phase 3: Construction/Reset (clear())
  * - Phase 4: Location CRUD operations (create, remove, has, all, count)
  */

@@ -1,0 +1,35 @@
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T01 location CRUD + invariants"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T02 duplicate location create throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T03 remove missing location throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T04 zone CRUD + invariants"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T05 duplicate zone create throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T06 remove missing zone throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T07 region CRUD + invariants"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T08 duplicate region create throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T09 remove missing region throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T10 zone assignment + reassignment"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T11 assign unknown location throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T12 assign unknown zone throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T13 region assignment + reassignment"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T14 assign unknown zone to region throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T15 assign zone to unknown region throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T16 adjacency directed/bidirectional"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T17 self-loop rejected"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T18 items add/remove/out-of-range base"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T19 remove_item out-of-range throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T20 contained actors"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T21 place_actor unknown location throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T22 contained interactables"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T23 place_interactable unknown location throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T24 location metadata"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T25 missing location metadata key throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T26 zone metadata"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T27 missing zone metadata key throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T28 region metadata"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T29 missing region metadata key throws"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T30 clear full reset"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T31 remove_location cascade"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T32 remove_zone cascade"}
+{"time":"2026-06-19T16:23:22.841","logger":"gmMapTests","level":"INFO","message":"[PASS] T33 remove_region cascade"}
+{"time":"2026-06-19T16:23:22.855","logger":"gmMapTests","level":"INFO","message":"[PASS] T34 snapshot v2 round-trip"}
+{"time":"2026-06-19T16:23:22.855","logger":"gmMapTests","level":"INFO","message":"=== gmMap summary: 34/34 passed"}

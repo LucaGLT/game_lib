@@ -120,59 +120,61 @@ game-specific.
 Le fasi sono **additive**: ogni fase è compilabile e testabile
 in isolamento. `gmInteraction` resta come progettazione separata.
 
-### Fase A — Design freeze & contratti *(no codice)*
+### Fase A — Design freeze & contratti *(no codice)* — ✅ completata
 
-- [ ] Decidere DP-1: appartenenza Zone/Region **obbligatoria in costruzione**
-  (`create_location(id, zoneId)`) vs **opzionale con sentinel** `UNASSIGNED_ZONE`.
-- [ ] Definire alias Id opachi:
+- [x] Decidere DP-1: **B** opzionale con `std::optional` (`zone_id`/`region_id` = `std::nullopt`).
+- [x] Definire alias Id opachi:
   `RegionId = uint32_t`, `ZoneId = uint32_t` (ex `TileId`),
   `ActorId = uint64_t`, `InteractableObjectId = uint64_t`.
-- [ ] Congelare schema **JSON snapshot v2** (lista completa campi).
-- [ ] Elencare nuovi eventi GUI:
+- [x] Congelare schema **JSON snapshot v2** (lista completa campi — vedi §7).
+- [x] Elencare nuovi eventi GUI:
   `gmMap.region.*`, `gmMap.zone.*`,
   `gmMap.location.actor_added/removed`,
   `gmMap.location.interactable_added/removed`.
 
 ### Fase B — Refactor gerarchia (Tile → Zone + nuovo Region)
 
-- [ ] Rinomina `Tile` → `Zone` in tutta la codebase:
+- [x] Rinomina `Tile` → `Zone` in tutta la codebase:
   alias, metodi, eccezioni (`EDuplicateTileError` → `EDuplicateZoneError`), test, docs.
-- [ ] Aggiungere `RegionRecord{ unordered_set<ZoneId> zones; Metadata meta; }`.
-- [ ] API Region: `create_region`, `remove_region`, `has_region`, `all_regions`, `region_count`.
-- [ ] Metadata Region: `set_region_meta`, `get_region_meta`, `has_region_meta`,
+- [x] Aggiungere `RegionRecord{ unordered_set<ZoneId> zones; Metadata meta; }`.
+- [x] API Region: `create_region`, `remove_region`, `has_region`, `all_regions`, `region_count`.
+- [x] Metadata Region: `set_region_meta`, `get_region_meta`, `has_region_meta`,
   `remove_region_meta`, `region_metadata`.
-- [ ] Parent link Zone → Region: `optional<RegionId>` in `ZoneRecord`.
-- [ ] API assegnazione: `assign_zone_to_region`, `unassign_zone_from_region`,
+- [x] Parent link Zone → Region: `optional<RegionId>` in `ZoneRecord`.
+- [x] API assegnazione: `assign_zone_to_region`, `unassign_zone_from_region`,
   `region_of(ZoneId)`, `zones_in_region(RegionId)`.
-- [ ] Mappa inversa Region→Zone mantenuta in `assign_zone_to_region`.
-- [ ] Helper privati: `_require_region(RegionId)`.
-- [ ] `remove_region`: sgancia le Zone (non le elimina).
-- [ ] `remove_zone`: aggiorna mappa inversa Region→Zone.
+- [x] Mappa inversa Region→Zone mantenuta in `assign_zone_to_region`.
+- [x] Helper privati: `_require_region(RegionId)`.
+- [x] `remove_region`: sgancia le Zone (non le elimina).
+- [x] `remove_zone`: aggiorna mappa inversa Region→Zone.
 
 ### Fase C — Contenitori game-independent sulla Location
 
-- [ ] Aggiungere a `LocationRecord`:
-  `std::vector<ActorId> actors`, `std::vector<InteractableObjectId> interactables`.
-- [ ] API attori sulla location:
+- [x] Aggiungere a `LocationRecord` (decisione A1 — `unordered_set`, non `vector`):
+  `std::unordered_set<ActorId> actors`,
+  `std::unordered_set<InteractableObjectId> interactables`.
+- [x] API attori sulla location:
   `place_actor(LocationId, ActorId)`,
-  `remove_actor(LocationId, ActorId)` *(swap-and-pop)*,
+  `remove_actor(LocationId, ActorId)` *(no-op se assente)*,
   `actors_at(LocationId) const`,
   `clear_actors(LocationId)`,
   `has_actor(LocationId, ActorId) const`.
-- [ ] API interactables sulla location: stessa struttura (`place_interactable`, …).
-- [ ] Nuove eccezioni: `EUnknownActorError`, `EUnknownInteractableError`.
+- [x] API interactables sulla location: stessa struttura (`place_interactable`, …).
+- [x] ~~Nuove eccezioni `EUnknownActorError`/`EUnknownInteractableError`~~ — **non introdotte**
+  (remove idempotente; vedi nota di scope nella §5).
 
 ### Fase D — Snapshot v2 & persistenza
 
-- [ ] Estendere `MapSnapshot`:
+- [x] Estendere `MapSnapshot`:
   `region_ids`, `zone_ids` *(rinomina da `tile_ids`)*,
   `zone_to_region` *(rinomina + estende `assignments`)*,
   `location_to_zone` *(from Location)*,
   `actors_by_location`, `interactables_by_location`.
-- [ ] Bump versione JSON → **v2**.
-- [ ] **Migrazione v1 → v2**: Tile → Zone senza Region;
-  `actors_by_location` e `interactables_by_location` vuoti.
-- [ ] Test round-trip: export v2 → clear → import v2; assert full equality.
+- [x] Bump versione JSON → **v2**.
+- [x] **Migrazione v1 → v2**: Tile → Zone senza Region;
+  `actors_by_location` e `interactables_by_location` vuoti
+  (rilevata via `gmSave::peek_version` + `from_json` tollerante a entrambi gli schemi).
+- [x] Test round-trip: export v2 → clear → import v2; assert full equality.
 
 ### Fase E — `gmInteraction` *(progettazione separata)*
 
@@ -210,6 +212,21 @@ in isolamento. `gmInteraction` resta come progettazione separata.
 | DP-1 | Appartenenza Zone/Region obbligatoria o opzionale? | **A** — obbligatoria in costruzione (`create_location(id, zoneId)`); **B** — opzionale con sentinel `0` o `nullopt` | Firma dell'API pubblica di Fase B e C non definibile |
 | DP-2 | Adiacenze: mantenere `unordered_set` o passare a `vector`? | **A** — mantieni `unordered_set` (raccomandato); **B** — `vector` con swap-and-pop | Basso; non blocca altre fasi |
 | DP-3 | `ActorId` e `InteractableObjectId`: alias distinti o `EntityUid` esistente? | **A** — alias distinti (`using ActorId = uint64_t`); **B** — riusa `EntityUid` | Leggibilità e type-safety dell'API |
+
+### Decisioni congelate (Fase A)
+
+| ID | Scelta | Note implementative |
+|----|--------|---------------------|
+| DP-1 | **B** — opzionale con `std::nullopt` | `LocationRecord::zone_id` e `ZoneRecord::region_id` sono `std::optional<>`; nessun sentinel numerico. |
+| DP-2 | **A** — mantieni `unordered_set` per le adiacenze | Nessuna modifica al modello adiacenze. |
+| A1 | `ActorsContained` e `InteractableObjectsContained` usano **`std::unordered_set`** | Sostituisce la bozza `std::vector` delle Fasi C/D: dedup nativa e `has_actor`/`remove_actor` O(1). |
+| DP-3 | **A** — alias distinti | `using ActorId = uint64_t; using InteractableObjectId = uint64_t;` distinti da `EntityUid`. |
+
+> **Nota di scope (deviazione consapevole):** poiché i contenitori usano `unordered_set`,
+> `remove_actor`/`remove_interactable` sono **no-op idempotenti** se l'elemento è assente
+> (coerenti con `remove_adjacent`). Le eccezioni `EUnknownActorError`/`EUnknownInteractableError`
+> previste nella bozza di Fase C **non vengono introdotte** (sarebbero codice morto:
+> error-handling per uno scenario che non è un errore di contratto).
 
 ---
 
