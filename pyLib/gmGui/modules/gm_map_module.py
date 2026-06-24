@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json as _json
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QComboBox,
     QGraphicsView,
@@ -24,6 +25,83 @@ from .base_module import BaseModule
 
 _MIN_ZOOM: float = 0.25
 _MAX_ZOOM: float = 4.0
+
+_LAYER_NAMES: list[str] = ["terrain", "items", "actors", "zone", "region"]
+_DEFAULT_LAYERS: set[str] = {"terrain", "items", "actors"}
+
+
+class CheckableComboBox(QComboBox):
+    """QComboBox where each item carries an independent checkbox.
+
+    Signals
+    -------
+    layers_changed(set)
+        Emitted whenever any item's checked state changes.
+    """
+
+    layers_changed: Signal = Signal(object)  # set[str]
+
+    def __init__(self, parent: object = None) -> None:
+        super().__init__(parent)
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+        self.setModel(QStandardItemModel(self))
+        self.view().pressed.connect(self._toggle_pressed)
+        self._suppress_hide: bool = False
+
+    def add_layer(self, text: str, *, checked: bool = False) -> None:
+        """Adds *text* as a checkable item."""
+        item = QStandardItem(text)
+        item.setCheckable(True)
+        item.setCheckState(
+            Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+        self.model().appendRow(item)
+        self._refresh_display()
+
+    def checked_layers(self) -> set:
+        """Returns the set of currently checked layer names."""
+        result: set = set()
+        for i in range(self.model().rowCount()):
+            it = self.model().item(i)
+            if it and it.checkState() == Qt.CheckState.Checked:
+                result.add(it.text())
+        return result
+
+    def set_checked(self, layers: set) -> None:
+        """Programmatically sets which layers are checked."""
+        for i in range(self.model().rowCount()):
+            it = self.model().item(i)
+            if it:
+                state = (Qt.CheckState.Checked if it.text() in layers
+                         else Qt.CheckState.Unchecked)
+                it.setCheckState(state)
+        self._refresh_display()
+
+    # ── Internal ──────────────────────────────────────────────────────────────
+
+    def _toggle_pressed(self, index) -> None:
+        it = self.model().itemFromIndex(index)
+        if it is None:
+            return
+        new_state = (
+            Qt.CheckState.Unchecked
+            if it.checkState() == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+        it.setCheckState(new_state)
+        self._suppress_hide = True
+        self._refresh_display()
+        self.layers_changed.emit(self.checked_layers())
+
+    def hidePopup(self) -> None:
+        if self._suppress_hide:
+            self._suppress_hide = False
+            return
+        super().hidePopup()
+
+    def _refresh_display(self) -> None:
+        checked = sorted(self.checked_layers())
+        self.lineEdit().setText(", ".join(checked) if checked else "")
 
 
 class GmMapModule(BaseModule):
@@ -79,9 +157,9 @@ class GmMapModule(BaseModule):
         self._zoom_out_btn: QPushButton = QPushButton("Zoom -")
         self._zoom_in_btn: QPushButton = QPushButton("Zoom +")
         self._fit_btn: QPushButton = QPushButton("Fit")
-        self._layer_combo: QComboBox = QComboBox()
-        for layer in ("terrain", "items", "actors", "zone", "region"):
-            self._layer_combo.addItem(layer)
+        self._layer_combo: CheckableComboBox = CheckableComboBox()
+        for layer in _LAYER_NAMES:
+            self._layer_combo.add_layer(layer, checked=(layer in _DEFAULT_LAYERS))
         top_bar.addWidget(self._zoom_out_btn)
         top_bar.addWidget(self._zoom_in_btn)
         top_bar.addWidget(self._fit_btn)
@@ -104,23 +182,23 @@ class GmMapModule(BaseModule):
         self._zoom_out_btn.clicked.connect(lambda: self._zoom(0.8))
         self._fit_btn.clicked.connect(self._fit_view)
         self._map_scene.selectionChanged.connect(self._on_selection_changed)
-        self._layer_combo.currentTextChanged.connect(self._map_scene.set_filter)
+        self._layer_combo.layers_changed.connect(self._map_scene.set_active_layers)
 
         return container
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
     def save_state(self) -> dict:
-        """Returns zoom level and active layer for QSettings persistence."""
+        """Returns zoom level and active layers for QSettings persistence."""
         if self._widget is None:
             return {}
         return {
             "zoom_level": self._zoom_level,
-            "layer": self._layer_combo.currentText(),
+            "layers": sorted(self._layer_combo.checked_layers()),
         }
 
     def restore_state(self, state: dict) -> None:
-        """Restores zoom level and active layer from a previously saved state dict."""
+        """Restores zoom level and active layers from a previously saved state dict."""
         if self._widget is None:
             return
         zoom = state.get("zoom_level")
@@ -128,10 +206,13 @@ class GmMapModule(BaseModule):
             self._map_view.resetTransform()
             self._zoom_level = 1.0
             self._zoom(float(zoom))
-        layer = state.get("layer", "")
-        idx = self._layer_combo.findText(layer)
-        if idx >= 0:
-            self._layer_combo.setCurrentIndex(idx)
+        # Accept both new-style "layers" list and old-style "layer" string.
+        layers = state.get("layers")
+        if not layers and "layer" in state:
+            layers = [state["layer"]]
+        if layers:
+            self._layer_combo.set_checked(set(layers))
+            self._map_scene.set_active_layers(self._layer_combo.checked_layers())
 
     # ── Zoom helpers ──────────────────────────────────────────────────────────
 

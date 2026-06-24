@@ -716,6 +716,13 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
     if name == "map_sat_actor_fg":
         return QColor("#ffffff")
     # Zone / Region palette (10 slots: map_zone_0 … map_zone_9).
+    # Named explicit zone tokens must be checked first.
+    if name == "map_zone_dark_green":
+        return QColor("#1b5e20")
+    if name == "map_zone_dark_red":
+        return QColor("#b71c1c")
+    if name == "map_region_red":
+        return QColor("#c62828")
     if name.startswith("map_zone_"):
         _zone_colors = [
             "#7986cb", "#4db6ac", "#ff8a65", "#ba68c8",

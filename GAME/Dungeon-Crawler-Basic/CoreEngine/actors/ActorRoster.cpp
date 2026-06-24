@@ -6,6 +6,7 @@
 #include "actors/ActorRoster.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <stdexcept>
 
 #include "gmActor/actors/HeroState.hpp"
@@ -13,6 +14,51 @@
 #include "gmActor/core/Enums.hpp"
 
 namespace {
+
+/// @brief Derives a compact, game-unique display label from *actor_id*.
+///
+/// Rules:
+///  - If the id ends with "_<digits>", base = first-letter-of-prefix (upper) + digits.
+///    e.g. "hero_1" -> "H1", "monster_2" -> "M2"
+///  - Otherwise base = first letter (upper).  e.g. "boss" -> "B"
+///  - If the base is already taken, a numeric counter is appended until unique.
+std::string make_label(
+	const std::string& actor_id,
+	std::unordered_set<std::string>& used)
+{
+	std::string prefix = actor_id;
+	std::string num;
+
+	auto pos = actor_id.rfind('_');
+	if (pos != std::string::npos && pos + 1 < actor_id.size())
+	{
+		const std::string suffix = actor_id.substr(pos + 1);
+		const bool is_digits = !suffix.empty() &&
+			std::all_of(suffix.begin(), suffix.end(),
+				[](unsigned char c) { return std::isdigit(c) != 0; });
+		if (is_digits)
+		{
+			prefix = actor_id.substr(0, pos);
+			num    = suffix;
+		}
+	}
+
+	const char initial = prefix.empty()
+		? '?'
+		: static_cast<char>(std::toupper(static_cast<unsigned char>(prefix[0])));
+
+	std::string base(1, initial);
+	base += num;          // e.g. "H1" or "B"
+
+	std::string label = base;
+	int counter = 2;
+	while (used.count(label))
+	{
+		label = base + std::to_string(counter++);
+	}
+	used.insert(label);
+	return label;
+}
 
 gmActor::StatusInstance make_status(const std::string& status_id)
 {
@@ -81,6 +127,7 @@ void ActorRoster::add_actor(const ActorInfo& info)
 	}
 
 	_kinds[info.id] = info.kind;
+	_labels[info.id] = make_label(info.id, _used_labels);
 	_insertion_order.push_back(info.id);
 }
 
@@ -103,6 +150,8 @@ void ActorRoster::remove_actor(const std::string& actor_id)
 
 	_store = gmActor::ActorStore();
 	_kinds.clear();
+	_labels.clear();
+	_used_labels.clear();
 	_insertion_order.clear();
 
 	for (const ActorInfo& info : survivors)
@@ -260,13 +309,16 @@ void ActorRoster::reset()
 	_store = gmActor::ActorStore();
 	_insertion_order.clear();
 	_kinds.clear();
+	_labels.clear();
+	_used_labels.clear();
 }
 
 ActorInfo ActorRoster::snapshot_actor(const std::string& actor_id) const
 {
 	ActorInfo info;
-	info.id = actor_id;
-	info.kind = _kinds.at(actor_id);
+	info.id    = actor_id;
+	info.kind  = _kinds.at(actor_id);
+	info.label = _labels.count(actor_id) ? _labels.at(actor_id) : actor_id;
 
 	const gmActor::ActorStateCommon& common = common_ref(actor_id);
 	info.hp = common.current_hp;

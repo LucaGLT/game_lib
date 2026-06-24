@@ -24,6 +24,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace gmDungeonBasic
@@ -37,6 +38,7 @@ namespace gmDungeonBasic
 struct ActorInfo
 {
 	std::string              id;        ///< Unique actor identifier.
+	std::string              label;     ///< Short game-unique display label (e.g. "H1", "M2").
 	DungeonActorKind         kind;      ///< Actor classification.
 	int                      hp;        ///< Current hit points.
 	int                      max_hp;    ///< Maximum hit points.
@@ -195,6 +197,8 @@ private:
 	gmActor::ActorStore _store;
 	std::vector<std::string> _insertion_order;
 	std::unordered_map<std::string, DungeonActorKind> _kinds;
+	std::unordered_map<std::string, std::string> _labels;      ///< actor_id → display label.
+	std::unordered_set<std::string> _used_labels;              ///< Labels already assigned.
 };
 
 } // namespace gmDungeonBasic

@@ -319,12 +319,13 @@ nlohmann::json DungeonEngine::build_actor_snapshot() const
 	{
 		const ActorInfo info = _actors.get_actor(actor_id);
 		nlohmann::json row;
-		row["id"] = info.id;
-		row["kind"] = actor_kind_to_string(info.kind);
-		row["hp"] = info.hp;
-		row["max_hp"] = info.max_hp;
+		row["id"]       = info.id;
+		row["label"]    = info.label;
+		row["kind"]     = actor_kind_to_string(info.kind);
+		row["hp"]       = info.hp;
+		row["max_hp"]   = info.max_hp;
 		row["location"] = info.location;
-		row["tags"] = info.tags;
+		row["tags"]     = info.tags;
 		row["statuses"] = info.statuses;
 		actors.push_back(row);
 	}
@@ -359,10 +360,11 @@ nlohmann::json DungeonEngine::build_area_info(const std::string& area_id) const
 			}
 			const ActorInfo info = _actors.get_actor(actor_id);
 			nlohmann::json row;
-			row["id"] = info.id;
-			row["name"] = info.id;
+			row["id"]      = info.id;
+			row["label"]   = info.label;
+			row["name"]    = info.id;
 			row["faction"] = actor_kind_to_string(info.kind);
-			row["state"] = info.statuses.empty() ? "ALIVE" : info.statuses.front();
+			row["state"]   = info.statuses.empty() ? "ALIVE" : info.statuses.front();
 			actors.push_back(row);
 		}
 	}

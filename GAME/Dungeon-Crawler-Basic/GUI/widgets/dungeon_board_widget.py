@@ -29,6 +29,39 @@ class DungeonBoardWidget(QWidget):
     area_selected:  Signal = Signal(str)
     move_requested: Signal = Signal(str, str)
 
+    # Maps room tag → visual properties used by the layer system.
+    # Rooms with no tags are treated as corridors ("corridor" fallback).
+    _TAG_TERRAIN: dict[str, str] = {
+        "start":     "grass",
+        "corridor":  "wooden",
+        "boss":      "stone",
+        "boss_room": "stone",
+    }
+    _TAG_ZONE: dict[str, str] = {
+        "start":     "External",
+        "corridor":  "Internal",
+        "boss":      "Internal",
+        "boss_room": "Internal",
+    }
+    _TAG_REGION: dict[str, str] = {
+        "start":     "R1",
+        "corridor":  "R1",
+        "boss":      "R1",
+        "boss_room": "R1",
+    }
+    _TAG_ZONE_TOKEN: dict[str, str] = {
+        "start":     "map_zone_dark_green",
+        "corridor":  "map_zone_dark_red",
+        "boss":      "map_zone_dark_red",
+        "boss_room": "map_zone_dark_red",
+    }
+    _TAG_REGION_TOKEN: dict[str, str] = {
+        "start":     "map_region_red",
+        "corridor":  "map_region_red",
+        "boss":      "map_region_red",
+        "boss_room": "map_region_red",
+    }
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -126,11 +159,17 @@ class DungeonBoardWidget(QWidget):
             room_index = self._room_index(room_id)
             self._adjacent_by_room[room_id] = {str(adjacent) for adjacent in room.get("adjacent", [])}
             tags = [str(tag) for tag in room.get("tags", [])]
+            # Rooms with no tags are treated as corridors.
+            room_tag = tags[0] if tags else "corridor"
             locations.append(
                 {
                     "location_id": room_index,
+                    "zone_id": self._TAG_ZONE.get(room_tag, ""),
+                    "region_id": self._TAG_REGION.get(room_tag, ""),
+                    "zone_color_token": self._TAG_ZONE_TOKEN.get(room_tag, ""),
+                    "region_color_token": self._TAG_REGION_TOKEN.get(room_tag, ""),
                     "metadata": {
-                        "terrain": tags[0] if tags else "",
+                        "terrain": self._TAG_TERRAIN.get(room_tag, ""),
                         "items": [room_id],
                     },
                 }
@@ -148,6 +187,16 @@ class DungeonBoardWidget(QWidget):
         return {"locations": locations, "edges": edges}
 
     def _translate_actor_snapshot(self, data: dict) -> list[dict]:
+        # Register game-wide actor labels (computed by the C++ engine).
+        label_map: dict[str, str] = {}
+        for actor in data.get("actors", []):
+            actor_id = str(actor.get("id", ""))
+            label = str(actor.get("label", ""))
+            if actor_id and label:
+                label_map[actor_id] = label
+        if label_map:
+            self._module._map_scene.register_actor_labels(label_map)
+
         events: list[dict] = []
         for actor in data.get("actors", []):
             actor_id = str(actor.get("id", ""))
