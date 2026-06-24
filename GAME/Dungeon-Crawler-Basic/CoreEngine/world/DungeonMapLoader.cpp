@@ -1,49 +1,26 @@
 /**
  * @file world/DungeonMapLoader.cpp
- * @brief JSON loader implementation for dungeon map and actors.
+ * @brief JSON loader implementation for dungeon map and actors via gmSave.
  */
 
 #include "world/DungeonMapLoader.hpp"
 
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <stdexcept>
 
-#include "gmSave/json.hpp"
+#include "gmSave/gmSave.hpp"
 
 namespace {
 
 namespace fs = std::filesystem;
 
-std::string json_get_string(const nlohmann::json& j, const char* key)
-{
-	if (!j.contains(key) || !j.at(key).is_string())
-	{
-		throw std::invalid_argument(std::string("Missing or invalid string field: ") + key);
-	}
-	return j.at(key).get<std::string>();
-}
-
 gmDungeonBasic::DungeonActorKind parse_kind(const std::string& kind)
 {
-	if (kind == "HERO")
-	{
-		return gmDungeonBasic::DungeonActorKind::HERO;
-	}
-	if (kind == "MONSTER")
-	{
-		return gmDungeonBasic::DungeonActorKind::MONSTER;
-	}
-	if (kind == "MONSTER_ELITE")
-	{
-		return gmDungeonBasic::DungeonActorKind::MONSTER_ELITE;
-	}
-	if (kind == "BOSS_MONSTER")
-	{
-		return gmDungeonBasic::DungeonActorKind::BOSS_MONSTER;
-	}
-
+	if (kind == "HERO")          return gmDungeonBasic::DungeonActorKind::HERO;
+	if (kind == "MONSTER")       return gmDungeonBasic::DungeonActorKind::MONSTER;
+	if (kind == "MONSTER_ELITE") return gmDungeonBasic::DungeonActorKind::MONSTER_ELITE;
+	if (kind == "BOSS_MONSTER")  return gmDungeonBasic::DungeonActorKind::BOSS_MONSTER;
 	throw std::invalid_argument("Unknown actor kind: " + kind);
 }
 
@@ -51,39 +28,20 @@ fs::path resolve_path(const std::string& file_path)
 {
 	const fs::path original(file_path);
 	if (fs::exists(original))
-	{
 		return original;
-	}
 
 	const fs::path cache_candidate = fs::path(".cache") / original;
 	if (fs::exists(cache_candidate))
-	{
 		return cache_candidate;
-	}
 
 	fs::path current = fs::current_path();
 	while (!current.empty())
 	{
-		const fs::path upward_original = current / original;
-		if (fs::exists(upward_original))
-		{
-			return upward_original;
-		}
-
-		const fs::path upward_cache = current / ".cache" / original;
-		if (fs::exists(upward_cache))
-		{
-			return upward_cache;
-		}
-
-		if (current == current.root_path())
-		{
-			break;
-		}
-
+		if (fs::exists(current / original))      return current / original;
+		if (fs::exists(current / cache_candidate)) return current / cache_candidate;
+		if (current == current.root_path())        break;
 		current = current.parent_path();
 	}
-
 	return original;
 }
 
@@ -92,112 +50,165 @@ fs::path resolve_path(const std::string& file_path)
 namespace gmDungeonBasic
 {
 
-DungeonMapLoader::DungeonMapLoader()
-	: _last_error("")
+// ── ADL from_json / to_json ───────────────────────────────────────────────────
+
+void from_json(const nlohmann::json& j, DungeonRoomMeta& m)
 {
-	// ToBeImplemented //
+	m.zone_id            = j.value("zone_id",            "");
+	m.region_id          = j.value("region_id",          "");
+	m.zone_color_token   = j.value("zone_color_token",   "");
+	m.region_color_token = j.value("region_color_token", "");
+	if (j.contains("items") && j.at("items").is_array())
+		m.items = j.at("items").get<std::vector<std::string>>();
 }
 
-bool DungeonMapLoader::load_from_file(const std::string& file_path,
-                                      DungeonMap&         map,
-                                      ActorRoster&        actors)
+void to_json(nlohmann::json& j, const DungeonRoomMeta& m)
+{
+	j["zone_id"]            = m.zone_id;
+	j["region_id"]          = m.region_id;
+	j["zone_color_token"]   = m.zone_color_token;
+	j["region_color_token"] = m.region_color_token;
+	j["items"]              = m.items;
+}
+
+void from_json(const nlohmann::json& j, DungeonActorDef& a)
+{
+	a.id     = j.at("id").get<std::string>();
+	a.kind   = j.at("kind").get<std::string>();
+	a.hp     = j.value("hp",     1);
+	a.max_hp = j.value("max_hp", std::max(1, a.hp));
+	a.room   = j.at("room").get<std::string>();
+	if (j.contains("tags")     && j.at("tags").is_array())
+		a.tags     = j.at("tags").get<std::vector<std::string>>();
+	if (j.contains("statuses") && j.at("statuses").is_array())
+		a.statuses = j.at("statuses").get<std::vector<std::string>>();
+}
+
+void to_json(nlohmann::json& j, const DungeonActorDef& a)
+{
+	j["id"]       = a.id;
+	j["kind"]     = a.kind;
+	j["hp"]       = a.hp;
+	j["max_hp"]   = a.max_hp;
+	j["room"]     = a.room;
+	j["tags"]     = a.tags;
+	j["statuses"] = a.statuses;
+}
+
+void from_json(const nlohmann::json& j, DungeonRoomDef& r)
+{
+	r.id = j.at("id").get<std::string>();
+	if (j.contains("tags")     && j.at("tags").is_array())
+		r.tags     = j.at("tags").get<std::vector<std::string>>();
+	if (j.contains("adjacent") && j.at("adjacent").is_array())
+		r.adjacent = j.at("adjacent").get<std::vector<std::string>>();
+	// Meta fields live inline in the room object (not nested).
+	from_json(j, r.meta);
+}
+
+void to_json(nlohmann::json& j, const DungeonRoomDef& r)
+{
+	j["id"]       = r.id;
+	j["tags"]     = r.tags;
+	j["adjacent"] = r.adjacent;
+	// Merge meta fields inline.
+	nlohmann::json meta_j;
+	to_json(meta_j, r.meta);
+	j.merge_patch(meta_j);
+}
+
+void from_json(const nlohmann::json& j, DungeonMapDef& d)
+{
+	d.map_id = j.value("map_id", "");
+	if (j.contains("rooms") && j.at("rooms").is_array())
+	{
+		for (const auto& rj : j.at("rooms"))
+		{
+			DungeonRoomDef r;
+			from_json(rj, r);
+			d.rooms.push_back(std::move(r));
+		}
+	}
+	if (j.contains("actors") && j.at("actors").is_array())
+	{
+		for (const auto& aj : j.at("actors"))
+		{
+			DungeonActorDef a;
+			from_json(aj, a);
+			d.actors.push_back(std::move(a));
+		}
+	}
+}
+
+void to_json(nlohmann::json& j, const DungeonMapDef& d)
+{
+	j["map_id"] = d.map_id;
+	j["rooms"]  = nlohmann::json::array();
+	for (const auto& r : d.rooms)
+	{
+		nlohmann::json rj;
+		to_json(rj, r);
+		j["rooms"].push_back(rj);
+	}
+	j["actors"] = nlohmann::json::array();
+	for (const auto& a : d.actors)
+	{
+		nlohmann::json aj;
+		to_json(aj, a);
+		j["actors"].push_back(aj);
+	}
+}
+
+// ── DungeonMapLoader ──────────────────────────────────────────────────────────
+
+DungeonMapLoader::DungeonMapLoader()
+	: _last_error("")
+{}
+
+bool DungeonMapLoader::load_from_file(
+	const std::string& file_path,
+	DungeonMap&         map,
+	ActorRoster&        actors,
+	std::unordered_map<std::string, DungeonRoomMeta>& room_meta)
 {
 	_last_error.clear();
-
 	try
 	{
-		const std::filesystem::path input = resolve_path(file_path);
-		std::ifstream ifs(input);
-		if (!ifs)
-		{
-			_last_error = "Cannot open map file: " + input.string();
-			return false;
-		}
-
-		nlohmann::json root;
-		ifs >> root;
-
-		if (!root.contains("rooms") || !root.at("rooms").is_array())
-		{
-			_last_error = "Invalid JSON: missing 'rooms' array";
-			return false;
-		}
+		const std::string resolved = resolve_path(file_path).string();
+		const DungeonMapDef def    = gmSave::load<DungeonMapDef>(resolved);
 
 		map.reset();
 		actors.reset();
+		room_meta.clear();
 
-		for (const nlohmann::json& room : root.at("rooms"))
+		// Pass 1: create rooms.
+		for (const DungeonRoomDef& r : def.rooms)
+			map.create_room(r.id);
+
+		// Pass 2: tags, connections, metadata.
+		for (const DungeonRoomDef& r : def.rooms)
 		{
-			const std::string room_id = json_get_string(room, "id");
-			map.create_room(room_id);
+			for (const std::string& tag : r.tags)
+				map.set_room_tag(r.id, tag);
+			for (const std::string& adj : r.adjacent)
+				map.add_connection(r.id, adj, false);
+			room_meta[r.id] = r.meta;
 		}
 
-		for (const nlohmann::json& room : root.at("rooms"))
+		// Pass 3: actors.
+		for (const DungeonActorDef& a : def.actors)
 		{
-			const std::string room_id = json_get_string(room, "id");
-
-			if (room.contains("tags") && room.at("tags").is_array())
-			{
-				for (const nlohmann::json& tag : room.at("tags"))
-				{
-					if (tag.is_string())
-					{
-						map.set_room_tag(room_id, tag.get<std::string>());
-					}
-				}
-			}
-
-			if (room.contains("adjacent") && room.at("adjacent").is_array())
-			{
-				for (const nlohmann::json& adjacent : room.at("adjacent"))
-				{
-					if (adjacent.is_string())
-					{
-						map.add_connection(room_id, adjacent.get<std::string>(), false);
-					}
-				}
-			}
-		}
-
-		if (root.contains("actors") && root.at("actors").is_array())
-		{
-			for (const nlohmann::json& actor : root.at("actors"))
-			{
-				ActorInfo info;
-				info.id = json_get_string(actor, "id");
-				info.kind = parse_kind(json_get_string(actor, "kind"));
-				info.hp = actor.value("hp", 1);
-				info.max_hp = actor.value("max_hp", std::max(1, info.hp));
-				info.location = json_get_string(actor, "room");
-
-				if (actor.contains("tags") && actor.at("tags").is_array())
-				{
-					for (const nlohmann::json& tag : actor.at("tags"))
-					{
-						if (tag.is_string())
-						{
-							info.tags.push_back(tag.get<std::string>());
-						}
-					}
-				}
-
-				if (actor.contains("statuses") && actor.at("statuses").is_array())
-				{
-					for (const nlohmann::json& status : actor.at("statuses"))
-					{
-						if (status.is_string())
-						{
-							info.statuses.push_back(status.get<std::string>());
-						}
-					}
-				}
-
-				actors.add_actor(info);
-				if (map.has_room(info.location))
-				{
-					map.place_actor(info.location, info.id);
-				}
-			}
+			ActorInfo info;
+			info.id       = a.id;
+			info.kind     = parse_kind(a.kind);
+			info.hp       = a.hp;
+			info.max_hp   = a.max_hp;
+			info.location = a.room;
+			info.tags     = a.tags;
+			info.statuses = a.statuses;
+			actors.add_actor(info);
+			if (map.has_room(info.location))
+				map.place_actor(info.location, info.id);
 		}
 
 		return true;
@@ -215,3 +226,4 @@ std::string DungeonMapLoader::last_error() const
 }
 
 } // namespace gmDungeonBasic
+

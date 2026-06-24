@@ -136,6 +136,9 @@ private:
 	gmInteraction::InteractableObjectStore _interactables; ///< Interactable object data.
 	gmMap::InteractableObjectId _next_interactable_id = 1; ///< Id allocator for interactables.
 
+	std::unordered_map<std::string, DungeonRoomMeta> _room_meta; ///< Zone/region/items per room.
+	std::string _current_map_id;                                  ///< map_id of the loaded file.
+
 	GamePhase   _phase   = GamePhase::BOOTSTRAP;   ///< Current game phase.
 	GameOutcome _outcome = GameOutcome::NONE;       ///< Outcome once GAME_OVER.
 

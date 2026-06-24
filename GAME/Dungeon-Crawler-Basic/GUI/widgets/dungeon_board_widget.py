@@ -159,18 +159,39 @@ class DungeonBoardWidget(QWidget):
             room_index = self._room_index(room_id)
             self._adjacent_by_room[room_id] = {str(adjacent) for adjacent in room.get("adjacent", [])}
             tags = [str(tag) for tag in room.get("tags", [])]
-            # Rooms with no tags are treated as corridors.
-            room_tag = tags[0] if tags else "corridor"
+
+            # Prefer explicit zone / region / colour fields (dungeon_02+ format).
+            # Fall back to tag-based lookup for older map files.
+            semantic_tag = next(
+                (t for t in tags if not t.startswith("terrain:")), "corridor"
+            )
+            zone_id = room.get("zone_id") or self._TAG_ZONE.get(semantic_tag, "")
+            region_id = room.get("region_id") or self._TAG_REGION.get(semantic_tag, "")
+            zone_color_token = (
+                room.get("zone_color_token") or self._TAG_ZONE_TOKEN.get(semantic_tag, "")
+            )
+            region_color_token = (
+                room.get("region_color_token") or self._TAG_REGION_TOKEN.get(semantic_tag, "")
+            )
+
+            # Items: from dedicated field (dungeon_02+) or fallback to room_id
+            # (old format where each room was its own interactable placeholder).
+            raw_items = room.get("items")
+            items: list[str] = (
+                [str(x) for x in raw_items] if raw_items is not None else [room_id]
+            )
+
             locations.append(
                 {
                     "location_id": room_index,
-                    "zone_id": self._TAG_ZONE.get(room_tag, ""),
-                    "region_id": self._TAG_REGION.get(room_tag, ""),
-                    "zone_color_token": self._TAG_ZONE_TOKEN.get(room_tag, ""),
-                    "region_color_token": self._TAG_REGION_TOKEN.get(room_tag, ""),
+                    "tags": tags,
+                    "zone_id": zone_id,
+                    "region_id": region_id,
+                    "zone_color_token": zone_color_token,
+                    "region_color_token": region_color_token,
                     "metadata": {
-                        "terrain": self._TAG_TERRAIN.get(room_tag, ""),
-                        "items": [room_id],
+                        "terrain": self._TAG_TERRAIN.get(semantic_tag, ""),
+                        "items": items,
                     },
                 }
             )

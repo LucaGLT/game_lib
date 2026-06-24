@@ -6,6 +6,7 @@
 #include "engine/DungeonEngine.hpp"
 
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 
@@ -30,12 +31,17 @@ void DungeonEngine::start_game(const std::string& map_file)
 	std::string effective_map_file = map_file;
 	if (effective_map_file.empty())
 	{
-		effective_map_file = ".cache/maps/dungeon_01.json";
+		effective_map_file = ".cache/maps/dungeon_02.json";
 	}
 
-	if (!_loader.load_from_file(effective_map_file, _map, _actors))
+	if (!_loader.load_from_file(effective_map_file, _map, _actors, _room_meta))
 	{
 		throw std::runtime_error("Dungeon map load failed: " + _loader.last_error());
+	}
+	// Extract map_id from path basename for snapshot labelling.
+	{
+		const std::string base = std::filesystem::path(effective_map_file).stem().string();
+		_current_map_id = base.empty() ? "dungeon" : base;
 	}
 
 	rebuild_interactables();
@@ -300,15 +306,35 @@ nlohmann::json DungeonEngine::build_map_snapshot() const
 	for (const std::string& room_id : _map.all_rooms())
 	{
 		nlohmann::json room;
-		room["id"] = room_id;
-		room["tags"] = _map.tags_of_room(room_id);
+		room["id"]       = room_id;
+		room["tags"]     = _map.tags_of_room(room_id);
 		room["adjacent"] = _map.rooms_adjacent_to(room_id);
+
+		// Include zone / region / colour / items from loaded metadata.
+		auto it = _room_meta.find(room_id);
+		if (it != _room_meta.end())
+		{
+			const DungeonRoomMeta& m = it->second;
+			room["zone_id"]            = m.zone_id;
+			room["region_id"]          = m.region_id;
+			room["zone_color_token"]   = m.zone_color_token;
+			room["region_color_token"] = m.region_color_token;
+			room["items"]              = m.items;
+		}
+		else
+		{
+			room["zone_id"]            = "";
+			room["region_id"]          = "";
+			room["zone_color_token"]   = "";
+			room["region_color_token"] = "";
+			room["items"]              = nlohmann::json::array();
+		}
 		rooms.push_back(room);
 	}
 
 	nlohmann::json out;
-	out["map_id"] = "dungeon_01";
-	out["rooms"] = rooms;
+	out["map_id"] = _current_map_id.empty() ? "dungeon" : _current_map_id;
+	out["rooms"]  = rooms;
 	return out;
 }
 
@@ -403,10 +429,13 @@ void DungeonEngine::rebuild_interactables()
 
 	for (const std::string& room_id : _map.all_rooms())
 	{
-		for (const std::string& tag : _map.tags_of_room(room_id))
+		auto it = _room_meta.find(room_id);
+		if (it == _room_meta.end())
+			continue;
+		for (const std::string& item_name : it->second.items)
 		{
 			const gmMap::InteractableObjectId obj_id = _next_interactable_id++;
-			_interactables.create(obj_id, tag, gmInteraction::InteractionState::IDLE);
+			_interactables.create(obj_id, item_name, gmInteraction::InteractionState::IDLE);
 			_map.place_interactable(room_id, obj_id);
 		}
 	}
