@@ -6,13 +6,20 @@ actor panel reuses the existing GameLib GUI look and data presentation.
 """
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from gmGui.modules.gm_actor_module import GmActorModule
 
 
 class HeroPanelWidget(QWidget):
-    """Adapter widget that maps dungeon actor events onto gmActor events."""
+    """Adapter widget that maps dungeon actor events onto gmActor events.
+
+    Signals:
+        actor_selected(actor_id): forwarded from the embedded GmActorModule tree.
+    """
+
+    actor_selected: Signal = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -24,6 +31,7 @@ class HeroPanelWidget(QWidget):
         self._module_widget = self._module.widget()
         self._layout.addWidget(self._module_widget)
         self._actor_cache: dict[str, dict] = {}
+        self._module.on_actor_selected = self.actor_selected.emit
 
     def on_envelope(self, msg: dict) -> None:
         """Receives a dungeon envelope and forwards the translated actor event."""
@@ -53,6 +61,10 @@ class HeroPanelWidget(QWidget):
             if translated is not None:
                 self._module.on_envelope(translated)
 
+    def select_actor(self, actor_id: str) -> None:
+        """Programmatically selects *actor_id* in the embedded actor tree."""
+        self._module.select_actor(actor_id)
+
     def reset(self) -> None:
         """Resets the embedded module to a clean actor state."""
         self._actor_cache.clear()
@@ -62,6 +74,7 @@ class HeroPanelWidget(QWidget):
         self._module_widget.deleteLater()
         self._module_widget = self._module.widget()
         self._layout.addWidget(self._module_widget)
+        self._module.on_actor_selected = self.actor_selected.emit
 
     def _translate_snapshot(self, data: dict) -> list[dict]:
         actors: list[dict] = []

@@ -99,6 +99,9 @@ private:
 	/// @brief Handles a gmMap.area.info.request command (view-only, no gameplay effect).
 	void handle_area_info_request(const nlohmann::json& data);
 
+	/// @brief Auto-ends the current turn when the action limit is reached.
+	void maybe_auto_end_turn();
+
 	// ── Snapshot builders ─────────────────────────────────────
 
 	/// @brief Builds the full map snapshot payload for the GUI.
@@ -109,6 +112,9 @@ private:
 
 	/// @brief Builds the area-info payload (actors + interactables) for an area.
 	nlohmann::json build_area_info(const std::string& area_id) const;
+
+	/// @brief Returns the list of action names available to an actor right now.
+	nlohmann::json build_available_actions(const std::string& actor_id) const;
 
 	/**
 	 * @brief Rebuilds the interactable object store from the loaded map.
@@ -135,6 +141,9 @@ private:
 
 	GamePhase   _phase   = GamePhase::BOOTSTRAP;   ///< Current game phase.
 	GameOutcome _outcome = GameOutcome::NONE;       ///< Outcome once GAME_OVER.
+
+	int _actions_this_turn  = 0;            ///< Actions executed in the current turn.
+	static constexpr int MAX_ACTIONS_PER_TURN = 2; ///< Maximum actions per actor turn.
 };
 
 } // namespace gmDungeonBasic

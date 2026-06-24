@@ -48,18 +48,25 @@ int main()
 	assert(map.is_adjacent("room_start", "room_corridor"));
 
 	// Actors
-	assert(roster.has_actor("hero"));
+	assert(roster.has_actor("hero_1"));
+	assert(roster.has_actor("hero_2"));
 	assert(roster.has_actor("monster_1"));
 	assert(roster.has_actor("boss"));
-	assert(roster.heroes().size() == 1);
+	assert(roster.heroes().size() == 2);
 	assert(roster.enemies().size() == 2);
 
-	const auto hero_info = roster.get_actor("hero");
+	const auto hero_info = roster.get_actor("hero_1");
 	assert(hero_info.hp == 10);
 	assert(hero_info.max_hp == 10);
 	assert(hero_info.location == "room_start");
-	assert(roster.has_tag("hero", "has_potion"));
-	assert(roster.has_tag("hero", "bigword_available"));
+	assert(roster.has_tag("hero_1", "has_potion"));
+	assert(roster.has_tag("hero_1", "bigword_available"));
+
+	const auto hero2_info = roster.get_actor("hero_2");
+	assert(hero2_info.hp == 8);
+	assert(hero2_info.max_hp == 8);
+	assert(hero2_info.location == "room_start");
+	assert(roster.has_tag("hero_2", "has_potion"));
 
 	std::cout << "  [OK] load_from_file with .cache map\n";
 	std::cout << "All MapLoader tests PASSED.\n";

@@ -131,6 +131,8 @@ class DungeonMainWindow(QMainWindow):
         for ev in ("dungeon.session.started", "dungeon.turn.started",
                    "dungeon.turn.ended", "dungeon.game.over"):
             self._router.register(ev, self._on_flow_event)
+        # Auto-select the active actor in the hero panel on every turn change.
+        self._router.register("dungeon.turn.started", self._on_turn_started_select)
         # Board: map layout and actor movement
         for ev in ("dungeon.map.snapshot", "dungeon.actor.snapshot",
                    "dungeon.actor.moved", "dungeon.game.over"):
@@ -157,12 +159,21 @@ class DungeonMainWindow(QMainWindow):
         self._actions.move_requested.connect(self._on_move_action)
         self._actions.heal_requested.connect(self._on_heal_requested)
         self._actions.equip_requested.connect(self._on_equip_requested)
+        self._actions.end_turn_requested.connect(self._on_end_turn_requested)
+        # Actor selection in hero panel → sync action panel display
+        self._heroes.actor_selected.connect(self._actions.set_selected_actor)
 
     # ── Envelope handler (called by bridge on every incoming event) ───────────
 
     def _on_envelope(self, msg: dict) -> None:
         """Receives a decoded event envelope and dispatches it to the router."""
         self._router.dispatch(msg)
+
+    def _on_turn_started_select(self, msg: dict) -> None:
+        """Auto-selects the active actor in the hero panel on turn change."""
+        actor_id: str = str(msg.get("data", {}).get("actor_id", ""))
+        if actor_id:
+            self._heroes.select_actor(actor_id)
 
     # ── Flow adapter (dungeon.* → gmFlow.*) ───────────────────────────────────
 
@@ -209,6 +220,11 @@ class DungeonMainWindow(QMainWindow):
 
     # ── Command senders ───────────────────────────────────────────────────────
 
+    def _on_area_selected(self, area_id: str) -> None:
+        """Requests the contents of the clicked area (view-only, no gameplay)."""
+        if area_id:
+            self._bridge.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
+
     def _on_new_game(self) -> None:
         """Sends dungeon.new_game to CoreEngine."""
         self._log.clear()
@@ -218,21 +234,12 @@ class DungeonMainWindow(QMainWindow):
         self._errors.clear()
         self._bridge.send_command("dungeon.new_game", {})
 
-    def _on_move_requested(self, hero_id: str, destination: str) -> None:
-        """Forwards a move request to CoreEngine."""
-        self._bridge.send_command("dungeon.move",
-            {"hero_id": hero_id, "destination": destination})
-
-    def _on_area_selected(self, area_id: str) -> None:
-        """Requests the contents of the clicked area (view-only, no gameplay)."""
-        if area_id:
-            self._bridge.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
-
     def _on_move_action(self, hero_id: str) -> None:
         """Resolves the Move action against the area selected on the board."""
         destination = self._board.move_destination()
         if destination:
-            self._on_move_requested(hero_id, destination)
+            self._bridge.send_command("dungeon.move",
+                {"hero_id": hero_id, "destination": destination})
         else:
             self._errors.on_envelope({
                 "typeId": "dungeon.action.rejected",
@@ -251,6 +258,10 @@ class DungeonMainWindow(QMainWindow):
         """Forwards an equip request to CoreEngine."""
         self._bridge.send_command("dungeon.equip",
             {"hero_id": hero_id, "item_tag": item_tag})
+
+    def _on_end_turn_requested(self, hero_id: str) -> None:
+        """Forwards an end-turn request to CoreEngine."""
+        self._bridge.send_command("dungeon.end_turn", {"hero_id": hero_id})
 
     def closeEvent(self, event) -> None:
         """Stops the bridge receiver before closing."""

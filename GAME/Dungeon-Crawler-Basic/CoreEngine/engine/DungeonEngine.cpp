@@ -49,6 +49,7 @@ void DungeonEngine::start_game(const std::string& map_file)
 
 	_flow.start_session();
 	_flow.set_actor_order(order);
+	_actions_this_turn = 0;
 
 	const std::string active_actor = _flow.next_actor_id();
 	if (!active_actor.empty())
@@ -64,7 +65,10 @@ void DungeonEngine::start_game(const std::string& map_file)
 	if (!active_actor.empty())
 	{
 		_gui.send_event(event_id::TURN_STARTED,
-			{{"actor_id", active_actor}, {"round", _flow.current_round()}});
+			{{"actor_id", active_actor},
+			 {"round", _flow.current_round()},
+			 {"available_actions", build_available_actions(active_actor)},
+			 {"actions_remaining", MAX_ACTIONS_PER_TURN}});
 	}
 
 	_log.log_session_start("s_001", effective_map_file);
@@ -115,8 +119,26 @@ void DungeonEngine::advance_turn()
 	}
 
 	_flow.start_turn(next_actor);
+	_actions_this_turn = 0;
+
+	const bool is_hero = _actors.has_actor(next_actor) &&
+	                     (_actors.get_actor(next_actor).kind == DungeonActorKind::HERO);
+	const nlohmann::json avail = is_hero
+		? build_available_actions(next_actor)
+		: nlohmann::json::array();
+
 	_gui.send_event(event_id::TURN_STARTED,
-		{{"actor_id", next_actor}, {"round", _flow.current_round()}});
+		{{"actor_id", next_actor},
+		 {"round", _flow.current_round()},
+		 {"available_actions", avail},
+		 {"actions_remaining", MAX_ACTIONS_PER_TURN}});
+
+	if (!is_hero)
+	{
+		// Mostri: turno automatico senza azioni (AI v1 = skip).
+		_gui.send_event(event_id::TURN_ENDED, {{"actor_id", next_actor}});
+		_flow.end_turn();
+	}
 }
 
 // ── Private handlers ─────────────────────────────────────────────────────────
@@ -145,6 +167,8 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 		{{"actor_id", hero_id}, {"to", destination}});
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::MOVE, destination);
+	++_actions_this_turn;
+	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_heal(const nlohmann::json& data)
@@ -176,6 +200,8 @@ void DungeonEngine::handle_heal(const nlohmann::json& data)
 		{{"actor_id", target_id}, {"delta", after_hp - before_hp}, {"hp_after", after_hp}});
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::HEAL, target_id);
+	++_actions_this_turn;
+	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_equip(const nlohmann::json& data)
@@ -202,6 +228,8 @@ void DungeonEngine::handle_equip(const nlohmann::json& data)
 		{{"actor_id", hero_id}, {"item_tag", item_tag}});
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::EQUIP, item_tag);
+	++_actions_this_turn;
+	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_end_turn(const nlohmann::json& data)
@@ -213,7 +241,53 @@ void DungeonEngine::handle_end_turn(const nlohmann::json& data)
 	}
 
 	_gui.send_event(event_id::TURN_ENDED, {{"actor_id", hero_id}});
+	_actions_this_turn = 0;
 	_flow.end_turn();
+}
+
+void DungeonEngine::maybe_auto_end_turn()
+{
+	if (!_flow.is_turn_active())
+	{
+		return;
+	}
+	if (_actions_this_turn < MAX_ACTIONS_PER_TURN)
+	{
+		return;
+	}
+	const std::string actor = _flow.current_actor_id();
+	_gui.send_event(event_id::TURN_ENDED, {{"actor_id", actor}});
+	_actions_this_turn = 0;
+	_flow.end_turn();
+}
+
+nlohmann::json DungeonEngine::build_available_actions(const std::string& actor_id) const
+{
+	nlohmann::json actions = nlohmann::json::array();
+	if (!_actors.has_actor(actor_id))
+	{
+		return actions;
+	}
+	const ActorInfo info = _actors.get_actor(actor_id);
+	if (info.kind != DungeonActorKind::HERO)
+	{
+		return actions;
+	}
+
+	// Move è disponibile se la stanza corrente ha adiacenti.
+	if (!_map.rooms_adjacent_to(info.location).empty())
+	{
+		actions.push_back("move");
+	}
+	if (_rules.can_heal(actor_id, actor_id))
+	{
+		actions.push_back("heal");
+	}
+	if (_rules.can_equip(actor_id, "bigword_available"))
+	{
+		actions.push_back("equip");
+	}
+	return actions;
 }
 
 // ── Snapshot builders ─────────────────────────────────────────────────────────

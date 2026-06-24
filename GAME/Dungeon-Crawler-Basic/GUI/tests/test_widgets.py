@@ -87,25 +87,23 @@ def test_action_panel_enables_on_snapshot_with_potion():
         "typeId": "dungeon.actor.snapshot",
         "data": {
             "actors": [{
-                "id": "hero", "kind": "HERO", "hp": 10, "max_hp": 10,
+                "id": "hero_1", "kind": "HERO", "hp": 10, "max_hp": 10,
                 "tags": ["has_potion", "bigword_available"], "statuses": []
             }]
         }
     })
-    # Buttons are enabled by snapshot but turn control is separate.
-    # After snapshot, buttons reflect tag state (hero starts turn-agnostic).
-    # The test just checks that hero_id was stored.
-    assert w._hero_id == "hero"
-    assert w._has_potion
-    assert w._has_item
+    # After snapshot the actor data is cached; turn must also start to enable buttons.
+    state = w._actors_state.get("hero_1", {})
+    assert state.get("has_potion") is True
+    assert state.get("has_item") is True
     print("  [OK] test_action_panel_enables_on_snapshot_with_potion")
 
 
 def test_action_panel_reset():
     w = ActionPanelWidget()
-    w._hero_id = "hero"
+    w._active_actor_id = "hero_1"
     w.reset()
-    assert w._hero_id == ""
+    assert w._active_actor_id == ""
     assert not w._btn_heal.isEnabled()
     assert not w._btn_equip.isEnabled()
     print("  [OK] test_action_panel_reset")

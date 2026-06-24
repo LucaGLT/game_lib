@@ -12,7 +12,9 @@ Layout
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from typing import Callable
+
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import (
     QComboBox,
@@ -45,6 +47,10 @@ class GmActorModule(BaseModule):
     """Visualises gmActor state: actor tree, HP bar, statuses, equipment.
 
     TypeIds from ``ActorEvents.hpp``.
+
+    Callbacks:
+        on_actor_selected(actor_id): invoked when the user selects an actor in
+        the tree.  Set by the owner after instantiation.
     """
 
     @property
@@ -78,6 +84,9 @@ class GmActorModule(BaseModule):
         self._actor_items: dict[str, QTreeWidgetItem] = {}
         self._faction_items: dict[str, QTreeWidgetItem] = {}
         self._actor_data: dict[str, dict] = {}
+        # Callback invoked when the user clicks an actor row in the tree.
+        # Owner (e.g. HeroPanelWidget) sets this after calling widget().
+        self.on_actor_selected: Callable[[str], None] | None = None
 
         container = QWidget()
         container.setObjectName("gm_actor_module")
@@ -481,6 +490,8 @@ class GmActorModule(BaseModule):
         actor_id: str | None = self._selected_actor_id()
         if actor_id is not None and actor_id in self._actor_data:
             self._refresh_detail(actor_id)
+            if self.on_actor_selected is not None:
+                self.on_actor_selected(actor_id)
         else:
             self._detail_name.setText("Seleziona un attore")
             self._detail_faction.setText("—")
@@ -495,6 +506,12 @@ class GmActorModule(BaseModule):
         if not items:
             return None
         return items[0].data(_COL_NAME, Qt.ItemDataRole.UserRole)
+
+    def select_actor(self, actor_id: str) -> None:
+        """Programmatically selects the tree row for *actor_id* (no-op if absent)."""
+        item = self._actor_items.get(actor_id)
+        if item is not None:
+            self._tree.setCurrentItem(item)
 
     def _refresh_detail(self, actor_id: str) -> None:
         d: dict = self._actor_data[actor_id]

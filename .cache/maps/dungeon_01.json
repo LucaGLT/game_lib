@@ -19,12 +19,21 @@
   ],
   "actors": [
     {
-      "id": "hero",
+      "id": "hero_1",
       "kind": "HERO",
       "hp": 10,
       "max_hp": 10,
       "room": "room_start",
       "tags": ["has_potion", "bigword_available"],
+      "statuses": []
+    },
+    {
+      "id": "hero_2",
+      "kind": "HERO",
+      "hp": 8,
+      "max_hp": 8,
+      "room": "room_start",
+      "tags": ["has_potion"],
       "statuses": []
     },
     {
