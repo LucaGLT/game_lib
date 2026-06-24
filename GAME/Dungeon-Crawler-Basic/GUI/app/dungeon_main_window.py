@@ -32,6 +32,7 @@ from PySide6.QtWidgets import QApplication
 from gmGui.theme_manager import ThemeManager
 from gmGui.message_ids import AREA_INFO_REQUEST, AREA_INFO_RESPONSE
 from gmGui.modules.gm_map_area_info_module import GmMapAreaInfoModule
+from gmGui.modules.gm_flow_module import GmFlowModule
 
 
 class DungeonMainWindow(QMainWindow):
@@ -67,8 +68,15 @@ class DungeonMainWindow(QMainWindow):
         self._log       = LogWidget()
         self._errors    = ErrorBarWidget()
         self._area_info = GmMapAreaInfoModule()
+        self._flow      = GmFlowModule()
 
         self.setCentralWidget(self._board)
+
+        top_dock = QDockWidget(self._flow.title, self)
+        top_dock.setObjectName(self._flow.module_id)
+        top_dock.setWidget(self._flow.widget())
+        self.addDockWidget(Qt.TopDockWidgetArea, top_dock)
+        self._flow.on_attach()
 
         right_dock = QDockWidget("Actors", self)
         right_dock.setWidget(self._heroes)
@@ -117,6 +125,12 @@ class DungeonMainWindow(QMainWindow):
     def _build_router(self) -> None:
         """Creates the EventRouter and registers per-typeId handlers."""
         self._router = EventRouter()
+        # Flow / Timeline: shared GmFlowModule fed via a dungeon.* → gmFlow.* adapter.
+        self._flow.set_sender(self._bridge.sender)
+        self._last_round: int = 0
+        for ev in ("dungeon.session.started", "dungeon.turn.started",
+                   "dungeon.turn.ended", "dungeon.game.over"):
+            self._router.register(ev, self._on_flow_event)
         # Board: map layout and actor movement
         for ev in ("dungeon.map.snapshot", "dungeon.actor.snapshot",
                    "dungeon.actor.moved", "dungeon.game.over"):
@@ -149,6 +163,49 @@ class DungeonMainWindow(QMainWindow):
     def _on_envelope(self, msg: dict) -> None:
         """Receives a decoded event envelope and dispatches it to the router."""
         self._router.dispatch(msg)
+
+    # ── Flow adapter (dungeon.* → gmFlow.*) ───────────────────────────────────
+
+    def _on_flow_event(self, msg: dict) -> None:
+        """Translates dungeon lifecycle events into gmFlow envelopes.
+
+        The shared :class:`GmFlowModule` understands the ``gmFlow.*`` contract.
+        The dungeon CoreEngine emits its own ``dungeon.*`` events, so this thin
+        adapter re-emits the equivalent flow envelopes locally (no C++ change,
+        the wire contract is preserved). The ``Phase`` badge reflects the active
+        actor, mirroring how Tic-Tac-Toe shows whose turn it is.
+        """
+        tid: str = msg.get("typeId", "")
+        data: dict = msg.get("data", {}) or {}
+
+        if tid == "dungeon.session.started":
+            session_id: str = str(data.get("session_id", "?"))
+            self._last_round = int(data.get("round", 1))
+            self._flow.on_envelope(
+                {"typeId": "gmFlow.session.started", "data": {"session_id": session_id}})
+            self._flow.on_envelope(
+                {"typeId": "gmFlow.round.started", "data": {"index": self._last_round}})
+
+        elif tid == "dungeon.turn.started":
+            actor_id: str = str(data.get("actor_id", "?"))
+            round_no: int = int(data.get("round", self._last_round))
+            if round_no != self._last_round:
+                self._last_round = round_no
+                self._flow.on_envelope(
+                    {"typeId": "gmFlow.round.started", "data": {"index": round_no}})
+            self._flow.on_envelope(
+                {"typeId": "gmFlow.phase.entered", "data": {"phase_id": actor_id}})
+            self._flow.on_envelope(
+                {"typeId": "gmFlow.turn.started",
+                 "data": {"turn_id": actor_id, "active_actors": [actor_id]}})
+
+        elif tid == "dungeon.turn.ended":
+            self._flow.on_envelope(
+                {"typeId": "gmFlow.turn.ended",
+                 "data": {"turn_id": str(data.get("actor_id", "?"))}})
+
+        elif tid == "dungeon.game.over":
+            self._flow.on_envelope({"typeId": "gmFlow.session.completed", "data": {}})
 
     # ── Command senders ───────────────────────────────────────────────────────
 
