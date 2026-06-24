@@ -67,11 +67,6 @@ class GmMapModule(BaseModule):
         self._map_scene: MapScene = MapScene()
         self._zoom_level: float = 1.0
 
-        # Tolerant zone/region indices populated from ``gmMap.map.loaded``.
-        # Empty when the payload predates the Region/Zone schema (Fase A-D).
-        self._location_zone: dict[int, str] = {}
-        self._location_region: dict[int, str] = {}
-
         container = QWidget()
         container.setObjectName("gm_map_module")
         vbox = QVBoxLayout(container)
@@ -109,6 +104,7 @@ class GmMapModule(BaseModule):
         self._zoom_out_btn.clicked.connect(lambda: self._zoom(0.8))
         self._fit_btn.clicked.connect(self._fit_view)
         self._map_scene.selectionChanged.connect(self._on_selection_changed)
+        self._layer_combo.currentTextChanged.connect(self._map_scene.set_filter)
 
         return container
 
@@ -180,36 +176,6 @@ class GmMapModule(BaseModule):
         self.send_command(AREA_SELECTED, {"area_id": area_id})
         self.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
 
-    # ── Zone / Region indexing ────────────────────────────────────────────────
-
-    def _index_zone_region(self, locations: list) -> None:
-        """Populates the zone/region indices from a ``gmMap.map.loaded`` payload.
-
-        Parsing is **tolerant and additive**: each location entry is inspected
-        for optional ``zone_id``/``region_id`` keys. Entries that predate the
-        Region/Zone schema (Fase A-D) simply leave the indices empty. The scene
-        is intentionally **not** recoloured here — the indices are exposed for
-        future overlays and for the ``zone``/``region`` layer selectors.
-        """
-        self._location_zone.clear()
-        self._location_region.clear()
-        for entry in locations:
-            if not isinstance(entry, dict):
-                continue
-            raw_id = entry.get("id", entry.get("location_id"))
-            if raw_id is None:
-                continue
-            try:
-                loc_id = int(raw_id)
-            except (TypeError, ValueError):
-                continue
-            zone = entry.get("zone_id")
-            if zone is not None:
-                self._location_zone[loc_id] = str(zone)
-            region = entry.get("region_id")
-            if region is not None:
-                self._location_region[loc_id] = str(region)
-
     # ── Envelope routing ──────────────────────────────────────────────────────
     def on_envelope(self, msg: dict) -> None:
         tid = msg.get("typeId", "")
@@ -222,7 +188,6 @@ class GmMapModule(BaseModule):
         if tid == "gmMap.map.loaded":
             locations = list(data.get("locations", []))
             edges = [tuple(e) for e in data.get("edges", [])]
-            self._index_zone_region(locations)
             self._map_scene.load_map(locations, edges)
 
         elif tid in ("gmMap.location.item_added", "gmMap.location.item_removed"):

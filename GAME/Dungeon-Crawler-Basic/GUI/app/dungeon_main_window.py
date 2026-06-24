@@ -89,12 +89,6 @@ class DungeonMainWindow(QMainWindow):
         right_dock.setWidget(self._heroes)
         self.addDockWidget(Qt.RightDockWidgetArea, right_dock)
 
-        area_dock = QDockWidget("Area Info", self)
-        area_dock.setWidget(self._area_info.widget())
-        self.addDockWidget(Qt.RightDockWidgetArea, area_dock)
-        self.tabifyDockWidget(right_dock, area_dock)
-        right_dock.raise_()
-
         bottom_dock = QDockWidget("Actions", self)
         bottom_dock.setWidget(self._actions)
         self.addDockWidget(Qt.BottomDockWidgetArea, bottom_dock)
@@ -102,6 +96,12 @@ class DungeonMainWindow(QMainWindow):
         left_dock = QDockWidget("Log", self)
         left_dock.setWidget(self._log)
         self.addDockWidget(Qt.LeftDockWidgetArea, left_dock)
+
+        area_dock = QDockWidget("Area Info", self)
+        area_dock.setWidget(self._area_info.widget())
+        self.addDockWidget(Qt.LeftDockWidgetArea, area_dock)
+        self.tabifyDockWidget(left_dock, area_dock)
+        area_dock.raise_()
 
         self.setStatusBar(QStatusBar())
         self.statusBar().addPermanentWidget(self._errors)

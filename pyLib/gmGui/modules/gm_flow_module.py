@@ -244,7 +244,7 @@ class GmFlowModule(BaseModule):
             self._lbl_turn.setText(f"⏱ Turn: {turn_id}")
             token_id: str = f"turn_{self._turn_count}"
             rect = self._timeline_scene.add_turn_token(token_id, active_name)
-            self._timeline_scene.select_actor(token_id)
+            self._timeline_scene.select_actor(active_name)
             self._timeline_view.centerOn(rect)
             self._append_log(f"⏱ Turn {self._turn_count}: {turn_id}")
 
