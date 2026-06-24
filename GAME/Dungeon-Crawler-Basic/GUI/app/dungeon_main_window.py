@@ -53,6 +53,13 @@ class DungeonMainWindow(QMainWindow):
 
         self.setWindowTitle("Dungeon Crawler Basic — GameLib")
         self.resize(1024, 700)
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            geo = screen.availableGeometry()
+            self.move(
+                geo.center().x() - self.width() // 2,
+                geo.center().y() - self.height() // 2,
+            )
         self._build_layout()
         self._build_bridge()
         self._build_router()
@@ -128,6 +135,7 @@ class DungeonMainWindow(QMainWindow):
         # Flow / Timeline: shared GmFlowModule fed via a dungeon.* → gmFlow.* adapter.
         self._flow.set_sender(self._bridge.sender)
         self._last_round: int = 0
+        self._pending_move_hero: str = ""  # hero_id waiting for a destination click
         for ev in ("dungeon.session.started", "dungeon.turn.started",
                    "dungeon.turn.ended", "dungeon.game.over"):
             self._router.register(ev, self._on_flow_event)
@@ -170,9 +178,12 @@ class DungeonMainWindow(QMainWindow):
         self._router.dispatch(msg)
 
     def _on_turn_started_select(self, msg: dict) -> None:
-        """Auto-selects the active actor in the hero panel on turn change."""
+        """Auto-selects the active actor; cancels any pending move targeting."""
+        self._pending_move_hero = ""
+        self._actions.set_awaiting_move(False)
         actor_id: str = str(msg.get("data", {}).get("actor_id", ""))
         if actor_id:
+            self._board.set_active_hero(actor_id)
             self._heroes.select_actor(actor_id)
 
     # ── Flow adapter (dungeon.* → gmFlow.*) ───────────────────────────────────
@@ -221,7 +232,22 @@ class DungeonMainWindow(QMainWindow):
     # ── Command senders ───────────────────────────────────────────────────────
 
     def _on_area_selected(self, area_id: str) -> None:
-        """Requests the contents of the clicked area (view-only, no gameplay)."""
+        """Handles an area click: completes a pending move or requests area info."""
+        if self._pending_move_hero:
+            destination = self._board.move_destination()
+            if destination:
+                self._bridge.send_command("dungeon.move",
+                    {"hero_id": self._pending_move_hero, "destination": destination})
+                self._pending_move_hero = ""
+                self._actions.set_awaiting_move(False)
+            else:
+                self._errors.on_envelope({
+                    "typeId": "dungeon.action.rejected",
+                    "data": {
+                        "reason": "Area non adiacente. Seleziona una stanza adiacente all'eroe.",
+                        "command": "dungeon.move",
+                    },
+                })
         if area_id:
             self._bridge.send_command(AREA_INFO_REQUEST, {"area_id": area_id})
 
@@ -232,22 +258,19 @@ class DungeonMainWindow(QMainWindow):
         self._heroes.reset()
         self._actions.reset()
         self._errors.clear()
+        self._pending_move_hero = ""
         self._bridge.send_command("dungeon.new_game", {})
 
     def _on_move_action(self, hero_id: str) -> None:
-        """Resolves the Move action against the area selected on the board."""
-        destination = self._board.move_destination()
-        if destination:
-            self._bridge.send_command("dungeon.move",
-                {"hero_id": hero_id, "destination": destination})
+        """Toggles move-targeting mode (enter on first press, cancel on second)."""
+        if self._pending_move_hero:
+            # Cancel: player pressed the button again while in targeting mode.
+            self._pending_move_hero = ""
+            self._actions.set_awaiting_move(False)
         else:
-            self._errors.on_envelope({
-                "typeId": "dungeon.action.rejected",
-                "data": {
-                    "reason": "Seleziona un'area adiacente sulla mappa prima di muovere.",
-                    "command": "dungeon.move",
-                },
-            })
+            # Enter targeting mode: wait for the player to click a destination room.
+            self._pending_move_hero = hero_id
+            self._actions.set_awaiting_move(True)
 
     def _on_heal_requested(self, hero_id: str, target_id: str) -> None:
         """Forwards a heal request to CoreEngine."""

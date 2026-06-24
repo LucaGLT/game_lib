@@ -159,6 +159,97 @@ class TimelineScene(QGraphicsScene):
                 float(self._TOP_PADDING + self._BLOCK_HEIGHT + 8),
             )
 
+    def clear_tokens(self) -> None:
+        """Clears all turn tokens and resets the timeline to an empty state."""
+        self.clear()
+        self._actor_rects = {}
+        self._selected_id = None
+        self._current_time = 0
+        self._time_line = None
+        self._default_pens = {}
+        self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
+        self.setSceneRect(
+            0.0, 0.0,
+            100.0,
+            float(self._TOP_PADDING + self._BLOCK_HEIGHT + 20),
+        )
+
+    def add_turn_token(
+        self, token_id: str, label: str
+    ) -> QGraphicsRectItem:
+        """Appends a new turn token at the end of the timeline.
+
+        The caller should centre the ``QGraphicsView`` on the returned
+        rect so the new token always appears centred while previous ones
+        scroll to the left.
+
+        Args:
+            token_id: Unique id for this token (e.g. ``"turn_1"``).
+            label:    Display text shown inside the block.
+
+        Returns:
+            The newly created :class:`QGraphicsRectItem`.
+        """
+        # Remove old time cursor so it can be re-added on top.
+        if self._time_line is not None:
+            self.removeItem(self._time_line)
+            self._time_line = None
+
+        pos: int = len(self._actor_rects)
+        x: float = float(self._LEFT_PADDING + pos * self._pixels_per_unit)
+        y: float = float(self._TOP_PADDING)
+
+        if label == "X":
+            pen: QPen = QPen(resolve_semantic_color("accent"), 2)
+        elif label == "O":
+            pen = QPen(resolve_semantic_color("border"), 2)
+        else:
+            pen = QPen(resolve_semantic_color("border"), 1)
+        brush: QBrush = QBrush(resolve_semantic_color("panel"))
+
+        rect: QGraphicsRectItem = self.addRect(
+            x, y,
+            float(self._BLOCK_WIDTH), float(self._BLOCK_HEIGHT),
+            pen, brush,
+        )
+        self._default_pens[token_id] = QPen(pen)
+
+        base_font = build_typography_font("subtitle")
+        text_color = resolve_semantic_color("text")
+        label_item = self.addText(label)
+        label_item.setDefaultTextColor(text_color)
+        label_item.setFont(base_font)
+        text_rect = label_item.boundingRect()
+        label_item.setPos(
+            x + (self._BLOCK_WIDTH - text_rect.width()) / 2.0,
+            y + (self._BLOCK_HEIGHT - text_rect.height()) / 2.0,
+        )
+        label_item.setParentItem(rect)
+        self._actor_rects[token_id] = rect
+
+        # Expand scene rect to accommodate the new token.
+        n: int = len(self._actor_rects)
+        self.setSceneRect(
+            0.0, 0.0,
+            float(self._LEFT_PADDING + n * self._pixels_per_unit + 20),
+            float(self._TOP_PADDING + self._BLOCK_HEIGHT + 20),
+        )
+
+        # Move the time cursor to the centre of the new (latest) token.
+        self._current_time = pos
+        x_cur: float = x + self._BLOCK_WIDTH / 2.0
+        self._time_line = self.addLine(
+            x_cur, float(self._TOP_PADDING - 8),
+            x_cur, float(self._TOP_PADDING + self._BLOCK_HEIGHT + 8),
+            QPen(resolve_semantic_color("accent"), 2),
+        )
+
+        # Re-apply highlight if this token was pre-selected.
+        if self._selected_id == token_id:
+            self._apply_highlight(token_id)
+
+        return rect
+
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _apply_highlight(self, actor_id: str) -> None:

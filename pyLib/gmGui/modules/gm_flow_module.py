@@ -114,19 +114,19 @@ class GmFlowModule(BaseModule):
 
         # ── Row 2: timeline scene ─────────────────────────────────────────────
         self._timeline_scene: TimelineScene = TimelineScene()
-        timeline_view = QGraphicsView(self._timeline_scene)
-        timeline_view.setFixedHeight(100)
-        timeline_view.setAlignment(
+        self._timeline_view: QGraphicsView = QGraphicsView(self._timeline_scene)
+        self._timeline_view.setFixedHeight(100)
+        self._timeline_view.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        timeline_view.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        timeline_view.setHorizontalScrollBarPolicy(
+        self._timeline_view.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        self._timeline_view.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
-        timeline_view.setVerticalScrollBarPolicy(
+        self._timeline_view.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        vbox.addWidget(timeline_view)
+        vbox.addWidget(self._timeline_view)
 
         # ── Row 3: control buttons ────────────────────────────────────────────
         self._btn_resume: QPushButton = QPushButton("▶ RESUME")
@@ -192,7 +192,7 @@ class GmFlowModule(BaseModule):
             self._turn_actors = []
             self._lbl_round.setText(f"🔄 Round: —")
             self._lbl_turn.setText(f"⏱ Turn: —")
-            self._init_timeline()
+            self._timeline_scene.clear_tokens()
             self._btn_pause.setEnabled(True)
             self._btn_stop.setEnabled(True)
             self._btn_resume.setEnabled(False)
@@ -242,9 +242,10 @@ class GmFlowModule(BaseModule):
             active_name: str = str(active_actors[0]) if active_actors else "?"
             self._turn_actors.append(active_name)
             self._lbl_turn.setText(f"⏱ Turn: {turn_id}")
-            self._populate_timeline()
-            if active_name != "?":
-                self._timeline_scene.select_actor(active_name)
+            token_id: str = f"turn_{self._turn_count}"
+            rect = self._timeline_scene.add_turn_token(token_id, active_name)
+            self._timeline_scene.select_actor(token_id)
+            self._timeline_view.centerOn(rect)
             self._append_log(f"⏱ Turn {self._turn_count}: {turn_id}")
 
         elif tid == "gmFlow.turn.ended":
@@ -255,60 +256,6 @@ class GmFlowModule(BaseModule):
 
         elif tid == "gmFlow.timeline.time_advanced":
             self._timeline_scene.advance_time(int(data.get("new_time", 0)))
-
-    # ── Timeline management ───────────────────────────────────────────────────
-
-    def _init_timeline(self) -> None:
-        """Initializes timeline with 9 placeholder turn blocks (for Tris max turns).
-        
-        Each block shows "—" and is in inactive (gray) state.
-        Uses unique slot IDs (slot_0 to slot_8) as dictionary keys.
-        """
-        placeholder_turns: list[dict] = []
-        for slot_idx in range(9):  # 0 to 8
-            placeholder_turns.append({
-                "actor_id": f"slot_{slot_idx}",  # Unique ID for dict key
-                "label": "—",                     # Display text
-                "timeline_position": slot_idx
-            })
-        
-        self._timeline_scene.set_actors(placeholder_turns)
-        self._timeline_scene.advance_time(0)
-
-    def _populate_timeline(self) -> None:
-        """Updates the timeline with actual turn data as turns are played.
-        
-        Each turn slot shows the actor name (X, O, etc) or placeholder (—).
-        Highlights the current active turn.
-        """
-        turns: list[dict] = []
-        
-        # Build 9 slots: filled with actors, rest with placeholders
-        for slot_idx in range(9):
-            if slot_idx < len(self._turn_actors):
-                # Slot has a real turn
-                actor_name = self._turn_actors[slot_idx]
-                turns.append({
-                    "actor_id": f"actor_{actor_name}_{slot_idx}",
-                    "label": actor_name,
-                    "timeline_position": slot_idx
-                })
-            else:
-                # Slot is empty, use placeholder
-                turns.append({
-                    "actor_id": f"placeholder_{slot_idx}",
-                    "label": "—",
-                    "timeline_position": slot_idx
-                })
-        
-        self._timeline_scene.set_actors(turns)
-        
-        # Highlight current turn actor
-        if self._turn_actors and self._turn_count <= len(self._turn_actors):
-            current_actor_id = f"actor_{self._turn_actors[self._turn_count - 1]}_{self._turn_count - 1}"
-            self._timeline_scene.select_actor(current_actor_id)
-        
-        self._timeline_scene.advance_time(self._turn_count - 1)
 
     # ── Persistence ───────────────────────────────────────────────────────────
 

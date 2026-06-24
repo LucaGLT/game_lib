@@ -99,9 +99,6 @@ private:
 	/// @brief Handles a gmMap.area.info.request command (view-only, no gameplay effect).
 	void handle_area_info_request(const nlohmann::json& data);
 
-	/// @brief Auto-ends the current turn when the action limit is reached.
-	void maybe_auto_end_turn();
-
 	// ── Snapshot builders ─────────────────────────────────────
 
 	/// @brief Builds the full map snapshot payload for the GUI.

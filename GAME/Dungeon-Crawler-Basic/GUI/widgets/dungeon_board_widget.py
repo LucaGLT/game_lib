@@ -41,8 +41,8 @@ class DungeonBoardWidget(QWidget):
         self._room_index_by_id: dict[str, int] = {}
         self._room_id_by_index: dict[int, str] = {}
         self._adjacent_by_room: dict[str, set[str]] = {}
-        self._hero_id: str = ""
-        self._hero_room: str = ""
+        self._hero_rooms: dict[str, str] = {}   # hero_id → room_id
+        self._active_hero_id: str = ""          # whose turn it is
         self._selected_room: str = ""
         self._interaction_enabled: bool = True
         try:
@@ -94,8 +94,8 @@ class DungeonBoardWidget(QWidget):
         self._room_index_by_id.clear()
         self._room_id_by_index.clear()
         self._adjacent_by_room.clear()
-        self._hero_id = ""
-        self._hero_room = ""
+        self._hero_rooms.clear()
+        self._active_hero_id = ""
         self._selected_room = ""
         self._interaction_enabled = True
         self._module = GmMapModule()
@@ -109,6 +109,10 @@ class DungeonBoardWidget(QWidget):
         except Exception:
             pass
         self._module._map_scene.selectionChanged.connect(self._on_selection_changed)
+
+    def set_active_hero(self, hero_id: str) -> None:
+        """Sets the hero whose turn it is (used by move_destination for adjacency)."""
+        self._active_hero_id = hero_id
 
     def _translate_map_snapshot(self, data: dict) -> dict:
         locations: list[dict] = []
@@ -152,8 +156,7 @@ class DungeonBoardWidget(QWidget):
                 continue
             self._room_index(room_id)
             if str(actor.get("kind", "")) == "HERO":
-                self._hero_id = actor_id
-                self._hero_room = room_id
+                self._hero_rooms[actor_id] = room_id
             events.append(
                 {
                     "typeId": "gmActor.actor.position_changed",
@@ -178,8 +181,8 @@ class DungeonBoardWidget(QWidget):
         destination = str(data.get("to", ""))
         if not actor_id or not destination:
             return None
-        if actor_id == self._hero_id:
-            self._hero_room = destination
+        if actor_id in self._hero_rooms:
+            self._hero_rooms[actor_id] = destination
         return {
             "typeId": "gmActor.actor.position_changed",
             "headers": {
@@ -219,12 +222,13 @@ class DungeonBoardWidget(QWidget):
 
     def move_destination(self) -> str:
         """Returns the selected room if it is a valid adjacent move target, else ""."""
-        if not self._interaction_enabled or not self._hero_id or not self._hero_room:
+        hero_room = self._hero_rooms.get(self._active_hero_id, "")
+        if not self._interaction_enabled or not self._active_hero_id or not hero_room:
             return ""
         destination = self._selected_room
-        if not destination or destination == self._hero_room:
+        if not destination or destination == hero_room:
             return ""
-        if destination in self._adjacent_by_room.get(self._hero_room, set()):
+        if destination in self._adjacent_by_room.get(hero_room, set()):
             return destination
         return ""
 
@@ -232,7 +236,7 @@ class DungeonBoardWidget(QWidget):
         """Emits move_requested for the current valid selection (explicit Move action)."""
         destination = self.move_destination()
         if destination:
-            self.move_requested.emit(self._hero_id, destination)
+            self.move_requested.emit(self._active_hero_id, destination)
 
     def _room_index(self, room_id: str) -> int:
         if room_id not in self._room_index_by_id:

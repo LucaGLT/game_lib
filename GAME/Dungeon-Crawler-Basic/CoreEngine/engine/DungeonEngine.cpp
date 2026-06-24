@@ -145,6 +145,13 @@ void DungeonEngine::advance_turn()
 
 void DungeonEngine::handle_move(const nlohmann::json& data)
 {
+	if (_actions_this_turn >= MAX_ACTIONS_PER_TURN)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Azioni esaurite: premi Fine Turno per continuare."},
+			 {"command", command_id::MOVE}});
+		return;
+	}
 	const std::string hero_id = data.value("hero_id", "");
 	const std::string destination = data.value("destination", "");
 
@@ -168,11 +175,17 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::MOVE, destination);
 	++_actions_this_turn;
-	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_heal(const nlohmann::json& data)
 {
+	if (_actions_this_turn >= MAX_ACTIONS_PER_TURN)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Azioni esaurite: premi Fine Turno per continuare."},
+			 {"command", command_id::HEAL}});
+		return;
+	}
 	const std::string hero_id = data.value("hero_id", "");
 	const std::string target_id = data.value("target_id", hero_id);
 
@@ -201,11 +214,17 @@ void DungeonEngine::handle_heal(const nlohmann::json& data)
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::HEAL, target_id);
 	++_actions_this_turn;
-	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_equip(const nlohmann::json& data)
 {
+	if (_actions_this_turn >= MAX_ACTIONS_PER_TURN)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Azioni esaurite: premi Fine Turno per continuare."},
+			 {"command", command_id::EQUIP}});
+		return;
+	}
 	const std::string hero_id = data.value("hero_id", "");
 	const std::string item_tag = data.value("item_tag", "");
 
@@ -229,7 +248,6 @@ void DungeonEngine::handle_equip(const nlohmann::json& data)
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::EQUIP, item_tag);
 	++_actions_this_turn;
-	maybe_auto_end_turn();
 }
 
 void DungeonEngine::handle_end_turn(const nlohmann::json& data)
@@ -241,22 +259,6 @@ void DungeonEngine::handle_end_turn(const nlohmann::json& data)
 	}
 
 	_gui.send_event(event_id::TURN_ENDED, {{"actor_id", hero_id}});
-	_actions_this_turn = 0;
-	_flow.end_turn();
-}
-
-void DungeonEngine::maybe_auto_end_turn()
-{
-	if (!_flow.is_turn_active())
-	{
-		return;
-	}
-	if (_actions_this_turn < MAX_ACTIONS_PER_TURN)
-	{
-		return;
-	}
-	const std::string actor = _flow.current_actor_id();
-	_gui.send_event(event_id::TURN_ENDED, {{"actor_id", actor}});
 	_actions_this_turn = 0;
 	_flow.end_turn();
 }

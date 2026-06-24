@@ -161,6 +161,7 @@ def test_dungeon_board_adapter_move_request():
         }
     })
 
+    w.set_active_hero("hero")
     node = w._module._map_scene._nodes[w._room_index_by_id["room_2"]]
     node.setSelected(True)
     # A click is view-only: it selects the area, never auto-moves.
@@ -171,6 +172,140 @@ def test_dungeon_board_adapter_move_request():
     w.request_move()
     assert moves == [("hero", "room_2")]
     print("  [OK] test_dungeon_board_adapter_move_request")
+
+
+# ── Adjacency tests ───────────────────────────────────────────────────────────
+
+def _make_board_with_rooms(rooms: list[dict]) -> DungeonBoardWidget:
+    """Helper: create a board widget with the given room list."""
+    w = DungeonBoardWidget()
+    w.on_envelope({"typeId": "dungeon.map.snapshot", "data": {"rooms": rooms}})
+    return w
+
+
+def _place_hero(w: DungeonBoardWidget, hero_id: str, location: str) -> None:
+    w.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {"actors": [
+            {"id": hero_id, "kind": "HERO", "hp": 10, "max_hp": 10,
+             "location": location, "tags": [], "statuses": []},
+        ]},
+    })
+
+
+def test_board_non_adjacent_room_returns_empty():
+    """Selecting a room 2 hops away does not qualify as a valid move destination."""
+    w = _make_board_with_rooms([
+        {"id": "A", "tags": ["start"], "adjacent": ["B"]},
+        {"id": "B", "tags": [],        "adjacent": ["A", "C"]},
+        {"id": "C", "tags": [],        "adjacent": ["B"]},
+    ])
+    _place_hero(w, "hero_1", "A")
+    w.set_active_hero("hero_1")
+    # C is two hops away from A — not adjacent
+    node = w._module._map_scene._nodes[w._room_index_by_id["C"]]
+    node.setSelected(True)
+    assert w.move_destination() == "", "Non-adjacent room C should return ''"
+    w._module._map_scene.clearSelection()
+    print("  [OK] test_board_non_adjacent_room_returns_empty")
+
+
+def test_board_current_room_not_valid_destination():
+    """The hero's own room is not a valid move destination."""
+    w = _make_board_with_rooms([
+        {"id": "A", "tags": ["start"], "adjacent": ["B"]},
+        {"id": "B", "tags": [],        "adjacent": ["A"]},
+    ])
+    _place_hero(w, "hero_1", "A")
+    w.set_active_hero("hero_1")
+    node = w._module._map_scene._nodes[w._room_index_by_id["A"]]
+    node.setSelected(True)
+    assert w.move_destination() == "", "Hero's own room should return ''"
+    w._module._map_scene.clearSelection()
+    print("  [OK] test_board_current_room_not_valid_destination")
+
+
+def test_board_adjacent_room_valid_after_move():
+    """After actor.moved, adjacency is recomputed from the new position."""
+    w = _make_board_with_rooms([
+        {"id": "A", "tags": ["start"], "adjacent": ["B"]},
+        {"id": "B", "tags": [],        "adjacent": ["A", "C"]},
+        {"id": "C", "tags": [],        "adjacent": ["B"]},
+    ])
+    _place_hero(w, "hero_1", "A")
+    w.set_active_hero("hero_1")
+    # Hero moves A → B
+    w.on_envelope({"typeId": "dungeon.actor.moved", "data": {"actor_id": "hero_1", "to": "B"}})
+    # Now C is adjacent to B
+    scene = w._module._map_scene
+    scene.clearSelection()
+    node_c = scene._nodes[w._room_index_by_id["C"]]
+    node_c.setSelected(True)
+    assert w.move_destination() == "C", "After moving to B, C should be reachable"
+    # A is also adjacent to B
+    scene.clearSelection()
+    node_a = scene._nodes[w._room_index_by_id["A"]]
+    node_a.setSelected(True)
+    assert w.move_destination() == "A", "After moving to B, A should be reachable"
+    scene.clearSelection()
+    print("  [OK] test_board_adjacent_room_valid_after_move")
+
+
+def test_board_adjacency_bidirectional():
+    """Adjacency is symmetric: A→B implies B→A."""
+    w = _make_board_with_rooms([
+        {"id": "X", "tags": [], "adjacent": ["Y"]},
+        {"id": "Y", "tags": [], "adjacent": ["X"]},
+    ])
+    _place_hero(w, "hero_1", "Y")
+    w.set_active_hero("hero_1")
+    node = w._module._map_scene._nodes[w._room_index_by_id["X"]]
+    node.setSelected(True)
+    assert w.move_destination() == "X", "From Y, X should be a valid destination"
+    w._module._map_scene.clearSelection()
+    print("  [OK] test_board_adjacency_bidirectional")
+
+
+def test_board_two_heroes_active_hero_determines_adjacency():
+    """With multiple heroes, move_destination uses the *active* hero's room."""
+    w = _make_board_with_rooms([
+        {"id": "A", "tags": [], "adjacent": ["B"]},
+        {"id": "B", "tags": [], "adjacent": ["A", "C"]},
+        {"id": "C", "tags": [], "adjacent": ["B"]},
+    ])
+    w.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {"actors": [
+            {"id": "hero_1", "kind": "HERO", "hp": 10, "max_hp": 10,
+             "location": "A", "tags": [], "statuses": []},
+            {"id": "hero_2", "kind": "HERO", "hp": 8, "max_hp": 8,
+             "location": "C", "tags": [], "statuses": []},
+        ]},
+    })
+    # hero_1 turn: C is NOT adjacent to A
+    w.set_active_hero("hero_1")
+    scene = w._module._map_scene
+    node_c = scene._nodes[w._room_index_by_id["C"]]
+    node_b = scene._nodes[w._room_index_by_id["B"]]
+    node_a = scene._nodes[w._room_index_by_id["A"]]
+    scene.clearSelection()
+    node_c.setSelected(True)
+    assert w.move_destination() == "", "C is not adjacent to hero_1 at A"
+    # B IS adjacent to A
+    scene.clearSelection()
+    node_b.setSelected(True)
+    assert w.move_destination() == "B", "B is adjacent to hero_1 at A"
+    # hero_2 turn at C: B is adjacent to C
+    w.set_active_hero("hero_2")
+    scene.clearSelection()
+    node_b.setSelected(True)
+    assert w.move_destination() == "B", "B is adjacent to hero_2 at C"
+    # A is NOT adjacent to C
+    scene.clearSelection()
+    node_a.setSelected(True)
+    assert w.move_destination() == "", "A is not adjacent to hero_2 at C"
+    scene.clearSelection()
+    print("  [OK] test_board_two_heroes_active_hero_determines_adjacency")
 
 
 if __name__ == "__main__":
@@ -186,4 +321,9 @@ if __name__ == "__main__":
     test_action_panel_reset()
     test_hero_panel_adapter_snapshot()
     test_dungeon_board_adapter_move_request()
+    test_board_non_adjacent_room_returns_empty()
+    test_board_current_room_not_valid_destination()
+    test_board_adjacent_room_valid_after_move()
+    test_board_adjacency_bidirectional()
+    test_board_two_heroes_active_hero_determines_adjacency()
     print("All widget tests PASSED.")

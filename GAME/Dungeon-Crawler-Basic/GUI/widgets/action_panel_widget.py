@@ -82,6 +82,8 @@ class ActionPanelWidget(QWidget):
         # Per-actor data cache: actor_id → {has_potion, has_item,
         #                                    weapon_equipped, kind}
         self._actors_state: dict[str, dict] = {}
+        # True while the player must select a destination for the Move action.
+        self._awaiting_move: bool = False
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -90,7 +92,10 @@ class ActionPanelWidget(QWidget):
         self._selected_actor_id = actor_id
         self._lbl_actor.setText(f"Selezionato: {actor_id}" if actor_id else "—")
         self._update_buttons()
-
+    def set_awaiting_move(self, active: bool) -> None:
+        """Enters or exits move-targeting mode (changes Muovi button text)."""
+        self._awaiting_move = active
+        self._btn_move.setText("Annulla Muovi" if active else "Muovi")
     # ── Envelope handler ─────────────────────────────────────────────────────
 
     def on_envelope(self, msg: dict) -> None:
@@ -143,36 +148,40 @@ class ActionPanelWidget(QWidget):
         """Re-evaluates every button state from current cache.
 
         Rules:
-        - ALWAYS show the selected actor's actions (Move, Heal, Equip).
-        - Enable actions only when:  it is the selected actor's turn,
-          the action is available, and actions_remaining > 0.
-        - When actions_remaining reaches 0: all action buttons OFF,
-          Fine Turno stays ON (so the player can end manually; C++ also
-          auto-ends, but the button provides immediate feedback).
-        - Fine Turno is ON only during a hero's active turn.
+        - HIDE action buttons the selected actor does not have available
+          (no potion → Heal hidden; no item / already equipped → Equip hidden).
+        - SHOW but DISABLE actions when it is not the selected actor's turn
+          or actions_remaining == 0.
+        - Fine Turno is always visible; enabled only during a hero's active turn.
         """
-        sel_id = self._selected_actor_id
-        state  = self._actors_state.get(sel_id, {})
-        avail  = self._available_actions   # valid only for _active_actor_id
+        sel_id    = self._selected_actor_id
+        state     = self._actors_state.get(sel_id, {})
         remaining = self._actions_remaining
 
-        is_hero_sel    = state.get("kind", "") == "HERO"
+        is_hero        = state.get("kind", "") == "HERO"
         is_active_turn = self._is_selected_turn()
         can_act        = is_active_turn and remaining > 0
 
-        # ── Action buttons: shown for any selected actor, enabled per rules ──
-        self._btn_move.setEnabled(
-            can_act and "move" in avail)
-        self._btn_heal.setEnabled(
-            can_act and "heal" in avail and state.get("has_potion", False))
-        self._btn_equip.setEnabled(
-            can_act and "equip" in avail
-            and state.get("has_item", False)
-            and not state.get("weapon_equipped", False))
+        # ── Visibility: based on what the selected actor HAS ──────────────────
+        move_visible  = is_hero
+        heal_visible  = is_hero and state.get("has_potion", False)
+        equip_visible = (is_hero
+                         and state.get("has_item", False)
+                         and not state.get("weapon_equipped", False))
 
-        # ── Fine Turno: ON whenever a hero has the turn (any selection) ──────
-        active_state = self._actors_state.get(self._active_actor_id, {})
+        self._btn_move.setVisible(move_visible)
+        self._btn_heal.setVisible(heal_visible)
+        self._btn_equip.setVisible(equip_visible)
+
+        # ── Enable: only when it is the selected actor's turn and can act ─────
+        self._btn_move.setEnabled(can_act and move_visible)
+        self._btn_heal.setEnabled(can_act and heal_visible)
+        self._btn_equip.setEnabled(can_act and equip_visible)
+
+        # ── Fine Turno: always visible; ON during any hero's active turn ──────
+        active_state   = self._actors_state.get(self._active_actor_id, {})
         active_is_hero = active_state.get("kind", "") == "HERO"
+        self._btn_end_turn.setVisible(True)
         self._btn_end_turn.setEnabled(
             bool(self._active_actor_id) and active_is_hero)
 
@@ -219,10 +228,10 @@ class ActionPanelWidget(QWidget):
         self._available_actions = []
         self._actions_remaining = 0
         self._actors_state.clear()
-        self._lbl_actor.setText("—")
+        self._awaiting_move = False
+        self._btn_move.setText("Muovi")
+        self._lbl_actor.setText("\u2014")
         self._lbl_actions.setText("")
-        for btn in (self._btn_move, self._btn_heal,
-                    self._btn_equip, self._btn_end_turn):
-            btn.setEnabled(False)
+        self._update_buttons()
 
 
