@@ -192,15 +192,39 @@ _EFFECT_LABELS: dict[str, str] = {
 }
 
 
-def _print_rule_effects(
+class _PlayerResources:
+    """Per-actor resource tracker for the sandbox (mirrors RuleContext::modify_resource)."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, dict[str, int]] = {}
+
+    def init_actor(self, actor_id: str, **resources: int) -> None:
+        self._data[actor_id] = dict(resources)
+
+    def get(self, actor_id: str, resource: str) -> int:
+        return self._data.get(actor_id, {}).get(resource, 0)
+
+    def modify(self, actor_id: str, resource: str, delta: int) -> int:
+        """Applies delta and returns the new value."""
+        actor_res = self._data.setdefault(actor_id, {})
+        actor_res[resource] = actor_res.get(resource, 0) + delta
+        return actor_res[resource]
+
+    def snapshot(self, actor_id: str) -> dict[str, int]:
+        return dict(self._data.get(actor_id, {}))
+
+
+def _apply_rule_effects(
     rule_ids: list[str],
     rule_book: dict[str, dict[str, Any]],
     actor_id: str,
+    event_sock: socket.socket,
+    player_resources: "_PlayerResources",
+    deck_state: dict[str, list[dict[str, Any]]],
 ) -> None:
-    """Print a human-readable effect log for each rule in rule_ids.
+    """Apply rule effects: update resources, emit events, move cards for DRAW_CARDS.
 
-    Mirrors the output expected by the Phase 6 smoke test:
-      [effect] Player_X.actions += 1
+    Prints an [effect] log line for each effect (smoke-test output).
     """
     for rule_id in rule_ids:
         rule_def = rule_book.get(rule_id)
@@ -212,26 +236,49 @@ def _print_rule_effects(
             print(f"  [effect] {rule_id}: nessun effetto")
             continue
         for eff in effects:
-            eff_type  = str(eff.get("type",   "")).upper()
-            target    = str(eff.get("target", "SELF"))
-            value     = str(eff.get("value",  ""))
-            amount    = eff.get("amount", 0)
-            label     = _EFFECT_LABELS.get(eff_type, eff_type)
-            resolved_actor = actor_id if target == "SELF" else target.lower()
+            eff_type = str(eff.get("type",   "")).upper()
+            target   = str(eff.get("target", "SELF"))
+            value    = str(eff.get("value",  ""))
+            amount   = int(eff.get("amount", 0))
+            resolved = actor_id if target == "SELF" else target.lower()
 
             if eff_type == "MODIFY_RESOURCE" and value:
+                new_val = player_resources.modify(resolved, value, amount)
                 sign = "+" if amount >= 0 else ""
-                print(f"  [effect] {resolved_actor}.{value} {sign}{amount}")
-            elif eff_type == "DRAW_CARDS":
-                n = amount if amount > 0 else "N"
-                print(f"  [effect] {resolved_actor} pesca {n} carta/e")
+                print(f"  [effect] {resolved}.{value} {sign}{amount}  (→ {new_val})")
+                _send_event(event_sock, "gmActor.actor.resource_changed", {
+                    "actor_id":    resolved,
+                    "resource_id": value,
+                    "delta":       amount,
+                    "new_value":   new_val,
+                })
+
+            elif eff_type == "DRAW_CARDS" and amount > 0:
+                drawn = 0
+                for _ in range(amount):
+                    if not deck_state.get("MainDeck"):
+                        break
+                    card = deck_state["MainDeck"].pop(0)
+                    deck_state["CardHand"].insert(0, card)
+                    cid = str(card.get("card_id", ""))
+                    _send_event(event_sock, "gmAlea.deck.card_moved", {
+                        "card_id": cid,
+                        "from_zone": "MainDeck",
+                        "to_zone": "CardHand",
+                    })
+                    drawn += 1
+                print(f"  [effect] {resolved} pesca {drawn} carta/e da MainDeck")
+
             elif eff_type == "DISCARD_CARDS":
                 n = amount if amount > 0 else "N"
-                print(f"  [effect] {resolved_actor} scarta {n} carta/e")
+                print(f"  [effect] {resolved} scarta {n} carta/e")
+
             elif eff_type == "APPLY_STATUS" and value:
-                print(f"  [effect] {resolved_actor} riceve status [{value}]")
+                print(f"  [effect] {resolved} riceve status [{value}]")
+
             else:
-                print(f"  [effect] {label}: actor={resolved_actor} value={value!r} amount={amount}")
+                label = _EFFECT_LABELS.get(eff_type, eff_type)
+                print(f"  [effect] {label}: actor={resolved} value={value!r} amount={amount}")
 
 
 def _fire_rule_group_event(
@@ -242,6 +289,8 @@ def _fire_rule_group_event(
     to_zone: str,
     rg_state: _RuleGroupState,
     rule_book: dict[str, dict[str, Any]] | None = None,
+    player_resources: _PlayerResources | None = None,
+    deck_state: dict[str, list[dict[str, Any]]] | None = None,
     active_actor: str = "Player_X",
 ) -> None:
     """Simulate CardRuleBridge zone-change callback.
@@ -268,10 +317,20 @@ def _fire_rule_group_event(
                 f"[rule_group] ✔ ATTIVATO  {rule_group_id!r:<24}  "
                 f"({card_id} → {to_zone})"
             )
-            # ── Phase 6: simulate rule effects ──────────────────────────────
+            # ── Phase 6: apply rule effects (resources + deck) ───────────
             rule_ids = rg_state.rule_ids_of(rule_group_id)
-            if rule_ids and rule_book is not None:
-                _print_rule_effects(rule_ids, rule_book, active_actor)
+            if rule_ids and rule_book is not None and player_resources is not None and deck_state is not None:
+                _apply_rule_effects(
+                    rule_ids, rule_book, active_actor,
+                    event_sock, player_resources, deck_state,
+                )
+            elif rule_ids and rule_book is not None:
+                # Fallback: print only (no resource tracking)
+                for rid in rule_ids:
+                    rdef = rule_book.get(rid)
+                    if rdef:
+                        for eff in rdef.get("effects", []):
+                            print(f"  [effect] {rid}: {eff.get('type','?')} {eff.get('value','')} {eff.get('amount','')}")
         else:
             print(
                 f"[rule_group]   gia attivo {rule_group_id!r:<24}  "
@@ -329,6 +388,7 @@ def _connect_event_stream(host: str, port: int, timeout_s: float = 20.0) -> sock
 def _emit_initial_snapshot(
     event_sock: socket.socket,
     deck_state: dict[str, list[dict[str, Any]]],
+    player_resources: _PlayerResources | None = None,
 ) -> None:
     _send_event(event_sock, "gmFlow.session.started", {"session_id": "sandbox_01"})
     _send_event(event_sock, "gmFlow.phase.entered", {"phase_id": "SETUP"})
@@ -338,6 +398,9 @@ def _emit_initial_snapshot(
         "gmFlow.turn.started",
         {"turn_id": "TURN_1", "active_actors": ["Player_X"]},
     )
+
+    px_res: dict[str, int] = player_resources.snapshot("Player_X") if player_resources else {}
+    po_res: dict[str, int] = player_resources.snapshot("Player_O") if player_resources else {}
 
     _send_event(
         event_sock,
@@ -354,6 +417,7 @@ def _emit_initial_snapshot(
                     "statuses": {"ACTIVE_TURN": 1},
                     "equipment": {},
                     "area_id": "arena",
+                    "resources": px_res,
                 },
                 {
                     "actor_id": "Player_O",
@@ -365,6 +429,7 @@ def _emit_initial_snapshot(
                     "statuses": {},
                     "equipment": {},
                     "area_id": "arena",
+                    "resources": po_res,
                 },
             ]
         },
@@ -429,6 +494,7 @@ def _handle_deck_move_command(
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
     rule_book: dict[str, dict[str, Any]] | None = None,
+    player_resources: _PlayerResources | None = None,
 ) -> None:
     data = cmd.get("data", {})
     if not isinstance(data, dict):
@@ -457,10 +523,23 @@ def _handle_deck_move_command(
         },
     )
 
+    # ── Playing a card from hand costs 1 action ──────────────────────────
+    if from_zone == "CardHand" and to_zone in _ACTIVE_ZONES and player_resources is not None:
+        new_actions = player_resources.modify("Player_X", "actions", -1)
+        print(f"  [cost]   Player_X.actions -1  (giocata {card_id}, → {new_actions})")
+        _send_event(event_sock, "gmActor.actor.resource_changed", {
+            "actor_id":    "Player_X",
+            "resource_id": "actions",
+            "delta":       -1,
+            "new_value":   new_actions,
+        })
+
     rule_group_id = str(card_meta.get(card_id, {}).get("rule_group_id", ""))
     _fire_rule_group_event(
         event_sock, card_id, rule_group_id, from_zone, to_zone, rg_state,
         rule_book=rule_book,
+        player_resources=player_resources,
+        deck_state=deck_state,
     )
 
 
@@ -471,6 +550,7 @@ def _handle_draw_command(
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
     rule_book: dict[str, dict[str, Any]] | None = None,
+    player_resources: _PlayerResources | None = None,
 ) -> None:
     data = cmd.get("data", {})
     count = 1
@@ -501,6 +581,8 @@ def _handle_draw_command(
         _fire_rule_group_event(
             event_sock, cid, rule_group_id, "MainDeck", "CardHand", rg_state,
             rule_book=rule_book,
+            player_resources=player_resources,
+            deck_state=deck_state,
         )
 
 
@@ -585,6 +667,7 @@ def _serve_commands(
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
     rule_book: dict[str, dict[str, Any]] | None = None,
+    player_resources: _PlayerResources | None = None,
 ) -> None:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -629,11 +712,13 @@ def _serve_commands(
                         _send_event(event_sock, "gmFlow.session.completed", {})
                     elif type_id == "gmAlea.deck.move_card":
                         _handle_deck_move_command(
-                            event_sock, deck_state, cmd, card_meta, rg_state, rule_book
+                            event_sock, deck_state, cmd, card_meta, rg_state,
+                            rule_book, player_resources,
                         )
                     elif type_id == "gmAlea.deck.draw":
                         _handle_draw_command(
-                            event_sock, deck_state, cmd, card_meta, rg_state, rule_book
+                            event_sock, deck_state, cmd, card_meta, rg_state,
+                            rule_book, player_resources,
                         )
                     elif type_id == "gmAlea.deck.recycle_discard":
                         _handle_recycle_discard(event_sock, deck_state)
@@ -699,18 +784,25 @@ def main() -> int:
         rules_json_path = str(Path(rg_path).parent / "dominion_rules.json")
         rule_book = _load_rules_json(rules_json_path)
 
+    # ── Player resources (Phase 6) ───────────────────────────────────────────────────
+    # Standard Dominion turn start: 1 action, 1 buy, 0 coins.
+    player_resources = _PlayerResources()
+    player_resources.init_actor("Player_X", actions=1, buys=1, coins=0)
+    player_resources.init_actor("Player_O", actions=1, buys=1, coins=0)
+
     # ── Connect and run ──────────────────────────────────────────────────────────────
     print(f"[mock_engine] Connessione stream eventi a {args.host}:{args.port} ...")
     with _connect_event_stream(args.host, args.port, timeout_s=20.0) as event_sock:
         print("[mock_engine] Connesso. Invio snapshot iniziale...")
-        _emit_initial_snapshot(event_sock, deck_state)
+        _emit_initial_snapshot(event_sock, deck_state, player_resources)
         print("[mock_engine] Modalita manuale: usa 'Passa Turno' in Flow/Timeline.")
         print("[mock_engine] Usa la GUI per spostare carte tra zone.")
         print("[mock_engine] I movimenti verso PlayArea/Memory attivano i rule group.")
         if rule_book:
             print("[mock_engine] Effetti regole attivi: gli spostamenti stampano [effect] ...")        
         _serve_commands(
-            args.host, args.cmd_port, event_sock, deck_state, card_meta, rg_state, rule_book
+            args.host, args.cmd_port, event_sock, deck_state, card_meta,
+            rg_state, rule_book, player_resources,
         )
 
     return 0

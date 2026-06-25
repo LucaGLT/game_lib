@@ -193,11 +193,27 @@ permettere agli effetti `MODIFY_RESOURCE` di modificare risorse di gioco
 - [x] `tests/MockRuleContext.hpp` — stub `modify_resource` + `set_resource_max` (già presente)
 - [x] `GAME/gmGui-Sandbox/data/dominion_rules.json` — file effetti carte Dominion
 - [x] `GAME/gmGui-Sandbox/mock_engine.py` — carica `dominion_rules.json`, esegue regole nel terminale
-- [ ] Smoke test: mock_engine stampa `[effect] Player_X.actions += 1` quando Village va in PlayArea ← smoke test
+- [x] Smoke test: mock_engine stampa `[effect] Player_X.actions +2  (→ 2)` quando Village va in PlayArea ← smoke test **PASS**
+
+**Notes:**
+- `mock_engine._PlayerResources` traccia risorse per attore; `_apply_rule_effects` aggiorna le risorse e
+  emette `gmActor.actor.resource_changed {actor_id, resource_id, delta, new_value}`.
+- Il costo di giocare una carta da mano (CardHand → PlayArea) deduce automaticamente 1 azione.
+- `DRAW_CARDS` muove carte reali da MainDeck a CardHand ed emette `gmAlea.deck.card_moved`.
+- `GmActorModule` ora mostra una sezione **Risorse** separata dagli Status; si aggiorna live
+  su ogni `gmActor.actor.resource_changed`.
+- `rule_groups.json` rg_village corretto: `["r_add_card_1", "r_add_actions_2"]` (+1 Carta, +2 Azioni).
+
+### Phase 7 — Compilazione + smoke test C++ ⏳
+
+**Obiettivo:** Aggiungere `test_rule_book` al CMakeLists.txt, compilare,
+eseguire tutti i test C++ e verificare Phase 5 smoke test come PASS effettivo.
+
+- [ ] `gmRules/CMakeLists.txt` — aggiungi `test_rule_book.cpp` come target CTest
+- [ ] Build C++: compilare `RuleBook`, `RuleBookLoader`, `gmRulesEngine` esteso
+- [ ] Smoke test: `test_rule_book` PASS in CTest ← smoke test
 
 ---
-
-## Key Design Decisions
 
 ### 1. `RuleBook` è separato da `RuleGroupRegistry`
 

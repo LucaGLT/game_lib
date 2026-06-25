@@ -5,10 +5,10 @@
   "rule_groups": [
     {
       "group_id": "rg_village",
-      "rule_ids": ["r_add_action_1", "r_add_actions_2"],
+      "rule_ids": ["r_add_card_1", "r_add_actions_2"],
       "lifecycle": "TRANSIENT",
       "_active_zones": ["PlayArea"],
-      "_desc": "Attivo quando Village è in PlayArea. Fornisce +1 Azione e +2 Azioni."
+      "_desc": "Attivo quando Village è in PlayArea. +1 Carta, +2 Azioni."
     },
     {
       "group_id": "rg_smithy",
