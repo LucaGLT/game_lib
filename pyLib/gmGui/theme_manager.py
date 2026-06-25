@@ -682,6 +682,67 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
     if name == "state_active":
         return QColor(Qt.GlobalColor.yellow)
 
+    # ── Map layer tokens ─────────────────────────────────────────────────────
+    # Terrain fill colours.
+    if name == "map_terrain_stone":
+        return QColor("#808080")
+    if name == "map_terrain_grass":
+        return QColor("#4caf50")
+    if name == "map_terrain_wooden":
+        return QColor("#5d4037")
+    if name == "map_terrain_marble":
+        return QColor("#b0bec5")
+    if name == "map_terrain_carpet":
+        return QColor("#c62828")
+    if name == "map_terrain_woods":
+        return QColor("#1b5e20")
+    # Items filter colours.
+    if name == "map_items_empty":
+        return QColor("#e8dcc8")
+    if name == "map_items_has":
+        return QColor("#6d4c41")
+    # Actors filter colours.
+    if name == "map_actors_empty":
+        return QColor("#e8dcc8")
+    if name == "map_actors_has":
+        return QColor("#37474f")
+    # Satellite badge colours.
+    if name == "map_sat_item_bg":
+        return QColor("#bf360c")
+    if name == "map_sat_item_fg":
+        return QColor("#ffffff")
+    if name == "map_sat_actor_bg":
+        return QColor("#1a237e")
+    if name == "map_sat_actor_fg":
+        return QColor("#ffffff")
+    # Zone / Region palette (10 slots: map_zone_0 … map_zone_9).
+    # Named explicit zone tokens must be checked first.
+    if name == "map_zone_dark_green":
+        return QColor("#1b5e20")
+    if name == "map_zone_dark_red":
+        return QColor("#b71c1c")
+    if name == "map_zone_dark_purple":
+        return QColor("#4a148c")
+    if name == "map_zone_dark_blue":
+        return QColor("#0d47a1")
+    if name == "map_region_red":
+        return QColor("#c62828")
+    if name == "map_region_green_ext":
+        return QColor("#66bb6a")   # medium green — distinct from dark-green zones
+    if name == "map_region_red_dng":
+        return QColor("#ef5350")   # bright red — distinct from dark-red zones
+    if name.startswith("map_zone_"):
+        _zone_colors = [
+            "#7986cb", "#4db6ac", "#ff8a65", "#ba68c8",
+            "#a5d6a7", "#fff176", "#f48fb1", "#80deea",
+            "#ffcc80", "#ef9a9a",
+        ]
+        try:
+            idx = int(name[9:]) % len(_zone_colors)
+        except ValueError:
+            idx = 0
+        return QColor(_zone_colors[idx])
+
     # Fallback for unknown semantic token names.
     return QColor(palette.text)
 

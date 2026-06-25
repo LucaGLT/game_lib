@@ -1,0 +1,101 @@
+{
+  "_version": 2,
+  "payload": {
+    "actors_by_location": [
+      [
+        100,
+        [
+          5000,
+          5001
+        ]
+      ]
+    ],
+    "adjacency_edges": [
+      [
+        100,
+        101
+      ],
+      [
+        101,
+        100
+      ],
+      [
+        101,
+        102
+      ]
+    ],
+    "interactables_by_location": [
+      [
+        101,
+        [
+          6000
+        ]
+      ]
+    ],
+    "items_by_location": [
+      [
+        100,
+        [
+          7,
+          8
+        ]
+      ]
+    ],
+    "location_ids": [
+      100,
+      101,
+      102
+    ],
+    "location_metadata_map": {
+      "100": {
+        "name": {
+          "_type": "string",
+          "_value": "Entrance"
+        }
+      }
+    },
+    "location_to_zone": [
+      [
+        100,
+        10
+      ],
+      [
+        101,
+        10
+      ],
+      [
+        102,
+        11
+      ]
+    ],
+    "region_ids": [
+      1
+    ],
+    "region_metadata_map": {
+      "1": {
+        "world": {
+          "_type": "string",
+          "_value": "Overworld"
+        }
+      }
+    },
+    "zone_ids": [
+      10,
+      11
+    ],
+    "zone_metadata_map": {
+      "10": {
+        "biome": {
+          "_type": "string",
+          "_value": "cave"
+        }
+      }
+    },
+    "zone_to_region": [
+      [
+        10,
+        1
+      ]
+    ]
+  }
+}

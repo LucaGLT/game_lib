@@ -74,10 +74,10 @@ class Board
 	/// @brief Metadata key under which each cell stores its mark symbol.
 	static constexpr const char* META_MARK = "mark";
 
-	/// @brief TileId grouping all board cells.
-	static constexpr gmMap::TileId BOARD_TILE = 1;
+	/// @brief ZoneId grouping all board cells.
+	static constexpr gmMap::ZoneId BOARD_ZONE = 1;
 
-	/// @brief (Re)creates the 9 locations, the tile, adjacency and empty marks.
+	/// @brief (Re)creates the 9 locations, the zone, adjacency and empty marks.
 	void build();
 
 	gmMap::gmMap<std::string> _map;

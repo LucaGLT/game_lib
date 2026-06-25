@@ -6,6 +6,8 @@ QSettings.
 """
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
@@ -26,6 +28,7 @@ from .modules.gm_comp_deck_module import GmCompDeckModule
 from .modules.gm_dice_module import GmDiceModule
 from .modules.gm_flow_module import GmFlowModule
 from .modules.gm_map_module import GmMapModule
+from .modules.gm_map_area_info_module import GmMapAreaInfoModule
 from .theme_manager import ThemeManager, _THEMES
 
 # Text shown in the status bar when the C++ engine is not connected.
@@ -33,6 +36,20 @@ _STATUS_DISCONNECTED = "Engine: Disconnesso"
 # Text shown after the first envelope arrives from the engine.
 _STATUS_CONNECTED = "Engine: Connesso"
 _DEFAULT_THEME_ID = "scroll"
+
+
+def _env_port(name: str, default: int) -> int:
+    """Reads a TCP port from environment, falling back to *default* on errors."""
+    raw: str | None = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        port: int = int(raw)
+    except ValueError:
+        return default
+    if port < 1 or port > 65535:
+        return default
+    return port
 
 
 class MainWindow(QMainWindow):
@@ -56,10 +73,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("GameLib GUI")
         self.resize(1280, 800)
         self.setDockNestingEnabled(True)
+        self.setDockOptions(
+            QMainWindow.DockOption.AllowNestedDocks
+            | QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.GroupedDragging
+            | QMainWindow.DockOption.AnimatedDocks
+        )
 
         # ── Bridge ────────────────────────────────────────────────────────────
-        self._receiver: EngineReceiver = EngineReceiver()
-        self._sender: EngineSender = EngineSender()
+        event_port: int = _env_port("GMGUI_EVENT_PORT", 9000)
+        command_port: int = _env_port("GMGUI_COMMAND_PORT", 9001)
+        self._receiver: EngineReceiver = EngineReceiver(port=event_port)
+        self._sender: EngineSender = EngineSender(port=command_port)
 
         # ── Module registry ───────────────────────────────────────────────────
         self._modules: list[BaseModule] = []
@@ -68,10 +93,7 @@ class MainWindow(QMainWindow):
         self._theme_manager: ThemeManager = ThemeManager(QApplication.instance())
         self._theme_actions: dict[str, QAction] = {}
 
-        # ── Central placeholder ───────────────────────────────────────────────
-        central = QLabel("GameLib – Engine View")
-        central.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setCentralWidget(central)
+        # No central placeholder: keep the center available for dock layouts.
 
         # ── Build UI ──────────────────────────────────────────────────────────
         self._register_modules()
@@ -107,6 +129,7 @@ class MainWindow(QMainWindow):
         self._modules = [
             GmFlowModule(),
             GmMapModule(),
+            GmMapAreaInfoModule(),
             GmActorModule(),
             GmCompDeckModule(),
             GmDiceModule(),
@@ -124,6 +147,11 @@ class MainWindow(QMainWindow):
         deck_dock: QDockWidget | None = self._docks.get("gm_comp_deck")
         if actor_dock is not None and deck_dock is not None:
             self.tabifyDockWidget(actor_dock, deck_dock)
+
+        # GmMapAreaInfoModule shares the Right area as a tab next to the actor panel.
+        area_info_dock: QDockWidget | None = self._docks.get("gm_map_area_info")
+        if actor_dock is not None and area_info_dock is not None:
+            self.tabifyDockWidget(actor_dock, area_info_dock)
 
     def _add_dock(self, mod: BaseModule) -> None:
         """Creates a ``QDockWidget`` for *mod* and adds it to the layout.

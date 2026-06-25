@@ -1,10 +1,10 @@
 # gmMap – Generic Tabletop Game Map Library
 
-**Version:** 1.0 (stub)
-**Status:** In Development
+**Version:** 2.0
+**Status:** Active
 **Language:** C++17 Standard
 **Namespace:** `gmMap`
-**Header:** `gmMap.hpp`
+**Header:** `gmMap.hpp` (header-only class template)
 
 ---
 
@@ -13,33 +13,40 @@
 - [Overview](#overview)
 - [Design Philosophy](#design-philosophy)
 - [Requirements](#requirements)
+- [Hierarchy](#hierarchy)
 - [API Reference](#api-reference)
   - [Type Aliases](#type-aliases)
   - [Exception Hierarchy](#exception-hierarchy)
   - [class gmMap\<ItemT\>](#class-gmmapitemt)
     - [Construction / Reset](#construction--reset)
     - [Location Management](#location-management)
-    - [Tile Management](#tile-management)
-    - [Location ↔ Tile Assignment](#location--tile-assignment)
+    - [Zone Management](#zone-management)
+    - [Region Management](#region-management)
+    - [Location ↔ Zone Assignment](#location--zone-assignment)
+    - [Zone ↔ Region Assignment](#zone--region-assignment)
     - [Adjacency](#adjacency)
     - [Items](#items)
+    - [Contained Actors](#contained-actors)
+    - [Contained Interactables](#contained-interactables)
     - [Location Metadata](#location-metadata)
-    - [Tile Metadata](#tile-metadata)
+    - [Zone Metadata](#zone-metadata)
+    - [Region Metadata](#region-metadata)
+    - [Runtime Entity Cache](#runtime-entity-cache)
     - [JSON Persistence](#json-persistence)
-  - [Private Internals](#private-internals)
+- [Snapshot Schema (v2)](#snapshot-schema-v2)
 - [Class Invariants](#class-invariants)
-- [Usage Examples](#usage-examples)
+- [Usage Example](#usage-example)
 - [Error Handling](#error-handling)
-- [Design Notes](#design-notes)
+- [Migration from v1](#migration-from-v1)
 
 ---
 
 ## Overview
 
 **gmMap** is a generic, topology-agnostic game map library for C++17 tabletop
-game applications.  It provides a single class template, `gmMap<ItemT>`, that
-manages the complete state of a 2-D (or abstract) game board without enforcing
-any coordinate system or grid shape.
+game applications. It provides a single class template, `gmMap<ItemT>`, that
+manages the complete state of a game board without enforcing any coordinate
+system or grid shape.
 
 Supported use cases include dungeon crawlers, war games, tactical turn-based
 games, abstract strategy games, territory-control games, and any other domain
@@ -51,25 +58,30 @@ metadata.
 | Feature | Detail |
 |---|---|
 | **Topology-agnostic** | No grid forced; topology expressed via adjacency edges |
+| **Three-level hierarchy** | Locations group into *Zones*, Zones group into *Regions* (both optional) |
 | **Generic items** | `ItemT` template parameter; no constraint on the item domain |
-| **Serializable metadata** | `std::unordered_map<std::string, MetadataValue>` on every node and tile |
-| **Grouped locations** | Locations can be grouped into named *Tiles* (zones, floors, regions) |
+| **Contained entities** | Opaque `ActorId` and `InteractableObjectId` sets per location |
+| **Serializable metadata** | `MetadataValue` store on every location, zone and region |
 | **Directed adjacency** | Edges can be unidirectional or bidirectional |
+| **Versioned persistence** | JSON snapshot v2 via `gmSave`, with transparent v1 migration |
 | **Safe by default** | Dedicated exception hierarchy; all invariants actively enforced |
-| **Standard C++17** | Zero external dependencies |
+| **Standard C++17** | Only depends on `gmSave` (which bundles nlohmann/json) |
 
 ---
 
 ## Design Philosophy
 
-- **`gmMap` manages structure only.**  Item types, metadata schemas, and game
+- **`gmMap` manages structure only.** Item types, metadata schemas, and game
   rules live in the application layer, not in this library.
-- **IDs are plain `uint32_t`.**  Cheap to copy, O(1) to compare, cache-friendly
-  in hash maps.
-- **Metadata is persistence-safe.**  Values are schema-constrained via
+- **IDs are plain integers.** `LocationId`, `ZoneId` and `RegionId` are
+  `uint32_t`; `ActorId` and `InteractableObjectId` are `uint64_t` opaque
+  references to entities owned by other libraries (no direct `#include`).
+- **Membership is optional.** A location may exist without a zone, and a zone
+  without a region. Membership is modelled with `std::optional`, not a sentinel.
+- **Metadata is persistence-safe.** Values are schema-constrained via
   `MetadataValue` (serializable scalar types + UID references).
-- **Adjacency is explicit.**  There is no implicit neighbor calculation from
-  coordinates; all edges are set by the caller.  This supports irregular maps,
+- **Adjacency is explicit.** There is no implicit neighbor calculation from
+  coordinates; all edges are set by the caller. This supports irregular maps,
   portal connections, one-way passages, etc.
 
 ---
@@ -77,9 +89,28 @@ metadata.
 ## Requirements
 
 - C++17-compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
-- Standard library headers: `<cstdint>`, `<optional>`,
-  `<stdexcept>`, `<string>`, `<unordered_map>`, `<unordered_set>`, `<vector>`
-  and `<variant>`
+- `gmSave` (header + `gmSave.cpp`) reachable on the include path, with its
+  bundled `json.hpp`
+- Standard library headers: `<cstddef>`, `<cstdint>`, `<optional>`,
+  `<stdexcept>`, `<string>`, `<unordered_map>`, `<unordered_set>`, `<utility>`,
+  `<variant>`, `<vector>`
+
+---
+
+## Hierarchy
+
+```mermaid
+graph TD
+    R[Region] -->|zones_in_region| Z[Zone]
+    Z -->|locations_in_zone| L[Location]
+    L -->|neighbors| L2[Adjacent Location]
+    L --> I["Items (ItemT)"]
+    L --> A["ActorsContained (ActorId)"]
+    L --> O["InteractableObjectsContained (InteractableObjectId)"]
+```
+
+Region and Zone membership are both optional: a Location can stand alone, and a
+Zone can stand alone.
 
 ---
 
@@ -89,43 +120,26 @@ metadata.
 
 Defined in namespace `gmMap`.
 
-#### `LocationId`
+| Alias | Definition | Purpose |
+|---|---|---|
+| `LocationId` | `uint32_t` | Identifier for a Location node in the map graph |
+| `ZoneId` | `uint32_t` | Identifier for a Zone (named group of locations) |
+| `RegionId` | `uint32_t` | Identifier for a Region (named group of zones) |
+| `ActorId` | `uint64_t` | Opaque identifier for an actor contained at a location |
+| `InteractableObjectId` | `uint64_t` | Opaque identifier for an interactable object at a location |
+| `EntityUid` | `uint64_t` | Stable reference for the transient runtime cache |
 
 ```cpp
-using LocationId = uint32_t;
-```
-
-Unique numeric identifier for a Location node in the map graph.
-
----
-
-#### `TileId`
-
-```cpp
-using TileId = uint32_t;
-```
-
-Unique numeric identifier for a Tile (named group of locations).
-
----
-
-#### `Metadata`
-
-```cpp
-using EntityUid = uint64_t;
-
-struct UidRef {
-  EntityUid value;
-};
-
+struct UidRef { EntityUid value; };
 using UidList = std::vector<UidRef>;
-using MetadataValue = std::variant<std::nullptr_t, bool, int64_t, double, std::string, UidRef, UidList>;
+using MetadataValue =
+    std::variant<std::nullptr_t, bool, int64_t, double, std::string, UidRef, UidList>;
 using Metadata = std::unordered_map<std::string, MetadataValue>;
 ```
 
-Serializable key-value store attached to both locations and tiles. Keys are
-`std::string`; values are `MetadataValue` and can represent scalar values,
-single UID references (`UidRef`) or UID lists (`UidList`).
+`Metadata` is a serializable key-value store attached to locations, zones and
+regions. Keys are `std::string`; values are `MetadataValue` and can represent
+scalar values, single UID references (`UidRef`) or UID lists (`UidList`).
 
 ---
 
@@ -135,104 +149,19 @@ All exceptions derive from `std::runtime_error`.
 
 ```text
 std::runtime_error
-└-- EMapError                    Base class for all gmMap errors
-    ├-- EDuplicateLocationError  create_location() called with existing ID
-    ├-- EUnknownLocationError    LocationId not found in the map
-    ├-- EDuplicateTileError      create_tile() called with existing ID
-    ├-- EUnknownTileError        TileId not found in the map
-    ├-- EInvalidAdjacencyError   Self-loop or adjacency invariant violation
-    ├-- EUnknownMetaKeyError     Metadata key not present
-    └-- EInvalidItemIndexError   Item index out of range
+└── EMapError                    Base class for all gmMap errors
+    ├── EDuplicateLocationError  create_location() called with existing ID
+    ├── EUnknownLocationError    LocationId not found in the map
+    ├── EDuplicateZoneError      create_zone() called with existing ID
+    ├── EUnknownZoneError        ZoneId not found in the map
+    ├── EDuplicateRegionError    create_region() called with existing ID
+    ├── EUnknownRegionError      RegionId not found in the map
+    ├── EInvalidAdjacencyError   Self-loop or adjacency invariant violation
+    ├── EUnknownMetaKeyError     Metadata key not present
+    └── EInvalidItemIndexError   Item index out of range
 ```
 
-#### `EMapError`
-
-```cpp
-class EMapError : public std::runtime_error;
-explicit EMapError(const std::string& message);
-```
-
-Base class for all gmMap errors.  The string prefix `"EMapError: "` is
-prepended to every message.
-
----
-
-#### `EDuplicateLocationError`
-
-```cpp
-class EDuplicateLocationError : public EMapError;
-explicit EDuplicateLocationError(const std::string& message);
-```
-
-Thrown by `create_location()` when the given `LocationId` already exists.
-
----
-
-#### `EUnknownLocationError`
-
-```cpp
-class EUnknownLocationError : public EMapError;
-explicit EUnknownLocationError(const std::string& message);
-```
-
-Thrown whenever a `LocationId` is referenced that is not present in the map.
-
----
-
-#### `EDuplicateTileError`
-
-```cpp
-class EDuplicateTileError : public EMapError;
-explicit EDuplicateTileError(const std::string& message);
-```
-
-Thrown by `create_tile()` when the given `TileId` already exists.
-
----
-
-#### `EUnknownTileError`
-
-```cpp
-class EUnknownTileError : public EMapError;
-explicit EUnknownTileError(const std::string& message);
-```
-
-Thrown whenever a `TileId` is referenced that is not present in the map.
-
----
-
-#### `EInvalidAdjacencyError`
-
-```cpp
-class EInvalidAdjacencyError : public EMapError;
-explicit EInvalidAdjacencyError(const std::string& message);
-```
-
-Thrown when an adjacency operation violates map invariants, such as creating a
-self-loop (`a == b`).
-
----
-
-#### `EUnknownMetaKeyError`
-
-```cpp
-class EUnknownMetaKeyError : public EMapError;
-explicit EUnknownMetaKeyError(const std::string& message);
-```
-
-Thrown by `get_location_meta()` and `get_tile_meta()` when the requested key
-is not present.
-
----
-
-#### `EInvalidItemIndexError`
-
-```cpp
-class EInvalidItemIndexError : public EMapError;
-explicit EInvalidItemIndexError(const std::string& message);
-```
-
-Thrown by `remove_item()` when `index` is out of range.
+The base class `EMapError` prepends the prefix `"EMapError: "` to every message.
 
 ---
 
@@ -243,945 +172,298 @@ template <typename ItemT>
 class gmMap;
 ```
 
-#### Template Parameter
-
-| Parameter | Description |
+| Template Parameter | Description |
 |---|---|
-| `ItemT` | Type of items stored at each location. Must be copyable. |
-
-Generic topology-agnostic game map.  All data is keyed by `LocationId` or
-`TileId` (`uint32_t`), stored in hash maps for O(1) average-case access.
+| `ItemT` | Type of items stored at each location. Must be copyable and JSON-serializable for persistence. |
 
 ---
 
 #### Construction / Reset
 
-##### `gmMap()`
-
-```cpp
-gmMap() = default;
-```
-
-Default constructor. Creates an empty map with no locations, tiles, adjacency
-edges, items, or metadata.
-
----
-
-##### `clear()`
-
-```cpp
-void clear();
-```
-
-Removes all locations, tiles, adjacency edges, items, and metadata.  After
-this call the object is in the same state as a default-constructed instance.
+| Method | Description |
+|---|---|
+| `gmMap()` | Default constructor; creates an empty map. |
+| `void clear()` | Removes all locations, zones, regions, adjacency, items, actors, interactables and metadata. |
 
 ---
 
 #### Location Management
 
-##### `create_location()`
-
-```cpp
-void create_location(LocationId id);
-```
-
-Creates a new empty location.  The new location has no tile assignment, no
-items, no metadata, and no neighbors.
-
-| Parameter | Description |
-|---|---|
-| `id` | Unique identifier for the new location. |
-
-**Throws:** `EDuplicateLocationError` if `id` already exists.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `create_location(LocationId id)` | `void` | Creates a new empty location. | `EDuplicateLocationError` |
+| `remove_location(LocationId id)` | `void` | Removes a location; unassigns it from its zone and from all neighbor lists. | `EUnknownLocationError` |
+| `has_location(LocationId id) const` | `bool` | Whether the location exists. | — |
+| `all_locations() const` | `std::vector<LocationId>` | All location IDs (order unspecified). | — |
+| `location_count() const` | `std::size_t` | Number of locations. | — |
 
 ---
 
-##### `remove_location()`
+#### Zone Management
 
-```cpp
-void remove_location(LocationId id);
-```
-
-Removes a location and cleans up all related state.  The location is
-unassigned from its tile (if any) and removed from the neighbor lists of every
-adjacent location before being deleted.
-
-| Parameter | Description |
-|---|---|
-| `id` | The location to remove. |
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `create_zone(ZoneId id)` | `void` | Creates a new empty zone. | `EDuplicateZoneError` |
+| `remove_zone(ZoneId id)` | `void` | Removes a zone; ungroups its locations and detaches it from its region. | `EUnknownZoneError` |
+| `has_zone(ZoneId id) const` | `bool` | Whether the zone exists. | — |
+| `all_zones() const` | `std::vector<ZoneId>` | All zone IDs (order unspecified). | — |
+| `zone_count() const` | `std::size_t` | Number of zones. | — |
 
 ---
 
-##### `has_location()`
+#### Region Management
 
-```cpp
-bool has_location(LocationId id) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Location identifier to query. |
-
-**Returns:** `true` if the location exists, `false` otherwise.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `create_region(RegionId id)` | `void` | Creates a new empty region. | `EDuplicateRegionError` |
+| `remove_region(RegionId id)` | `void` | Removes a region; ungroups its zones (does not delete them). | `EUnknownRegionError` |
+| `has_region(RegionId id) const` | `bool` | Whether the region exists. | — |
+| `all_regions() const` | `std::vector<RegionId>` | All region IDs (order unspecified). | — |
+| `region_count() const` | `std::size_t` | Number of regions. | — |
 
 ---
 
-##### `all_locations()`
+#### Location ↔ Zone Assignment
 
-```cpp
-std::vector<LocationId> all_locations() const;
-```
-
-**Returns:** Vector of every `LocationId` currently in the map.  Order is
-unspecified.
-
----
-
-##### `location_count()`
-
-```cpp
-std::size_t location_count() const;
-```
-
-**Returns:** Total number of locations in the map.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `assign_to_zone(LocationId loc, ZoneId zone)` | `void` | Assigns a location to a zone (re-assigns if already in another zone). | `EUnknownLocationError`, `EUnknownZoneError` |
+| `unassign_from_zone(LocationId loc)` | `void` | Removes a location from its zone (no-op if unassigned). | `EUnknownLocationError` |
+| `zone_of(LocationId loc) const` | `std::optional<ZoneId>` | The owning zone, or `std::nullopt`. | `EUnknownLocationError` |
+| `locations_in_zone(ZoneId zone) const` | `std::vector<LocationId>` | All locations in a zone. | `EUnknownZoneError` |
 
 ---
 
-#### Tile Management
+#### Zone ↔ Region Assignment
 
-##### `create_tile()`
-
-```cpp
-void create_tile(TileId id);
-```
-
-Creates a new empty tile (zero locations assigned).
-
-| Parameter | Description |
-|---|---|
-| `id` | Unique identifier for the new tile. |
-
-**Throws:** `EDuplicateTileError` if `id` already exists.
-
----
-
-##### `remove_tile()`
-
-```cpp
-void remove_tile(TileId id);
-```
-
-Removes a tile.  All locations that belonged to this tile are left intact but
-are unassigned (their tile membership is cleared).
-
-| Parameter | Description |
-|---|---|
-| `id` | The tile to remove. |
-
-**Throws:** `EUnknownTileError` if `id` does not exist.
-
----
-
-##### `has_tile()`
-
-```cpp
-bool has_tile(TileId id) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Tile identifier to query. |
-
-**Returns:** `true` if the tile exists, `false` otherwise.
-
----
-
-##### `all_tiles()`
-
-```cpp
-std::vector<TileId> all_tiles() const;
-```
-
-**Returns:** Vector of every `TileId` currently in the map.  Order is
-unspecified.
-
----
-
-##### `tile_count()`
-
-```cpp
-std::size_t tile_count() const;
-```
-
-**Returns:** Total number of tiles in the map.
-
----
-
-#### Location ↔ Tile Assignment
-
-##### `assign_to_tile()`
-
-```cpp
-void assign_to_tile(LocationId loc, TileId tile);
-```
-
-Assigns a location to a tile.  If the location is already assigned to a
-different tile it is first unassigned from that tile before being added to
-`tile`.
-
-| Parameter | Description |
-|---|---|
-| `loc` | Location to assign. |
-| `tile` | Target tile. |
-
-**Throws:**
-
-- `EUnknownLocationError` if `loc` does not exist.
-- `EUnknownTileError` if `tile` does not exist.
-
----
-
-##### `unassign_from_tile()`
-
-```cpp
-void unassign_from_tile(LocationId loc);
-```
-
-Removes a location from its current tile.  Has no effect if the location is
-not currently assigned to any tile.
-
-| Parameter | Description |
-|---|---|
-| `loc` | Location to unassign. |
-
-**Throws:** `EUnknownLocationError` if `loc` does not exist.
-
----
-
-##### `tile_of()`
-
-```cpp
-std::optional<TileId> tile_of(LocationId loc) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `loc` | Location to query. |
-
-**Returns:** The `TileId` if the location is assigned to a tile, or
-`std::nullopt` if not assigned.
-
-**Throws:** `EUnknownLocationError` if `loc` does not exist.
-
----
-
-##### `locations_in_tile()`
-
-```cpp
-std::vector<LocationId> locations_in_tile(TileId tile) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `tile` | Tile to query. |
-
-**Returns:** Vector of `LocationId` values belonging to `tile`.  Order is
-unspecified.
-
-**Throws:** `EUnknownTileError` if `tile` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `assign_zone_to_region(ZoneId zone, RegionId region)` | `void` | Assigns a zone to a region (re-assigns if already in another region). | `EUnknownZoneError`, `EUnknownRegionError` |
+| `unassign_zone_from_region(ZoneId zone)` | `void` | Removes a zone from its region (no-op if unassigned). | `EUnknownZoneError` |
+| `region_of(ZoneId zone) const` | `std::optional<RegionId>` | The owning region, or `std::nullopt`. | `EUnknownZoneError` |
+| `zones_in_region(RegionId region) const` | `std::vector<ZoneId>` | All zones in a region. | `EUnknownRegionError` |
 
 ---
 
 #### Adjacency
 
-##### `set_adjacent()`
-
-```cpp
-void set_adjacent(LocationId a, LocationId b, bool bidirectional = true);
-```
-
-Creates a directed or bidirectional edge between two locations.
-
-| Parameter | Default | Description |
-|---|---|---|
-| `a` | — | Source location. |
-| `b` | — | Target location. |
-| `bidirectional` | `true` | If `true`, creates both a→b and b→a.  If `false`, creates only a→b. |
-
-**Throws:**
-
-- `EUnknownLocationError` if either `a` or `b` does not exist.
-- `EInvalidAdjacencyError` if `a == b` (self-loops are not allowed).
-
----
-
-##### `remove_adjacent()`
-
-```cpp
-void remove_adjacent(LocationId a, LocationId b, bool bidirectional = true);
-```
-
-Removes the adjacency edge between two locations.  No-op if the edge does not
-exist.
-
-| Parameter | Default | Description |
-|---|---|---|
-| `a` | — | First location. |
-| `b` | — | Second location. |
-| `bidirectional` | `true` | If `true`, removes both a→b and b→a.  If `false`, removes only a→b. |
-
-**Throws:** `EUnknownLocationError` if either `a` or `b` does not exist.
-
----
-
-##### `are_adjacent()`
-
-```cpp
-bool are_adjacent(LocationId a, LocationId b) const;
-```
-
-Checks for a directed edge from `a` to `b`.
-
-| Parameter | Description |
-|---|---|
-| `a` | Source location. |
-| `b` | Target location. |
-
-**Returns:** `true` if there is a directed edge from `a` to `b`.
-
-**Throws:** `EUnknownLocationError` if either `a` or `b` does not exist.
-
----
-
-##### `adjacent_to()`
-
-```cpp
-std::vector<LocationId> adjacent_to(LocationId id) const;
-```
-
-Returns all locations directly reachable from `id` (outgoing edges).
-
-| Parameter | Description |
-|---|---|
-| `id` | Source location. |
-
-**Returns:** Vector of neighbor `LocationId` values.  Order is unspecified.
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `set_adjacent(LocationId a, LocationId b, bool bidirectional = true)` | `void` | Creates a directed (or bidirectional) edge. | `EUnknownLocationError`, `EInvalidAdjacencyError` (self-loop) |
+| `remove_adjacent(LocationId a, LocationId b, bool bidirectional = true)` | `void` | Removes the edge(s). | `EUnknownLocationError` |
+| `are_adjacent(LocationId a, LocationId b) const` | `bool` | Whether `a → b` exists. | `EUnknownLocationError` |
+| `adjacent_to(LocationId id) const` | `std::vector<LocationId>` | All neighbors reachable from `id`. | `EUnknownLocationError` |
 
 ---
 
 #### Items
 
-##### `add_item()`
-
-```cpp
-void add_item(LocationId id, const ItemT& item);
-```
-
-Appends an item to the item list of a location (copied).
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `item` | Item to add. |
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `add_item(LocationId id, const ItemT& item)` | `void` | Appends an item to a location. | `EUnknownLocationError` |
+| `remove_item(LocationId id, std::size_t index)` | `void` | Removes the item at `index`. | `EUnknownLocationError`, `EInvalidItemIndexError` |
+| `items_at(LocationId id) const` | `const std::vector<ItemT>&` | The location's item list. | `EUnknownLocationError` |
+| `clear_items(LocationId id)` | `void` | Removes all items from a location. | `EUnknownLocationError` |
 
 ---
 
-##### `remove_item()`
+#### Contained Actors
 
-```cpp
-void remove_item(LocationId id, std::size_t index);
-```
+Actors are stored in an `std::unordered_set<ActorId>` per location: insertion is
+idempotent and removal of an absent actor is a no-op.
 
-Removes the item at zero-based position `index`.  Items after `index` are
-shifted left by one position.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `index` | Zero-based index of the item to remove. |
-
-**Throws:**
-
-- `EUnknownLocationError` if `id` does not exist.
-- `EInvalidItemIndexError` if `index` is out of range.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `place_actor(LocationId id, ActorId actor)` | `void` | Places an actor (idempotent). | `EUnknownLocationError` |
+| `remove_actor(LocationId id, ActorId actor)` | `void` | Removes an actor (no-op if absent). | `EUnknownLocationError` |
+| `has_actor(LocationId id, ActorId actor) const` | `bool` | Whether an actor is present. | `EUnknownLocationError` |
+| `actors_at(LocationId id) const` | `std::vector<ActorId>` | All actors at the location (order unspecified). | `EUnknownLocationError` |
+| `clear_actors(LocationId id)` | `void` | Removes all actors from a location. | `EUnknownLocationError` |
 
 ---
 
-##### `items_at()`
+#### Contained Interactables
 
-```cpp
-const std::vector<ItemT>& items_at(LocationId id) const;
-```
+Interactables are stored in an `std::unordered_set<InteractableObjectId>` per
+location, with the same idempotent semantics as actors.
 
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-
-**Returns:** Const reference to the internal item list.  The reference is
-invalidated by any call that modifies the map.
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
-
----
-
-##### `clear_items()`
-
-```cpp
-void clear_items(LocationId id);
-```
-
-Removes all items from a location.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `place_interactable(LocationId id, InteractableObjectId object)` | `void` | Places an interactable (idempotent). | `EUnknownLocationError` |
+| `remove_interactable(LocationId id, InteractableObjectId object)` | `void` | Removes an interactable (no-op if absent). | `EUnknownLocationError` |
+| `has_interactable(LocationId id, InteractableObjectId object) const` | `bool` | Whether an interactable is present. | `EUnknownLocationError` |
+| `interactables_at(LocationId id) const` | `std::vector<InteractableObjectId>` | All interactables at the location. | `EUnknownLocationError` |
+| `clear_interactables(LocationId id)` | `void` | Removes all interactables from a location. | `EUnknownLocationError` |
 
 ---
 
 #### Location Metadata
 
-##### `set_location_meta()`
-
-```cpp
-void set_location_meta(LocationId id, const std::string& key, const MetadataValue& value);
-```
-
-Sets (or overwrites) a metadata key on a location.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `key` | Metadata key string. |
-| `value` | Serializable metadata value (`MetadataValue`). |
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `set_location_meta(LocationId id, const std::string& key, const MetadataValue& value)` | `void` | Sets/overwrites a metadata key. | `EUnknownLocationError` |
+| `get_location_meta(LocationId id, const std::string& key) const` | `const MetadataValue&` | Reads a metadata value. | `EUnknownLocationError`, `EUnknownMetaKeyError` |
+| `has_location_meta(LocationId id, const std::string& key) const` | `bool` | Whether the key exists. | `EUnknownLocationError` |
+| `remove_location_meta(LocationId id, const std::string& key)` | `void` | Removes a key (no-op if absent). | `EUnknownLocationError` |
+| `location_metadata(LocationId id) const` | `const Metadata&` | Full metadata map. | `EUnknownLocationError` |
 
 ---
 
-##### `get_location_meta()`
+#### Zone Metadata
 
-```cpp
-const MetadataValue& get_location_meta(LocationId id, const std::string& key) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `key` | Metadata key string. |
-
-**Returns:** Const reference to the stored `MetadataValue`.
-
-**Throws:**
-
-- `EUnknownLocationError` if `id` does not exist.
-- `EUnknownMetaKeyError` if `key` is not present.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `set_zone_meta(ZoneId id, const std::string& key, const MetadataValue& value)` | `void` | Sets/overwrites a metadata key. | `EUnknownZoneError` |
+| `get_zone_meta(ZoneId id, const std::string& key) const` | `const MetadataValue&` | Reads a metadata value. | `EUnknownZoneError`, `EUnknownMetaKeyError` |
+| `has_zone_meta(ZoneId id, const std::string& key) const` | `bool` | Whether the key exists. | `EUnknownZoneError` |
+| `remove_zone_meta(ZoneId id, const std::string& key)` | `void` | Removes a key (no-op if absent). | `EUnknownZoneError` |
+| `zone_metadata(ZoneId id) const` | `const Metadata&` | Full metadata map. | `EUnknownZoneError` |
 
 ---
 
-##### `has_location_meta()`
+#### Region Metadata
 
-```cpp
-bool has_location_meta(LocationId id, const std::string& key) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `key` | Metadata key string. |
-
-**Returns:** `true` if the key exists, `false` otherwise.
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description | Throws |
+|---|---|---|---|
+| `set_region_meta(RegionId id, const std::string& key, const MetadataValue& value)` | `void` | Sets/overwrites a metadata key. | `EUnknownRegionError` |
+| `get_region_meta(RegionId id, const std::string& key) const` | `const MetadataValue&` | Reads a metadata value. | `EUnknownRegionError`, `EUnknownMetaKeyError` |
+| `has_region_meta(RegionId id, const std::string& key) const` | `bool` | Whether the key exists. | `EUnknownRegionError` |
+| `remove_region_meta(RegionId id, const std::string& key)` | `void` | Removes a key (no-op if absent). | `EUnknownRegionError` |
+| `region_metadata(RegionId id) const` | `const Metadata&` | Full metadata map. | `EUnknownRegionError` |
 
 ---
 
-##### `remove_location_meta()`
+#### Runtime Entity Cache
 
-```cpp
-void remove_location_meta(LocationId id, const std::string& key);
-```
+A transient, non-persistent `EntityUid → const void*` cache. It is intentionally
+excluded from save/load flows.
 
-Removes a metadata key from a location.  No-op if the key does not exist.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-| `key` | Metadata key string to remove. |
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+| Method | Returns | Description |
+|---|---|---|
+| `register_runtime_entity(EntityUid uid, const void* ptr)` | `void` | Registers/updates a runtime pointer. |
+| `unregister_runtime_entity(EntityUid uid)` | `void` | Removes a mapping. |
+| `runtime_entity(EntityUid uid) const` | `const void*` | The pointer, or `nullptr` if absent. |
+| `clear_runtime_entity_cache()` | `void` | Clears all mappings. |
 
 ---
 
-##### `location_metadata()`
+#### JSON Persistence
 
-```cpp
-const Metadata& location_metadata(LocationId id) const;
-```
+| Method | Description | Throws |
+|---|---|---|
+| `export_snapshot_json(const std::string& filepath) const` | Writes the full map state as a versioned JSON file (schema v2). | `gmSave::EFileWriteError` |
+| `import_snapshot_json(const std::string& filepath)` | Clears the map and replaces it with the loaded state. Accepts both v1 and v2 files (v1 migrated transparently). | `gmSave::EFileReadError`, `gmSave::EJsonParseError` |
 
-| Parameter | Description |
-|---|---|
-| `id` | Target location. |
-
-**Returns:** Const reference to the full `Metadata` map of the location.
-
-**Throws:** `EUnknownLocationError` if `id` does not exist.
+Versioning is delegated to `gmSave::save_versioned` / `gmSave::load_versioned`.
+On import, `gmSave::peek_version` detects the on-disk schema version, so v1 and
+v2 files are both accepted without throwing a version mismatch.
 
 ---
 
-#### Tile Metadata
+## Snapshot Schema (v2)
 
-##### `set_tile_meta()`
-
-```cpp
-void set_tile_meta(TileId id, const std::string& key, const MetadataValue& value);
-```
-
-Sets (or overwrites) a metadata key on a tile.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target tile. |
-| `key` | Metadata key string. |
-| `value` | Serializable metadata value (`MetadataValue`). |
-
-**Throws:** `EUnknownTileError` if `id` does not exist.
-
----
-
-##### `get_tile_meta()`
-
-```cpp
-const MetadataValue& get_tile_meta(TileId id, const std::string& key) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Target tile. |
-| `key` | Metadata key string. |
-
-**Returns:** Const reference to the stored `MetadataValue`.
-
-**Throws:**
-
-- `EUnknownTileError` if `id` does not exist.
-- `EUnknownMetaKeyError` if `key` is not present.
-
----
-
-##### `has_tile_meta()`
-
-```cpp
-bool has_tile_meta(TileId id, const std::string& key) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Target tile. |
-| `key` | Metadata key string. |
-
-**Returns:** `true` if the key exists, `false` otherwise.
-
-**Throws:** `EUnknownTileError` if `id` does not exist.
-
----
-
-##### `remove_tile_meta()`
-
-```cpp
-void remove_tile_meta(TileId id, const std::string& key);
-```
-
-Removes a metadata key from a tile.  No-op if the key does not exist.
-
-| Parameter | Description |
-|---|---|
-| `id` | Target tile. |
-| `key` | Metadata key string to remove. |
-
-**Throws:** `EUnknownTileError` if `id` does not exist.
-
----
-
-##### `tile_metadata()`
-
-```cpp
-const Metadata& tile_metadata(TileId id) const;
-```
-
-| Parameter | Description |
-|---|---|
-| `id` | Target tile. |
-
-**Returns:** Const reference to the full `Metadata` map of the tile.
-
-**Throws:** `EUnknownTileError` if `id` does not exist.
-
----
-
-### JSON Persistence
-
-gmMap provides versioned JSON serialization and deserialization via the **gmSave** library, enabling complete round-trip persistence of map state including all locations, tiles, assignments, adjacency relationships, items, and metadata.
-
-#### `export_snapshot_json()`
-
-```cpp
-void export_snapshot_json(const std::string& filepath) const;
-```
-
-Exports the complete map state to a versioned JSON file. The JSON envelope contains:
-- All location IDs
-- All tile IDs
-- Location-to-tile assignments
-- Adjacency edges (stored as directed pairs)
-- Items at each location
-- Location metadata (serialized with type discriminators)
-- Tile metadata (serialized with type discriminators)
-
-| Parameter | Description |
-|---|---|
-| `filepath` | Output JSON file path. Created or overwritten. |
-
-**Throws:** `gmSave::EFileWriteError` if the file cannot be written.
-
-**Example:**
-```cpp
-gmMap<int> game_map;
-// ... populate map ...
-game_map.export_snapshot_json("game_state.json");  // Saved with version envelope
-```
-
-#### `import_snapshot_json()`
-
-```cpp
-void import_snapshot_json(const std::string& filepath);
-```
-
-Imports a complete map state from a versioned JSON file (created by `export_snapshot_json()`).
-The current map state is cleared and replaced with the loaded snapshot.
-
-| Parameter | Description |
-|---|---|
-| `filepath` | Input JSON file path (must be versioned gmSave format). |
-
-**Throws:**
-
-- `gmSave::EFileReadError` if the file cannot be read.
-- `gmSave::EJsonParseError` if the JSON is malformed.
-- `gmSave::EVersionMismatchError` if the version field does not match the expected version (currently v1).
-
-**Example:**
-```cpp
-gmMap<int> restored_map;
-restored_map.import_snapshot_json("game_state.json");
-// Map now contains all state from the saved file
-```
-
-#### Metadata Serialization Details
-
-Metadata values (`MetadataValue` variant) are serialized with explicit type discriminators to ensure type safety during deserialization:
+The persisted file is a `gmSave` version envelope:
 
 ```json
 {
-  "location_id": 1,
-  "metadata": {
-    "name": { "_type": "string", "_value": "Central Chamber" },
-    "owner_id": { "_type": "uid_ref", "_value": 5001 },
-    "occupants": { "_type": "uid_list", "_value": [5001, 5002, 5003] },
-    "level": { "_type": "int64", "_value": 2 },
-    "danger": { "_type": "double", "_value": 7.5 },
-    "discovered": { "_type": "bool", "_value": true }
+  "_version": 2,
+  "payload": {
+    "location_ids": [ ... ],
+    "zone_ids": [ ... ],
+    "region_ids": [ ... ],
+    "location_to_zone": [ [loc, zone], ... ],
+    "zone_to_region": [ [zone, region], ... ],
+    "adjacency_edges": [ [from, to], ... ],
+    "items_by_location": { "<loc>": [ ... ] },
+    "actors_by_location": { "<loc>": [ ... ] },
+    "interactables_by_location": { "<loc>": [ ... ] },
+    "location_metadata_map": { "<loc>": { "<key>": { "_type": "...", "_value": ... } } },
+    "zone_metadata_map": { "<zone>": { ... } },
+    "region_metadata_map": { "<region>": { ... } }
   }
 }
 ```
 
-Supported metadata types:
-- `null`: `nullptr_t`
-- `bool`: Boolean flag
-- `int64`: 64-bit signed integer
-- `double`: Floating-point number
-- `string`: Text value
-- `uid_ref`: Single external entity UID reference
-- `uid_list`: List of external entity UIDs
-
-**Note:** The `uid_ref` and `uid_list` types store stable `EntityUid` identifiers for external objects.
-The runtime pointer cache (`register_runtime_entity()`, etc.) is **not** persisted and must be
-repopulated by the application after loading.
-
----
-
-### Private Internals
-
-> These are implementation details not part of the public API.  Documented here
-> for contributors.
-
-#### `LocationRecord`
-
-```cpp
-struct LocationRecord {
-    std::optional<TileId>           tile_id;   // owning tile, if assigned
-    std::vector<ItemT>              items;     // items at this location
-    Metadata                        meta;      // heterogeneous metadata
-    std::unordered_set<LocationId>  neighbors; // outgoing adjacency edges
-};
-```
-
-Internal storage record for a single location node.
-
-#### `TileRecord`
-
-```cpp
-struct TileRecord {
-    std::unordered_set<LocationId>  locations; // locations assigned to this tile
-    Metadata                        meta;      // heterogeneous metadata
-};
-```
-
-Internal storage record for a tile (named group of locations).
-
-#### `_require_location(LocationId)`
-
-```cpp
-void _require_location(LocationId id) const;
-```
-
-Asserts that a location ID exists; throws `EUnknownLocationError` otherwise.
-Called at the top of every public method that takes a `LocationId`.
-
-#### `_require_tile(TileId)`
-
-```cpp
-void _require_tile(TileId id) const;
-```
-
-Asserts that a tile ID exists; throws `EUnknownTileError` otherwise.
-Called at the top of every public method that takes a `TileId`.
+Each `MetadataValue` is serialized as a typed object `{ "_type": <tag>, "_value": <data> }`
+where `<tag>` is one of `null`, `bool`, `int64`, `double`, `string`, `uid_ref`,
+`uid_list`.
 
 ---
 
 ## Class Invariants
 
-The following invariants are actively enforced at all times:
-
-1. **Unique IDs** – No two locations share the same `LocationId`; no two tiles
-   share the same `TileId`.
-2. **Single tile membership** – A location belongs to at most one tile.
-3. **Valid neighbors** – Every neighbor in an adjacency list is a valid
-   `LocationId` present in `_locations`.
-4. **No self-loops** – A location cannot be adjacent to itself.
-5. **Symmetric bidirectional edges** – When `bidirectional = true`, both
-   directions are created and removed together.
-6. **Cascade on remove_location** –
-   - Location is removed from its owning tile's `locations` set.
-   - Location is removed from the `neighbors` set of every adjacent location.
-7. **Cascade on remove_tile** – All member locations have their `tile_id`
-   reset to `std::nullopt`; the locations themselves are not deleted.
+- A location belongs to at most one zone at a time.
+- A zone belongs to at most one region at a time.
+- Every neighbor referenced in an adjacency edge is a valid location.
+- When `bidirectional` is `true`, adjacency is kept symmetric.
+- Removing a location also removes it from its zone and from all neighbor lists.
+- Removing a zone ungroups its locations and detaches the zone from its region;
+  the locations are not deleted.
+- Removing a region ungroups its zones; the zones are not deleted.
 
 ---
 
-## Usage Examples
-
-### Basic dungeon map
+## Usage Example
 
 ```cpp
-#include "gmMap.hpp"
-#include <string>
+#include "gmMap/gmMap.hpp"
 
-struct GameItem { std::string name; int value; };
+gmMap::gmMap<int> world;
 
-// Instantiate with GameItem as the item type
-gmMap::gmMap<GameItem> dungeon;
+// Build the hierarchy: Region 1 ⊃ Zone 10 ⊃ Locations 100, 101
+world.create_region(1);
+world.create_zone(10);
+world.assign_zone_to_region(10, 1);
 
-// Create tiles (floors/zones)
-dungeon.create_tile(1);   // floor 1
-dungeon.create_tile(2);   // floor 2
+world.create_location(100);
+world.create_location(101);
+world.assign_to_zone(100, 10);
+world.assign_to_zone(101, 10);
 
-// Create locations (rooms)
-for (gmMap::LocationId id = 101; id <= 105; ++id)
-    dungeon.create_location(id);
+// Topology and contents
+world.set_adjacent(100, 101);          // bidirectional by default
+world.add_item(100, 42);               // a typed item
+world.place_actor(100, 5000ULL);       // an opaque actor
+world.place_interactable(101, 6000ULL); // an opaque interactable
 
-// Group rooms into tiles
-dungeon.assign_to_tile(101, 1);
-dungeon.assign_to_tile(102, 1);
-dungeon.assign_to_tile(103, 2);
-dungeon.assign_to_tile(104, 2);
-dungeon.assign_to_tile(105, 2);
+// Metadata
+world.set_region_meta(1, "name", std::string("Overworld"));
+world.set_zone_meta(10, "biome", std::string("cave"));
+world.set_location_meta(100, "name", std::string("Entrance"));
 
-// Connect rooms (bidirectional corridors)
-dungeon.set_adjacent(101, 102);
-dungeon.set_adjacent(102, 103);
-dungeon.set_adjacent(103, 104);
-dungeon.set_adjacent(104, 105);
+// Persistence
+world.export_snapshot_json("world.json");
 
-// One-way secret passage
-dungeon.set_adjacent(105, 101, /*bidirectional=*/false);
-
-// Place items
-dungeon.add_item(102, GameItem{"Sword",  50});
-dungeon.add_item(103, GameItem{"Shield", 30});
-
-// Attach metadata
-dungeon.set_location_meta(101, "name",    std::string("Entry Hall"));
-dungeon.set_location_meta(101, "visited", false);
-dungeon.set_tile_meta    (1,   "level",   1);
+gmMap::gmMap<int> reloaded;
+reloaded.import_snapshot_json("world.json");
 ```
-
-### Reading metadata with std::get
-
-```cpp
-const gmMap::MetadataValue& raw = dungeon.get_location_meta(101, "name");
-std::string room_name = std::get<std::string>(raw);
-
-bool visited = std::get<bool>(dungeon.get_location_meta(101, "visited"));
-```
-
-### Querying adjacency
-
-```cpp
-std::vector<gmMap::LocationId> neighbors = dungeon.adjacent_to(103);
-// neighbors == {102, 104}  (order unspecified)
-
-bool connected = dungeon.are_adjacent(105, 101);   // true (one-way)
-bool reverse   = dungeon.are_adjacent(101, 105);   // false
-```
-
-### Iterating items at a location
-
-```cpp
-for (const GameItem& item : dungeon.items_at(102)) {
-    // item.name, item.value
-}
-```
-
-### Exception handling
-
-```cpp
-try {
-    dungeon.create_location(101);  // already exists
-} catch (const gmMap::EDuplicateLocationError& e) {
-    // e.what() -> "EMapError: ..."
-}
-
-try {
-  const gmMap::MetadataValue& v = dungeon.get_location_meta(101, "missing_key");
-  (void)v;
-} catch (const gmMap::EUnknownMetaKeyError& e) {
-    // handle missing key
-}
-```
-
-### Integrazione con gmLog (tracing operazioni mappa)
-
-```cpp
-#include "gmMap.hpp"
-#include "gmLog/LoggerFactory.hpp"
-#include "gmLog/macros/LogMacros.hpp"
-
-gmMap::gmMap<std::string> world;
-GmLog::Logger log = GmLog::LoggerFactory::createFileLogger(
-  "gmMapFlow", "gmMap_flow.log", GmLog::LogLevel::Info, true);
-
-world.create_tile(1);
-LOG_INFO(log, "Creato tile 1");
-
-world.create_location(1001);
-world.assign_to_tile(1001, 1);
-LOG_INFO(log, "Assegnata location 1001 a tile 1");
-
-world.set_location_meta(1001, "name", std::string("Bridge"));
-LOG_INFO(log, "Metadata aggiornati per location 1001");
-```
-
-### Integrazione con gmSave (snapshot JSON dello stato)
-
-`gmMap` usa metadata serializzabili (`MetadataValue`) con supporto a UID.
-Per snapshot completi e versionabili e' comunque consigliato usare un DTO
-esplicito, separando la persistenza dalla cache runtime UID -> puntatore.
-
-```cpp
-#include "gmMap.hpp"
-#include "gmSave/gmSave.hpp"
-#include <string>
-#include <vector>
-
-struct MapSnapshot {
-  std::vector<gmMap::LocationId> locations;
-  std::vector<gmMap::TileId> tiles;
-};
-
-inline void to_json(nlohmann::json& j, const MapSnapshot& s) {
-  j = nlohmann::json{{"locations", s.locations}, {"tiles", s.tiles}};
-}
-
-inline void from_json(const nlohmann::json& j, MapSnapshot& s) {
-  j.at("locations").get_to(s.locations);
-  j.at("tiles").get_to(s.tiles);
-}
-
-gmMap::gmMap<std::string> world;
-world.create_location(1);
-world.create_location(2);
-world.create_tile(10);
-
-MapSnapshot out;
-out.locations = world.all_locations();
-out.tiles = world.all_tiles();
-
-gmSave::save_versioned("gmMap_snapshot.json", out, 1);
-
-MapSnapshot loaded = gmSave::load_versioned<MapSnapshot>("gmMap_snapshot.json", 1);
-```
-
-Note:
-- Per persistere anche items e adjacency in modo completo, estendi il DTO con:
-  liste di edge, item per location e metadati `MetadataValue`/UID.
-- `gmSave::peek_version()` e' utile per migrazioni di formato degli snapshot.
 
 ---
 
 ## Error Handling
 
-| Situation | Exception thrown |
-|---|---|
-| `create_location` with existing ID | `EDuplicateLocationError` |
-| Any operation on non-existent `LocationId` | `EUnknownLocationError` |
-| `create_tile` with existing ID | `EDuplicateTileError` |
-| Any operation on non-existent `TileId` | `EUnknownTileError` |
-| `set_adjacent(a, a, ...)` self-loop | `EInvalidAdjacencyError` |
-| `get_*_meta` with missing key | `EUnknownMetaKeyError` |
-| `remove_item` with out-of-range index | `EInvalidItemIndexError` |
+- Catch `gmMap::EMapError` to handle any map-level error uniformly.
+- Contract violations (unknown/duplicate IDs, self-loops, out-of-range indices,
+  missing metadata keys) throw; they are not used as control flow.
+- Idempotent operations (`place_actor`, `remove_actor`, `place_interactable`,
+  `remove_interactable`, `remove_*_meta`, `unassign_*`) never throw for the
+  "already in target state" case.
 
 ---
 
-## Design Notes
+## Migration from v1
 
-### Why no coordinates?
+Schema v1 (the legacy single-level *Tile* model) is read transparently by
+`import_snapshot_json`:
 
-Coordinates impose a specific topology (grid, hex, isometric).  gmMap stores
-adjacency edges explicitly to support any topology: irregular dungeon graphs,
-point-to-point war-game maps, node networks, etc.  If coordinates are needed
-for rendering they can be stored as metadata (e.g.
-`set_location_meta(id, "x", 3); set_location_meta(id, "y", 7);`).
+| v1 field | v2 mapping |
+|---|---|
+| `tile_ids` | `zone_ids` |
+| `assignments` | `location_to_zone` |
+| `tile_metadata_map` | `zone_metadata_map` |
+| *(none)* | `region_ids`, `zone_to_region`, `region_metadata_map` → empty |
+| *(none)* | `actors_by_location`, `interactables_by_location` → empty |
 
-### Why MetadataValue + UID for metadata?
-
-`MetadataValue` keeps metadata serializable by design and supports stable
-cross-object references via UID (`UidRef` / `UidList`).
-Pointers remain runtime-only concerns and should stay in a transient cache,
-not in persisted map state.
-
-### Template header-only implementation
-
-Because `gmMap` is a class template, all method bodies must be compiled in
-every translation unit that uses the class.  They are therefore defined as
-inline functions at the bottom of `gmMap.hpp`.  The accompanying `gmMap.cpp`
-is intentionally minimal and serves only as a documentation anchor and a place
-for future explicit template instantiations.
+The `Tile` naming was renamed to `Zone` across the API; callers that used
+`create_tile`, `assign_to_tile`, `TileId`, etc. must switch to the corresponding
+`*_zone` / `ZoneId` symbols.

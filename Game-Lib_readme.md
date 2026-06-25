@@ -45,7 +45,7 @@ For complete information on any library, refer to its API document linked above.
 | **gmDispatch** | `Dispatcher`, `EventBusChannel`, `SyncDispatcher` | Event routing between engine components |
 | **gmFlow** | `GameSession`, `IFlowController`, `ActionQueue` | Turn/phase/action lifecycle management |
 | **gmLog** | `Logger`, `LoggerConfig`, `SyncDispatcher` | Structured JSON Lines logging |
-| **gmMap** | `gmMap<ItemT>`, `LocationId`, `TileId` | Board state without enforced coordinates |
+| **gmMap** | `gmMap<ItemT>`, `LocationId`, `ZoneId`, `RegionId` | Board state without enforced coordinates |
 | **gmRules** | `gmRulesEngine`, `TargetResolver`, `ConditionEvaluator` | Target selection, condition checks, effects, status |
 | **gmSave** | `save()`, `load()`, `try_load()` | Generic JSON persistence with versioning |
 | **gmActor** | `ActorStore`, `StatBlock`, `InventoryState` | Actor state, stats, statuses, modifiers |

@@ -12,7 +12,9 @@ Layout
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from typing import Callable
+
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import (
     QComboBox,
@@ -45,6 +47,10 @@ class GmActorModule(BaseModule):
     """Visualises gmActor state: actor tree, HP bar, statuses, equipment.
 
     TypeIds from ``ActorEvents.hpp``.
+
+    Callbacks:
+        on_actor_selected(actor_id): invoked when the user selects an actor in
+        the tree.  Set by the owner after instantiation.
     """
 
     @property
@@ -78,6 +84,9 @@ class GmActorModule(BaseModule):
         self._actor_items: dict[str, QTreeWidgetItem] = {}
         self._faction_items: dict[str, QTreeWidgetItem] = {}
         self._actor_data: dict[str, dict] = {}
+        # Callback invoked when the user clicks an actor row in the tree.
+        # Owner (e.g. HeroPanelWidget) sets this after calling widget().
+        self.on_actor_selected: Callable[[str], None] | None = None
 
         container = QWidget()
         container.setObjectName("gm_actor_module")
@@ -89,6 +98,7 @@ class GmActorModule(BaseModule):
 
         # ── Left pane ─────────────────────────────────────────────────────────
         left = QWidget()
+        self._left_panel: QWidget = left
         vbox_left = QVBoxLayout(left)
         vbox_left.setContentsMargins(8, 8, 8, 8)
         vbox_left.setSpacing(8)
@@ -106,13 +116,6 @@ class GmActorModule(BaseModule):
         self._search_edit.setPlaceholderText("Cerca attore...")
         self._search_edit.textChanged.connect(self._on_search_changed)
         top_row.addWidget(self._search_edit, 1)
-
-        self._toggle_details_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
-        self._toggle_details_btn.setToolTip("Mostra/Nascondi pannello dettagli")
-        self._toggle_details_btn.setProperty("toggle_icon", "true")
-        self._toggle_details_btn.setFixedWidth(20)
-        self._toggle_details_btn.clicked.connect(self._toggle_details_panel)
-        top_row.addWidget(self._toggle_details_btn)
         vbox_left.addLayout(top_row)
 
         self._tree: QTreeWidget = QTreeWidget()
@@ -132,7 +135,6 @@ class GmActorModule(BaseModule):
         # ── Right pane: detail panel ──────────────────────────────────────────
         right = QWidget()
         self._right_panel: QWidget = right
-        self._details_visible: bool = True
         self._status_expanded: bool = True
         self._equip_expanded: bool = True
         vbox_right = QVBoxLayout(right)
@@ -145,10 +147,21 @@ class GmActorModule(BaseModule):
         header_layout.setContentsMargins(16, 8, 16, 8)
         header_layout.setSpacing(4)
 
+        name_row = QHBoxLayout()
         self._detail_name: QLabel = QLabel("Seleziona un attore")
         self._detail_name.setObjectName("actor_detail_name")
         self._detail_name.setProperty("text_role", "title")
-        header_layout.addWidget(self._detail_name)
+        name_row.addWidget(self._detail_name)
+        name_row.addStretch()
+        # The actor list is collapsible and hidden by default; the toggle lives
+        # in the detail header so it stays reachable when the left pane is gone.
+        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
+        self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
+        self._toggle_tree_btn.setProperty("toggle_icon", "true")
+        self._toggle_tree_btn.setFixedWidth(20)
+        self._toggle_tree_btn.clicked.connect(self._toggle_actor_tree)
+        name_row.addWidget(self._toggle_tree_btn)
+        header_layout.addLayout(name_row)
 
         meta_row = QHBoxLayout()
         self._detail_faction: QLabel = QLabel("—")
@@ -207,8 +220,12 @@ class GmActorModule(BaseModule):
         vbox_right.addWidget(equip_group)
 
         splitter.addWidget(right)
-        splitter.setSizes([300, 200])
-        splitter.setStretchFactor(0, 2)
+        self._splitter: QSplitter = splitter
+        # Default state: actor list hidden, only the detail panel is shown.
+        self._tree_visible: bool = False
+        self._left_panel.setVisible(False)
+        splitter.setSizes([0, 1])
+        splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
         return container
@@ -382,13 +399,39 @@ class GmActorModule(BaseModule):
         """Applies text search combined with faction filter."""
         self._apply_filters()
 
-    def _toggle_details_panel(self) -> None:
-        """Shows/hides the right detail panel."""
-        self._details_visible = not self._details_visible
-        self._right_panel.setVisible(self._details_visible)
-        self._toggle_details_btn.setText(
-            _TOGGLE_EXPANDED_ICON if self._details_visible else _TOGGLE_COLLAPSED_ICON
+    def _toggle_actor_tree(self) -> None:
+        """Shows/hides the whole actor-list pane (filters + tree, hidden by default)."""
+        self._tree_visible = not self._tree_visible
+        self._apply_tree_visibility(self._tree_visible)
+
+    def _apply_tree_visibility(self, visible: bool) -> None:
+        """Applies the actor-list pane visibility and collapses its width to 0."""
+        self._left_panel.setVisible(visible)
+        if visible:
+            self._splitter.setSizes([260, 320])
+            self._splitter.setStretchFactor(0, 2)
+        else:
+            self._splitter.setSizes([0, 1])
+            self._splitter.setStretchFactor(0, 0)
+        self._toggle_tree_btn.setText(
+            _TOGGLE_EXPANDED_ICON if visible else _TOGGLE_COLLAPSED_ICON
         )
+
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def save_state(self) -> dict:
+        """Returns the actor-tree visibility for QSettings persistence."""
+        if self._widget is None:
+            return {}
+        return {"tree_visible": self._tree_visible}
+
+    def restore_state(self, state: dict) -> None:
+        """Restores the actor-tree visibility from a previously saved state dict."""
+        if self._widget is None:
+            return
+        visible = bool(state.get("tree_visible", False))
+        self._tree_visible = visible
+        self._apply_tree_visibility(visible)
 
     def _toggle_status_section(self) -> None:
         """Collapses/expands the Status section content."""
@@ -447,6 +490,8 @@ class GmActorModule(BaseModule):
         actor_id: str | None = self._selected_actor_id()
         if actor_id is not None and actor_id in self._actor_data:
             self._refresh_detail(actor_id)
+            if self.on_actor_selected is not None:
+                self.on_actor_selected(actor_id)
         else:
             self._detail_name.setText("Seleziona un attore")
             self._detail_faction.setText("—")
@@ -461,6 +506,12 @@ class GmActorModule(BaseModule):
         if not items:
             return None
         return items[0].data(_COL_NAME, Qt.ItemDataRole.UserRole)
+
+    def select_actor(self, actor_id: str) -> None:
+        """Programmatically selects the tree row for *actor_id* (no-op if absent)."""
+        item = self._actor_items.get(actor_id)
+        if item is not None:
+            self._tree.setCurrentItem(item)
 
     def _refresh_detail(self, actor_id: str) -> None:
         d: dict = self._actor_data[actor_id]
