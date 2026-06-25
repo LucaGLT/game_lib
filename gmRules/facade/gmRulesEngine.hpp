@@ -6,7 +6,7 @@
  * @brief Top-level façade for the gmRules library.
  *
  * `gmRulesEngine` composes `TargetResolver`, `ConditionEvaluator`,
- * `EffectResolver`, and `StatusEngine`.  Game-specific code should
+ * `EffectResolver`, `StatusEngine`, and `RuleBook`.  Game-specific code should
  * interact with `gmRules` through this class.
  *
  * ## Typical usage
@@ -14,7 +14,11 @@
  *   MyRuleContext ctx(game_state, event_bus);
  *   gmRules::gmRulesEngine engine;
  *
- *   auto result = engine.resolve_effects(card.effects, actor_id, targets, ctx);
+ *   // Load rule definitions from JSON once at startup.
+ *   engine.load_rules_json("dominion_rules.json");
+ *
+ *   // Resolve a named rule by ID.
+ *   auto result = engine.resolve_rule("r_add_action_1", actor_id, targets, ctx);
  *   if (!result.succeeded()) {
  *       // handle failure
  *   }
@@ -34,8 +38,10 @@
 #include "gmRules/status/StatusEngine.hpp"
 #include "gmRules/core/RuleResult.hpp"
 #include "gmRules/core/RuleContext.hpp"
+#include "gmRules/core/RuleBook.hpp"
 #include "gmRules/core/Ids.hpp"
 
+#include <string>
 #include <vector>
 
 namespace gmRules {
@@ -114,11 +120,82 @@ public:
                             const std::string& source_id,
                             RuleContext& ctx);
 
+    // ── RuleBook ──────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Loads rule definitions from a JSON file into the internal RuleBook.
+     *
+     * Can be called multiple times to load additional files;
+     * definitions are accumulated (not replaced).
+     *
+     * @param path  Path to the JSON rule definitions file.
+     * @throws ERuleBookError if the file cannot be opened or is malformed.
+     */
+    void load_rules_json(const std::string& path);
+
+    /**
+     * @brief Loads rule definitions from an in-memory JSON string.
+     *
+     * Useful for tests without touching the file system.
+     *
+     * @param json_text  JSON content as a string.
+     * @throws ERuleBookError on parse or registration failure.
+     */
+    void load_rules_json_string(const std::string& json_text);
+
+    /**
+     * @brief Returns direct access to the internal `RuleBook` for advanced use.
+     *
+     * Use `load_rules_json()` and `resolve_rule()` for the normal workflow.
+     * This accessor is provided for cases where direct `RuleBook` API is needed
+     * (e.g. pre-registering `RuleDefinition` objects in tests).
+     */
+    RuleBook& rule_book() { return rule_book_; }
+
+    /**
+     * @brief Read-only access to the internal `RuleBook`.
+     */
+    const RuleBook& rule_book() const { return rule_book_; }
+
+    /**
+     * @brief Resolves a single named rule from the internal `RuleBook`.
+     *
+     * Evaluates preconditions then applies effects via `EffectResolver`.
+     *
+     * @param rule_id          Rule identifier.
+     * @param source_actor_id  Actor triggering the rule.
+     * @param selected_targets Pre-selected targets.
+     * @param ctx              Mutable game-state adapter.
+     * @return                 `RuleResult::ok()` or `RuleResult::fail(...)`.
+     * @throws ERuleBookError  if `rule_id` is not registered.
+     */
+    RuleResult resolve_rule(const RuleId&                  rule_id,
+                            const ActorId&                 source_actor_id,
+                            const std::vector<TargetRef>&  selected_targets,
+                            RuleContext&                   ctx);
+
+    /**
+     * @brief Resolves an ordered list of named rules in sequence.
+     *
+     * Stops on the first failure.
+     *
+     * @param rule_ids         Rules to resolve in order.
+     * @param source_actor_id  Actor triggering the rules.
+     * @param selected_targets Pre-selected targets.
+     * @param ctx              Mutable game-state adapter.
+     * @return                 Combined `RuleResult`.
+     */
+    RuleResult resolve_rules(const std::vector<RuleId>&     rule_ids,
+                             const ActorId&                 source_actor_id,
+                             const std::vector<TargetRef>&  selected_targets,
+                             RuleContext&                   ctx);
+
 private:
     TargetResolver     target_resolver_;
     ConditionEvaluator condition_evaluator_;
     EffectResolver     effect_resolver_;
     StatusEngine       status_engine_;
+    RuleBook           rule_book_;
 };
 
 } // namespace gmRules
