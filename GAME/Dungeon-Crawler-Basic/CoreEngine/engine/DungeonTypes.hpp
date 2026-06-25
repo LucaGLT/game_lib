@@ -92,6 +92,8 @@ constexpr const char* END_TURN  = "dungeon.end_turn";
 constexpr const char* AREA_SELECTED     = "gmMap.ui.area_selected";
 /// @brief Request the contents of a map area. data: { area_id: string, request_id?: string }
 constexpr const char* AREA_INFO_REQUEST = "gmMap.area.info.request";
+/// @brief Play a card from hand. data: { hero_id: string, card_id: string, target_id?: string }
+constexpr const char* PLAY_CARD = "dungeon.play_card";
 } // namespace command_id
 
 // ── Event identifiers (CoreEngine → GUI) ─────────────────────────────────────
@@ -129,6 +131,10 @@ constexpr const char* TURN_ENDED        = "dungeon.turn.ended";
 constexpr const char* ACTION_REJECTED   = "dungeon.action.rejected";
 /// @brief The dungeon session has ended. data: { outcome: string }
 constexpr const char* GAME_OVER         = "dungeon.game.over";
+/// @brief A card was played and its effects applied. data: { hero_id, card_id, effects_applied[] }
+constexpr const char* CARD_PLAYED       = "dungeon.card.played";
+/// @brief A card play was rejected. data: { hero_id, card_id, reason: string }
+constexpr const char* CARD_REJECTED     = "dungeon.card.rejected";
 /// @brief Contents of a selected map area (view-only response to AREA_INFO_REQUEST).
 ///        data: { area_id, actors: [...], interactables: [...], request_id? }
 constexpr const char* AREA_INFO_RESPONSE = "gmMap.area.info.response";

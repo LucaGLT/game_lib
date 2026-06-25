@@ -33,6 +33,7 @@ from gmGui.theme_manager import ThemeManager
 from gmGui.message_ids import AREA_INFO_REQUEST, AREA_INFO_RESPONSE
 from gmGui.modules.gm_map_area_info_module import GmMapAreaInfoModule
 from gmGui.modules.gm_flow_module import GmFlowModule
+from gmGui.modules.gm_comp_deck_module import GmCompDeckModule
 
 
 class DungeonMainWindow(QMainWindow):
@@ -76,6 +77,7 @@ class DungeonMainWindow(QMainWindow):
         self._errors    = ErrorBarWidget()
         self._area_info = GmMapAreaInfoModule()
         self._flow      = GmFlowModule()
+        self._deck      = GmCompDeckModule()
 
         self.setCentralWidget(self._board)
 
@@ -102,6 +104,12 @@ class DungeonMainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, area_dock)
         self.tabifyDockWidget(left_dock, area_dock)
         area_dock.raise_()
+
+        deck_dock = QDockWidget("Carte", self)
+        deck_dock.setObjectName(self._deck.module_id)
+        deck_dock.setWidget(self._deck.widget())
+        self.addDockWidget(Qt.BottomDockWidgetArea, deck_dock)
+        self._deck.on_attach()
 
         self.setStatusBar(QStatusBar())
         self.statusBar().addPermanentWidget(self._errors)
@@ -134,6 +142,8 @@ class DungeonMainWindow(QMainWindow):
         self._router = EventRouter()
         # Flow / Timeline: shared GmFlowModule fed via a dungeon.* → gmFlow.* adapter.
         self._flow.set_sender(self._bridge.sender)
+        # Deck manager: card commands are sent via the same bridge sender.
+        self._deck.set_sender(self._bridge.sender)
         self._last_round: int = 0
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
         for ev in ("dungeon.session.started", "dungeon.turn.started",
@@ -161,6 +171,11 @@ class DungeonMainWindow(QMainWindow):
         self._router.register("dungeon.action.rejected", self._errors.on_envelope)
         # Area Info: contents of the selected map area (shared contract)
         self._router.register(AREA_INFO_RESPONSE, self._area_info.on_envelope)
+        # Deck manager: gmAlea card events + gmActor resource tracking
+        for ev in ("gmAlea.deck.zone_changed", "gmAlea.deck.card_moved",
+                   "gmAlea.deck.shuffled", "gmAlea.deck.drawn",
+                   "gmActor.snapshot", "gmActor.actor.resource_changed"):
+            self._router.register(ev, self._deck.on_envelope)
 
         # Wire signals from widgets back to engine
         self._board.area_selected.connect(self._on_area_selected)

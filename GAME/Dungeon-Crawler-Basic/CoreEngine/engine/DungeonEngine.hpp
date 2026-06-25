@@ -84,6 +84,9 @@ public:
 private:
 	// ── Command handlers ──────────────────────────────────────────────────────
 
+	/// @brief Handles a dungeon.play_card command.
+	void handle_play_card(const nlohmann::json& data);
+
 	/// @brief Handles a dungeon.move command.
 	void handle_move(const nlohmann::json& data);
 

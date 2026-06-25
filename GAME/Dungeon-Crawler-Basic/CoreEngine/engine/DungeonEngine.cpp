@@ -103,6 +103,10 @@ void DungeonEngine::handle_command(const std::string& typeId, const nlohmann::js
 	{
 		handle_end_turn(data);
 	}
+	else if (typeId == command_id::PLAY_CARD)
+	{
+		handle_play_card(data);
+	}
 	else if (typeId == command_id::AREA_INFO_REQUEST)
 	{
 		handle_area_info_request(data);
@@ -148,6 +152,39 @@ void DungeonEngine::advance_turn()
 }
 
 // ── Private handlers ─────────────────────────────────────────────────────────
+
+void DungeonEngine::handle_play_card(const nlohmann::json& data)
+{
+	// TODO: Phase 4 — Integra DungeonRuleAdapter::execute_card + eventi CARD_PLAYED.
+	// ToBeImplemented //
+	const std::string hero_id  = data.value("hero_id",  "hero");
+	const std::string card_id  = data.value("card_id",  "");
+	const std::string target_id = data.value("target_id", "");
+
+	if (card_id.empty())
+	{
+		_gui.send_event(event_id::CARD_REJECTED,
+			{{"hero_id",  hero_id},
+			 {"card_id",  card_id},
+			 {"reason",   "card_id mancante."}});
+		return;
+	}
+
+	std::string rejection;
+	const bool ok = _rules.execute_card(hero_id, card_id, target_id, rejection);
+	if (!ok)
+	{
+		_gui.send_event(event_id::CARD_REJECTED,
+			{{"hero_id", hero_id},
+			 {"card_id", card_id},
+			 {"reason",  rejection}});
+		return;
+	}
+
+	_gui.send_event(event_id::CARD_PLAYED,
+		{{"hero_id", hero_id},
+		 {"card_id", card_id}});
+}
 
 void DungeonEngine::handle_move(const nlohmann::json& data)
 {

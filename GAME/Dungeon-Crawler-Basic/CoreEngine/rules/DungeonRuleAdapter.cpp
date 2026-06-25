@@ -154,6 +154,28 @@ std::string DungeonRuleAdapter::rejection_reason() const
 	return _rejection_reason;
 }
 
+bool DungeonRuleAdapter::load_card_rules(const std::string& path)
+{
+	// TODO: Phase 4 — Carica regole carte da JSON via gmRules::RuleBookLoader.
+	// ToBeImplemented //
+	(void)path;
+	return true;
+}
+
+bool DungeonRuleAdapter::execute_card(const std::string& hero_id,
+                                      const std::string& card_id,
+                                      const std::string& target_id,
+                                      std::string& out_rejection)
+{
+	// TODO: Phase 4 — Valuta precondizioni ed applica effetti via gmRules rule_book.
+	// ToBeImplemented //
+	(void)hero_id;
+	(void)card_id;
+	(void)target_id;
+	out_rejection.clear();
+	return true;
+}
+
 bool DungeonRuleAdapter::has_actor(const gmRules::ActorId& actor_id) const
 {
 	return _actors.has_actor(actor_id);

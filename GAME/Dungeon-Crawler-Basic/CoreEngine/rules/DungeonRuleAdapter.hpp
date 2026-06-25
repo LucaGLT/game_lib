@@ -96,6 +96,38 @@ public:
 	 */
 	std::string rejection_reason() const;
 
+	// ── Card rule execution ───────────────────────────────────────────────────
+
+	/**
+	 * @brief Loads card rule definitions from a JSON file into the rules engine.
+	 *
+	 * The JSON file must follow the @c RuleBookLoader format (array @c "rules",
+	 * each with @c rule_id, @c description, @c preconditions[], @c effects[]).
+	 *
+	 * @param path  Absolute or working-directory-relative path to the JSON file.
+	 * @return      @c true if the file was loaded and parsed without errors.
+	 */
+	bool load_card_rules(const std::string& path);
+
+	/**
+	 * @brief Executes a card's rule group: evaluates preconditions and applies effects.
+	 *
+	 * Looks up the card_id in the rule book, evaluates all preconditions against
+	 * the current game state, and if valid applies all effects via the rule engine.
+	 * If a target_id is provided it is used for SELECTED_ENEMY effects; otherwise
+	 * the first living enemy in the same room as the hero is auto-selected.
+	 *
+	 * @param hero_id          Actor playing the card.
+	 * @param card_id          Identifier of the card being played.
+	 * @param target_id        Optional explicit target actor id.
+	 * @param out_rejection    On failure, filled with the rejection reason.
+	 * @return                 @c true if all effects were applied, @c false if rejected.
+	 */
+	bool execute_card(const std::string& hero_id,
+	                  const std::string& card_id,
+	                  const std::string& target_id,
+	                  std::string& out_rejection);
+
 private:
 	// ── gmRules::RuleContext implementation ──────────────────────────────────
 
