@@ -21,7 +21,7 @@ gmMap::LocationId Board::location_of(uint8_t row, uint8_t col) const
 void Board::build()
 {
 	_map.clear();
-	_map.create_tile(BOARD_TILE);
+	_map.create_zone(BOARD_ZONE);
 
 	for (uint8_t row = 1; row <= SIZE; ++row)
 	{
@@ -29,7 +29,7 @@ void Board::build()
 		{
 			const gmMap::LocationId loc = location_of(row, col);
 			_map.create_location(loc);
-			_map.assign_to_tile(loc, BOARD_TILE);
+			_map.assign_to_zone(loc, BOARD_ZONE);
 			_map.set_location_meta(loc, META_MARK, std::string());
 		}
 	}

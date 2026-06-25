@@ -93,44 +93,40 @@ def test_flow_restore_state_ignores_invalid_value(flow_mod: GmFlowModule) -> Non
 # ── GmMapModule ───────────────────────────────────────────────────────────────
 
 def test_map_save_state_contains_zoom_and_layer(map_mod: GmMapModule) -> None:
-    """save_state() returns dict with 'zoom_level' (float) and 'layer' (str)."""
+    """save_state() returns dict with 'zoom_level' (float) and 'layers' (list)."""
     state = map_mod.save_state()
     assert "zoom_level" in state
-    assert "layer" in state
+    assert "layers" in state
     assert isinstance(state["zoom_level"], float)
-    assert isinstance(state["layer"], str)
+    assert isinstance(state["layers"], list)
 
 
 def test_map_restore_state_updates_zoom_level(map_mod: GmMapModule) -> None:
-    """restore_state({'zoom_level': 2.0, 'layer': ...}) sets _zoom_level to 2.0."""
-    map_mod.restore_state({"zoom_level": 2.0, "layer": "terrain"})
+    """restore_state({'zoom_level': 2.0, 'layers': ...}) sets _zoom_level to 2.0."""
+    map_mod.restore_state({"zoom_level": 2.0, "layers": ["terrain"]})
     assert abs(map_mod._zoom_level - 2.0) < 0.01
 
 
 def test_map_restore_state_updates_layer(map_mod: GmMapModule) -> None:
-    """restore_state updates the layer QComboBox to 'items'."""
-    map_mod.restore_state({"zoom_level": 1.0, "layer": "items"})
-    assert map_mod._layer_combo.currentText() == "items"
+    """restore_state updates the CheckableComboBox to have 'items' checked."""
+    map_mod.restore_state({"zoom_level": 1.0, "layers": ["items"]})
+    assert "items" in map_mod._layer_combo.checked_layers()
 
 
 def test_map_save_restore_roundtrip(map_mod: GmMapModule) -> None:
-    """save_state() followed by restore_state() preserves zoom and layer."""
+    """save_state() followed by restore_state() preserves zoom and layers."""
     map_mod._zoom(2.0)
-    idx = map_mod._layer_combo.findText("actors")
-    if idx >= 0:
-        map_mod._layer_combo.setCurrentIndex(idx)
+    map_mod._layer_combo.set_checked({"actors"})
     state = map_mod.save_state()
 
     # Reset to defaults.
     map_mod._map_view.resetTransform()
     map_mod._zoom_level = 1.0
-    first_idx = map_mod._layer_combo.findText("terrain")
-    if first_idx >= 0:
-        map_mod._layer_combo.setCurrentIndex(first_idx)
+    map_mod._layer_combo.set_checked({"terrain"})
 
     map_mod.restore_state(state)
     assert abs(map_mod._zoom_level - state["zoom_level"]) < 0.01
-    assert map_mod._layer_combo.currentText() == "actors"
+    assert "actors" in map_mod._layer_combo.checked_layers()
 
 
 def test_map_zoom_clamped_after_restore(map_mod: GmMapModule) -> None:

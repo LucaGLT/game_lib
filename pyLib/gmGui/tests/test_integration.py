@@ -229,6 +229,26 @@ class TestCommandFlow:
         assert result is not None, \
             f"'gmFlow.session.pause' not received; got: {engine.received_commands}"
 
+    def test_pass_turn_button_sends_command(self, e2e_env: tuple) -> None:
+        """Passa Turno button sends 'gmFlow.turn.pass' to the engine."""
+        win, engine = e2e_env
+        flow = next(m for m in win._modules if m.module_id == "gm_flow")
+        flow.widget()
+
+        engine.send_event("gmFlow.session.started", {"session_id": "cmd_turn_pass"})
+        assert _wait(lambda: flow._btn_pass_turn.isEnabled()), \
+            "Passa Turno button not enabled after session.started"
+
+        self._ensure_sender_connected(win, engine)
+        engine.clear_commands()
+
+        flow._btn_pass_turn.click()
+        QApplication.processEvents()
+
+        result = engine.wait_for_command("gmFlow.turn.pass", timeout=3.0)
+        assert result is not None, \
+            f"'gmFlow.turn.pass' not received; got: {engine.received_commands}"
+
     def test_roll_button_sends_command(self, e2e_env: tuple) -> None:
         """[LANCIA] button sends 'gmAlea.dice.roll_request' to the engine."""
         win, engine = e2e_env

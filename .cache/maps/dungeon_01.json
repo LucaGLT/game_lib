@@ -1,0 +1,58 @@
+{
+  "map_id": "dungeon_01",
+  "rooms": [
+    {
+      "id": "room_start",
+      "tags": ["start"],
+      "adjacent": ["room_corridor"]
+    },
+    {
+      "id": "room_corridor",
+      "tags": [],
+      "adjacent": ["room_start", "room_boss"]
+    },
+    {
+      "id": "room_boss",
+      "tags": ["boss_room"],
+      "adjacent": ["room_corridor"]
+    }
+  ],
+  "actors": [
+    {
+      "id": "hero_1",
+      "kind": "HERO",
+      "hp": 10,
+      "max_hp": 10,
+      "room": "room_start",
+      "tags": ["has_potion", "bigword_available"],
+      "statuses": []
+    },
+    {
+      "id": "hero_2",
+      "kind": "HERO",
+      "hp": 8,
+      "max_hp": 8,
+      "room": "room_start",
+      "tags": ["has_potion"],
+      "statuses": []
+    },
+    {
+      "id": "monster_1",
+      "kind": "MONSTER",
+      "hp": 5,
+      "max_hp": 5,
+      "room": "room_corridor",
+      "tags": [],
+      "statuses": []
+    },
+    {
+      "id": "boss",
+      "kind": "BOSS_MONSTER",
+      "hp": 20,
+      "max_hp": 20,
+      "room": "room_boss",
+      "tags": [],
+      "statuses": []
+    }
+  ]
+}
