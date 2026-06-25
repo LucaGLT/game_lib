@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -45,6 +46,7 @@ _ZONE_NAMES: list[str] = [
 
 _BANISH_ZONE: str = "BanishZone"
 _ROLE_CARD_NAME: int = int(Qt.ItemDataRole.UserRole) + 1
+_ROLE_CARD_META: int = int(Qt.ItemDataRole.UserRole) + 2  # dict with full card metadata
 
 
 class GmCompDeckModule(BaseModule):
@@ -72,6 +74,8 @@ class GmCompDeckModule(BaseModule):
             "gmAlea.deck.zone_changed",
             "gmAlea.deck.shuffled",
             "gmAlea.deck.drawn",
+            "gmActor.snapshot",
+            "gmActor.actor.resource_changed",
         ]
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -89,6 +93,8 @@ class GmCompDeckModule(BaseModule):
             "DiscardPile": False,
             "MainDeck": False,
         }
+        # Resources of the active actor (Player_X), updated via events.
+        self._active_actor_actions: int = 1
 
         container = QWidget()
         container.setObjectName("gm_comp_deck_module")
@@ -358,8 +364,23 @@ class GmCompDeckModule(BaseModule):
             self._handle_shuffled(data)
         elif tid == "gmAlea.deck.drawn":
             self._handle_drawn(data)
+        elif tid == "gmActor.snapshot":
+            self._handle_actor_snapshot(data)
+        elif tid == "gmActor.actor.resource_changed":
+            self._handle_resource_changed(data)
 
     # ── Private handlers ──────────────────────────────────────────────────────
+
+    def _handle_actor_snapshot(self, data: dict) -> None:
+        for actor in data.get("actors", []):
+            if str(actor.get("actor_id", "")) == "Player_X":
+                resources: dict = actor.get("resources", {})
+                self._active_actor_actions = int(resources.get("actions", 1))
+                break
+
+    def _handle_resource_changed(self, data: dict) -> None:
+        if str(data.get("actor_id", "")) == "Player_X" and str(data.get("resource_id", "")) == "actions":
+            self._active_actor_actions = int(data.get("new_value", self._active_actor_actions))
 
     def _handle_zone_changed(self, data: dict) -> None:
         zone_name: str = str(data.get("zone_name", ""))
@@ -373,7 +394,14 @@ class GmCompDeckModule(BaseModule):
         for card in data.get("cards", []):
             card_id: str = str(card.get("card_id", ""))
             name: str = str(card.get("name", card_id))
-            self._add_card_item(zone_list, card_id, name)
+            meta: dict = {
+                "value":         card.get("value", ""),
+                "action_cost":   int(card.get("action_cost", 1)),
+                "rule_group_id": str(card.get("rule_group_id", "")),
+                "description":   str(card.get("description", "")),
+                "rules":         list(card.get("rules", [])),
+            }
+            self._add_card_item(zone_list, card_id, name, meta)
         self._refresh_zone_texts(zone_name)
         self._update_counter(zone_name)
 
@@ -439,10 +467,16 @@ class GmCompDeckModule(BaseModule):
     # ── UI helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _add_card_item(zone_list: ZoneList, card_id: str, name: str) -> None:
+    def _add_card_item(
+        zone_list: ZoneList,
+        card_id: str,
+        name: str,
+        meta: dict | None = None,
+    ) -> None:
         item = QListWidgetItem(name)
         item.setData(Qt.ItemDataRole.UserRole, card_id)
         item.setData(_ROLE_CARD_NAME, name)
+        item.setData(_ROLE_CARD_META, meta or {})
         zone_list.addItem(item)
 
     def _update_counter(self, zone_name: str) -> None:
@@ -516,13 +550,40 @@ class GmCompDeckModule(BaseModule):
             return
         card_id = str(item.data(Qt.ItemDataRole.UserRole) or "")
         card_name = str(item.data(_ROLE_CARD_NAME) or item.text())
+        meta: dict = item.data(_ROLE_CARD_META) or {}
         self._selected_zone_name = zone_name
         self._selected_card_id = card_id
-        self._detail_label.setText(
-            f"{card_name}\n\n"
-            f"Zona: {zone_name}\n"
-            f"ID: {card_id}"
-        )
+
+        lines: list[str] = []
+        lines.append(card_name)
+        lines.append("")
+
+        description = str(meta.get("description", "")).strip()
+        if description:
+            lines.append(description)
+            lines.append("")
+
+        rules: list = meta.get("rules", [])
+        if rules:
+            lines.append("Effetti:")
+            for r in rules:
+                lines.append(f"  • {r}")
+            lines.append("")
+
+        value = meta.get("value", "")
+        if value != "":
+            lines.append(f"Costo: {value} monete")
+
+        rg = str(meta.get("rule_group_id", "")).strip()
+        if rg:
+            lines.append(f"Rule Group: {rg}")
+        else:
+            lines.append("Rule Group: (nessuno)")
+
+        lines.append(f"Zona: {zone_name}")
+        lines.append(f"ID: {card_id}")
+
+        self._detail_label.setText("\n".join(lines))
 
     def _refresh_not_used_label(self) -> None:
         count = self._non_usable_count
@@ -558,6 +619,27 @@ class GmCompDeckModule(BaseModule):
     def _move_selected_from_to(self, from_zone: str, to_zone: str) -> None:
         if self._selected_zone_name != from_zone or self._selected_card_id is None:
             return
+        # When playing from hand to an active zone, check action cost.
+        _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
+        if from_zone == "CardHand" and to_zone in _PLAY_ZONES:
+            action_cost: int = 1  # default
+            zone_list = self._zone_lists.get(from_zone)
+            if zone_list is not None:
+                item = self._find_item(zone_list, self._selected_card_id)
+                if item is not None:
+                    meta = item.data(_ROLE_CARD_META) or {}
+                    action_cost = int(meta.get("action_cost", 1))
+            # Show warning only if playing would make actions go negative.
+            if (self._active_actor_actions - action_cost) < 0:
+                answer = QMessageBox.question(
+                    self._widget,
+                    "Azioni esaurite",
+                    "Hai finito le Azioni.\nContinua comunque?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
         self._send_move_card(self._selected_card_id, from_zone, to_zone)
 
     def _move_first_from_to(self, from_zone: str, to_zone: str) -> None:

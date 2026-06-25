@@ -5,10 +5,14 @@
 
 #include "GmCompDeck.hpp"
 
-#include <sstream>
-
 namespace gmAlea
 {
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Static sentinel
+// ─────────────────────────────────────────────────────────────────────────────
+
+const std::string GmCompDeck::_EMPTY_RULE_GROUP_ID{};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Construction
@@ -41,6 +45,7 @@ void GmCompDeck::draw_to_hand(int count)
 	{
 		uint32_t token_id = _main_deck.draw();   // throws EAleaDeckEmptyError if empty
 		_hand.add(token_id);
+		_fire_zone_change(token_id, ZoneId::MAIN_DECK, ZoneId::HAND);
 	}
 }
 
@@ -48,42 +53,49 @@ void GmCompDeck::draw_specific_to_hand(uint32_t token_id)
 {
 	uint32_t drawn = _main_deck.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_hand.add(drawn);
+	_fire_zone_change(token_id, ZoneId::MAIN_DECK, ZoneId::HAND);
 }
 
 void GmCompDeck::play_card(uint32_t token_id)
 {
 	uint32_t card = _hand.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_play_area.add(card);
+	_fire_zone_change(token_id, ZoneId::HAND, ZoneId::PLAY_AREA);
 }
 
 void GmCompDeck::resolve_card(uint32_t token_id)
 {
 	uint32_t card = _play_area.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_discard.add(card);
+	_fire_zone_change(token_id, ZoneId::PLAY_AREA, ZoneId::DISCARD);
 }
 
 void GmCompDeck::discard_from_hand(uint32_t token_id)
 {
 	uint32_t card = _hand.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_discard.add(card);
+	_fire_zone_change(token_id, ZoneId::HAND, ZoneId::DISCARD);
 }
 
 void GmCompDeck::discard_from_table(uint32_t token_id)
 {
 	uint32_t card = _play_area.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_discard.add(card);
+	_fire_zone_change(token_id, ZoneId::PLAY_AREA, ZoneId::DISCARD);
 }
 
 void GmCompDeck::take_from_discard(uint32_t token_id)
 {
 	uint32_t card = _discard.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_hand.add(card);
+	_fire_zone_change(token_id, ZoneId::DISCARD, ZoneId::HAND);
 }
 
 void GmCompDeck::return_from_discard_to_deck(uint32_t token_id)
 {
 	uint32_t card = _discard.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_main_deck.add(card);  // inserted at back (bottom of deck)
+	_fire_zone_change(token_id, ZoneId::DISCARD, ZoneId::MAIN_DECK);
 }
 
 void GmCompDeck::banish(uint32_t token_id)
@@ -105,6 +117,7 @@ void GmCompDeck::banish(uint32_t token_id)
 
 	_remove_from_zone(loc, token_id);
 	_banish_zone.add(token_id);
+	_fire_zone_change(token_id, loc, ZoneId::BANISHED);
 }
 
 void GmCompDeck::reshuffle_discard_into_deck()
@@ -116,6 +129,7 @@ void GmCompDeck::reshuffle_discard_into_deck()
 	{
 		_discard.take_specific(token_id);
 		_main_deck.add(token_id);
+		_fire_zone_change(token_id, ZoneId::DISCARD, ZoneId::MAIN_DECK);
 	}
 
 	// Reshuffle the combined main deck
@@ -130,42 +144,49 @@ void GmCompDeck::remember_from_hand(uint32_t token_id)
 {
 	uint32_t card = _hand.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_memory.add(card);
+	_fire_zone_change(token_id, ZoneId::HAND, ZoneId::MEMORY);
 }
 
 void GmCompDeck::remember_from_play_area(uint32_t token_id)
 {
 	uint32_t card = _play_area.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_memory.add(card);
+	_fire_zone_change(token_id, ZoneId::PLAY_AREA, ZoneId::MEMORY);
 }
 
 void GmCompDeck::remember_from_discard(uint32_t token_id)
 {
 	uint32_t card = _discard.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_memory.add(card);
+	_fire_zone_change(token_id, ZoneId::DISCARD, ZoneId::MEMORY);
 }
 
 void GmCompDeck::play_from_memory(uint32_t token_id)
 {
 	uint32_t card = _memory.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_play_area.add(card);
+	_fire_zone_change(token_id, ZoneId::MEMORY, ZoneId::PLAY_AREA);
 }
 
 void GmCompDeck::return_memory_to_hand(uint32_t token_id)
 {
 	uint32_t card = _memory.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_hand.add(card);
+	_fire_zone_change(token_id, ZoneId::MEMORY, ZoneId::HAND);
 }
 
 void GmCompDeck::discard_from_memory(uint32_t token_id)
 {
 	uint32_t card = _memory.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_discard.add(card);
+	_fire_zone_change(token_id, ZoneId::MEMORY, ZoneId::DISCARD);
 }
 
 void GmCompDeck::banish_from_memory(uint32_t token_id)
 {
 	uint32_t card = _memory.take_specific(token_id);  // throws EAleaTokenNotFoundError
 	_banish_zone.add(card);
+	_fire_zone_change(token_id, ZoneId::MEMORY, ZoneId::BANISHED);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -233,6 +254,51 @@ void GmCompDeck::_remove_from_zone(ZoneId zone, uint32_t token_id)
 				std::to_string(token_id) +
 				" from zone '" + zone_name(zone) + "'");
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rule-group binding
+// ─────────────────────────────────────────────────────────────────────────────
+
+void GmCompDeck::register_rule_group(uint32_t token_id, const std::string& rule_group_id)
+{
+	if (rule_group_id.empty())
+	{
+		_rule_group_map.erase(token_id);
+	}
+	else
+	{
+		_rule_group_map[token_id] = rule_group_id;
+	}
+}
+
+const std::string& GmCompDeck::rule_group_of(uint32_t token_id) const
+{
+	auto it = _rule_group_map.find(token_id);
+	if (it == _rule_group_map.end())
+	{
+		return _EMPTY_RULE_GROUP_ID;
+	}
+	return it->second;
+}
+
+void GmCompDeck::set_zone_change_callback(ZoneChangeCallback cb)
+{
+	_zone_change_cb = std::move(cb);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Private helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+void GmCompDeck::_fire_zone_change(uint32_t token_id, ZoneId from, ZoneId to) const
+{
+	if (!_zone_change_cb)
+	{
+		return;
+	}
+	const std::string& rg = rule_group_of(token_id);
+	_zone_change_cb(token_id, rg, from, to);
 }
 
 } // namespace gmAlea

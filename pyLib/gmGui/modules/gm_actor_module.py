@@ -71,6 +71,7 @@ class GmActorModule(BaseModule):
             "gmActor.actor.hp_changed",
             "gmActor.actor.status_added",
             "gmActor.actor.status_removed",
+            "gmActor.actor.resource_changed",
             "gmActor.actor.moved_area",
             "gmActor.actor.life_state_changed",
             "gmActor.actor.item_equipped",
@@ -200,6 +201,27 @@ class GmActorModule(BaseModule):
         vbox_status.addWidget(self._status_list)
         vbox_right.addWidget(status_group)
 
+        # ── Resources section ──────────────────────────────────────────────
+        resource_group = QGroupBox()
+        vbox_res = QVBoxLayout(resource_group)
+        res_header = QHBoxLayout()
+        res_title = QLabel("Risorse")
+        res_title.setProperty("text_role", "subtitle")
+        res_header.addWidget(res_title)
+        res_header.addStretch()
+        self._resource_expanded: bool = True
+        self._btn_toggle_resource: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._btn_toggle_resource.setToolTip("Mostra/Nascondi sezione Risorse")
+        self._btn_toggle_resource.setProperty("toggle_icon", "true")
+        self._btn_toggle_resource.setFixedWidth(20)
+        self._btn_toggle_resource.clicked.connect(self._toggle_resource_section)
+        res_header.addWidget(self._btn_toggle_resource)
+        vbox_res.addLayout(res_header)
+        self._resource_list: QListWidget = QListWidget()
+        self._resource_list.setMinimumHeight(70)
+        vbox_res.addWidget(self._resource_list)
+        vbox_right.addWidget(resource_group)
+
         equip_group = QGroupBox()
         vbox_equip = QVBoxLayout(equip_group)
         equip_header = QHBoxLayout()
@@ -244,6 +266,8 @@ class GmActorModule(BaseModule):
             self._handle_status_added(data)
         elif tid == "gmActor.actor.status_removed":
             self._handle_status_removed(data)
+        elif tid == "gmActor.actor.resource_changed":
+            self._handle_resource_changed(data)
         elif tid == "gmActor.actor.moved_area":
             self._handle_moved_area(data)
         elif tid == "gmActor.actor.life_state_changed":
@@ -284,6 +308,7 @@ class GmActorModule(BaseModule):
                 "max_hp": max_hp,
                 "life_state": life_state,
                 "statuses": dict(actor.get("statuses", {})),
+                "resources": dict(actor.get("resources", {})),
                 "equipment": dict(actor.get("equipment", {})),
                 "area_id": str(actor.get("area_id", "")),
             }
@@ -352,6 +377,16 @@ class GmActorModule(BaseModule):
         self._update_state_column(actor_id)
         if self._selected_actor_id() == actor_id:
             self._refresh_status_list(actor_id)
+
+    def _handle_resource_changed(self, data: dict) -> None:
+        actor_id: str = str(data.get("actor_id", ""))
+        if actor_id not in self._actor_data:
+            return
+        resource_id: str = str(data.get("resource_id", ""))
+        new_value: int = int(data.get("new_value", 0))
+        self._actor_data[actor_id].setdefault("resources", {})[resource_id] = new_value
+        if self._selected_actor_id() == actor_id:
+            self._refresh_resource_list(actor_id)
 
     def _handle_moved_area(self, data: dict) -> None:
         actor_id: str = str(data.get("actor_id", ""))
@@ -441,6 +476,14 @@ class GmActorModule(BaseModule):
             _TOGGLE_EXPANDED_ICON if self._status_expanded else _TOGGLE_COLLAPSED_ICON
         )
 
+    def _toggle_resource_section(self) -> None:
+        """Collapses/expands the Risorse section content."""
+        self._resource_expanded = not self._resource_expanded
+        self._resource_list.setVisible(self._resource_expanded)
+        self._btn_toggle_resource.setText(
+            _TOGGLE_EXPANDED_ICON if self._resource_expanded else _TOGGLE_COLLAPSED_ICON
+        )
+
     def _toggle_equip_section(self) -> None:
         """Collapses/expands the Equipaggiamento section content."""
         self._equip_expanded = not self._equip_expanded
@@ -521,6 +564,7 @@ class GmActorModule(BaseModule):
         self._apply_detail_state(state)
         self._hp_bar.set_hp(d["current_hp"], d["max_hp"])
         self._refresh_status_list(actor_id)
+        self._refresh_resource_list(actor_id)
         self._refresh_equip_list(actor_id)
 
     def _apply_detail_state(self, state: str) -> None:
@@ -535,6 +579,15 @@ class GmActorModule(BaseModule):
         self._status_list.clear()
         for status_id, stacks in self._actor_data[actor_id]["statuses"].items():
             self._status_list.addItem(f"{status_id} x{stacks}")
+
+    def _refresh_resource_list(self, actor_id: str) -> None:
+        self._resource_list.clear()
+        resources: dict = self._actor_data[actor_id].get("resources", {})
+        if not resources:
+            self._resource_list.addItem("(nessuna risorsa)")
+            return
+        for res_id, value in sorted(resources.items()):
+            self._resource_list.addItem(f"{res_id}: {value}")
 
     def _refresh_equip_list(self, actor_id: str) -> None:
         self._equip_list.clear()

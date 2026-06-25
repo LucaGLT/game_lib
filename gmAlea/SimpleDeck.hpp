@@ -19,18 +19,29 @@ namespace gmAlea
 
 /**
  * @struct Token
- * @brief Simple token with embedded metadata.
+ * @brief Simple token with embedded metadata, optionally linked to a rule group.
  *
  * Used by SimpleDeck to provide a higher-level API for common cases
  * where tokens need minimal structure (ID, label, value).
  * For complex tokens with many attributes, use GmDeck directly
  * with an external mapping.
+ *
+ * The `rule_group_id` field is opaque to `gmAlea`: it is an arbitrary
+ * string identifier that the game engine layer uses to associate this
+ * token with a named set of rules in `gmRules::RuleGroupRegistry`.
+ * Leave it empty (`""`) for tokens that carry no rule overlay.
+ *
+ * @note Lifecycle: the rule group becomes active when the token enters
+ *       `PLAY_AREA` or `MEMORY`, and is deactivated when it leaves those
+ *       zones.  The bridge in `gmAlea/bridges/` wires this automatically
+ *       when `GmCompDeck::set_zone_change_callback()` is used.
  */
 struct Token
 {
-	uint32_t id;          ///< Unique token identifier.
-	std::string label;    ///< Human-readable token name (e.g. "Face1", "Success").
-	int value;            ///< Numeric value (e.g. die face value, probability weight).
+	uint32_t    id;              ///< Unique token identifier.
+	std::string label;           ///< Human-readable token name (e.g. "Face1", "Success").
+	int         value  = 0;      ///< Numeric value (e.g. die face value, probability weight).
+	std::string rule_group_id;   ///< Optional ID of the rule group linked to this token. Empty = none.
 };
 
 /**
