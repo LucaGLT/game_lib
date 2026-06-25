@@ -10,17 +10,17 @@ int main()
 
 	map.create_location(1);
 	map.create_location(2);
-	map.create_tile(10);
+	map.create_zone(10);
 
-	map.assign_to_tile(1, 10);
-	map.unassign_from_tile(1);
-	map.assign_to_tile(1, 10);
+	map.assign_to_zone(1, 10);
+	map.unassign_from_zone(1);
+	map.assign_to_zone(1, 10);
 
-	std::optional<gmMap::TileId> t = map.tile_of(1);
+	std::optional<gmMap::ZoneId> t = map.zone_of(1);
 	(void)t;
 
-	std::vector<gmMap::LocationId> in_tile = map.locations_in_tile(10);
-	(void)in_tile;
+	std::vector<gmMap::LocationId> in_zone = map.locations_in_zone(10);
+	(void)in_zone;
 
 	map.set_adjacent(1, 2, true);
 	bool adj = map.are_adjacent(1, 2);
@@ -45,17 +45,17 @@ int main()
 	(void)lmeta;
 	map.remove_location_meta(1, "name");
 
-	map.set_tile_meta(10, "floor", static_cast<int64_t>(1));
-	map.set_tile_meta(10, "uids", gmMap::UidList{gmMap::UidRef{10U}, gmMap::UidRef{11U}});
-	bool has_tm = map.has_tile_meta(10, "floor");
+	map.set_zone_meta(10, "floor", static_cast<int64_t>(1));
+	map.set_zone_meta(10, "uids", gmMap::UidList{gmMap::UidRef{10U}, gmMap::UidRef{11U}});
+	bool has_tm = map.has_zone_meta(10, "floor");
 	(void)has_tm;
-	const gmMap::MetadataValue& tm = map.get_tile_meta(10, "floor");
+	const gmMap::MetadataValue& tm = map.get_zone_meta(10, "floor");
 	(void)tm;
-	const gmMap::Metadata& tmeta = map.tile_metadata(10);
+	const gmMap::Metadata& tmeta = map.zone_metadata(10);
 	(void)tmeta;
-	map.remove_tile_meta(10, "floor");
+	map.remove_zone_meta(10, "floor");
 
-	map.remove_tile(10);
+	map.remove_zone(10);
 	map.remove_location(2);
 	map.remove_location(1);
 

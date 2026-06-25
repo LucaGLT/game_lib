@@ -99,3 +99,43 @@
 ## Phase 12 – Documentation
 - [x] Write `gmMap_API.md` (usage examples)
 - [x] Update root `README.md`
+
+---
+
+## Phase 13 – Hierarchy Evolution: Region/Zone + contained entities + snapshot v2
+
+> Detailed design and decision log: `gmMap_evolution_plan.md`.
+> Note: legacy *Tile* terminology renamed to *Zone* across the API (no backward
+> alias kept); existing dependents (TicTacToe `Board`, gmMap tests) updated.
+
+### Phase 13A – Design freeze (no code)
+- [x] Decisions frozen: DP-1=B (optional `std::optional`), DP-2=A (`unordered_set`
+      adjacency), A1 (`unordered_set` for actors/interactables), DP-3=A (distinct aliases)
+- [x] Define aliases `RegionId`, `ZoneId` (ex `TileId`), `ActorId`, `InteractableObjectId`
+- [x] Freeze JSON snapshot v2 schema
+
+### Phase 13B – Tile → Zone rename + new Region level
+- [x] Rename aliases, methods and exceptions (`E*Tile*` → `E*Zone*`)
+- [x] Add `create/remove/has/all/count` for Region; region metadata API
+- [x] `ZoneRecord.region_id` (`std::optional<RegionId>`); `_require_region`
+- [x] `assign_zone_to_region`, `unassign_zone_from_region`, `region_of`, `zones_in_region`
+- [x] `remove_zone` detaches from region; `remove_region` ungroups zones
+
+### Phase 13C – Contained actors and interactables on Location
+- [x] `LocationRecord` gains `unordered_set<ActorId> actors` and
+      `unordered_set<InteractableObjectId> interactables`
+- [x] `place_actor/remove_actor/has_actor/actors_at/clear_actors`
+- [x] `place_interactable/remove_interactable/has_interactable/interactables_at/clear_interactables`
+
+### Phase 13D – Snapshot v2 and migration
+- [x] Extend `MapSnapshot` (region/zone/location ids, `location_to_zone`,
+      `zone_to_region`, actors/interactables, per-level metadata maps)
+- [x] Bump export version to v2
+- [x] Transparent v1 → v2 migration on import (via `gmSave::peek_version`)
+- [x] Snapshot round-trip test (T34)
+
+### Phase 13 – Tests & docs
+- [x] Update `test_gmMap.cpp` to Zone/Region API + new coverage (34 tests, all pass)
+- [x] Update auxiliary tests (`smoke_phase5_10.cpp`, `test_snapshot_json.cpp`)
+- [x] Update `gmMap_API.md` (v2) and root readme alias table
+

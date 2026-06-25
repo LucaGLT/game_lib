@@ -18,14 +18,14 @@ bool test_snapshot_round_trip()
 	m1.create_location(2);
 	m1.create_location(3);
 
-	// Create tiles
-	m1.create_tile(100);
-	m1.create_tile(101);
+	// Create zones
+	m1.create_zone(100);
+	m1.create_zone(101);
 
-	// Assign locations to tiles
-	m1.assign_to_tile(1, 100);
-	m1.assign_to_tile(2, 100);
-	m1.assign_to_tile(3, 101);
+	// Assign locations to zones
+	m1.assign_to_zone(1, 100);
+	m1.assign_to_zone(2, 100);
+	m1.assign_to_zone(3, 101);
 
 	// Add adjacencies
 	m1.set_adjacent(1, 2, /*bidirectional=*/true);
@@ -42,10 +42,10 @@ bool test_snapshot_round_trip()
 	m1.set_location_meta(2, "name", std::string("Location B"));
 	m1.set_location_meta(3, "occupants", ::gmMap::UidList{{1001U}, {1002U}});
 
-	// Add tile metadata
-	m1.set_tile_meta(100, "zone", std::string("forest"));
-	m1.set_tile_meta(100, "level", int64_t{1});
-	m1.set_tile_meta(101, "zone", std::string("mountain"));
+	// Add zone metadata
+	m1.set_zone_meta(100, "zone", std::string("forest"));
+	m1.set_zone_meta(100, "level", int64_t{1});
+	m1.set_zone_meta(101, "zone", std::string("mountain"));
 
 	// Export to JSON
 	const std::string snapshot_path = "test_snapshot_temp.json";
@@ -74,22 +74,22 @@ bool test_snapshot_round_trip()
 		return false;
 	}
 
-	// Verify tiles
-	std::vector<::gmMap::TileId> tiles1 = m1.all_tiles();
-	std::vector<::gmMap::TileId> tiles2 = m2.all_tiles();
-	if (tiles1.size() != tiles2.size() || tiles1.size() != 2)
+	// Verify zones
+	std::vector<::gmMap::ZoneId> zones1 = m1.all_zones();
+	std::vector<::gmMap::ZoneId> zones2 = m2.all_zones();
+	if (zones1.size() != zones2.size() || zones1.size() != 2)
 	{
-		std::cerr << "ERROR: Tile count mismatch" << std::endl;
+		std::cerr << "ERROR: Zone count mismatch" << std::endl;
 		return false;
 	}
 
 	// Verify assignments
 	for (::gmMap::LocationId loc : {1, 2, 3})
 	{
-		auto tile1 = m1.tile_of(loc);
-		auto tile2 = m2.tile_of(loc);
-		if (tile1.has_value() != tile2.has_value() ||
-		    (tile1.has_value() && tile1.value() != tile2.value()))
+		auto zone1 = m1.zone_of(loc);
+		auto zone2 = m2.zone_of(loc);
+		if (zone1.has_value() != zone2.has_value() ||
+		    (zone1.has_value() && zone1.value() != zone2.value()))
 		{
 			std::cerr << "ERROR: Assignment mismatch for location " << loc << std::endl;
 			return false;
@@ -159,28 +159,28 @@ bool test_snapshot_round_trip()
 		return false;
 	}
 
-	// Verify tile metadata
+	// Verify zone metadata
 	try
 	{
-		const auto& zone1 = m1.get_tile_meta(100, "zone");
-		const auto& zone2 = m2.get_tile_meta(100, "zone");
+		const auto& zone1 = m1.get_zone_meta(100, "zone");
+		const auto& zone2 = m2.get_zone_meta(100, "zone");
 		if (std::get<std::string>(zone1) != std::get<std::string>(zone2))
 		{
-			std::cerr << "ERROR: Tile metadata 'zone' mismatch" << std::endl;
+			std::cerr << "ERROR: Zone metadata 'zone' mismatch" << std::endl;
 			return false;
 		}
 
-		const auto& level1 = m1.get_tile_meta(100, "level");
-		const auto& level2 = m2.get_tile_meta(100, "level");
+		const auto& level1 = m1.get_zone_meta(100, "level");
+		const auto& level2 = m2.get_zone_meta(100, "level");
 		if (std::get<int64_t>(level1) != std::get<int64_t>(level2))
 		{
-			std::cerr << "ERROR: Tile metadata 'level' mismatch" << std::endl;
+			std::cerr << "ERROR: Zone metadata 'level' mismatch" << std::endl;
 			return false;
 		}
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "ERROR: Exception accessing tile metadata: " << e.what() << std::endl;
+		std::cerr << "ERROR: Exception accessing zone metadata: " << e.what() << std::endl;
 		return false;
 	}
 

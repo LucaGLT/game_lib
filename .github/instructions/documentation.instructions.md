@@ -175,3 +175,29 @@ Place a minimal file block immediately after the include guard `#define`:
 - Cross-references use `@ref ClassName` or `@ref method_name()`.
 - Group related free functions with `@defgroup` / `@addtogroup` only when they
   form a logical API cluster (e.g. factory functions).
+
+---
+
+## API Markdown Companion (Required)
+
+Whenever you add or modify a public API (`class`, `struct`, public method,
+public free function), you MUST also create or update a Markdown API manual.
+
+Rules:
+- The file must be stored in the module root and follow `<module>_API.md` naming
+	when possible (example: `gmFlow/gmFlow_API.md`).
+- The file must be human-readable and complete without requiring Doxygen tool
+	execution or HTML/PDF output.
+- Architecture and flow diagrams in the API manual must be written in Mermaid
+	fenced blocks (no ASCII/text diagrams for those sections).
+- At minimum, include:
+	- Overview and scope.
+	- Mermaid architecture/flow diagrams.
+	- Public classes/functions.
+	- Method signatures with parameter and return semantics.
+	- Function-level details extracted from Doxygen comments (`@brief`, detailed
+		behaviour, `@param`, `@return`, `@throws` when present).
+	- Error/exception behaviour.
+	- Minimal usage examples.
+- Keep this file in sync with source updates; treat API Markdown as part of the
+	definition of done.
