@@ -192,7 +192,10 @@ def _serve_commands(host: str, cmd_port: int, event_sock: socket.socket) -> None
             print(f"[mock_engine] GUI command channel connesso da {addr[0]}:{addr[1]}")
             try:
                 while True:
-                    raw = recv_frame(client)
+                    try:
+                        raw = recv_frame(client)
+                    except socket.timeout:
+                        continue
                     try:
                         cmd = json.loads(raw)
                     except json.JSONDecodeError:
