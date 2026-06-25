@@ -1,0 +1,144 @@
+{
+  "_comment": "Definizioni regole Dominion per RuleBookLoader. Corrisponde a cards_dominion.json + rule_groups.json.",
+  "_format": "Caricabile con RuleBookLoader::load_json(). Ogni rule_id corrisponde a un entry in rule_groups.rule_ids.",
+
+  "rules": [
+
+    {
+      "rule_id": "r_add_action_1",
+      "description": "+1 Azione al giocatore attivo",
+      "effects": [
+        {
+          "type":   "MODIFY_RESOURCE",
+          "target": "SELF",
+          "value":  "actions",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_actions_2",
+      "description": "+2 Azioni al giocatore attivo",
+      "effects": [
+        {
+          "type":   "MODIFY_RESOURCE",
+          "target": "SELF",
+          "value":  "actions",
+          "amount": 2
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_draw_3",
+      "description": "Pesca 3 carte dal mazzo principale",
+      "effects": [
+        {
+          "type":   "DRAW_CARDS",
+          "target": "SELF",
+          "value":  "main_deck",
+          "amount": 3
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_draw_2",
+      "description": "Pesca 2 carte dal mazzo principale",
+      "effects": [
+        {
+          "type":   "DRAW_CARDS",
+          "target": "SELF",
+          "value":  "main_deck",
+          "amount": 2
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_card_1",
+      "description": "Pesca 1 carta dal mazzo principale",
+      "effects": [
+        {
+          "type":   "DRAW_CARDS",
+          "target": "SELF",
+          "value":  "main_deck",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_buy_1",
+      "description": "+1 Acquisto per questo turno",
+      "effects": [
+        {
+          "type":   "MODIFY_RESOURCE",
+          "target": "SELF",
+          "value":  "buys",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_coin_1",
+      "description": "+1 Moneta per questo turno",
+      "effects": [
+        {
+          "type":   "MODIFY_RESOURCE",
+          "target": "SELF",
+          "value":  "coins",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_opponents_gain_curse",
+      "description": "Ogni avversario guadagna una Maledizione",
+      "effects": [
+        {
+          "type":   "APPLY_STATUS",
+          "target": "ALL_ENEMIES_IN_LOCATION",
+          "value":  "status_curse",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_block_attack",
+      "description": "Annulla un attacco avversario (effetto difensivo passivo)",
+      "effects": [
+        {
+          "type":   "APPLY_STATUS",
+          "target": "SELF",
+          "value":  "status_attack_blocked",
+          "amount": 1
+        }
+      ]
+    },
+
+    {
+      "rule_id": "r_discard_and_draw",
+      "description": "Scarta un numero qualsiasi di carte, poi pesca lo stesso numero",
+      "effects": [
+        {
+          "type":   "DISCARD_CARDS",
+          "target": "SELF",
+          "value":  "hand",
+          "amount": 0
+        },
+        {
+          "type":   "DRAW_CARDS",
+          "target": "SELF",
+          "value":  "main_deck",
+          "amount": 0
+        }
+      ]
+    }
+
+  ]
+}
