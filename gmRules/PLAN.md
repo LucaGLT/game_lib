@@ -1,7 +1,7 @@
 # gmRules – Development Plan
 
-**Version:** 2.0
-**Status:** Phase 5 – In Progress 🔧
+**Version:** 2.1
+**Status:** Phase 6 – In Progress 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmRules`
 
@@ -172,7 +172,7 @@ essere effettivamente eseguite tramite `EffectResolver`.
 - [x] `facade/gmRulesEngine.hpp` — aggiungi `RuleBook` come membro + `resolve_rule()`
 - [x] `facade/gmRulesEngine.cpp` — implementa nuovi metodi
 - [x] `tests/test_rule_book.cpp` — unit test RuleBook e Loader
-- [ ] Smoke test: `load_json("dominion.example.json")` + `resolve_rule("r_add_action_1", ctx)` ritorna `RuleResult::success()` ← smoke test
+- [x] Smoke test: `load_json("dominion.example.json")` + `resolve_rule("r_add_action_1", ctx)` ritorna `RuleResult::success()` ← smoke test **PASS** (test_rule_book Group 4)
 
 **Notes:**
 - Parser JSON hand-written nel loader (no dipendenze esterne); supporta
@@ -183,16 +183,16 @@ essere effettivamente eseguite tramite `EffectResolver`.
 - Accumulo: chiamare `load_rules_json*` più volte aggiunge definizioni senza
   cancellare quelle esistenti; necessario per caricare più file di regole.
 
-### Phase 6 — RuleContext::modify_resource + integrazione sandbox ⏳
+### Phase 6 — RuleContext::modify_resource + integrazione sandbox 🔧
 
 **Obiettivo:** Estendere `RuleContext` con il metodo `modify_resource()` per
 permettere agli effetti `MODIFY_RESOURCE` di modificare risorse di gioco
 (azioni, monete, acquisti). Aggiornare il mock sandbox.
 
-- [ ] `core/RuleContext.hpp` — aggiungi `modify_resource(actor_id, resource, delta)`
-- [ ] `tests/MockRuleContext.hpp` — implementa stub del nuovo metodo
-- [ ] `GAME/gmGui-Sandbox/data/dominion_rules.json` — file effetti carte Dominion
-- [ ] `GAME/gmGui-Sandbox/mock_engine.py` — carica e "esegue" regole nel terminale
+- [x] `core/RuleContext.hpp` — `modify_resource(actor_id, resource, delta)` (già presente)
+- [x] `tests/MockRuleContext.hpp` — stub `modify_resource` + `set_resource_max` (già presente)
+- [x] `GAME/gmGui-Sandbox/data/dominion_rules.json` — file effetti carte Dominion
+- [x] `GAME/gmGui-Sandbox/mock_engine.py` — carica `dominion_rules.json`, esegue regole nel terminale
 - [ ] Smoke test: mock_engine stampa `[effect] Player_X.actions += 1` quando Village va in PlayArea ← smoke test
 
 ---

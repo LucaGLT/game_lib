@@ -92,6 +92,32 @@ def _load_cards_json(
     return card_meta, deck_state
 
 
+def _load_rules_json(path: str) -> dict[str, dict[str, Any]]:
+    """Load rule definitions from a JSON file (format: RuleBookLoader C++).
+
+    Returns:
+        rule_book — dict[rule_id, rule_definition_dict]
+    """
+    if not os.path.isfile(path):
+        print(f"[rules] AVVISO: file regole non trovato: {path}")
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+        rule_book: dict[str, dict[str, Any]] = {}
+        for rule in raw.get("rules", []):
+            rid = str(rule.get("rule_id", ""))
+            if rid:
+                rule_book[rid] = rule
+        print(
+            f"[rules] {len(rule_book)} regole caricate da {os.path.basename(path)}"
+        )
+        return rule_book
+    except Exception as exc:  # noqa: BLE001
+        print(f"[rules] AVVISO: impossibile caricare {path}: {exc}")
+        return {}
+
+
 # ────────────────────────────────────────────────────────────────────────────────
 # Rule-group simulation (mirrors CardRuleBridge + RuleGroupRegistry)
 # ────────────────────────────────────────────────────────────────────────────────
@@ -108,6 +134,8 @@ class _RuleGroupState:
     def __init__(self, rule_groups_path: str | None = None) -> None:
         # group_id → lifecycle string (TRANSIENT / PERSISTENT / TRIGGER_BOUND)
         self._lifecycle: dict[str, str] = {}
+        # group_id → list of rule_ids
+        self._rule_ids: dict[str, list[str]] = {}
         self._active: set[str] = set()
 
         if rule_groups_path and os.path.isfile(rule_groups_path):
@@ -118,6 +146,7 @@ class _RuleGroupState:
                     gid = str(rg.get("group_id", ""))
                     if gid:
                         self._lifecycle[gid] = str(rg.get("lifecycle", "TRANSIENT"))
+                        self._rule_ids[gid] = [str(r) for r in rg.get("rule_ids", [])]
                 print(
                     f"[rule_groups] {len(self._lifecycle)} gruppi caricati da "
                     f"{os.path.basename(rule_groups_path)}"
@@ -145,6 +174,65 @@ class _RuleGroupState:
         self._active.discard(group_id)
         return True
 
+    def rule_ids_of(self, group_id: str) -> list[str]:
+        """Returns the rule_ids associated with the group (may be empty)."""
+        return self._rule_ids.get(group_id, [])
+
+
+_EFFECT_LABELS: dict[str, str] = {
+    "MODIFY_RESOURCE": "✏️  risorsa",
+    "DRAW_CARDS":      "🃏 pesca",
+    "DISCARD_CARDS":   "🗑️  scarta",
+    "APPLY_STATUS":    "✨  status",
+    "REMOVE_STATUS":   "❌  rimuovi status",
+    "MODIFY_HP":       "❤️  hp",
+    "MOVE_ACTOR":      "🚶  sposta",
+    "SPAWN_ACTOR":     "➕  spawn",
+    "DESPAWN_ACTOR":   "➖  despawn",
+}
+
+
+def _print_rule_effects(
+    rule_ids: list[str],
+    rule_book: dict[str, dict[str, Any]],
+    actor_id: str,
+) -> None:
+    """Print a human-readable effect log for each rule in rule_ids.
+
+    Mirrors the output expected by the Phase 6 smoke test:
+      [effect] Player_X.actions += 1
+    """
+    for rule_id in rule_ids:
+        rule_def = rule_book.get(rule_id)
+        if rule_def is None:
+            print(f"  [effect] {rule_id}: definizione non trovata in rule_book")
+            continue
+        effects: list[dict[str, Any]] = rule_def.get("effects", [])
+        if not effects:
+            print(f"  [effect] {rule_id}: nessun effetto")
+            continue
+        for eff in effects:
+            eff_type  = str(eff.get("type",   "")).upper()
+            target    = str(eff.get("target", "SELF"))
+            value     = str(eff.get("value",  ""))
+            amount    = eff.get("amount", 0)
+            label     = _EFFECT_LABELS.get(eff_type, eff_type)
+            resolved_actor = actor_id if target == "SELF" else target.lower()
+
+            if eff_type == "MODIFY_RESOURCE" and value:
+                sign = "+" if amount >= 0 else ""
+                print(f"  [effect] {resolved_actor}.{value} {sign}{amount}")
+            elif eff_type == "DRAW_CARDS":
+                n = amount if amount > 0 else "N"
+                print(f"  [effect] {resolved_actor} pesca {n} carta/e")
+            elif eff_type == "DISCARD_CARDS":
+                n = amount if amount > 0 else "N"
+                print(f"  [effect] {resolved_actor} scarta {n} carta/e")
+            elif eff_type == "APPLY_STATUS" and value:
+                print(f"  [effect] {resolved_actor} riceve status [{value}]")
+            else:
+                print(f"  [effect] {label}: actor={resolved_actor} value={value!r} amount={amount}")
+
 
 def _fire_rule_group_event(
     event_sock: socket.socket,
@@ -153,6 +241,8 @@ def _fire_rule_group_event(
     from_zone: str,
     to_zone: str,
     rg_state: _RuleGroupState,
+    rule_book: dict[str, dict[str, Any]] | None = None,
+    active_actor: str = "Player_X",
 ) -> None:
     """Simulate CardRuleBridge zone-change callback.
 
@@ -178,6 +268,10 @@ def _fire_rule_group_event(
                 f"[rule_group] ✔ ATTIVATO  {rule_group_id!r:<24}  "
                 f"({card_id} → {to_zone})"
             )
+            # ── Phase 6: simulate rule effects ──────────────────────────────
+            rule_ids = rg_state.rule_ids_of(rule_group_id)
+            if rule_ids and rule_book is not None:
+                _print_rule_effects(rule_ids, rule_book, active_actor)
         else:
             print(
                 f"[rule_group]   gia attivo {rule_group_id!r:<24}  "
@@ -334,6 +428,7 @@ def _handle_deck_move_command(
     cmd: dict,
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
+    rule_book: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     data = cmd.get("data", {})
     if not isinstance(data, dict):
@@ -363,7 +458,10 @@ def _handle_deck_move_command(
     )
 
     rule_group_id = str(card_meta.get(card_id, {}).get("rule_group_id", ""))
-    _fire_rule_group_event(event_sock, card_id, rule_group_id, from_zone, to_zone, rg_state)
+    _fire_rule_group_event(
+        event_sock, card_id, rule_group_id, from_zone, to_zone, rg_state,
+        rule_book=rule_book,
+    )
 
 
 def _handle_draw_command(
@@ -372,6 +470,7 @@ def _handle_draw_command(
     cmd: dict,
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
+    rule_book: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     data = cmd.get("data", {})
     count = 1
@@ -399,7 +498,10 @@ def _handle_draw_command(
             },
         )
         rule_group_id = str(card_meta.get(cid, {}).get("rule_group_id", ""))
-        _fire_rule_group_event(event_sock, cid, rule_group_id, "MainDeck", "CardHand", rg_state)
+        _fire_rule_group_event(
+            event_sock, cid, rule_group_id, "MainDeck", "CardHand", rg_state,
+            rule_book=rule_book,
+        )
 
 
 def _handle_recycle_discard(event_sock: socket.socket, deck_state: dict) -> None:
@@ -482,6 +584,7 @@ def _serve_commands(
     deck_state: dict,
     card_meta: dict[str, dict[str, Any]],
     rg_state: _RuleGroupState,
+    rule_book: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -525,9 +628,13 @@ def _serve_commands(
                     elif type_id == "gmFlow.session.stop":
                         _send_event(event_sock, "gmFlow.session.completed", {})
                     elif type_id == "gmAlea.deck.move_card":
-                        _handle_deck_move_command(event_sock, deck_state, cmd, card_meta, rg_state)
+                        _handle_deck_move_command(
+                            event_sock, deck_state, cmd, card_meta, rg_state, rule_book
+                        )
                     elif type_id == "gmAlea.deck.draw":
-                        _handle_draw_command(event_sock, deck_state, cmd, card_meta, rg_state)
+                        _handle_draw_command(
+                            event_sock, deck_state, cmd, card_meta, rg_state, rule_book
+                        )
                     elif type_id == "gmAlea.deck.recycle_discard":
                         _handle_recycle_discard(event_sock, deck_state)
             except (ConnectionError, OSError):
@@ -586,7 +693,13 @@ def main() -> int:
 
     rg_state = _RuleGroupState(rg_path)
 
-    # ── Connect and run ────────────────────────────────────────────────────────
+    # ── Load rule definitions (Phase 6) ───────────────────────────────────────────
+    rule_book: dict[str, dict[str, Any]] | None = None
+    if rg_path:  # rg_path is set only when --cards was provided
+        rules_json_path = str(Path(rg_path).parent / "dominion_rules.json")
+        rule_book = _load_rules_json(rules_json_path)
+
+    # ── Connect and run ──────────────────────────────────────────────────────────────
     print(f"[mock_engine] Connessione stream eventi a {args.host}:{args.port} ...")
     with _connect_event_stream(args.host, args.port, timeout_s=20.0) as event_sock:
         print("[mock_engine] Connesso. Invio snapshot iniziale...")
@@ -594,7 +707,11 @@ def main() -> int:
         print("[mock_engine] Modalita manuale: usa 'Passa Turno' in Flow/Timeline.")
         print("[mock_engine] Usa la GUI per spostare carte tra zone.")
         print("[mock_engine] I movimenti verso PlayArea/Memory attivano i rule group.")
-        _serve_commands(args.host, args.cmd_port, event_sock, deck_state, card_meta, rg_state)
+        if rule_book:
+            print("[mock_engine] Effetti regole attivi: gli spostamenti stampano [effect] ...")        
+        _serve_commands(
+            args.host, args.cmd_port, event_sock, deck_state, card_meta, rg_state, rule_book
+        )
 
     return 0
 
