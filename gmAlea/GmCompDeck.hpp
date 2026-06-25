@@ -14,12 +14,37 @@
 #include "PolicyBasedDeck.hpp"
 #include "CardLocation.hpp"
 
+#include <functional>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace gmAlea
 {
+
+/**
+ * @brief Callback fired after every token zone change.
+ *
+ * Parameters:
+ *   - `token_id`      — the token that moved.
+ *   - `rule_group_id` — the rule group linked to this token (empty if none).
+ *   - `from`          — source zone.
+ *   - `to`            — destination zone.
+ *
+ * The callback is called **after** the move has already occurred and the
+ * uniqueness invariant has been restored.  It is safe to call any const
+ * method of `GmCompDeck` inside the callback.
+ *
+ * @note `GmCompDeck` stores at most one callback.  Registering a new one
+ *       replaces the previous one silently.
+ */
+using ZoneChangeCallback = std::function<
+	void(uint32_t           token_id,
+	     const std::string& rule_group_id,
+	     ZoneId             from,
+	     ZoneId             to)
+>;
 
 /**
  * @class GmCompDeck
@@ -278,6 +303,44 @@ public:
 	 */
 	const std::string& owner_name() const;
 
+	// ───────────────────────────────────────────────────────────────────────────
+	// Rule-group binding
+	// ───────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * @brief Associates a token with a rule group identifier.
+	 *
+	 * The `rule_group_id` string is carried alongside the token through all
+	 * zone transitions and is included in every `ZoneChangeCallback` call.
+	 * It is opaque to `GmCompDeck` — the game engine layer interprets it.
+	 *
+	 * Calling this method for a token that is already registered silently
+	 * replaces the previous binding.
+	 *
+	 * @param token_id      Token to bind.
+	 * @param rule_group_id Identifier of the rule group (e.g. `"rg_village"`).
+	 *                      Pass `""` to clear an existing binding.
+	 */
+	void register_rule_group(uint32_t token_id, const std::string& rule_group_id);
+
+	/**
+	 * @brief Returns the rule group ID currently bound to a token, or `""`.
+	 *
+	 * @param token_id Token to query.
+	 * @return The rule group identifier, or empty string if none registered.
+	 */
+	const std::string& rule_group_of(uint32_t token_id) const;
+
+	/**
+	 * @brief Registers the callback invoked after every zone change.
+	 *
+	 * At most one callback is stored.  Passing a default-constructed
+	 * (empty) `ZoneChangeCallback` clears the existing callback.
+	 *
+	 * @param cb Callback to register.
+	 */
+	void set_zone_change_callback(ZoneChangeCallback cb);
+
 	// ─────────────────────────────────────────────────────────────────────────
 	// Read-only zone accessors
 	// ─────────────────────────────────────────────────────────────────────────
@@ -320,6 +383,16 @@ private:
 	 */
 	void _remove_from_zone(ZoneId zone, uint32_t token_id);
 
+	/**
+	 * @brief Fires the registered zone-change callback, if any.
+	 *
+	 * Called internally after every successful cross-zone move.
+	 * No-op when no callback is registered or the token has no rule group.
+	 */
+	void _fire_zone_change(uint32_t token_id, ZoneId from, ZoneId to) const;
+
+	static const std::string _EMPTY_RULE_GROUP_ID; ///< Sentinel empty string.
+
 	std::string   _owner_name;
 	MainDeck      _main_deck;
 	CardHand      _hand;
@@ -327,6 +400,11 @@ private:
 	MemoryZone    _memory;
 	DiscardPile   _discard;
 	BanishZone    _banish_zone;
+
+	/// token_id → rule_group_id (empty string = no binding)
+	std::unordered_map<uint32_t, std::string> _rule_group_map;
+
+	ZoneChangeCallback _zone_change_cb; ///< Optional observer; default-constructed = empty.
 };
 
 } // namespace gmAlea

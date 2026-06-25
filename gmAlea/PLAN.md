@@ -1,7 +1,7 @@
 ﻿# GmDeck + GmCompDeck – Development Plan
 
-**Version:** 2.0
-**Status:** Phase 3 – In Progress
+**Version:** 3.0
+**Status:** Phase 6 – In Progress 🔧
 **Language:** C++17 Standard
 **Namespace:** `gmAlea`
 
@@ -47,21 +47,26 @@ GmDeck   (raw token list — shuffle, draw, push_back, draw_specific)
 ## File Structure
 
 ```
-gmDeck/
-├── PLAN.md                     ← this file
-├── ai-instructions.md          ← coding conventions for this library
-├── GmDeck.hpp                  ← base deck v2 (push_back, push_front, draw_specific, auto_shuffle)
+gmAlea/
+├── PLAN.md                                        ← this file
+├── ai-instructions.md                             ← coding conventions for this library
+├── GmDeck.hpp                                     ← base deck v2 (push_back, push_front, draw_specific, auto_shuffle)
 ├── GmDeck.cpp
-├── gmDeck_API.md               ← base deck API reference
-├── CardLocation.hpp            ← enum class ZoneId + inline zone_name()
-├── ZonePolicy.hpp              ← compile-time policy structs (5 built-in)
-├── PolicyBasedDeck.hpp         ← template<typename Policy> class — bodies inline (template rule)
-├── GmCompDeck.hpp              ← CompositeDeck orchestrator — declaration
-├── GmCompDeck.cpp              ← CompositeDeck — method bodies
-├── gmCompDeck_API.md           ← full API reference
+├── gmAlea_API.md                                  ← base deck API reference
+├── CardLocation.hpp                               ← enum class ZoneId + inline zone_name()
+├── ZonePolicy.hpp                                 ← compile-time policy structs (5 built-in)
+├── PolicyBasedDeck.hpp                            ← template<typename Policy> class — bodies inline (template rule)
+├── SimpleDeck.hpp                                 ← Token struct (id / label / value / rule_group_id)
+├── SimpleDeck.cpp
+├── GmCompDeck.hpp                                 ← CompositeDeck orchestrator — ZoneChangeCallback added
+├── GmCompDeck.cpp                                 ← CompositeDeck — method bodies + _fire_zone_change
+├── gmCompDeck_API.md                              ← full API reference
+├── bridges/
+│   └── gmAlea_gmRules/
+│       └── CardRuleBridge.hpp                     ← only file allowed to #include gmRules
 └── tests/
-    ├── test_gmDeck_v2.cpp      ← unit tests for GmDeck v2 new methods
-    └── test_gmCompDeck.cpp     ← integration tests for GmCompDeck
+    ├── test_gmDeck_v2.cpp                         ← unit tests for GmDeck v2 new methods
+    └── test_gmCompDeck.cpp                        ← integration tests for GmCompDeck
 ```
 
 ---
@@ -96,10 +101,25 @@ gmDeck/
 - [x] `tests/test_gmDeck_v2.cpp`   — 8 test cases
 - [x] `tests/test_gmCompDeck.cpp`  — 12 test cases
 
-### Phase 5 — Documentation
+### Phase 5 — Documentation ✅
 **Goal:** Complete API reference in Markdown.
 
 - [x] `gmCompDeck_API.md`
+
+### Phase 6 — Rule-group overlay integration 🔧
+**Goal:** Allow each token in `GmCompDeck` to carry a `rule_group_id` that
+wires into `gmRules::RuleGroupRegistry` via a zone-change callback.
+
+- [x] `SimpleDeck.hpp` — add `std::string rule_group_id` field to `Token`
+- [x] `GmCompDeck.hpp` — add `ZoneChangeCallback` type alias (header-level)
+- [x] `GmCompDeck.hpp` — add `register_rule_group()`, `rule_group_of()`, `set_zone_change_callback()` public methods
+- [x] `GmCompDeck.hpp` — add `_rule_group_map`, `_zone_change_cb`, `_fire_zone_change()` private members
+- [x] `GmCompDeck.cpp` — implement new methods + `_fire_zone_change()` calls in all zone-transition methods
+- [x] `gmRules/core/RuleGroup.hpp` — `RuleGroupLifecycle` enum + `RuleGroup` struct
+- [x] `gmRules/core/RuleGroupRegistry.hpp/.cpp` — registry with `activate()` / `deactivate()` / `active_rule_ids()`
+- [x] `bridges/gmAlea_gmRules/CardRuleBridge.hpp` — `CardRuleBridge::attach()` / `detach()` static helpers
+- [ ] `tests/test_gmCompDeck.cpp` — smoke test: play card triggers activate, resolve triggers deactivate ← smoke test
+- [ ] `gmCompDeck_API.md` — document `ZoneChangeCallback`, `register_rule_group`, `set_zone_change_callback`
 
 ---
 
