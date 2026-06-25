@@ -57,6 +57,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("GameLib GUI")
         self.resize(1280, 800)
         self.setDockNestingEnabled(True)
+        self.setDockOptions(
+            QMainWindow.DockOption.AllowNestedDocks
+            | QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.GroupedDragging
+            | QMainWindow.DockOption.AnimatedDocks
+        )
 
         # ── Bridge ────────────────────────────────────────────────────────────
         self._receiver: EngineReceiver = EngineReceiver()
@@ -69,10 +75,7 @@ class MainWindow(QMainWindow):
         self._theme_manager: ThemeManager = ThemeManager(QApplication.instance())
         self._theme_actions: dict[str, QAction] = {}
 
-        # ── Central placeholder ───────────────────────────────────────────────
-        central = QLabel("GameLib – Engine View")
-        central.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setCentralWidget(central)
+        # No central placeholder: keep the center available for dock layouts.
 
         # ── Build UI ──────────────────────────────────────────────────────────
         self._register_modules()
