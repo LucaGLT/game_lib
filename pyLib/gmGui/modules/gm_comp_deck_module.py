@@ -45,6 +45,7 @@ _ZONE_NAMES: list[str] = [
 
 _BANISH_ZONE: str = "BanishZone"
 _ROLE_CARD_NAME: int = int(Qt.ItemDataRole.UserRole) + 1
+_ROLE_CARD_META: int = int(Qt.ItemDataRole.UserRole) + 2  # dict with full card metadata
 
 
 class GmCompDeckModule(BaseModule):
@@ -373,7 +374,13 @@ class GmCompDeckModule(BaseModule):
         for card in data.get("cards", []):
             card_id: str = str(card.get("card_id", ""))
             name: str = str(card.get("name", card_id))
-            self._add_card_item(zone_list, card_id, name)
+            meta: dict = {
+                "value":         card.get("value", ""),
+                "rule_group_id": str(card.get("rule_group_id", "")),
+                "description":   str(card.get("description", "")),
+                "rules":         list(card.get("rules", [])),
+            }
+            self._add_card_item(zone_list, card_id, name, meta)
         self._refresh_zone_texts(zone_name)
         self._update_counter(zone_name)
 
@@ -439,10 +446,16 @@ class GmCompDeckModule(BaseModule):
     # ── UI helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _add_card_item(zone_list: ZoneList, card_id: str, name: str) -> None:
+    def _add_card_item(
+        zone_list: ZoneList,
+        card_id: str,
+        name: str,
+        meta: dict | None = None,
+    ) -> None:
         item = QListWidgetItem(name)
         item.setData(Qt.ItemDataRole.UserRole, card_id)
         item.setData(_ROLE_CARD_NAME, name)
+        item.setData(_ROLE_CARD_META, meta or {})
         zone_list.addItem(item)
 
     def _update_counter(self, zone_name: str) -> None:
@@ -516,13 +529,40 @@ class GmCompDeckModule(BaseModule):
             return
         card_id = str(item.data(Qt.ItemDataRole.UserRole) or "")
         card_name = str(item.data(_ROLE_CARD_NAME) or item.text())
+        meta: dict = item.data(_ROLE_CARD_META) or {}
         self._selected_zone_name = zone_name
         self._selected_card_id = card_id
-        self._detail_label.setText(
-            f"{card_name}\n\n"
-            f"Zona: {zone_name}\n"
-            f"ID: {card_id}"
-        )
+
+        lines: list[str] = []
+        lines.append(card_name)
+        lines.append("")
+
+        description = str(meta.get("description", "")).strip()
+        if description:
+            lines.append(description)
+            lines.append("")
+
+        rules: list = meta.get("rules", [])
+        if rules:
+            lines.append("Effetti:")
+            for r in rules:
+                lines.append(f"  • {r}")
+            lines.append("")
+
+        value = meta.get("value", "")
+        if value != "":
+            lines.append(f"Costo: {value} monete")
+
+        rg = str(meta.get("rule_group_id", "")).strip()
+        if rg:
+            lines.append(f"Rule Group: {rg}")
+        else:
+            lines.append("Rule Group: (nessuno)")
+
+        lines.append(f"Zona: {zone_name}")
+        lines.append(f"ID: {card_id}")
+
+        self._detail_label.setText("\n".join(lines))
 
     def _refresh_not_used_label(self) -> None:
         count = self._non_usable_count
