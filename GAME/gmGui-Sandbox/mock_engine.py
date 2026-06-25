@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import socket
 import time
 from datetime import datetime, timezone
@@ -138,6 +139,130 @@ def _emit_initial_snapshot(event_sock: socket.socket) -> None:
     )
 
 
+def _initial_deck_state() -> dict[str, list[dict[str, str]]]:
+    return {
+        "MainDeck": [
+            {"card_id": "fire_01", "name": "Fireball"},
+            {"card_id": "shield_01", "name": "Shield"},
+            {"card_id": "heal_01", "name": "Heal"},
+        ],
+        "CardHand": [
+            {"card_id": "potion_01", "name": "Potion"},
+            {"card_id": "arrow_01", "name": "Arrow"},
+        ],
+        "PlayArea": [],
+        "Memory": [],
+        "DiscardPile": [],
+        "BanishZone": [],
+    }
+
+
+def _find_and_remove_card(
+    deck_state: dict[str, list[dict[str, str]]],
+    from_zone: str,
+    card_id: str,
+) -> dict[str, str] | None:
+    cards = deck_state.get(from_zone)
+    if cards is None:
+        return None
+    for idx, card in enumerate(cards):
+        if str(card.get("card_id", "")) == card_id:
+            return cards.pop(idx)
+    return None
+
+
+def _handle_deck_move_command(event_sock: socket.socket, deck_state: dict, cmd: dict) -> None:
+    data = cmd.get("data", {})
+    if not isinstance(data, dict):
+        return
+
+    card_id = str(data.get("card_id", ""))
+    from_zone = str(data.get("from", ""))
+    to_zone = str(data.get("to", ""))
+    if not card_id or not from_zone or not to_zone or from_zone == to_zone:
+        return
+    if from_zone not in deck_state or to_zone not in deck_state:
+        return
+
+    card = _find_and_remove_card(deck_state, from_zone, card_id)
+    if card is None:
+        return
+    deck_state[to_zone].insert(0, card)
+
+    _send_event(
+        event_sock,
+        "gmAlea.deck.card_moved",
+        {
+            "card_id": card_id,
+            "from_zone": from_zone,
+            "to_zone": to_zone,
+        },
+    )
+
+
+def _handle_draw_command(event_sock: socket.socket, deck_state: dict, cmd: dict) -> None:
+    data = cmd.get("data", {})
+    count = 1
+    if isinstance(data, dict):
+        try:
+            count = int(data.get("count", 1))
+        except (TypeError, ValueError):
+            count = 1
+    if count <= 0:
+        return
+
+    for _ in range(count):
+        if len(deck_state["MainDeck"]) == 0:
+            return
+        card = deck_state["MainDeck"].pop(0)
+        deck_state["CardHand"].insert(0, card)
+        _send_event(
+            event_sock,
+            "gmAlea.deck.card_moved",
+            {
+                "card_id": str(card.get("card_id", "")),
+                "from_zone": "MainDeck",
+                "to_zone": "CardHand",
+            },
+        )
+
+
+def _handle_recycle_discard(event_sock: socket.socket, deck_state: dict) -> None:
+    discard_cards = deck_state.get("DiscardPile", [])
+    if len(discard_cards) == 0:
+        return
+
+    random.shuffle(discard_cards)
+    # Place shuffled discard cards on top of MainDeck as a pile.
+    main_cards = deck_state.get("MainDeck", [])
+    deck_state["MainDeck"] = discard_cards + main_cards
+    deck_state["DiscardPile"] = []
+
+    _send_event(
+        event_sock,
+        "gmAlea.deck.zone_changed",
+        {
+            "zone_name": "MainDeck",
+            "cards": deck_state["MainDeck"],
+        },
+    )
+    _send_event(
+        event_sock,
+        "gmAlea.deck.zone_changed",
+        {
+            "zone_name": "DiscardPile",
+            "cards": [],
+        },
+    )
+    _send_event(
+        event_sock,
+        "gmAlea.deck.shuffled",
+        {
+            "zone_name": "MainDeck",
+        },
+    )
+
+
 def _advance_turn(event_sock: socket.socket, turn_index: int) -> None:
     active = "Player_X" if turn_index % 2 == 1 else "Player_O"
 
@@ -184,6 +309,7 @@ def _serve_commands(host: str, cmd_port: int, event_sock: socket.socket) -> None
 
     turn_index = 1
     paused = False
+    deck_state = _initial_deck_state()
 
     try:
         while True:
@@ -217,6 +343,12 @@ def _serve_commands(host: str, cmd_port: int, event_sock: socket.socket) -> None
                         _send_event(event_sock, "gmFlow.session.resumed", {})
                     elif type_id == "gmFlow.session.stop":
                         _send_event(event_sock, "gmFlow.session.completed", {})
+                    elif type_id == "gmAlea.deck.move_card":
+                        _handle_deck_move_command(event_sock, deck_state, cmd)
+                    elif type_id == "gmAlea.deck.draw":
+                        _handle_draw_command(event_sock, deck_state, cmd)
+                    elif type_id == "gmAlea.deck.recycle_discard":
+                        _handle_recycle_discard(event_sock, deck_state)
             except (ConnectionError, OSError):
                 print("[mock_engine] GUI command channel disconnesso")
             finally:

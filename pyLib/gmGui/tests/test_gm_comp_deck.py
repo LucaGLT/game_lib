@@ -172,6 +172,35 @@ def test_card_moved_item_is_in_dest_zone(mod: GmCompDeckModule) -> None:
     assert found is not None
 
 
+def test_card_moved_inserts_on_top(mod: GmCompDeckModule) -> None:
+    """Moved card is inserted at index 0 (top of destination pile)."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "CardHand",
+            "cards": [
+                {"card_id": "h1", "name": "H1"},
+                {"card_id": "h2", "name": "H2"},
+            ],
+        },
+    })
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "MainDeck",
+            "cards": [{"card_id": "m1", "name": "M1"}],
+        },
+    })
+
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.card_moved",
+        "data": {"card_id": "m1", "from_zone": "MainDeck", "to_zone": "CardHand"},
+    })
+
+    top_item = mod._zone_lists["CardHand"].item(0)
+    assert top_item.data(Qt.ItemDataRole.UserRole) == "m1"
+
+
 def test_card_moved_unknown_card_does_not_crash(mod: GmCompDeckModule) -> None:
     """card_moved with a card_id not in the source zone must not raise."""
     mod.on_envelope({
@@ -226,20 +255,181 @@ def test_shuffled_preserves_card_count(mod: GmCompDeckModule) -> None:
 # ── command button tests ──────────────────────────────────────────────────────
 
 def test_draw_button_sends_command(mod: GmCompDeckModule) -> None:
-    """Clicking [Draw 1] calls send_command with gmAlea.deck.draw and count=1."""
+    """Blind draw sends gmAlea.deck.move_card(MainDeck -> CardHand) for first card."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "MainDeck",
+            "cards": [
+                {"card_id": "m1", "name": "A"},
+                {"card_id": "m2", "name": "B"},
+            ],
+        },
+    })
     _sender(mod).calls.clear()
     mod._btn_draw.click()
 
     assert len(_sender(mod).calls) == 1
     type_id, data = _sender(mod).calls[0]
-    assert type_id == "gmAlea.deck.draw"
-    assert data["count"] == 1
+    assert type_id == "gmAlea.deck.move_card"
+    assert data["card_id"] == "m1"
+    assert data["from"] == "MainDeck"
+    assert data["to"] == "CardHand"
 
 
-def test_shuffle_button_sends_command(mod: GmCompDeckModule) -> None:
-    """Clicking [Shuffle Discard→Main] calls send_command with gmAlea.deck.recycle_discard."""
+def test_draw_choose_mode_moves_selected_main_deck_card(mod: GmCompDeckModule) -> None:
+    """After observe toggle, draw button becomes 'Scegli' and moves selected card."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "MainDeck",
+            "cards": [
+                {"card_id": "m1", "name": "A"},
+                {"card_id": "m2", "name": "B"},
+            ],
+        },
+    })
+    mod._btn_observe_main.click()
+    mod._zone_lists["MainDeck"].setCurrentRow(1)
     _sender(mod).calls.clear()
-    mod._btn_shuffle.click()
+
+    mod._btn_draw.click()
+
+    assert len(_sender(mod).calls) == 1
+    type_id, data = _sender(mod).calls[0]
+    assert type_id == "gmAlea.deck.move_card"
+    assert data["card_id"] == "m2"
+    assert data["from"] == "MainDeck"
+    assert data["to"] == "CardHand"
+
+
+def test_discard_pick_revealed_moves_selected_to_hand(mod: GmCompDeckModule) -> None:
+    """Scarti in osservato mode uses pick button as 'Scegli'."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "DiscardPile",
+            "cards": [
+                {"card_id": "d1", "name": "A"},
+                {"card_id": "d2", "name": "B"},
+            ],
+        },
+    })
+    mod._btn_observe_discard.click()
+    mod._zone_lists["DiscardPile"].setCurrentRow(1)
+    _sender(mod).calls.clear()
+
+    mod._btn_discard_pick.click()
+
+    assert len(_sender(mod).calls) == 1
+    type_id, data = _sender(mod).calls[0]
+    assert type_id == "gmAlea.deck.move_card"
+    assert data["card_id"] == "d2"
+    assert data["from"] == "DiscardPile"
+    assert data["to"] == "CardHand"
+
+
+def test_discard_pick_hidden_moves_first_to_hand(mod: GmCompDeckModule) -> None:
+    """Scarti in nascosto mode uses pick button as 'Prendi la Prima'."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "DiscardPile",
+            "cards": [
+                {"card_id": "d1", "name": "A"},
+                {"card_id": "d2", "name": "B"},
+            ],
+        },
+    })
+    _sender(mod).calls.clear()
+
+    mod._btn_discard_pick.click()
+
+    assert len(_sender(mod).calls) == 1
+    type_id, data = _sender(mod).calls[0]
+    assert type_id == "gmAlea.deck.move_card"
+    assert data["card_id"] == "d1"
+    assert data["from"] == "DiscardPile"
+    assert data["to"] == "CardHand"
+
+
+def test_discard_pick_label_changes_with_observe_toggle(mod: GmCompDeckModule) -> None:
+    """Discard pick button label toggles between first-pick and choose."""
+    assert mod._btn_discard_pick.text() == "Prendi la Prima"
+
+    mod._btn_observe_discard.click()
+    assert mod._btn_discard_pick.text() == "Scegli"
+
+    mod._btn_observe_discard.click()
+    assert mod._btn_discard_pick.text() == "Prendi la Prima"
+
+
+def test_hand_action_buttons_send_expected_zone_moves(mod: GmCompDeckModule) -> None:
+    """Hand buttons map to discard/play/memory/banish for selected hand card."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "CardHand",
+            "cards": [{"card_id": "h1", "name": "HandCard"}],
+        },
+    })
+    mod._zone_lists["CardHand"].setCurrentRow(0)
+
+    _sender(mod).calls.clear()
+    mod._btn_hand_discard.click()
+    mod._btn_hand_play.click()
+    mod._btn_hand_memory.click()
+    mod._btn_hand_banish.click()
+
+    assert len(_sender(mod).calls) == 4
+    sent = [call[1]["to"] for call in _sender(mod).calls]
+    assert sent == ["DiscardPile", "PlayArea", "Memory", "BanishZone"]
+
+
+def test_playarea_buttons_send_expected_zone_moves(mod: GmCompDeckModule) -> None:
+    """PlayArea buttons map to discard and hand for selected played card."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "PlayArea",
+            "cards": [{"card_id": "p1", "name": "Played"}],
+        },
+    })
+    mod._zone_lists["PlayArea"].setCurrentRow(0)
+
+    _sender(mod).calls.clear()
+    mod._btn_play_discard.click()
+    mod._btn_play_retake.click()
+
+    assert len(_sender(mod).calls) == 2
+    assert _sender(mod).calls[0][1]["to"] == "DiscardPile"
+    assert _sender(mod).calls[1][1]["to"] == "CardHand"
+
+
+def test_memory_riprendi_moves_selected_to_hand(mod: GmCompDeckModule) -> None:
+    """Memoria/Riprendi moves selected memory card to hand."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "Memory",
+            "cards": [{"card_id": "mem1", "name": "MemoryCard"}],
+        },
+    })
+    mod._zone_lists["Memory"].setCurrentRow(0)
+
+    _sender(mod).calls.clear()
+    mod._btn_memory_retake.click()
+
+    assert len(_sender(mod).calls) == 1
+    assert _sender(mod).calls[0][0] == "gmAlea.deck.move_card"
+    assert _sender(mod).calls[0][1]["from"] == "Memory"
+    assert _sender(mod).calls[0][1]["to"] == "CardHand"
+
+
+def test_discard_rimescola_button_sends_command(mod: GmCompDeckModule) -> None:
+    """Scarti/Rimescola sends gmAlea.deck.recycle_discard command."""
+    _sender(mod).calls.clear()
+    mod._btn_discard_shuffle.click()
 
     assert len(_sender(mod).calls) == 1
     type_id, _ = _sender(mod).calls[0]
@@ -249,7 +439,14 @@ def test_shuffle_button_sends_command(mod: GmCompDeckModule) -> None:
 # ── drag-drop signal tests ────────────────────────────────────────────────────
 
 def test_card_dropped_signal_calls_send_command(mod: GmCompDeckModule) -> None:
-    """Emitting card_dropped on a ZoneList triggers send_command(move_card, ...)."""
+    """Allowed drag from MainDeck to CardHand sends move command."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "MainDeck",
+            "cards": [{"card_id": "c_abc", "name": "First"}],
+        },
+    })
     _sender(mod).calls.clear()
     mod._zone_lists["MainDeck"].card_dropped.emit(
         "c_abc", "MainDeck", "CardHand"
@@ -263,16 +460,134 @@ def test_card_dropped_signal_calls_send_command(mod: GmCompDeckModule) -> None:
     assert data["to"] == "CardHand"
 
 
-def test_card_dropped_signal_correct_zones(mod: GmCompDeckModule) -> None:
-    """card_dropped carries the correct from_zone and to_zone strings."""
+def test_drag_rejects_forbidden_source_zone(mod: GmCompDeckModule) -> None:
+    """Drag from PlayArea is rejected by the policy matrix."""
     _sender(mod).calls.clear()
     mod._zone_lists["PlayArea"].card_dropped.emit(
         "c_xyz", "PlayArea", "DiscardPile"
     )
 
+    assert len(_sender(mod).calls) == 0
+
+
+def test_drag_hidden_main_deck_allows_only_first(mod: GmCompDeckModule) -> None:
+    """When MainDeck is hidden, only the first card can be dragged to hand."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "MainDeck",
+            "cards": [
+                {"card_id": "m1", "name": "A"},
+                {"card_id": "m2", "name": "B"},
+            ],
+        },
+    })
+
+    _sender(mod).calls.clear()
+    mod._zone_lists["MainDeck"].card_dropped.emit("m2", "MainDeck", "CardHand")
+    assert len(_sender(mod).calls) == 0
+
+    mod._zone_lists["MainDeck"].card_dropped.emit("m1", "MainDeck", "CardHand")
+    assert len(_sender(mod).calls) == 1
+
+
+def test_drag_hidden_discard_allows_only_first(mod: GmCompDeckModule) -> None:
+    """When DiscardPile is hidden, only first card may drag to hand/main deck."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "DiscardPile",
+            "cards": [
+                {"card_id": "d1", "name": "A"},
+                {"card_id": "d2", "name": "B"},
+            ],
+        },
+    })
+
+    _sender(mod).calls.clear()
+    mod._zone_lists["DiscardPile"].card_dropped.emit("d2", "DiscardPile", "CardHand")
+    assert len(_sender(mod).calls) == 0
+
+    mod._zone_lists["DiscardPile"].card_dropped.emit("d1", "DiscardPile", "MainDeck")
+    assert len(_sender(mod).calls) == 1
+
+
+def test_drag_discard_to_main_allowed_when_visible(mod: GmCompDeckModule) -> None:
+    """Visible DiscardPile allows dragging any selected card to MainDeck."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "DiscardPile",
+            "cards": [
+                {"card_id": "d1", "name": "A"},
+                {"card_id": "d2", "name": "B"},
+            ],
+        },
+    })
+    mod._btn_observe_discard.click()
+
+    _sender(mod).calls.clear()
+    mod._zone_lists["DiscardPile"].card_dropped.emit("d2", "DiscardPile", "MainDeck")
+
+    assert len(_sender(mod).calls) == 1
     _, data = _sender(mod).calls[0]
-    assert data["from"] == "PlayArea"
-    assert data["to"] == "DiscardPile"
+    assert data["from"] == "DiscardPile"
+    assert data["to"] == "MainDeck"
+
+
+def test_drag_from_hand_allows_same_targets_as_hand_buttons(mod: GmCompDeckModule) -> None:
+    """Hand drag targets match button actions: discard/play/memory/banish."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "CardHand",
+            "cards": [{"card_id": "h1", "name": "H"}],
+        },
+    })
+
+    _sender(mod).calls.clear()
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "DiscardPile")
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "PlayArea")
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "Memory")
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "BanishZone")
+
+    assert len(_sender(mod).calls) == 4
+    targets = [call[1]["to"] for call in _sender(mod).calls]
+    assert targets == ["DiscardPile", "PlayArea", "Memory", "BanishZone"]
+
+
+def test_drag_from_hand_rejects_non_button_targets(mod: GmCompDeckModule) -> None:
+    """Hand drag rejects targets not available from hand buttons."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "CardHand",
+            "cards": [{"card_id": "h1", "name": "H"}],
+        },
+    })
+
+    _sender(mod).calls.clear()
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "MainDeck")
+    mod._zone_lists["CardHand"].card_dropped.emit("h1", "CardHand", "CardHand")
+
+    assert len(_sender(mod).calls) == 0
+
+
+def test_discard_first_card_always_visible_when_hidden(mod: GmCompDeckModule) -> None:
+    """In hidden discard mode, first card keeps real name while others are masked."""
+    mod.on_envelope({
+        "typeId": "gmAlea.deck.zone_changed",
+        "data": {
+            "zone_name": "DiscardPile",
+            "cards": [
+                {"card_id": "d1", "name": "FirstVisible"},
+                {"card_id": "d2", "name": "SecondHidden"},
+            ],
+        },
+    })
+
+    assert mod._zone_lists["DiscardPile"].item(0).text() == "FirstVisible"
+    assert mod._zone_lists["DiscardPile"].item(1).text() == "Carta_2"
 
 
 # ── BanishZone policy tests ───────────────────────────────────────────────────

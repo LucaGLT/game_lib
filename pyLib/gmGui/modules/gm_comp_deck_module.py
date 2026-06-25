@@ -160,11 +160,19 @@ class GmCompDeckModule(BaseModule):
 
         self._btn_observe_discard: QPushButton = QPushButton("Osserva (Nascondi)")
         self._btn_observe_main: QPushButton = QPushButton("Osserva (Nascondi)")
-        self._btn_discard_left: QPushButton = QPushButton("<- Scarta")
-        self._btn_play_up: QPushButton = QPushButton("^ Gioca")
-        self._btn_banish: QPushButton = QPushButton("Elimina ->")
-        self._btn_memory_up: QPushButton = QPushButton("^ In Memoria")
-        self._btn_draw = QPushButton("Pesca (Cieca) ->")
+        self._btn_discard_pick: QPushButton = QPushButton("Prendi la Prima")
+        self._btn_discard_shuffle: QPushButton = QPushButton("Rimescola")
+
+        self._btn_hand_discard: QPushButton = QPushButton("<- Scarta")
+        self._btn_hand_play: QPushButton = QPushButton("^ Gioca")
+        self._btn_hand_banish: QPushButton = QPushButton("Elimina ->")
+        self._btn_hand_memory: QPushButton = QPushButton("^ In Memoria")
+
+        self._btn_play_discard: QPushButton = QPushButton("Scarta")
+        self._btn_play_retake: QPushButton = QPushButton("Riprendi")
+        self._btn_memory_retake: QPushButton = QPushButton("Riprendi")
+
+        self._btn_draw = QPushButton("Pesca la Prima")
         self._btn_shuffle = QPushButton("Gestisci Mazzo")
 
         self._btn_observe_discard.clicked.connect(
@@ -173,28 +181,45 @@ class GmCompDeckModule(BaseModule):
         self._btn_observe_main.clicked.connect(
             lambda: self._toggle_zone_reveal("MainDeck")
         )
-        self._btn_draw.clicked.connect(
-            lambda: self.send_command("gmAlea.deck.draw", {"count": 1})
-        )
-        self._btn_shuffle.clicked.connect(
+        self._btn_draw.clicked.connect(self._on_main_deck_pick)
+
+        self._btn_discard_pick.clicked.connect(self._on_discard_pick)
+        self._btn_discard_shuffle.clicked.connect(
             lambda: self.send_command("gmAlea.deck.recycle_discard", {})
         )
-        self._btn_discard_left.clicked.connect(
-            lambda: self._move_selected_card("DiscardPile")
+
+        self._btn_hand_discard.clicked.connect(
+            lambda: self._move_selected_from_to("CardHand", "DiscardPile")
         )
-        self._btn_play_up.clicked.connect(
-            lambda: self._move_selected_card("PlayArea")
+        self._btn_hand_play.clicked.connect(
+            lambda: self._move_selected_from_to("CardHand", "PlayArea")
         )
-        self._btn_banish.clicked.connect(
-            lambda: self._move_selected_card("BanishZone")
+        self._btn_hand_banish.clicked.connect(
+            lambda: self._move_selected_from_to("CardHand", "BanishZone")
         )
-        self._btn_memory_up.clicked.connect(
-            lambda: self._move_selected_card("Memory")
+        self._btn_hand_memory.clicked.connect(
+            lambda: self._move_selected_from_to("CardHand", "Memory")
+        )
+
+        self._btn_play_discard.clicked.connect(
+            lambda: self._move_selected_from_to("PlayArea", "DiscardPile")
+        )
+        self._btn_play_retake.clicked.connect(
+            lambda: self._move_selected_from_to("PlayArea", "CardHand")
+        )
+        self._btn_memory_retake.clicked.connect(
+            lambda: self._move_selected_from_to("Memory", "CardHand")
+        )
+
+        self._btn_shuffle.clicked.connect(
+            lambda: self.send_command("gmAlea.deck.recycle_discard", {})
         )
 
         discard_layout = self._zone_groups["DiscardPile"].layout()
         if isinstance(discard_layout, QVBoxLayout):
             discard_layout.addWidget(self._btn_observe_discard)
+            discard_layout.addWidget(self._btn_discard_pick)
+            discard_layout.addWidget(self._btn_discard_shuffle)
 
         main_layout = self._zone_groups["MainDeck"].layout()
         if isinstance(main_layout, QVBoxLayout):
@@ -206,11 +231,24 @@ class GmCompDeckModule(BaseModule):
             hand_btn_grid = QGridLayout()
             hand_btn_grid.setHorizontalSpacing(8)
             hand_btn_grid.setVerticalSpacing(4)
-            hand_btn_grid.addWidget(self._btn_discard_left, 0, 0)
-            hand_btn_grid.addWidget(self._btn_play_up, 0, 1)
-            hand_btn_grid.addWidget(self._btn_banish, 0, 2)
-            hand_btn_grid.addWidget(self._btn_memory_up, 1, 1)
+            hand_btn_grid.addWidget(self._btn_hand_discard, 0, 0)
+            hand_btn_grid.addWidget(self._btn_hand_play, 0, 1)
+            hand_btn_grid.addWidget(self._btn_hand_banish, 0, 2)
+            hand_btn_grid.addWidget(self._btn_hand_memory, 1, 1)
             hand_layout.addLayout(hand_btn_grid)
+
+        play_layout = self._zone_groups["PlayArea"].layout()
+        if isinstance(play_layout, QVBoxLayout):
+            play_btn_grid = QGridLayout()
+            play_btn_grid.setHorizontalSpacing(8)
+            play_btn_grid.setVerticalSpacing(4)
+            play_btn_grid.addWidget(self._btn_play_discard, 0, 0)
+            play_btn_grid.addWidget(self._btn_play_retake, 0, 1)
+            play_layout.addLayout(play_btn_grid)
+
+        memory_layout = self._zone_groups["Memory"].layout()
+        if isinstance(memory_layout, QVBoxLayout):
+            memory_layout.addWidget(self._btn_memory_retake)
 
         not_used_layout = self._zone_groups["NonInUso"].layout()
         if isinstance(not_used_layout, QVBoxLayout):
@@ -289,10 +327,6 @@ class GmCompDeckModule(BaseModule):
         self._flash_anims["Memory"] = anim
         self._zone_groups["Memory"] = group
 
-        hint = QLabel("Stati persistenti")
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setProperty("text_role", "caption")
-        layout.addWidget(hint)
         return group
 
     def _create_not_used_group(self) -> QGroupBox:
@@ -307,11 +341,6 @@ class GmCompDeckModule(BaseModule):
         self._lbl_not_used.setProperty("text_role", "subtitle")
         layout.addWidget(self._lbl_not_used)
 
-        help_lbl = QLabel('(Usa "Gestisci Mazzo" per rimetterle in gioco)')
-        help_lbl.setWordWrap(True)
-        help_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        help_lbl.setProperty("text_role", "caption")
-        layout.addWidget(help_lbl)
         self._zone_groups["NonInUso"] = group
         return group
 
@@ -361,7 +390,7 @@ class GmCompDeckModule(BaseModule):
             return
         row: int = src.row(item)
         taken: QListWidgetItem = src.takeItem(row)
-        dst.addItem(taken)
+        dst.insertItem(0, taken)
         self._refresh_zone_texts(from_zone)
         self._refresh_zone_texts(to_zone)
         self._update_counter(from_zone)
@@ -400,6 +429,8 @@ class GmCompDeckModule(BaseModule):
 
     def _on_card_dropped(self, card_id: str, from_zone: str, to_zone: str) -> None:
         """Slot connected to ZoneList.card_dropped — forwards to engine."""
+        if not self._is_drag_move_allowed(card_id, from_zone, to_zone):
+            return
         self.send_command(
             "gmAlea.deck.move_card",
             {"card_id": card_id, "from": from_zone, "to": to_zone},
@@ -447,7 +478,9 @@ class GmCompDeckModule(BaseModule):
         self._zone_revealed[zone_name] = not current
         self._refresh_zone_texts(zone_name)
         if zone_name == "MainDeck":
-            self._btn_draw.setText("Pesca (Scegli) ->" if not current else "Pesca (Cieca) ->")
+            self._btn_draw.setText("Scegli" if not current else "Pesca la Prima")
+        elif zone_name == "DiscardPile":
+            self._btn_discard_pick.setText("Scegli" if not current else "Prendi la Prima")
 
     def _refresh_zone_texts(self, zone_name: str) -> None:
         zone_list: ZoneList | None = self._zone_lists.get(zone_name)
@@ -462,7 +495,11 @@ class GmCompDeckModule(BaseModule):
         else:
             for idx in range(zone_list.count()):
                 item = zone_list.item(idx)
-                item.setText(f"Carta_{idx + 1}")
+                if zone_name == "DiscardPile" and idx == 0:
+                    full_name = str(item.data(_ROLE_CARD_NAME) or item.text())
+                    item.setText(full_name)
+                else:
+                    item.setText(f"Carta_{idx + 1}")
 
     def _on_zone_selection_changed(
         self,
@@ -507,3 +544,78 @@ class GmCompDeckModule(BaseModule):
                 "to": to_zone,
             },
         )
+
+    def _send_move_card(self, card_id: str, from_zone: str, to_zone: str) -> None:
+        self.send_command(
+            "gmAlea.deck.move_card",
+            {
+                "card_id": card_id,
+                "from": from_zone,
+                "to": to_zone,
+            },
+        )
+
+    def _move_selected_from_to(self, from_zone: str, to_zone: str) -> None:
+        if self._selected_zone_name != from_zone or self._selected_card_id is None:
+            return
+        self._send_move_card(self._selected_card_id, from_zone, to_zone)
+
+    def _move_first_from_to(self, from_zone: str, to_zone: str) -> None:
+        zone_list = self._zone_lists.get(from_zone)
+        if zone_list is None or zone_list.count() == 0:
+            return
+        item = zone_list.item(0)
+        card_id = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if not card_id:
+            return
+        self._send_move_card(card_id, from_zone, to_zone)
+
+    def _on_main_deck_pick(self) -> None:
+        # Hidden mode: blind draw (first card). Revealed mode: selected card.
+        if self._zone_revealed.get("MainDeck", False):
+            self._move_selected_from_to("MainDeck", "CardHand")
+        else:
+            self._move_first_from_to("MainDeck", "CardHand")
+
+    def _on_discard_pick(self) -> None:
+        # Hidden mode: take first discard card. Revealed mode: selected card.
+        if self._zone_revealed.get("DiscardPile", False):
+            self._move_selected_from_to("DiscardPile", "CardHand")
+        else:
+            self._move_first_from_to("DiscardPile", "CardHand")
+
+    def _first_card_id(self, zone_name: str) -> str | None:
+        zone_list = self._zone_lists.get(zone_name)
+        if zone_list is None or zone_list.count() == 0:
+            return None
+        first_item = zone_list.item(0)
+        card_id = str(first_item.data(Qt.ItemDataRole.UserRole) or "")
+        if card_id == "":
+            return None
+        return card_id
+
+    def _is_drag_move_allowed(self, card_id: str, from_zone: str, to_zone: str) -> bool:
+        # Allowed drag matrix by rule:
+        # - MainDeck -> CardHand
+        # - DiscardPile -> CardHand or MainDeck
+        # - CardHand -> DiscardPile / PlayArea / Memory / BanishZone
+        if from_zone == "MainDeck":
+            if to_zone != "CardHand":
+                return False
+            if not self._zone_revealed.get("MainDeck", False):
+                first_id = self._first_card_id("MainDeck")
+                return first_id is not None and card_id == first_id
+            return True
+
+        if from_zone == "DiscardPile":
+            if to_zone not in {"CardHand", "MainDeck"}:
+                return False
+            if not self._zone_revealed.get("DiscardPile", False):
+                first_id = self._first_card_id("DiscardPile")
+                return first_id is not None and card_id == first_id
+            return True
+
+        if from_zone == "CardHand":
+            return to_zone in {"DiscardPile", "PlayArea", "Memory", "BanishZone"}
+
+        return False
