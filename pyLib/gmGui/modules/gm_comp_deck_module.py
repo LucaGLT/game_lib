@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -73,6 +74,8 @@ class GmCompDeckModule(BaseModule):
             "gmAlea.deck.zone_changed",
             "gmAlea.deck.shuffled",
             "gmAlea.deck.drawn",
+            "gmActor.snapshot",
+            "gmActor.actor.resource_changed",
         ]
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -90,6 +93,8 @@ class GmCompDeckModule(BaseModule):
             "DiscardPile": False,
             "MainDeck": False,
         }
+        # Resources of the active actor (Player_X), updated via events.
+        self._active_actor_actions: int = 1
 
         container = QWidget()
         container.setObjectName("gm_comp_deck_module")
@@ -359,8 +364,23 @@ class GmCompDeckModule(BaseModule):
             self._handle_shuffled(data)
         elif tid == "gmAlea.deck.drawn":
             self._handle_drawn(data)
+        elif tid == "gmActor.snapshot":
+            self._handle_actor_snapshot(data)
+        elif tid == "gmActor.actor.resource_changed":
+            self._handle_resource_changed(data)
 
     # ── Private handlers ──────────────────────────────────────────────────────
+
+    def _handle_actor_snapshot(self, data: dict) -> None:
+        for actor in data.get("actors", []):
+            if str(actor.get("actor_id", "")) == "Player_X":
+                resources: dict = actor.get("resources", {})
+                self._active_actor_actions = int(resources.get("actions", 1))
+                break
+
+    def _handle_resource_changed(self, data: dict) -> None:
+        if str(data.get("actor_id", "")) == "Player_X" and str(data.get("resource_id", "")) == "actions":
+            self._active_actor_actions = int(data.get("new_value", self._active_actor_actions))
 
     def _handle_zone_changed(self, data: dict) -> None:
         zone_name: str = str(data.get("zone_name", ""))
@@ -598,6 +618,18 @@ class GmCompDeckModule(BaseModule):
     def _move_selected_from_to(self, from_zone: str, to_zone: str) -> None:
         if self._selected_zone_name != from_zone or self._selected_card_id is None:
             return
+        # Check actions when playing a card from hand to an active zone.
+        _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
+        if from_zone == "CardHand" and to_zone in _PLAY_ZONES and self._active_actor_actions <= 0:
+            answer = QMessageBox.question(
+                self._widget,
+                "Azioni esaurite",
+                "Hai finito le Azioni.\nContinua comunque?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         self._send_move_card(self._selected_card_id, from_zone, to_zone)
 
     def _move_first_from_to(self, from_zone: str, to_zone: str) -> None:

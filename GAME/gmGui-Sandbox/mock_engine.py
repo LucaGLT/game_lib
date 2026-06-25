@@ -317,25 +317,28 @@ def _fire_rule_group_event(
                 f"[rule_group] ✔ ATTIVATO  {rule_group_id!r:<24}  "
                 f"({card_id} → {to_zone})"
             )
-            # ── Phase 6: apply rule effects (resources + deck) ───────────
-            rule_ids = rg_state.rule_ids_of(rule_group_id)
-            if rule_ids and rule_book is not None and player_resources is not None and deck_state is not None:
-                _apply_rule_effects(
-                    rule_ids, rule_book, active_actor,
-                    event_sock, player_resources, deck_state,
-                )
-            elif rule_ids and rule_book is not None:
-                # Fallback: print only (no resource tracking)
-                for rid in rule_ids:
-                    rdef = rule_book.get(rid)
-                    if rdef:
-                        for eff in rdef.get("effects", []):
-                            print(f"  [effect] {rid}: {eff.get('type','?')} {eff.get('value','')} {eff.get('amount','')}")
         else:
+            # Group already active: a second card with the same rule_group was
+            # played.  Apply effects again (Dominion: each copy is independent).
             print(
-                f"[rule_group]   gia attivo {rule_group_id!r:<24}  "
-                f"({card_id} → {to_zone})"
+                f"[rule_group] ✔ GIA ATTIVO {rule_group_id!r:<24}  "
+                f"({card_id} → {to_zone}) — riapplico effetti"
             )
+
+        # Effects always fire on entering an active zone, regardless of
+        # whether the registry state actually changed.
+        rule_ids = rg_state.rule_ids_of(rule_group_id)
+        if rule_ids and rule_book is not None and player_resources is not None and deck_state is not None:
+            _apply_rule_effects(
+                rule_ids, rule_book, active_actor,
+                event_sock, player_resources, deck_state,
+            )
+        elif rule_ids and rule_book is not None:
+            for rid in rule_ids:
+                rdef = rule_book.get(rid)
+                if rdef:
+                    for eff in rdef.get("effects", []):
+                        print(f"  [effect] {rid}: {eff.get('type','?')} {eff.get('value','')} {eff.get('amount','')}")
 
     elif leaving_active and rg_state.lifecycle(rule_group_id) == "TRANSIENT":
         changed = rg_state.deactivate(rule_group_id)
