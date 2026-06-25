@@ -54,9 +54,25 @@
 
     {
       "rule_id": "r_add_coin_1",
-      "description": "+1 Moneta per questo turno",
+      "description": "+1 Moneta per questo turno (Copper)",
       "effects": [
         { "type": "MODIFY_RESOURCE", "target": "SELF", "value": "coins", "amount": 1 }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_coins_2",
+      "description": "+2 Monete per questo turno (Silver)",
+      "effects": [
+        { "type": "MODIFY_RESOURCE", "target": "SELF", "value": "coins", "amount": 2 }
+      ]
+    },
+
+    {
+      "rule_id": "r_add_coins_3",
+      "description": "+3 Monete per questo turno (Gold)",
+      "effects": [
+        { "type": "MODIFY_RESOURCE", "target": "SELF", "value": "coins", "amount": 3 }
       ]
     },
 

@@ -47,6 +47,33 @@
       "trigger_event": "card.effect.resolved",
       "_active_zones": ["PlayArea"],
       "_desc": "+1 Azione. Scarta N carte, poi pesca N carte. Si disattiva dopo il primo uso."
+    },
+
+    {
+      "group_id": "rg_copper",
+      "rule_ids": ["r_add_coin_1"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +1 Moneta. Non richiede un'azione per essere giocato."
+    },
+
+    {
+      "group_id": "rg_silver",
+      "rule_ids": ["r_add_coins_2"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +2 Monete. Non richiede un'azione per essere giocato."
+    },
+
+    {
+      "group_id": "rg_gold",
+      "rule_ids": ["r_add_coins_3"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +3 Monete. Non richiede un'azione per essere giocato."
     }
   ]
 }

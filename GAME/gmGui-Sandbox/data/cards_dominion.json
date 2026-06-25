@@ -7,6 +7,7 @@
       "card_id": "village_01",
       "name": "Village",
       "value": 3,
+      "action_cost": 1,
       "rule_group_id": "rg_village",
       "description": "Un villaggio fiorente. Fornisce risorse extra per giocare più carte in questo turno.",
       "rules": ["+1 Carta", "+2 Azioni"]
@@ -15,6 +16,7 @@
       "card_id": "village_02",
       "name": "Village",
       "value": 3,
+      "action_cost": 1,
       "rule_group_id": "rg_village",
       "description": "Un villaggio fiorente. Fornisce risorse extra per giocare più carte in questo turno.",
       "rules": ["+1 Carta", "+2 Azioni"]
@@ -23,6 +25,7 @@
       "card_id": "smithy_01",
       "name": "Smithy",
       "value": 4,
+      "action_cost": 1,
       "rule_group_id": "rg_smithy",
       "description": "La fucina del fabbro produce strumenti potenti. Pesca tre carte per rifornire la mano.",
       "rules": ["+3 Carte"]
@@ -31,6 +34,7 @@
       "card_id": "market_01",
       "name": "Market",
       "value": 5,
+      "action_cost": 1,
       "rule_group_id": "rg_market",
       "description": "Il mercato cittadino offre di tutto: più azioni, più acquisti, più denaro.",
       "rules": ["+1 Carta", "+1 Azione", "+1 Acquisto", "+1 Moneta"]
@@ -39,6 +43,7 @@
       "card_id": "witch_01",
       "name": "Witch",
       "value": 5,
+      "action_cost": 1,
       "rule_group_id": "rg_witch",
       "description": "La strega lancia un incantesimo oscuro. Mentre pesca per sé, maledice tutti gli avversari.",
       "rules": ["+2 Carte", "Ogni altro giocatore prende una Maledizione"]
@@ -47,6 +52,7 @@
       "card_id": "moat_01",
       "name": "Moat",
       "value": 2,
+      "action_cost": 1,
       "rule_group_id": "rg_moat",
       "description": "Il fossato protegge il castello. Può essere rivelato dalla mano per bloccare gli attacchi.",
       "rules": ["+2 Carte", "Quando un altro giocatore gioca un Attacco, puoi rivelare questa carta dalla mano — quell'attacco non ti colpisce."]
@@ -55,6 +61,7 @@
       "card_id": "cellar_01",
       "name": "Cellar",
       "value": 2,
+      "action_cost": 1,
       "rule_group_id": "rg_cellar",
       "description": "La cantina nasconde segreti. Scarta le carte inutili e rimpiazzale con nuove.",
       "rules": ["+1 Azione", "Scarta un numero qualsiasi di carte, poi pesca altrettante carte."]
@@ -63,33 +70,46 @@
       "card_id": "copper_01",
       "name": "Copper",
       "value": 0,
-      "rule_group_id": "",
+      "action_cost": 0,
+      "rule_group_id": "rg_copper",
       "description": "Moneta di rame. Vale 1 moneta durante la fase di acquisto.",
-      "rules": ["Vale 1 Moneta"]
+      "rules": ["+1 Moneta"]
     },
     {
       "card_id": "copper_02",
       "name": "Copper",
       "value": 0,
-      "rule_group_id": "",
+      "action_cost": 0,
+      "rule_group_id": "rg_copper",
       "description": "Moneta di rame. Vale 1 moneta durante la fase di acquisto.",
-      "rules": ["Vale 1 Moneta"]
+      "rules": ["+1 Moneta"]
     },
     {
       "card_id": "copper_03",
       "name": "Copper",
       "value": 0,
-      "rule_group_id": "",
+      "action_cost": 0,
+      "rule_group_id": "rg_copper",
       "description": "Moneta di rame. Vale 1 moneta durante la fase di acquisto.",
-      "rules": ["Vale 1 Moneta"]
+      "rules": ["+1 Moneta"]
     },
     {
       "card_id": "silver_01",
       "name": "Silver",
       "value": 3,
-      "rule_group_id": "",
+      "action_cost": 0,
+      "rule_group_id": "rg_silver",
       "description": "Moneta d'argento. Vale 2 monete durante la fase di acquisto.",
-      "rules": ["Vale 2 Monete"]
+      "rules": ["+2 Monete"]
+    },
+    {
+      "card_id": "gold_01",
+      "name": "Gold",
+      "value": 6,
+      "action_cost": 0,
+      "rule_group_id": "rg_gold",
+      "description": "Moneta d'oro. Vale 3 monete durante la fase di acquisto.",
+      "rules": ["+3 Monete"]
     },
     {
       "card_id": "estate_01",

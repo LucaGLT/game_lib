@@ -80,6 +80,7 @@ def _load_cards_json(
             "card_id":       cid,
             "name":          str(card.get("name", cid)),
             "value":         card.get("value", 0),
+            "action_cost":   int(card.get("action_cost", 1)),
             "rule_group_id": str(card.get("rule_group_id", "")),
             "description":   str(card.get("description", "")),
             "rules":         list(card.get("rules", [])),
@@ -210,6 +211,10 @@ class _PlayerResources:
         actor_res[resource] = actor_res.get(resource, 0) + delta
         return actor_res[resource]
 
+    def set_value(self, actor_id: str, resource: str, value: int) -> None:
+        """Directly sets a resource value."""
+        self._data.setdefault(actor_id, {})[resource] = value
+
     def snapshot(self, actor_id: str) -> dict[str, int]:
         return dict(self._data.get(actor_id, {}))
 
@@ -274,7 +279,18 @@ def _apply_rule_effects(
                 print(f"  [effect] {resolved} scarta {n} carta/e")
 
             elif eff_type == "APPLY_STATUS" and value:
-                print(f"  [effect] {resolved} riceve status [{value}]")
+                # Resolve actual actor targets in the sandbox.
+                if target == "ALL_ENEMIES_IN_LOCATION":
+                    status_targets = [a for a in ("Player_X", "Player_O") if a != actor_id]
+                else:
+                    status_targets = [resolved]  # SELF or explicit
+                for tgt in status_targets:
+                    _send_event(event_sock, "gmActor.actor.status_added", {
+                        "actor_id":  tgt,
+                        "status_id": value,
+                        "stacks":    1,
+                    })
+                    print(f"  [effect] {tgt} riceve status [{value}]")
 
             else:
                 label = _EFFECT_LABELS.get(eff_type, eff_type)
@@ -526,16 +542,21 @@ def _handle_deck_move_command(
         },
     )
 
-    # ── Playing a card from hand costs 1 action ──────────────────────────
+    # ── Playing a card from hand costs actions ──────────────────────────
     if from_zone == "CardHand" and to_zone in _ACTIVE_ZONES and player_resources is not None:
-        new_actions = player_resources.modify("Player_X", "actions", -1)
-        print(f"  [cost]   Player_X.actions -1  (giocata {card_id}, → {new_actions})")
-        _send_event(event_sock, "gmActor.actor.resource_changed", {
-            "actor_id":    "Player_X",
-            "resource_id": "actions",
-            "delta":       -1,
-            "new_value":   new_actions,
-        })
+        action_cost: int = int(card_meta.get(card_id, {}).get("action_cost", 1))
+        if action_cost > 0:
+            current = player_resources.get("Player_X", "actions")
+            new_actions = max(0, current - action_cost)
+            player_resources.set_value("Player_X", "actions", new_actions)
+            actual_delta = new_actions - current
+            print(f"  [cost]   Player_X.actions {actual_delta}  (giocata {card_id}, → {new_actions})")
+            _send_event(event_sock, "gmActor.actor.resource_changed", {
+                "actor_id":    "Player_X",
+                "resource_id": "actions",
+                "delta":       actual_delta,
+                "new_value":   new_actions,
+            })
 
     rule_group_id = str(card_meta.get(card_id, {}).get("rule_group_id", ""))
     _fire_rule_group_event(

@@ -396,6 +396,7 @@ class GmCompDeckModule(BaseModule):
             name: str = str(card.get("name", card_id))
             meta: dict = {
                 "value":         card.get("value", ""),
+                "action_cost":   int(card.get("action_cost", 1)),
                 "rule_group_id": str(card.get("rule_group_id", "")),
                 "description":   str(card.get("description", "")),
                 "rules":         list(card.get("rules", [])),
@@ -618,18 +619,27 @@ class GmCompDeckModule(BaseModule):
     def _move_selected_from_to(self, from_zone: str, to_zone: str) -> None:
         if self._selected_zone_name != from_zone or self._selected_card_id is None:
             return
-        # Check actions when playing a card from hand to an active zone.
+        # When playing from hand to an active zone, check action cost.
         _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
-        if from_zone == "CardHand" and to_zone in _PLAY_ZONES and self._active_actor_actions <= 0:
-            answer = QMessageBox.question(
-                self._widget,
-                "Azioni esaurite",
-                "Hai finito le Azioni.\nContinua comunque?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if answer != QMessageBox.StandardButton.Yes:
-                return
+        if from_zone == "CardHand" and to_zone in _PLAY_ZONES:
+            action_cost: int = 1  # default
+            zone_list = self._zone_lists.get(from_zone)
+            if zone_list is not None:
+                item = self._find_item(zone_list, self._selected_card_id)
+                if item is not None:
+                    meta = item.data(_ROLE_CARD_META) or {}
+                    action_cost = int(meta.get("action_cost", 1))
+            # Show warning only if playing would make actions go negative.
+            if (self._active_actor_actions - action_cost) < 0:
+                answer = QMessageBox.question(
+                    self._widget,
+                    "Azioni esaurite",
+                    "Hai finito le Azioni.\nContinua comunque?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
         self._send_move_card(self._selected_card_id, from_zone, to_zone)
 
     def _move_first_from_to(self, from_zone: str, to_zone: str) -> None:
