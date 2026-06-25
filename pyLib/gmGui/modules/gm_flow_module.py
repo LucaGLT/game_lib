@@ -66,6 +66,7 @@ class GmFlowModule(BaseModule):
         return [
             "gmFlow.session.started",
             "gmFlow.session.paused",
+            "gmFlow.session.resumed",
             "gmFlow.session.completed",
             "gmFlow.phase.entered",
             "gmFlow.phase.exited",
@@ -144,12 +145,14 @@ class GmFlowModule(BaseModule):
         self._btn_resume: QPushButton = QPushButton("▶ RESUME")
         self._btn_pause: QPushButton = QPushButton("⏸ PAUSE")
         self._btn_stop: QPushButton = QPushButton("⏹ STOP")
+        self._btn_pass_turn: QPushButton = QPushButton("⏭ Passa Turno")
         self._btn_resume.setVisible(False)
         self._btn_pause.setVisible(False)
         self._btn_stop.setVisible(False)
         self._btn_resume.setEnabled(False)
         self._btn_pause.setEnabled(False)
         self._btn_stop.setEnabled(False)
+        self._btn_pass_turn.setEnabled(False)
 
         self._btn_resume.clicked.connect(
             lambda: self.send_command("gmFlow.session.resume", {})
@@ -160,9 +163,13 @@ class GmFlowModule(BaseModule):
         self._btn_stop.clicked.connect(
             lambda: self.send_command("gmFlow.session.stop", {})
         )
+        self._btn_pass_turn.clicked.connect(
+            lambda: self.send_command("gmFlow.turn.pass", {})
+        )
 
         # ── Row 3: event log with collapsible header ──────────────────────────
         log_header = QHBoxLayout()
+        log_header.addWidget(self._btn_pass_turn)
         log_header.addStretch()
 
         self._btn_toggle_log: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
@@ -201,18 +208,27 @@ class GmFlowModule(BaseModule):
             self._btn_pause.setEnabled(True)
             self._btn_stop.setEnabled(True)
             self._btn_resume.setEnabled(False)
+            self._btn_pass_turn.setEnabled(True)
             self._append_log(f"▶ Session {self._session_count} started: {session_id}")
 
         elif tid == "gmFlow.session.paused":
             self._btn_pause.setEnabled(False)
             self._btn_resume.setEnabled(True)
+            self._btn_pass_turn.setEnabled(False)
             self._append_log("⏸ Session paused")
 
         elif tid == "gmFlow.session.completed":
             self._btn_pause.setEnabled(False)
             self._btn_resume.setEnabled(False)
             self._btn_stop.setEnabled(False)
+            self._btn_pass_turn.setEnabled(False)
             self._append_log("⏹ Session completed")
+
+        elif tid == "gmFlow.session.resumed":
+            self._btn_pause.setEnabled(True)
+            self._btn_resume.setEnabled(False)
+            self._btn_pass_turn.setEnabled(True)
+            self._append_log("▶ Session resumed")
 
         elif tid == "gmFlow.phase.entered":
             phase_id: str = str(data.get("phase_id", "?"))

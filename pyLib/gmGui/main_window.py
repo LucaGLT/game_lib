@@ -6,6 +6,8 @@ QSettings.
 """
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
@@ -34,6 +36,20 @@ _STATUS_DISCONNECTED = "Engine: Disconnesso"
 # Text shown after the first envelope arrives from the engine.
 _STATUS_CONNECTED = "Engine: Connesso"
 _DEFAULT_THEME_ID = "scroll"
+
+
+def _env_port(name: str, default: int) -> int:
+    """Reads a TCP port from environment, falling back to *default* on errors."""
+    raw: str | None = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        port: int = int(raw)
+    except ValueError:
+        return default
+    if port < 1 or port > 65535:
+        return default
+    return port
 
 
 class MainWindow(QMainWindow):
@@ -65,8 +81,10 @@ class MainWindow(QMainWindow):
         )
 
         # ── Bridge ────────────────────────────────────────────────────────────
-        self._receiver: EngineReceiver = EngineReceiver()
-        self._sender: EngineSender = EngineSender()
+        event_port: int = _env_port("GMGUI_EVENT_PORT", 9000)
+        command_port: int = _env_port("GMGUI_COMMAND_PORT", 9001)
+        self._receiver: EngineReceiver = EngineReceiver(port=event_port)
+        self._sender: EngineSender = EngineSender(port=command_port)
 
         # ── Module registry ───────────────────────────────────────────────────
         self._modules: list[BaseModule] = []
