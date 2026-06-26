@@ -64,6 +64,22 @@ public:
 	bool can_move(const std::string& hero_id, const std::string& destination) const;
 
 	/**
+	 * @brief Extended move validation allowing movement up to @p max_distance hops.
+	 *
+	 * Performs all checks of the one-argument overload, but replaces the
+	 * strict adjacency (distance = 1) check with a BFS reachability check.
+	 * A @p max_distance of 1 is equivalent to calling the standard overload.
+	 *
+	 * @param hero_id       Hero actor identifier.
+	 * @param destination   Target room identifier.
+	 * @param max_distance  Maximum hop count allowed (>= 1).
+	 * @return              @c true if the move is allowed.
+	 */
+	bool can_move(const std::string& hero_id,
+	              const std::string& destination,
+	              int                max_distance) const;
+
+	/**
 	 * @brief Checks whether the hero can use a healing potion.
 	 *
 	 * Evaluates condition C_HeroCanHeal: ACTOR_HAS_TAG(hero_id, has_potion).

@@ -73,6 +73,46 @@ bool DungeonRuleAdapter::can_move(const std::string& hero_id,
 	return true;
 }
 
+bool DungeonRuleAdapter::can_move(const std::string& hero_id,
+                                  const std::string& destination,
+                                  int                max_distance) const
+{
+	if (max_distance <= 1)
+	{
+		return can_move(hero_id, destination);
+	}
+	// Shared pre-conditions: actor exists, is a hero, not stunned.
+	_rejection_reason.clear();
+	if (!_actors.has_actor(hero_id))
+	{
+		_rejection_reason = "Hero not found.";
+		return false;
+	}
+	if (!is_hero_actor(hero_id))
+	{
+		_rejection_reason = "Actor is not a hero.";
+		return false;
+	}
+	if (!_map.has_room(destination))
+	{
+		_rejection_reason = "Destination room does not exist.";
+		return false;
+	}
+	if (actor_has_status(hero_id, "stunned"))
+	{
+		_rejection_reason = "Actor is stunned.";
+		return false;
+	}
+	const std::string from = actor_location(hero_id);
+	if (!_map.is_reachable_within(from, destination, max_distance))
+	{
+		_rejection_reason = "Destination is not reachable within " +
+		                     std::to_string(max_distance) + " steps.";
+		return false;
+	}
+	return true;
+}
+
 bool DungeonRuleAdapter::can_heal(const std::string& hero_id,
                                   const std::string& target_id) const
 {

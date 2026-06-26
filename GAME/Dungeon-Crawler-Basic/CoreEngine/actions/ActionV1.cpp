@@ -66,6 +66,46 @@ bool ActionV1::execute_move(const std::string& hero_id, const std::string& desti
 	return true;
 }
 
+bool ActionV1::execute_move(const std::string& hero_id,
+                             const std::string& destination,
+                             int                max_distance,
+                             const std::string& /*card_id*/)
+{
+	_last_rejection.clear();
+	if (!_rules.can_move(hero_id, destination, max_distance))
+	{
+		_last_rejection = _rules.rejection_reason();
+		return false;
+	}
+
+	gmRules::EffectSpec move_effect;
+	move_effect.type = gmRules::EffectType::MOVE_ACTOR;
+	move_effect.source_id = hero_id;
+	move_effect.value = destination;
+	move_effect.target.kind = gmRules::TargetKind::ACTOR;
+	move_effect.target.selector = gmRules::TargetSelector::MANUAL;
+
+	gmRules::TargetRef target;
+	target.kind = gmRules::TargetKind::ACTOR;
+	target.id = hero_id;
+
+	gmRules::EffectResolver resolver;
+	gmRules::EffectResult result = resolver.resolve(
+		move_effect,
+		hero_id,
+		{target},
+		_rules,
+		100);
+
+	if (!result.succeeded())
+	{
+		_last_rejection = result.message();
+		return false;
+	}
+
+	return true;
+}
+
 bool ActionV1::execute_heal(const std::string& hero_id, const std::string& target_id)
 {
 	_last_rejection.clear();

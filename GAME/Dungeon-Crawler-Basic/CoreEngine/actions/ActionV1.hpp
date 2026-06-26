@@ -77,6 +77,20 @@ public:
 	 */
 	bool execute_move(const std::string& hero_id, const std::string& destination);
 
+	/**
+	 * @brief Moves a hero up to @p max_distance hops (card-enhanced movement).
+	 *
+	 * @param hero_id       Hero actor identifier.
+	 * @param destination   Target room identifier.
+	 * @param max_distance  Maximum hop count allowed (>= 1).
+	 * @param card_id       Card that granted the extra range (informational).
+	 * @return              @c true if the move was executed.
+	 */
+	bool execute_move(const std::string& hero_id,
+	                  const std::string& destination,
+	                  int                max_distance,
+	                  const std::string& card_id = "");
+
 	// ── Heal ─────────────────────────────────────────────────────────────────
 
 	/**

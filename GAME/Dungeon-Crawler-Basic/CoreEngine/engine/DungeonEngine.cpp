@@ -362,6 +362,8 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 	}
 	const std::string hero_id = data.value("hero_id", "");
 	const std::string destination = data.value("destination", "");
+	const int max_distance = data.value("max_distance", 1);
+	const std::string card_id = data.value("card_id", "");
 
 	if (hero_id.empty() || destination.empty())
 	{
@@ -370,7 +372,11 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 		return;
 	}
 
-	if (!_actions.execute_move(hero_id, destination))
+	const bool ok = (max_distance > 1)
+		? _actions.execute_move(hero_id, destination, max_distance, card_id)
+		: _actions.execute_move(hero_id, destination);
+
+	if (!ok)
 	{
 		_gui.send_event(event_id::ACTION_REJECTED,
 			{{"reason", _actions.last_rejection_reason()}, {"command", command_id::MOVE}});
@@ -378,10 +384,22 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 		return;
 	}
 
+	std::string move_label = destination;
+	if (!card_id.empty())
+	{
+		move_label += " (carta: " + card_id + ")";
+	}
+	std::cout << "[DungeonEngine] MOVE " << hero_id << " -> " << destination;
+	if (!card_id.empty())
+	{
+		std::cout << " [card=" << card_id << ", max_dist=" << max_distance << "]";
+	}
+	std::cout << "\n";
+
 	_gui.send_event(event_id::ACTOR_MOVED,
 		{{"actor_id", hero_id}, {"to", destination}});
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
-	_log.log_action(hero_id, command_id::MOVE, destination);
+	_log.log_action(hero_id, command_id::MOVE, move_label);
 	++_actions_this_turn;
 }
 

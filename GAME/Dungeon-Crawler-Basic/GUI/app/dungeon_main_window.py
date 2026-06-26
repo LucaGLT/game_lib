@@ -41,6 +41,20 @@ from gmGui.modules.gm_comp_deck_module import GmCompDeckModule
 # Zone names that match GmCompDeckModule exactly.
 _DECK_ZONES: list[str] = ["MainDeck", "CardHand", "PlayArea", "Memory", "DiscardPile", "BanishZone"]
 
+# Maps card_id → the gameplay action triggered when the card is played to PlayArea.
+# action_type values: "MOVE" | "ATTACK" | "HEAL" | "BUFF" (only MOVE is handled here)
+_CARD_ACTIONS: dict[str, dict] = {
+    "passo_veloce":    {"action_type": "MOVE",   "max_distance": 2},
+    "colpo_efficace":  {"action_type": "ATTACK",  "card_damage": 2},
+    "pugno_di_ferro":  {"action_type": "ATTACK",  "card_damage": 4},
+    "tiro_rapido":     {"action_type": "ATTACK",  "card_damage": 2},
+    "veleno":          {"action_type": "ATTACK",  "card_damage": 1},
+    "furia_cieca":     {"action_type": "BUFF"},
+    "grido_di_guerra": {"action_type": "BUFF"},
+    "parata":          {"action_type": "BUFF"},
+    "pozione_di_cura": {"action_type": "HEAL"},
+}
+
 
 class _DeckProxy:
     """Sender proxy that intercepts gmAlea.deck.* commands for local per-hero deck tracking.
@@ -175,6 +189,7 @@ class DungeonMainWindow(QMainWindow):
         self._deck.set_sender(self._deck_proxy)
         self._last_round: int = 0
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
+        self._pending_card_move: dict = {}  # {"hero_id", "card_id", "max_distance"} when card-move pending
         self._pending_attack_attacker: str = ""  # attacker waiting for a target click
         self._defense_active: bool = False  # True while a defense window is open
         for ev in ("dungeon.session.started", "dungeon.turn.started",
@@ -243,6 +258,7 @@ class DungeonMainWindow(QMainWindow):
             # Do not steal selection while a defense window is open.
             return
         self._pending_move_hero = ""
+        self._pending_card_move = {}
         self._pending_attack_attacker = ""
         self._actions.set_awaiting_move(False)
         self._actions.set_awaiting_attack(False)
@@ -300,7 +316,22 @@ class DungeonMainWindow(QMainWindow):
 
     def _on_area_selected(self, area_id: str) -> None:
         """Handles an area click: completes a pending move or requests area info."""
-        if self._pending_move_hero:
+        if self._pending_card_move:
+            # Card-enhanced move: use the clicked room directly (Core validates distance).
+            hero_id = self._pending_card_move.get("hero_id", "")
+            card_id = self._pending_card_move.get("card_id", "")
+            max_distance = int(self._pending_card_move.get("max_distance", 1))
+            if area_id and hero_id:
+                self._bridge.send_command("dungeon.move", {
+                    "hero_id": hero_id,
+                    "destination": area_id,
+                    "max_distance": max_distance,
+                    "card_id": card_id,
+                })
+                self._pending_card_move = {}
+                self._pending_move_hero = ""
+                self._actions.set_awaiting_move(False)
+        elif self._pending_move_hero:
             destination = self._board.move_destination()
             if destination:
                 self._bridge.send_command("dungeon.move",
@@ -326,6 +357,7 @@ class DungeonMainWindow(QMainWindow):
         self._actions.reset()
         self._errors.clear()
         self._pending_move_hero = ""
+        self._pending_card_move = {}
         self._pending_attack_attacker = ""
         self._defense_active = False
         self._hero_decks = {}
@@ -490,6 +522,25 @@ class DungeonMainWindow(QMainWindow):
             if kind == "HERO" and actor_id and actor_id not in self._hero_decks:
                 self._init_hero_deck(actor_id)
 
+    def _start_card_move(self, hero_id: str, card_id: str, max_distance: int) -> None:
+        """Enters move-targeting mode triggered by a card played to PlayArea."""
+        self._pending_move_hero = ""           # not a button-move
+        self._pending_attack_attacker = ""
+        self._actions.set_awaiting_attack(False)
+        self._pending_card_move = {
+            "hero_id": hero_id,
+            "card_id": card_id,
+            "max_distance": max_distance,
+        }
+        self._actions.set_awaiting_move(True)
+        self._errors.on_envelope({
+            "typeId": "dungeon.action.rejected",
+            "data": {
+                "reason": f"Carta '{card_id}': clicca sulla stanza destinazione (max {max_distance} locazioni).",
+                "command": "dungeon.move",
+            },
+        })
+
     def _on_deck_command(self, type_id: str, data: dict) -> None:
         """Handles gmAlea.deck.* commands locally (no C++ engine manages decks)."""
         hero = self._current_deck_hero
@@ -510,6 +561,11 @@ class DungeonMainWindow(QMainWindow):
                 "typeId": "gmAlea.deck.card_moved",
                 "data": {"card_id": card_id, "from_zone": from_zone, "to_zone": to_zone},
             })
+            # When a card lands in PlayArea, trigger the corresponding game action.
+            if to_zone == "PlayArea" and card_id in _CARD_ACTIONS:
+                action = _CARD_ACTIONS[card_id]
+                if action["action_type"] == "MOVE":
+                    self._start_card_move(hero, card_id, int(action.get("max_distance", 1)))
 
         elif type_id == "gmAlea.deck.recycle_discard":
             discarded = list(deck.get("DiscardPile", []))
