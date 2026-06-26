@@ -146,6 +146,8 @@ class DungeonMainWindow(QMainWindow):
         self._deck.set_sender(self._bridge.sender)
         self._last_round: int = 0
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
+        self._pending_attack_attacker: str = ""  # attacker waiting for a target click
+        self._defense_active: bool = False  # True while a defense window is open
         for ev in ("dungeon.session.started", "dungeon.turn.started",
                    "dungeon.turn.ended", "dungeon.game.over"):
             self._router.register(ev, self._on_flow_event)
@@ -169,6 +171,14 @@ class DungeonMainWindow(QMainWindow):
             self._router.register(ev, self._log.on_envelope)
         # Error bar: rejections only
         self._router.register("dungeon.action.rejected", self._errors.on_envelope)
+        # Reactive defense flow (Phase 5): drive the defense window UX.
+        self._router.register("dungeon.defense.window.opened", self._on_defense_window_opened)
+        self._router.register("dungeon.defense.window.closed", self._on_defense_window_closed)
+        self._router.register("dungeon.attack.resolved", self._on_attack_resolved)
+        # Combat events also feed the log for player feedback.
+        for ev in ("dungeon.attack.declared", "dungeon.defense.window.opened",
+                   "dungeon.attack.resolved"):
+            self._router.register(ev, self._log.on_envelope)
         # Area Info: contents of the selected map area (shared contract)
         self._router.register(AREA_INFO_RESPONSE, self._area_info.on_envelope)
         # Deck manager: gmAlea card events + gmActor resource tracking
@@ -183,8 +193,12 @@ class DungeonMainWindow(QMainWindow):
         self._actions.heal_requested.connect(self._on_heal_requested)
         self._actions.equip_requested.connect(self._on_equip_requested)
         self._actions.end_turn_requested.connect(self._on_end_turn_requested)
+        self._actions.attack_requested.connect(self._on_attack_action)
+        self._actions.defend_requested.connect(self._on_defend_requested)
+        self._actions.defend_pass_requested.connect(self._on_defend_pass_requested)
         # Actor selection in hero panel → sync action panel display
-        self._heroes.actor_selected.connect(self._actions.set_selected_actor)
+        # (or pick the attack target while in attack-targeting mode).
+        self._heroes.actor_selected.connect(self._on_actor_selected)
 
     # ── Envelope handler (called by bridge on every incoming event) ───────────
 
@@ -194,8 +208,13 @@ class DungeonMainWindow(QMainWindow):
 
     def _on_turn_started_select(self, msg: dict) -> None:
         """Auto-selects the active actor; cancels any pending move targeting."""
+        if self._defense_active:
+            # Do not steal selection while a defense window is open.
+            return
         self._pending_move_hero = ""
+        self._pending_attack_attacker = ""
         self._actions.set_awaiting_move(False)
+        self._actions.set_awaiting_attack(False)
         actor_id: str = str(msg.get("data", {}).get("actor_id", ""))
         if actor_id:
             self._board.set_active_hero(actor_id)
@@ -274,6 +293,8 @@ class DungeonMainWindow(QMainWindow):
         self._actions.reset()
         self._errors.clear()
         self._pending_move_hero = ""
+        self._pending_attack_attacker = ""
+        self._defense_active = False
         self._bridge.send_command("dungeon.new_game", {})
 
     def _on_move_action(self, hero_id: str) -> None:
@@ -300,6 +321,96 @@ class DungeonMainWindow(QMainWindow):
     def _on_end_turn_requested(self, hero_id: str) -> None:
         """Forwards an end-turn request to CoreEngine."""
         self._bridge.send_command("dungeon.end_turn", {"hero_id": hero_id})
+
+    # ── Combat: attack targeting (Phase 5) ────────────────────────────────────
+
+    def _on_actor_selected(self, actor_id: str) -> None:
+        """Routes a hero-panel actor selection.
+
+        While in attack-targeting mode the selected actor is the *target* and an
+        attack is dispatched; otherwise the selection just drives the action
+        panel display (default behaviour).
+        """
+        if self._pending_attack_attacker:
+            attacker_id = self._pending_attack_attacker
+            target_id = actor_id
+            self._pending_attack_attacker = ""
+            self._actions.set_awaiting_attack(False)
+            if target_id and target_id != attacker_id:
+                self._bridge.send_command(
+                    "dungeon.attack",
+                    {"attacker_id": attacker_id, "target_id": target_id,
+                     "card_id": "", "card_damage": 0})
+                self._actions.mark_action_consumed()
+            else:
+                self._errors.on_envelope({
+                    "typeId": "dungeon.action.rejected",
+                    "data": {"reason": "Seleziona un bersaglio nemico valido.",
+                             "command": "dungeon.attack"},
+                })
+            return
+        self._actions.set_selected_actor(actor_id)
+
+    def _on_attack_action(self, attacker_id: str) -> None:
+        """Toggles attack-targeting mode (enter on first press, cancel on second)."""
+        if self._pending_attack_attacker:
+            self._pending_attack_attacker = ""
+            self._actions.set_awaiting_attack(False)
+        else:
+            # Entering attack mode cancels any pending move targeting.
+            self._pending_move_hero = ""
+            self._actions.set_awaiting_move(False)
+            self._pending_attack_attacker = attacker_id
+            self._actions.set_awaiting_attack(True)
+            self._errors.on_envelope({
+                "typeId": "dungeon.action.rejected",
+                "data": {"reason": "Seleziona il bersaglio nel pannello attori.",
+                         "command": "dungeon.attack"},
+            })
+
+    # ── Combat: reactive defense (Phase 5) ────────────────────────────────────
+
+    def _on_defense_window_opened(self, msg: dict) -> None:
+        """Switches the GUI into reactive-defense mode for the defender."""
+        data: dict = msg.get("data", {}) or {}
+        defender_id: str = str(data.get("defender_id", ""))
+        if not defender_id:
+            return
+        self._defense_active = True
+        # Cancel any pending targeting so the player must react first.
+        self._pending_move_hero = ""
+        self._pending_attack_attacker = ""
+        self._actions.set_awaiting_move(False)
+        self._actions.set_awaiting_attack(False)
+        # The defender becomes the selected actor (reuse existing panels).
+        self._heroes.select_actor(defender_id)
+        self._actions.enter_defense_mode(
+            defender_id,
+            int(data.get("incoming_damage", 0)),
+            bool(data.get("can_pass", True)),
+            bool(data.get("can_cancel", True)),
+        )
+
+    def _on_defense_window_closed(self, msg: dict) -> None:
+        """Leaves reactive-defense mode and restores normal action availability."""
+        self._defense_active = False
+        self._actions.exit_defense_mode()
+
+    def _on_attack_resolved(self, msg: dict) -> None:
+        """Restores the active actor selection after an attack is resolved."""
+        if self._defense_active:
+            self._defense_active = False
+            self._actions.exit_defense_mode()
+
+    def _on_defend_requested(self, defender_id: str, mode: str, block: int) -> None:
+        """Forwards an active defense choice (reduce / cancel) to CoreEngine."""
+        self._bridge.send_command(
+            "dungeon.defend",
+            {"defender_id": defender_id, "mode": mode, "block": block})
+
+    def _on_defend_pass_requested(self, defender_id: str) -> None:
+        """Forwards a defense pass (take full damage minus stat) to CoreEngine."""
+        self._bridge.send_command("dungeon.defend.pass", {"defender_id": defender_id})
 
     def closeEvent(self, event) -> None:
         """Stops the bridge receiver before closing."""
