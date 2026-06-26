@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QToolBar,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings, QByteArray
 
 from app.dungeon_bridge import DungeonBridge
 from app.event_router import EventRouter
@@ -106,8 +106,27 @@ class DungeonMainWindow(QMainWindow):
     # ── Layout ───────────────────────────────────────────────────────────────
 
     def _build_layout(self) -> None:
-        """Creates and arranges all child widgets."""
-        # ToBeImplemented //
+        """Creates and arranges all child widgets.
+
+        Main Window layout:
+          Top    : Flow / Timeline        (QDockWidget)
+          Left   : Log | Area Info        (two QDockWidgets, tabbed)
+          Centre : MAP                    (DungeonBoardWidget — centralWidget)
+          Right  : Actor Panel            (QDockWidget wrapping an inner QMainWindow)
+          Bottom : Messaggi               (QDockWidget — Error / Warning / Info)
+
+        Actor Panel inner layout (QMainWindow with Qt.WindowType.Widget):
+          Centre : Deck Manager           (GmCompDeckModule — centralWidget)
+          Right  : Actors                 (QDockWidget)
+          Bottom : Actions                (QDockWidget)
+          Left   : (empty, dockable)
+          Top    : (empty, dockable)
+
+        The entire Actor Panel dock is floatable and can be moved to any area
+        of the main window.  Panels inside the inner window are dockable only
+        within that inner window (Qt limitation: cross-QMainWindow drag is not
+        supported).
+        """
         self._board     = DungeonBoardWidget()
         self._heroes    = HeroPanelWidget()
         self._actions   = ActionPanelWidget()
@@ -117,40 +136,117 @@ class DungeonMainWindow(QMainWindow):
         self._flow      = GmFlowModule()
         self._deck      = GmCompDeckModule()
 
+        # ── Main window dock options ──────────────────────────────────────────
+        self.setDockOptions(
+            QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.AnimatedDocks
+            | QMainWindow.DockOption.GroupedDragging
+            | QMainWindow.DockOption.AllowNestedDocks
+        )
+        self.setDockNestingEnabled(True)
+
+        # ── Central: MAP ──────────────────────────────────────────────────────
         self.setCentralWidget(self._board)
 
-        top_dock = QDockWidget(self._flow.title, self)
-        top_dock.setObjectName(self._flow.module_id)
-        top_dock.setWidget(self._flow.widget())
-        self.addDockWidget(Qt.TopDockWidgetArea, top_dock)
+        # ── Top: Flow / Timeline ─────────────────────────────────────────────
+        self._flow_dock = QDockWidget(self._flow.title, self)
+        self._flow_dock.setObjectName("dock_flow")
+        self._flow_dock.setWidget(self._flow.widget())
+        self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self._flow_dock)
         self._flow.on_attach()
 
-        right_dock = QDockWidget("Actors", self)
-        right_dock.setWidget(self._heroes)
-        self.addDockWidget(Qt.RightDockWidgetArea, right_dock)
+        # ── Left: Actor Panel — inner QMainWindow ─────────────────────────────
+        # Placed on the left to match the default layout (see screenshot).
+        # A QMainWindow embedded as Qt.WindowType.Widget becomes an ordinary
+        # widget with its own full dock-area system.  The outer QDockWidget
+        # (self._actor_dock) lets the whole panel float or be re-docked in any
+        # area of the main window.
+        self._actor_inner = QMainWindow()
+        self._actor_inner.setWindowFlags(Qt.WindowType.Widget)
+        self._actor_inner.setDockNestingEnabled(True)
+        self._actor_inner.setDockOptions(
+            QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.AnimatedDocks
+            | QMainWindow.DockOption.GroupedDragging
+            | QMainWindow.DockOption.AllowNestedDocks
+        )
 
-        bottom_dock = QDockWidget("Actions", self)
-        bottom_dock.setWidget(self._actions)
-        self.addDockWidget(Qt.BottomDockWidgetArea, bottom_dock)
-
-        left_dock = QDockWidget("Log", self)
-        left_dock.setWidget(self._log)
-        self.addDockWidget(Qt.LeftDockWidgetArea, left_dock)
-
-        area_dock = QDockWidget("Area Info", self)
-        area_dock.setWidget(self._area_info.widget())
-        self.addDockWidget(Qt.LeftDockWidgetArea, area_dock)
-        self.tabifyDockWidget(left_dock, area_dock)
-        area_dock.raise_()
-
-        deck_dock = QDockWidget("Carte", self)
-        deck_dock.setObjectName(self._deck.module_id)
-        deck_dock.setWidget(self._deck.widget())
-        self.addDockWidget(Qt.BottomDockWidgetArea, deck_dock)
+        # Inner central: Deck Manager
+        self._actor_inner.setCentralWidget(self._deck.widget())
         self._deck.on_attach()
 
-        self.setStatusBar(QStatusBar())
-        self.statusBar().addPermanentWidget(self._errors)
+        # Inner right: Actors
+        self._actors_inner_dock = QDockWidget("Actors", self._actor_inner)
+        self._actors_inner_dock.setObjectName("inner_dock_actors")
+        self._actors_inner_dock.setWidget(self._heroes)
+        self._actor_inner.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, self._actors_inner_dock
+        )
+
+        # Inner bottom: Actions
+        self._actions_inner_dock = QDockWidget("Actions", self._actor_inner)
+        self._actions_inner_dock.setObjectName("inner_dock_actions")
+        self._actions_inner_dock.setWidget(self._actions)
+        self._actor_inner.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea, self._actions_inner_dock
+        )
+
+        # Initial inner proportions
+        self._actor_inner.resizeDocks(
+            [self._actors_inner_dock], [260], Qt.Orientation.Horizontal
+        )
+        self._actor_inner.resizeDocks(
+            [self._actions_inner_dock], [120], Qt.Orientation.Vertical
+        )
+
+        # Wrap inner window in a dock widget and place it in main window Left
+        self._actor_dock = QDockWidget("Actor Panel", self)
+        self._actor_dock.setObjectName("dock_actor_panel")
+        self._actor_dock.setWidget(self._actor_inner)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._actor_dock)
+
+        # ── Right: Area Info + Log (tabbed) ───────────────────────────────────
+        self._area_dock = QDockWidget("Area Info", self)
+        self._area_dock.setObjectName("dock_area_info")
+        self._area_dock.setWidget(self._area_info.widget())
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._area_dock)
+
+        self._log_dock = QDockWidget("Log", self)
+        self._log_dock.setObjectName("dock_log")
+        self._log_dock.setWidget(self._log)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._log_dock)
+        self.tabifyDockWidget(self._area_dock, self._log_dock)
+        self._area_dock.raise_()
+
+        # ── Bottom: Messaggi (Error / Warning / Info) ─────────────────────────
+        self._messages_dock = QDockWidget("Messaggi", self)
+        self._messages_dock.setObjectName("dock_messages")
+        self._messages_dock.setWidget(self._errors)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self._messages_dock)
+
+        # ── Initial main window proportions ───────────────────────────────────
+        self.resizeDocks(
+            [self._actor_dock, self._area_dock],
+            [660, 200],
+            Qt.Orientation.Horizontal,
+        )
+        self.resizeDocks(
+            [self._flow_dock, self._messages_dock],
+            [130, 55],
+            Qt.Orientation.Vertical,
+        )
+
+        # ── Restore persisted layout (QSettings) ──────────────────────────────
+        # If the user has rearranged docks in a previous session, restore that
+        # arrangement.  objectName of every dock must stay stable for this to
+        # work correctly.
+        settings = QSettings("GameLib", "DungeonCrawlerBasic")
+        main_state: QByteArray = settings.value("layout/main")  # type: ignore[assignment]
+        inner_state: QByteArray = settings.value("layout/actor_inner")  # type: ignore[assignment]
+        if main_state:
+            self.restoreState(main_state)
+        if inner_state:
+            self._actor_inner.restoreState(inner_state)
 
         self._build_toolbar()
 
@@ -578,7 +674,10 @@ class DungeonMainWindow(QMainWindow):
                 })
 
     def closeEvent(self, event) -> None:
-        """Stops the bridge receiver before closing."""
+        """Saves the dock layout and stops the bridge receiver before closing."""
+        settings = QSettings("GameLib", "DungeonCrawlerBasic")
+        settings.setValue("layout/main", self.saveState())
+        settings.setValue("layout/actor_inner", self._actor_inner.saveState())
         self._bridge.receiver.stop()
         self._bridge.receiver.wait(2000)
         super().closeEvent(event)
