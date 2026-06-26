@@ -12,6 +12,9 @@ All outgoing commands are sent via DungeonBridge.send_command().
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QDockWidget,
     QMainWindow,
@@ -34,6 +37,27 @@ from gmGui.message_ids import AREA_INFO_REQUEST, AREA_INFO_RESPONSE
 from gmGui.modules.gm_map_area_info_module import GmMapAreaInfoModule
 from gmGui.modules.gm_flow_module import GmFlowModule
 from gmGui.modules.gm_comp_deck_module import GmCompDeckModule
+
+# Zone names that match GmCompDeckModule exactly.
+_DECK_ZONES: list[str] = ["MainDeck", "CardHand", "PlayArea", "Memory", "DiscardPile", "BanishZone"]
+
+
+class _DeckProxy:
+    """Sender proxy that intercepts gmAlea.deck.* commands for local per-hero deck tracking.
+
+    All other commands are forwarded to the real EngineSender unchanged.
+    """
+
+    def __init__(self, real_sender, local_callback) -> None:
+        self._real_sender = real_sender
+        self._callback = local_callback
+
+    def send_command(self, type_id: str, data: dict) -> None:
+        """Routes gmAlea.deck commands locally; forwards everything else."""
+        if type_id.startswith("gmAlea.deck."):
+            self._callback(type_id, data)
+        elif self._real_sender is not None:
+            self._real_sender.send_command(type_id, data)
 
 
 class DungeonMainWindow(QMainWindow):
@@ -142,8 +166,13 @@ class DungeonMainWindow(QMainWindow):
         self._router = EventRouter()
         # Flow / Timeline: shared GmFlowModule fed via a dungeon.* → gmFlow.* adapter.
         self._flow.set_sender(self._bridge.sender)
-        # Deck manager: card commands are sent via the same bridge sender.
-        self._deck.set_sender(self._bridge.sender)
+        # Per-hero deck state: hero_id → zone_name → list[card dict].
+        self._card_catalog: list[dict] = self._load_card_catalog()
+        self._hero_decks: dict[str, dict[str, list[dict]]] = {}
+        self._current_deck_hero: str = ""
+        # Deck manager: intercept gmAlea.deck.* locally; forward the rest.
+        self._deck_proxy = _DeckProxy(self._bridge.sender, self._on_deck_command)
+        self._deck.set_sender(self._deck_proxy)
         self._last_round: int = 0
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
         self._pending_attack_attacker: str = ""  # attacker waiting for a target click
@@ -161,6 +190,8 @@ class DungeonMainWindow(QMainWindow):
         for ev in ("dungeon.actor.snapshot", "dungeon.actor.hp_changed",
                    "dungeon.actor.status_changed", "dungeon.session.started"):
             self._router.register(ev, self._heroes.on_envelope)
+        # Deck initialisation: detect heroes and build per-hero deck state.
+        self._router.register("dungeon.actor.snapshot", self._on_actor_snapshot_for_decks)
         # Action panel: button availability
         for ev in ("dungeon.actor.snapshot", "dungeon.turn.started",
                    "dungeon.turn.ended", "dungeon.game.over", "dungeon.session.started"):
@@ -219,6 +250,8 @@ class DungeonMainWindow(QMainWindow):
         if actor_id:
             self._board.set_active_hero(actor_id)
             self._heroes.select_actor(actor_id)
+            # Switch deck display to this hero (no-op for monsters).
+            self._inject_deck_zones(actor_id)
 
     # ── Flow adapter (dungeon.* → gmFlow.*) ───────────────────────────────────
 
@@ -295,6 +328,14 @@ class DungeonMainWindow(QMainWindow):
         self._pending_move_hero = ""
         self._pending_attack_attacker = ""
         self._defense_active = False
+        self._hero_decks = {}
+        self._current_deck_hero = ""
+        # Clear all deck zones so the module shows empty until session.started.
+        for zone in _DECK_ZONES:
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.zone_changed",
+                "data": {"zone_name": zone, "cards": []},
+            })
         self._bridge.send_command("dungeon.new_game", {})
 
     def _on_move_action(self, hero_id: str) -> None:
@@ -411,6 +452,74 @@ class DungeonMainWindow(QMainWindow):
     def _on_defend_pass_requested(self, defender_id: str) -> None:
         """Forwards a defense pass (take full damage minus stat) to CoreEngine."""
         self._bridge.send_command("dungeon.defend.pass", {"defender_id": defender_id})
+
+    # ── Per-hero deck management (Phase 5+) ───────────────────────────────────
+
+    def _load_card_catalog(self) -> list[dict]:
+        """Reads cards_dungeon.json and returns the list of card dicts, or []."""
+        catalog_path = Path(__file__).parent.parent / "data" / "cards_dungeon.json"
+        try:
+            with catalog_path.open("r", encoding="utf-8") as fp:
+                raw = json.load(fp)
+            return list(raw.get("cards", []))
+        except Exception:
+            return []
+
+    def _init_hero_deck(self, hero_id: str) -> None:
+        """Creates a fresh deck for hero_id — all cards placed in MainDeck."""
+        self._hero_decks[hero_id] = {z: [] for z in _DECK_ZONES}
+        self._hero_decks[hero_id]["MainDeck"] = [dict(c) for c in self._card_catalog]
+
+    def _inject_deck_zones(self, hero_id: str) -> None:
+        """Refreshes the deck module with the saved zone state for hero_id."""
+        if hero_id not in self._hero_decks:
+            return
+        deck = self._hero_decks[hero_id]
+        for zone in _DECK_ZONES:
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.zone_changed",
+                "data": {"zone_name": zone, "cards": list(deck.get(zone, []))},
+            })
+        self._current_deck_hero = hero_id
+
+    def _on_actor_snapshot_for_decks(self, msg: dict) -> None:
+        """Initialises per-hero decks the first time each hero is seen."""
+        for actor in msg.get("data", {}).get("actors", []):
+            actor_id = str(actor.get("id", ""))
+            kind = str(actor.get("kind", ""))
+            if kind == "HERO" and actor_id and actor_id not in self._hero_decks:
+                self._init_hero_deck(actor_id)
+
+    def _on_deck_command(self, type_id: str, data: dict) -> None:
+        """Handles gmAlea.deck.* commands locally (no C++ engine manages decks)."""
+        hero = self._current_deck_hero
+        if not hero or hero not in self._hero_decks:
+            return
+        deck = self._hero_decks[hero]
+
+        if type_id == "gmAlea.deck.move_card":
+            card_id = str(data.get("card_id", ""))
+            from_zone = str(data.get("from_zone", ""))
+            to_zone = str(data.get("to_zone", ""))
+            cards_from = deck.get(from_zone, [])
+            card = next((c for c in cards_from if c.get("card_id") == card_id), None)
+            if card:
+                cards_from.remove(card)
+                deck.setdefault(to_zone, []).insert(0, card)
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.card_moved",
+                "data": {"card_id": card_id, "from_zone": from_zone, "to_zone": to_zone},
+            })
+
+        elif type_id == "gmAlea.deck.recycle_discard":
+            discarded = list(deck.get("DiscardPile", []))
+            deck["DiscardPile"] = []
+            deck["MainDeck"] = list(deck.get("MainDeck", [])) + discarded
+            for zone in ("DiscardPile", "MainDeck"):
+                self._deck.on_envelope({
+                    "typeId": "gmAlea.deck.zone_changed",
+                    "data": {"zone_name": zone, "cards": list(deck.get(zone, []))},
+                })
 
     def closeEvent(self, event) -> None:
         """Stops the bridge receiver before closing."""
