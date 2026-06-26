@@ -37,13 +37,14 @@ class ActionPanelWidget(QWidget):
                                          Player declined defense (passive stat only).
     """
 
-    move_requested:        Signal = Signal(str)
-    heal_requested:        Signal = Signal(str, str)
-    equip_requested:       Signal = Signal(str, str)
-    end_turn_requested:    Signal = Signal(str)
-    attack_requested:      Signal = Signal(str)
-    defend_requested:      Signal = Signal(str, str, int)
-    defend_pass_requested: Signal = Signal(str)
+    move_requested:            Signal = Signal(str)
+    heal_requested:            Signal = Signal(str, str)
+    equip_requested:           Signal = Signal(str, str)
+    end_turn_requested:        Signal = Signal(str)
+    attack_requested:          Signal = Signal(str)
+    defend_requested:          Signal = Signal(str, str, int)
+    defend_pass_requested:     Signal = Signal(str)
+    actions_remaining_changed: Signal = Signal(int)  # emitted after every action consumed
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -283,11 +284,13 @@ class ActionPanelWidget(QWidget):
         if self._actions_remaining > 0:
             self._actions_remaining -= 1
         self._update_buttons()
+        self.actions_remaining_changed.emit(self._actions_remaining)
 
     def consume_actions(self, cost: int) -> None:
         """Decrements the action counter by cost (called when a card is played)."""
         self._actions_remaining = max(0, self._actions_remaining - cost)
         self._update_buttons()
+        self.actions_remaining_changed.emit(self._actions_remaining)
 
     # ── Button callbacks ──────────────────────────────────────────────────────
 

@@ -287,6 +287,7 @@ class DungeonMainWindow(QMainWindow):
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
         self._pending_card_move: dict = {}  # {"hero_id", "card_id", "max_distance"} when card-move pending
         self._pending_card_attack: dict = {}  # {"hero_id", "card_id", "card_damage", "max_distance"}
+        self._current_turn_actor: str = ""  # actor_id whose turn is active
         self._current_actions_remaining: int = 0  # mirrors ActionPanel counter; updated on turn start
         self._pending_attack_attacker: str = ""  # attacker waiting for a target click
         self._defense_active: bool = False  # True while a defense window is open
@@ -297,13 +298,14 @@ class DungeonMainWindow(QMainWindow):
         self._router.register("dungeon.turn.started", self._on_turn_started_select)
         # Board: map layout and actor movement
         for ev in ("dungeon.map.snapshot", "dungeon.actor.snapshot",
-                   "dungeon.actor.moved", "dungeon.game.over"):
+                   "dungeon.actor.moved", "dungeon.actor.removed", "dungeon.game.over"):
             self._router.register(ev, self._board.on_envelope)
         # Clear card-move targeting state on successful move.
         self._router.register("dungeon.actor.moved", self._on_actor_moved)
         # Hero panel: actor state
         for ev in ("dungeon.actor.snapshot", "dungeon.actor.hp_changed",
-                   "dungeon.actor.status_changed", "dungeon.session.started"):
+                   "dungeon.actor.status_changed", "dungeon.actor.removed",
+                   "dungeon.session.started"):
             self._router.register(ev, self._heroes.on_envelope)
         # Deck initialisation: detect heroes and build per-hero deck state.
         self._router.register("dungeon.actor.snapshot", self._on_actor_snapshot_for_decks)
@@ -321,12 +323,16 @@ class DungeonMainWindow(QMainWindow):
         self._router.register("dungeon.defense.window.opened", self._on_defense_window_opened)
         self._router.register("dungeon.defense.window.closed", self._on_defense_window_closed)
         self._router.register("dungeon.attack.resolved", self._on_attack_resolved)
+        # Test automation: allow remote clients to start a new game via TCP
+        self._router.register("dungeon.new_game", self._on_new_game)
         # Combat events also feed the log for player feedback.
         for ev in ("dungeon.attack.declared", "dungeon.defense.window.opened",
                    "dungeon.attack.resolved"):
             self._router.register(ev, self._log.on_envelope)
         # Area Info: contents of the selected map area (shared contract)
         self._router.register(AREA_INFO_RESPONSE, self._area_info.on_envelope)
+        # Actor removed: also forward to board and log
+        self._router.register("dungeon.actor.removed", self._on_actor_removed)
         # Deck manager: gmAlea card events + gmActor resource tracking
         for ev in ("gmAlea.deck.zone_changed", "gmAlea.deck.card_moved",
                    "gmAlea.deck.shuffled", "gmAlea.deck.drawn",
@@ -342,6 +348,9 @@ class DungeonMainWindow(QMainWindow):
         self._actions.attack_requested.connect(self._on_attack_action)
         self._actions.defend_requested.connect(self._on_defend_requested)
         self._actions.defend_pass_requested.connect(self._on_defend_pass_requested)
+        self._actions.actions_remaining_changed.connect(self._on_actions_remaining_changed)
+        # Area Info: actor click → same routing as hero-panel actor click.
+        self._area_info.on_actor_selected = self._on_area_info_actor_selected
         # Actor selection in hero panel → sync action panel display
         # (or pick the attack target while in attack-targeting mode).
         self._heroes.actor_selected.connect(self._on_actor_selected)
@@ -366,6 +375,7 @@ class DungeonMainWindow(QMainWindow):
         data: dict = msg.get("data", {})
         actor_id: str = str(data.get("actor_id", ""))
         self._current_actions_remaining = int(data.get("actions_remaining", 2))
+        self._current_turn_actor = actor_id
         if actor_id:
             self._board.set_active_hero(actor_id)
             self._heroes.select_actor(actor_id)
@@ -477,8 +487,28 @@ class DungeonMainWindow(QMainWindow):
             })
         self._bridge.send_command("dungeon.new_game", {})
 
+    def _on_actions_remaining_changed(self, remaining: int) -> None:
+        """Syncs the heroes-panel 'azioni' resource whenever the action counter changes."""
+        self._current_actions_remaining = remaining
+        if self._current_turn_actor:
+            self._heroes.update_actions_remaining(self._current_turn_actor, remaining)
+
+    def _on_area_info_actor_selected(self, actor_id: str) -> None:
+        """Routes an actor click from the Area Info panel.
+
+        During a defense window the selection is locked (defense must be resolved
+        first).  Otherwise the click is treated identically to a hero-panel click:
+        attack targeting is resolved first, then normal selection.
+        """
+        if self._defense_active:
+            self._errors.show_error(
+                "Difesa in corso: completa la difesa prima di cambiare selezione."
+            )
+            return
+        self._on_actor_selected(actor_id)
+
     def _on_actor_moved(self, msg: dict) -> None:
-        """Shows a move confirmation message and clears pending move targeting."""
+        """Shows a move confirmation message and updates action count from CoreEngine."""
         data: dict = msg.get("data", {})
         actor_id: str = str(data.get("actor_id", ""))
         to_room: str = str(data.get("to", ""))
@@ -487,6 +517,11 @@ class DungeonMainWindow(QMainWindow):
         self._pending_card_move = {}
         self._pending_move_hero = ""
         self._actions.set_awaiting_move(False)
+        # Update remaining actions from CoreEngine state.
+        actions_remaining = int(data.get("actions_remaining", 0))
+        if actions_remaining >= 0 and actions_remaining != self._current_actions_remaining:
+            self._current_actions_remaining = actions_remaining
+            self._heroes.update_actions_remaining(self._current_turn_actor, actions_remaining)
 
     def _on_move_action(self, hero_id: str) -> None:
         """Toggles move-targeting mode (enter on first press, cancel on second)."""
@@ -557,6 +592,9 @@ class DungeonMainWindow(QMainWindow):
                              "command": "dungeon.attack"},
                 })
             return
+        # ── Normal selection: blocked during active defense window ─────────────
+        if self._defense_active:
+            return
         self._actions.set_selected_actor(actor_id)
 
     def _on_attack_action(self, attacker_id: str) -> None:
@@ -598,17 +636,42 @@ class DungeonMainWindow(QMainWindow):
             bool(data.get("can_pass", True)),
             bool(data.get("can_cancel", True)),
         )
+        self._errors.show_info(f"⚔️ {defender_id} si Difende: scegli l'azione difensiva")
 
     def _on_defense_window_closed(self, msg: dict) -> None:
-        """Leaves reactive-defense mode and restores normal action availability."""
+        """Leaves reactive-defense mode and restores the turn actor selection."""
         self._defense_active = False
         self._actions.exit_defense_mode()
+        # Restore focus to the actor whose turn it currently is.
+        if self._current_turn_actor:
+            self._heroes.select_actor(self._current_turn_actor)
+            self._actions.set_selected_actor(self._current_turn_actor)
 
     def _on_attack_resolved(self, msg: dict) -> None:
-        """Restores the active actor selection after an attack is resolved."""
+        """Updates action state when CoreEngine reports attack resolution."""
+        data: dict = msg.get("data", {}) or {}
+        # Show damage message to player.
+        defender_id: str = str(data.get("defender_id", ""))
+        final_damage: int = int(data.get("final_damage", 0))
+        if defender_id:
+            self._errors.show_info(f"{defender_id} riceve {final_damage} danni")
+        # Update remaining actions from CoreEngine state.
+        actions_remaining = int(data.get("actions_remaining", self._current_actions_remaining))
+        if actions_remaining != self._current_actions_remaining:
+            self._current_actions_remaining = actions_remaining
+            self._heroes.update_actions_remaining(self._current_turn_actor, actions_remaining)
+        # If this attack is part of defense resolution, exit defense mode.
         if self._defense_active:
             self._defense_active = False
             self._actions.exit_defense_mode()
+
+    def _on_actor_removed(self, msg: dict) -> None:
+        """Handles dungeon.actor.removed — logs the defeat and shows a message."""
+        data: dict = msg.get("data", {}) or {}
+        actor_id: str = str(data.get("actor_id", ""))
+        if actor_id:
+            self._errors.show_info(f"☠️ {actor_id} è stato sconfitto e rimosso dalla mappa")
+            self._log.on_envelope(msg)
 
     def _on_defend_requested(self, defender_id: str, mode: str, block: int) -> None:
         """Forwards an active defense choice (reduce / cancel) to CoreEngine."""
@@ -716,14 +779,12 @@ class DungeonMainWindow(QMainWindow):
                 "typeId": "gmAlea.deck.card_moved",
                 "data": {"card_id": card_id, "from_zone": from_zone, "to_zone": to_zone},
             })
-            # When a card lands in PlayArea, consume its action cost and
-            # trigger the corresponding game action.
+            # When a card lands in PlayArea, trigger the corresponding game action.
+            # Do NOT decrement actions here — the CoreEngine controls action logic.
+            # The GUI will receive feedback (ACTION_REJECTED or the action succeeds)
+            # and then update from CoreEngine state.
             if to_zone == "PlayArea" and card_id in _CARD_ACTIONS:
                 action = _CARD_ACTIONS[card_id]
-                cost = int(action.get("action_cost", 1))
-                self._actions.consume_actions(cost)
-                self._current_actions_remaining = max(0, self._current_actions_remaining - cost)
-                self._heroes.update_actions_remaining(hero, self._current_actions_remaining)
                 if action["action_type"] == "MOVE":
                     self._start_card_move(hero, card_id, int(action.get("max_distance", 1)))
                 elif action["action_type"] == "ATTACK":

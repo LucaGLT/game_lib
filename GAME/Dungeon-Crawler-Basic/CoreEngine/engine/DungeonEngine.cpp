@@ -339,9 +339,22 @@ void DungeonEngine::finalize_defense(const DefenseChoice& defense)
 		 {"base_damage",  base_damage},
 		 {"final_damage", final_damage},
 		 {"cancelled",    defense.cancel},
-		 {"hp_after",     hp_after}});
+		 {"hp_after",     hp_after},
+		 {"actions_remaining", MAX_ACTIONS_PER_TURN - _actions_this_turn - 1}});
 	_gui.send_event(event_id::HP_CHANGED,
 		{{"actor_id", defender_id}, {"delta", hp_after - before_hp}, {"hp_after", hp_after}});
+
+	// Remove non-hero actors that have been reduced to 0 HP.
+	if (hp_after <= 0 && _actors.has_actor(defender_id))
+	{
+		const ActorInfo fallen = _actors.get_actor(defender_id);
+		if (fallen.kind != DungeonActorKind::HERO)
+		{
+			_actors.remove_actor(defender_id);
+			_gui.send_event(event_id::ACTOR_REMOVED, {{"actor_id", defender_id}});
+		}
+	}
+
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 
 	_log.log_action(attacker_id, command_id::ATTACK,
@@ -397,7 +410,7 @@ void DungeonEngine::handle_move(const nlohmann::json& data)
 	std::cout << "\n";
 
 	_gui.send_event(event_id::ACTOR_MOVED,
-		{{"actor_id", hero_id}, {"to", destination}});
+		{{"actor_id", hero_id}, {"to", destination}, {"actions_remaining", MAX_ACTIONS_PER_TURN - _actions_this_turn - 1}});
 	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
 	_log.log_action(hero_id, command_id::MOVE, move_label);
 	++_actions_this_turn;

@@ -673,6 +673,8 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
     # State tokens used by logic widgets and custom-painted scenes.
     if name == "state_success":
         return QColor(Qt.GlobalColor.green)
+    if name == "state_success_dark":
+        return QColor(Qt.GlobalColor.darkGreen)
     if name == "state_warning":
         return QColor(Qt.GlobalColor.yellow)
     if name == "state_error":

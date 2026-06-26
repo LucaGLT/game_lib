@@ -76,6 +76,7 @@ class GmActorModule(BaseModule):
             "gmActor.actor.life_state_changed",
             "gmActor.actor.item_equipped",
             "gmActor.actor.item_unequipped",
+            "gmActor.actor.removed",
         ]
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -156,7 +157,7 @@ class GmActorModule(BaseModule):
         name_row.addStretch()
         # The actor list is collapsible and hidden by default; the toggle lives
         # in the detail header so it stays reachable when the left pane is gone.
-        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
+        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
         self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
         self._toggle_tree_btn.setProperty("toggle_icon", "true")
         self._toggle_tree_btn.setFixedWidth(20)
@@ -243,12 +244,12 @@ class GmActorModule(BaseModule):
 
         splitter.addWidget(right)
         self._splitter: QSplitter = splitter
-        # Default state: actor list hidden, only the detail panel is shown.
-        self._tree_visible: bool = False
-        self._left_panel.setVisible(False)
-        splitter.setSizes([0, 1])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        # Default state: actor list visible alongside the detail panel.
+        self._tree_visible: bool = True
+        self._left_panel.setVisible(True)
+        splitter.setSizes([220, 320])
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
         return container
 
@@ -276,6 +277,8 @@ class GmActorModule(BaseModule):
             self._handle_item_equipped(data)
         elif tid == "gmActor.actor.item_unequipped":
             self._handle_item_unequipped(data)
+        elif tid == "gmActor.actor.removed":
+            self._handle_actor_removed(data)
 
     # ── Private handlers ──────────────────────────────────────────────────────
 
@@ -423,6 +426,28 @@ class GmActorModule(BaseModule):
         if self._selected_actor_id() == actor_id:
             self._refresh_equip_list(actor_id)
 
+    def _handle_actor_removed(self, data: dict) -> None:
+        actor_id: str = str(data.get("actor_id", ""))
+        if actor_id not in self._actor_data:
+            return
+        # Remove from tree
+        item: QTreeWidgetItem | None = self._actor_items.pop(actor_id, None)
+        if item is not None:
+            parent = item.parent()
+            if parent is not None:
+                parent.removeChild(item)
+        self._actor_data.pop(actor_id, None)
+        self._refresh_faction_labels()
+        # If this actor was selected, clear the detail panel
+        if self._selected_actor_id() is None:
+            self._detail_name.setText("Seleziona un attore")
+            self._detail_faction.setText("—")
+            self._apply_detail_state("ALIVE")
+            self._hp_bar.set_hp(0, 1)
+            self._status_list.clear()
+            self._resource_list.clear()
+            self._equip_list.clear()
+
     # ── UI helpers ────────────────────────────────────────────────────────────
 
     def _on_filter_changed(self, faction: str) -> None:
@@ -464,7 +489,7 @@ class GmActorModule(BaseModule):
         """Restores the actor-tree visibility from a previously saved state dict."""
         if self._widget is None:
             return
-        visible = bool(state.get("tree_visible", False))
+        visible = bool(state.get("tree_visible", True))
         self._tree_visible = visible
         self._apply_tree_visibility(visible)
 
@@ -540,6 +565,7 @@ class GmActorModule(BaseModule):
             self._detail_faction.setText("—")
             self._apply_detail_state("ALIVE")
             self._hp_bar.set_hp(0, 1)
+
             self._status_list.clear()
             self._equip_list.clear()
 

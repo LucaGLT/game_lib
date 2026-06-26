@@ -154,6 +154,9 @@ constexpr const char* DEFENSE_WINDOW_CLOSED = "dungeon.defense.window.closed";
 /// @brief An attack has been resolved.
 ///        data: { attacker_id, defender_id, base_damage, final_damage, cancelled, hp_after }
 constexpr const char* ATTACK_RESOLVED       = "dungeon.attack.resolved";
+/// @brief A non-hero actor was removed from the dungeon (reached 0 HP).
+///        data: { actor_id: string }
+constexpr const char* ACTOR_REMOVED         = "dungeon.actor.removed";
 } // namespace event_id
 
 // ── Utility helpers ───────────────────────────────────────────────────────────

@@ -77,6 +77,7 @@ class GmMapAreaInfoModule(BaseModule):
         self._actors_list: QListWidget = QListWidget()
         self._actors_list.setObjectName("area_info_actors_list")
         self._actors_list.setMinimumHeight(120)
+        self._actors_list.itemClicked.connect(self._on_actor_item_clicked)
         actors_box.addWidget(self._actors_list)
         vbox.addWidget(actors_group)
 
@@ -95,6 +96,11 @@ class GmMapAreaInfoModule(BaseModule):
         vbox.addWidget(interactables_group)
 
         vbox.addStretch()
+
+        # Callback invoked when the user clicks an actor in the list.
+        # Signature: on_actor_selected(actor_id: str) -> None
+        self.on_actor_selected = None
+
         return container
 
     # ── Envelope routing ──────────────────────────────────────────────────────
@@ -108,7 +114,11 @@ class GmMapAreaInfoModule(BaseModule):
         self._populate(data)
 
     # ── Helpers ────────────────────────────────────────────────────────────────
-
+    def _on_actor_item_clicked(self, item: QListWidgetItem) -> None:
+        """Fires on_actor_selected when the user clicks an actor in the list."""
+        actor_id = str(item.data(Qt.ItemDataRole.UserRole))
+        if actor_id and callable(self.on_actor_selected):
+            self.on_actor_selected(actor_id)
     @staticmethod
     def _extract_payload(msg: dict) -> dict:
         """Returns the payload dict from either ``data`` or ``headers.data``."""
