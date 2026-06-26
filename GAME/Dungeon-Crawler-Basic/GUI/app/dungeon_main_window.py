@@ -457,7 +457,7 @@ class DungeonMainWindow(QMainWindow):
 
     def _load_card_catalog(self) -> list[dict]:
         """Reads cards_dungeon.json and returns the list of card dicts, or []."""
-        catalog_path = Path(__file__).parent.parent / "data" / "cards_dungeon.json"
+        catalog_path = Path(__file__).parent.parent.parent / "data" / "cards_dungeon.json"
         try:
             with catalog_path.open("r", encoding="utf-8") as fp:
                 raw = json.load(fp)
@@ -499,8 +499,8 @@ class DungeonMainWindow(QMainWindow):
 
         if type_id == "gmAlea.deck.move_card":
             card_id = str(data.get("card_id", ""))
-            from_zone = str(data.get("from_zone", ""))
-            to_zone = str(data.get("to_zone", ""))
+            from_zone = str(data.get("from") or data.get("from_zone", ""))
+            to_zone = str(data.get("to") or data.get("to_zone", ""))
             cards_from = deck.get(from_zone, [])
             card = next((c for c in cards_from if c.get("card_id") == card_id), None)
             if card:
