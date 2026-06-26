@@ -284,6 +284,11 @@ class ActionPanelWidget(QWidget):
             self._actions_remaining -= 1
         self._update_buttons()
 
+    def consume_actions(self, cost: int) -> None:
+        """Decrements the action counter by cost (called when a card is played)."""
+        self._actions_remaining = max(0, self._actions_remaining - cost)
+        self._update_buttons()
+
     # ── Button callbacks ──────────────────────────────────────────────────────
 
     def _on_move_clicked(self) -> None:

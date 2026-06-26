@@ -44,15 +44,15 @@ _DECK_ZONES: list[str] = ["MainDeck", "CardHand", "PlayArea", "Memory", "Discard
 # Maps card_id → the gameplay action triggered when the card is played to PlayArea.
 # action_type values: "MOVE" | "ATTACK" | "HEAL" | "BUFF" (only MOVE is handled here)
 _CARD_ACTIONS: dict[str, dict] = {
-    "passo_veloce":    {"action_type": "MOVE",   "max_distance": 2},
-    "colpo_efficace":  {"action_type": "ATTACK",  "card_damage": 2},
-    "pugno_di_ferro":  {"action_type": "ATTACK",  "card_damage": 4},
-    "tiro_rapido":     {"action_type": "ATTACK",  "card_damage": 2},
-    "veleno":          {"action_type": "ATTACK",  "card_damage": 1},
-    "furia_cieca":     {"action_type": "BUFF"},
-    "grido_di_guerra": {"action_type": "BUFF"},
-    "parata":          {"action_type": "BUFF"},
-    "pozione_di_cura": {"action_type": "HEAL"},
+    "passo_veloce":    {"action_type": "MOVE",   "max_distance": 2, "action_cost": 1},
+    "colpo_efficace":  {"action_type": "ATTACK", "card_damage": 2, "max_distance": 1, "action_cost": 1},
+    "pugno_di_ferro":  {"action_type": "ATTACK", "card_damage": 4, "max_distance": 1, "action_cost": 2},
+    "tiro_rapido":     {"action_type": "ATTACK", "card_damage": 2, "max_distance": 1, "action_cost": 1},
+    "veleno":          {"action_type": "ATTACK", "card_damage": 1, "max_distance": 1, "action_cost": 1},
+    "furia_cieca":     {"action_type": "BUFF",   "action_cost": 1},
+    "grido_di_guerra": {"action_type": "BUFF",   "action_cost": 1},
+    "parata":          {"action_type": "BUFF",   "action_cost": 1},
+    "pozione_di_cura": {"action_type": "HEAL",   "action_cost": 1},
 }
 
 
@@ -286,6 +286,8 @@ class DungeonMainWindow(QMainWindow):
         self._last_round: int = 0
         self._pending_move_hero: str = ""  # hero_id waiting for a destination click
         self._pending_card_move: dict = {}  # {"hero_id", "card_id", "max_distance"} when card-move pending
+        self._pending_card_attack: dict = {}  # {"hero_id", "card_id", "card_damage", "max_distance"}
+        self._current_actions_remaining: int = 0  # mirrors ActionPanel counter; updated on turn start
         self._pending_attack_attacker: str = ""  # attacker waiting for a target click
         self._defense_active: bool = False  # True while a defense window is open
         for ev in ("dungeon.session.started", "dungeon.turn.started",
@@ -297,6 +299,8 @@ class DungeonMainWindow(QMainWindow):
         for ev in ("dungeon.map.snapshot", "dungeon.actor.snapshot",
                    "dungeon.actor.moved", "dungeon.game.over"):
             self._router.register(ev, self._board.on_envelope)
+        # Clear card-move targeting state on successful move.
+        self._router.register("dungeon.actor.moved", self._on_actor_moved)
         # Hero panel: actor state
         for ev in ("dungeon.actor.snapshot", "dungeon.actor.hp_changed",
                    "dungeon.actor.status_changed", "dungeon.session.started"):
@@ -355,13 +359,17 @@ class DungeonMainWindow(QMainWindow):
             return
         self._pending_move_hero = ""
         self._pending_card_move = {}
+        self._pending_card_attack = {}
         self._pending_attack_attacker = ""
         self._actions.set_awaiting_move(False)
         self._actions.set_awaiting_attack(False)
-        actor_id: str = str(msg.get("data", {}).get("actor_id", ""))
+        data: dict = msg.get("data", {})
+        actor_id: str = str(data.get("actor_id", ""))
+        self._current_actions_remaining = int(data.get("actions_remaining", 2))
         if actor_id:
             self._board.set_active_hero(actor_id)
             self._heroes.select_actor(actor_id)
+            self._heroes.update_actions_remaining(actor_id, self._current_actions_remaining)
             # Switch deck display to this hero (no-op for monsters).
             self._inject_deck_zones(actor_id)
 
@@ -413,7 +421,12 @@ class DungeonMainWindow(QMainWindow):
     def _on_area_selected(self, area_id: str) -> None:
         """Handles an area click: completes a pending move or requests area info."""
         if self._pending_card_move:
-            # Card-enhanced move: use the clicked room directly (Core validates distance).
+            # Card-enhanced move: Core validates distance via BFS.
+            # Do NOT clear _pending_card_move here: if the engine rejects the
+            # move (e.g. destination out of range) the targeting mode must stay
+            # active so the player can pick a different room.
+            # State is cleared by _on_actor_moved (success) or by
+            # _on_turn_started_select (turn change).
             hero_id = self._pending_card_move.get("hero_id", "")
             card_id = self._pending_card_move.get("card_id", "")
             max_distance = int(self._pending_card_move.get("max_distance", 1))
@@ -424,9 +437,6 @@ class DungeonMainWindow(QMainWindow):
                     "max_distance": max_distance,
                     "card_id": card_id,
                 })
-                self._pending_card_move = {}
-                self._pending_move_hero = ""
-                self._actions.set_awaiting_move(False)
         elif self._pending_move_hero:
             destination = self._board.move_destination()
             if destination:
@@ -454,6 +464,7 @@ class DungeonMainWindow(QMainWindow):
         self._errors.clear()
         self._pending_move_hero = ""
         self._pending_card_move = {}
+        self._pending_card_attack = {}
         self._pending_attack_attacker = ""
         self._defense_active = False
         self._hero_decks = {}
@@ -465,6 +476,17 @@ class DungeonMainWindow(QMainWindow):
                 "data": {"zone_name": zone, "cards": []},
             })
         self._bridge.send_command("dungeon.new_game", {})
+
+    def _on_actor_moved(self, msg: dict) -> None:
+        """Shows a move confirmation message and clears pending move targeting."""
+        data: dict = msg.get("data", {})
+        actor_id: str = str(data.get("actor_id", ""))
+        to_room: str = str(data.get("to", ""))
+        if actor_id and to_room:
+            self._errors.show_info(f"✓ {actor_id} si è spostato in {to_room}")
+        self._pending_card_move = {}
+        self._pending_move_hero = ""
+        self._actions.set_awaiting_move(False)
 
     def _on_move_action(self, hero_id: str) -> None:
         """Toggles move-targeting mode (enter on first press, cancel on second)."""
@@ -496,10 +518,27 @@ class DungeonMainWindow(QMainWindow):
     def _on_actor_selected(self, actor_id: str) -> None:
         """Routes a hero-panel actor selection.
 
-        While in attack-targeting mode the selected actor is the *target* and an
-        attack is dispatched; otherwise the selection just drives the action
-        panel display (default behaviour).
+        Priority:
+          1. Card-triggered attack  (_pending_card_attack set)
+          2. Button-triggered attack (_pending_attack_attacker set)
+          3. Normal selection        (drives the action panel display)
         """
+        # ── Card-triggered attack targeting ───────────────────────────────────
+        if self._pending_card_attack:
+            attacker_id = self._pending_card_attack.get("hero_id", "")
+            card_id     = self._pending_card_attack.get("card_id", "")
+            card_damage = int(self._pending_card_attack.get("card_damage", 0))
+            self._pending_card_attack = {}
+            self._actions.set_awaiting_attack(False)
+            if actor_id and actor_id != attacker_id:
+                self._bridge.send_command(
+                    "dungeon.attack",
+                    {"attacker_id": attacker_id, "target_id": actor_id,
+                     "card_id": card_id, "card_damage": card_damage})
+            else:
+                self._errors.show_error("Seleziona un bersaglio nemico diverso da te.")
+            return
+        # ── Button-triggered attack targeting ─────────────────────────────────
         if self._pending_attack_attacker:
             attacker_id = self._pending_attack_attacker
             target_id = actor_id
@@ -618,6 +657,26 @@ class DungeonMainWindow(QMainWindow):
             if kind == "HERO" and actor_id and actor_id not in self._hero_decks:
                 self._init_hero_deck(actor_id)
 
+    def _start_card_attack(self, hero_id: str, card_id: str,
+                           card_damage: int, max_distance: int) -> None:
+        """Enters attack-targeting mode triggered by an ATTACK card played to PlayArea."""
+        self._pending_move_hero = ""
+        self._pending_card_move = {}
+        self._pending_attack_attacker = ""
+        self._actions.set_awaiting_move(False)
+        self._pending_card_attack = {
+            "hero_id":      hero_id,
+            "card_id":      card_id,
+            "card_damage":  card_damage,
+            "max_distance": max_distance,
+        }
+        self._actions.set_awaiting_attack(True)
+        self._errors.show_info(
+            f"Carta \u2018{card_id}\u2019 (danno {card_damage}): "
+            f"seleziona il bersaglio nel pannello Actors "
+            f"(distanza max {max_distance})."
+        )
+
     def _start_card_move(self, hero_id: str, card_id: str, max_distance: int) -> None:
         """Enters move-targeting mode triggered by a card played to PlayArea."""
         self._pending_move_hero = ""           # not a button-move
@@ -657,11 +716,22 @@ class DungeonMainWindow(QMainWindow):
                 "typeId": "gmAlea.deck.card_moved",
                 "data": {"card_id": card_id, "from_zone": from_zone, "to_zone": to_zone},
             })
-            # When a card lands in PlayArea, trigger the corresponding game action.
+            # When a card lands in PlayArea, consume its action cost and
+            # trigger the corresponding game action.
             if to_zone == "PlayArea" and card_id in _CARD_ACTIONS:
                 action = _CARD_ACTIONS[card_id]
+                cost = int(action.get("action_cost", 1))
+                self._actions.consume_actions(cost)
+                self._current_actions_remaining = max(0, self._current_actions_remaining - cost)
+                self._heroes.update_actions_remaining(hero, self._current_actions_remaining)
                 if action["action_type"] == "MOVE":
                     self._start_card_move(hero, card_id, int(action.get("max_distance", 1)))
+                elif action["action_type"] == "ATTACK":
+                    self._start_card_attack(
+                        hero, card_id,
+                        int(action.get("card_damage", 0)),
+                        int(action.get("max_distance", 1)),
+                    )
 
         elif type_id == "gmAlea.deck.recycle_discard":
             discarded = list(deck.get("DiscardPile", []))

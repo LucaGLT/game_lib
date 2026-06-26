@@ -56,6 +56,12 @@ class HeroPanelWidget(QWidget):
             translated = self._translate_equipped(data)
             if translated is not None:
                 self._module.on_envelope(translated)
+        elif type_id == "dungeon.turn.started":
+            actor_id = str(data.get("actor_id", ""))
+            actions_remaining = int(data.get("actions_remaining", 2))
+            if actor_id:
+                self._current_turn_actor: str = actor_id
+                self._emit_actions_resource(actor_id, actions_remaining)
         elif type_id == "dungeon.actor.moved":
             translated = self._translate_moved(data)
             if translated is not None:
@@ -64,6 +70,17 @@ class HeroPanelWidget(QWidget):
     def select_actor(self, actor_id: str) -> None:
         """Programmatically selects *actor_id* in the embedded actor tree."""
         self._module.select_actor(actor_id)
+
+    def update_actions_remaining(self, actor_id: str, remaining: int) -> None:
+        """Updates the 'azioni' resource for *actor_id* in the Risorse section."""
+        self._emit_actions_resource(actor_id, remaining)
+
+    def _emit_actions_resource(self, actor_id: str, remaining: int) -> None:
+        self._module.on_envelope({
+            "typeId": "gmActor.actor.resource_changed",
+            "data": {"actor_id": actor_id, "resource_id": "azioni",
+                     "new_value": remaining},
+        })
 
     def reset(self) -> None:
         """Resets the embedded module to a clean actor state."""
