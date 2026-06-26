@@ -149,6 +149,59 @@ bool DungeonRuleAdapter::can_equip(const std::string& hero_id,
 	return true;
 }
 
+bool DungeonRuleAdapter::can_attack(const std::string& attacker_id,
+                                    const std::string& target_id) const
+{
+	_rejection_reason.clear();
+
+	if (!has_actor(attacker_id))
+	{
+		_rejection_reason = "Attacker not found.";
+		return false;
+	}
+
+	if (actor_current_hp(attacker_id) <= 0)
+	{
+		_rejection_reason = "Attacker is defeated.";
+		return false;
+	}
+
+	if (!has_actor(target_id))
+	{
+		_rejection_reason = "Target not found.";
+		return false;
+	}
+
+	if (attacker_id == target_id)
+	{
+		_rejection_reason = "An actor cannot attack itself.";
+		return false;
+	}
+
+	if (actor_current_hp(target_id) <= 0)
+	{
+		_rejection_reason = "Target is already defeated.";
+		return false;
+	}
+
+	if (!are_enemies(attacker_id, target_id))
+	{
+		_rejection_reason = "Target is not an enemy.";
+		return false;
+	}
+
+	const gmRules::LocationId attacker_loc = actor_location(attacker_id);
+	const gmRules::LocationId target_loc   = actor_location(target_id);
+	if (attacker_loc != target_loc
+		&& !are_locations_adjacent(attacker_loc, target_loc))
+	{
+		_rejection_reason = "Target is out of reach.";
+		return false;
+	}
+
+	return true;
+}
+
 std::string DungeonRuleAdapter::rejection_reason() const
 {
 	return _rejection_reason;

@@ -1,7 +1,7 @@
 # gmDungeonBasic – Development Plan
 
-**Version:** 0.8.0
-**Status:** Phase 3 – Shared GUI modules & area-info contract 🔧
+**Version:** 0.9.0
+**Status:** Phase 4 – Attack & Reactive Defense – Planned ⏳
 **Language:** C++17 Standard
 **Namespace:** `gmDungeonBasic`
 
@@ -168,6 +168,54 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 
 ---
 
+### Phase 4 — Attack & Reactive Defense (Core combat) ⏳
+
+> Modella l'azione Attacco (base + carte) e la **finestra reattiva di Difesa** del bersaglio.
+> Il mattone reattivo è `gmFlow::ActionWindow` con `CompletionPolicy::ANY_SUBMITTED`
+> (documentata come *Reaction window*). Poiché Core e GUI sono due processi, la
+> ActionWindow vive nel Core come **macchina a stati di reazione** e viene proiettata
+> sulla GUI tramite nuovi messaggi del wire contract.
+
+- [ ] Estendere `ActorInfo` (e il loader `dungeon_*.json` + snapshot attori) con la statistica base `attack` (e `defense` opzionale), così il danno = `attack` attaccante + modificatore della carta.
+- [ ] Aggiungere a `DungeonTypes` i nuovi command id (`dungeon.attack`, `dungeon.defend`, `dungeon.defend.pass`) e gli event id (`dungeon.attack.declared`, `dungeon.defense.window.opened`, `dungeon.defense.window.closed`, `dungeon.attack.resolved`).
+- [ ] Implementare nel Core la **macchina a stati di reazione** `AWAITING_DEFENSE` in `DungeonEngine`: memorizza il contesto attacco pendente (attaccante, difensore, danno base, modificatore carta, sorgente) e blocca altre azioni finché la difesa non è risolta o passata.
+- [ ] Aggiungere `ActionV1::execute_attack` (azione base) e integrare le carte Attacco già presenti (`colpo_efficace`, `pugno_di_ferro`, …) come sorgente di danno tramite `DungeonRuleAdapter::execute_card`.
+- [ ] Estendere `DungeonRuleAdapter` con `can_attack` e la **risoluzione difesa**: carta di difesa reattiva (`parata` → stato `difeso`), carta/risorsa permanente (scudo `scudo_antico` con cariche), consumabile (pozione), con due esiti generali: **riduzione danni** o **annullamento totale**.
+- [ ] Implementare il calcolo finale del danno (`danno_finale = max(0, base + mod_carta − riduzione_difesa)`; `0` se annullato), applicare HP e decrementare cariche/consumare risorse e status `difeso`.
+- [ ] Emettere gli eventi del flusso reattivo: `attack.declared` → `defense.window.opened` (con `defender_id`, opzioni disponibili) → attesa `dungeon.defend`/`dungeon.defend.pass` → `attack.resolved` + `dungeon.actor.hp_changed` + `defense.window.closed`.
+- [ ] Gestire il **pass esplicito** (`dungeon.defend.pass`): anche senza opzioni di difesa il danno pieno si applica solo dopo conferma dalla GUI; nessun timeout (gmFlow V1 non lo prevede).
+- [ ] Loggare attacco, finestra di difesa, scelta del difensore ed esito via `GameLog`.
+- [ ] Documentare i nuovi messaggi in `info/wire-contract-v1.md` (additivo, senza rompere il contratto esistente).
+- [ ] **Smoke test (C++):** unit test combat — attacco con riduzione (HP cala di `base+mod−riduzione`), annullamento totale (0 danni), cariche scudo che decrementano, `pass` = danno pieno; tutti PASS.
+
+**Notes:**
+- Sorgenti di difesa (da risposte utente): carta di difesa **reattiva o permanente** + risorsa **permanente (scudo)** o **consumabile (pozione)**; il difensore può ridurre o annullare.
+- Sorgente danno: **statistica base attaccante + modificatore carta**.
+- Tutti i bersagli (anche i Mostri) aprono la finestra interattiva: la scelta è del GM/utente, **nessuna AI** di difesa in questa fase.
+- La `ActionWindow(ANY_SUBMITTED)` è il modello concettuale; nel Core a 2 processi è realizzata come stato `AWAITING_DEFENSE` + messaggi wire, perché la decisione arriva in modo asincrono dalla GUI.
+- Le carte Attacco/Difesa e le relative regole gmRules **esistono già** in `data/cards_dungeon.json`; questa fase aggiunge solo il flusso reattivo e la statistica `attack`.
+
+---
+
+### Phase 5 — Reactive Defense GUI integration ⏳
+
+> Riusa i pannelli esistenti: durante la reazione l'Actor **selezionato** diventa il
+> **Difensore**, quindi `ActionPanel` + `DeckManagerPanel` mostrano le sue carte, le
+> sue risorse e le sue azioni di difesa. Nessun nuovo widget dedicato.
+
+- [ ] Aggiungere alla GUI i sender dei nuovi comandi: `dungeon.attack`, `dungeon.defend`, `dungeon.defend.pass`.
+- [ ] Registrare nel router GUI gli handler dei nuovi eventi (`attack.declared`, `defense.window.opened/closed`, `attack.resolved`).
+- [ ] Implementare la **modalità difesa**: alla ricezione di `defense.window.opened` la GUI imposta l'Actor selezionato = `defender_id`, mostra in `ActionPanel`/`DeckManagerPanel` le opzioni di difesa (carta/risorsa) + il pulsante **Pass**, e blocca le altre azioni finché la finestra è aperta.
+- [ ] Ripristinare lo stato normale alla ricezione di `defense.window.closed`/`attack.resolved` (riseleziona l'Actor di turno, sblocca azioni) e mostrare il feedback di esito (HP aggiornati, log).
+- [ ] **Smoke test (Python + E2E):** test router/ widget per la modalità difesa (selezione difensore, opzioni mostrate, pass funzionante) e partita E2E reale `attacco → finestra difesa → difendi/pass → risolto` con Core+GUI; tutti i test PASS.
+
+**Notes:**
+- Riuso totale di `ActionPanel` e `gm_comp_deck_module`/`DeckManagerPanel`: il cambio di "Actor selezionato" è l'unico meccanismo che fa apparire carte/risorse/azioni del difensore.
+- La finestra reattiva è **bloccante a livello UX** ma non modale a livello tecnico: si basa sullo stato `AWAITING_DEFENSE` del Core, unica source of truth.
+- Compatibilità: i typeId v1 restano invariati; la GUI ignora i nuovi eventi se non in modalità difesa.
+
+---
+
 ## Key Design Decisions
 
 1. **Due processi separati** per CoreEngine e GUI, così il gameplay resta testabile anche senza interfaccia grafica.
@@ -177,3 +225,5 @@ GAME/Dungeon-Crawler-Basic/                         ← nuovo gioco separato, so
 5. **Scope funzionale v1**: solo Move, Heal, Equip; Attack e Defend in backlog futuro.
 6. **Split di delivery in due fasi**: FASE A (header/stub/Doxygen/manuale/contratto), FASE B (implementazione completa body).
 7. **Parallelizzazione controllata**: GUI e Core lavorano in parallelo dalla FASE B dopo freeze del contratto v1 in FASE A.
+8. **Difesa reattiva modellata su `gmFlow::ActionWindow(ANY_SUBMITTED)`**: nel Core a 2 processi diventa lo stato `AWAITING_DEFENSE` proiettato sulla GUI via wire contract; unica source of truth nel Core.
+9. **Combattimento componibile**: danno = statistica base attaccante + modificatore carta; difesa = carta (reattiva/permanente) + risorsa (scudo/pozione), con esito riduzione **o** annullamento; tutti gli Actor (anche Mostri) difesi interattivamente dal GM, senza AI.

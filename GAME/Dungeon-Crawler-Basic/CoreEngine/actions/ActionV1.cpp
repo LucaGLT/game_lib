@@ -11,8 +11,17 @@
 #include "gmRules/target/TargetRef.hpp"
 #include "gmRules/target/TargetSpec.hpp"
 
+#include <algorithm>
+
 namespace gmDungeonBasic
 {
+
+/// @brief Default charges granted by an equipped shield (scudo_equipaggiato).
+static constexpr int SHIELD_DEFAULT_CHARGES = 2;
+/// @brief Damage-reduction value of a single shield charge.
+static constexpr int SHIELD_REDUCTION = 1;
+/// @brief Damage-reduction value of the "difeso" status.
+static constexpr int DIFESO_REDUCTION = 1;
 
 ActionV1::ActionV1(DungeonMap& map, ActorRoster& actors, DungeonRuleAdapter& rules)
 	: _map(map), _actors(actors), _rules(rules)
@@ -178,6 +187,103 @@ bool ActionV1::execute_equip(const std::string& hero_id, const std::string& item
 std::string ActionV1::last_rejection_reason() const
 {
 	return _last_rejection;
+}
+
+bool ActionV1::declare_attack(const std::string& attacker_id,
+                              const std::string& target_id,
+                              int card_damage_mod,
+                              int& out_base_damage)
+{
+	_last_rejection.clear();
+	out_base_damage = 0;
+
+	if (!_rules.can_attack(attacker_id, target_id))
+	{
+		_last_rejection = _rules.rejection_reason();
+		return false;
+	}
+
+	const ActorInfo attacker = _actors.get_actor(attacker_id);
+	out_base_damage = std::max(0, attacker.attack + card_damage_mod);
+	return true;
+}
+
+int ActionV1::resolve_attack(const std::string& target_id,
+                             int base_damage,
+                             const DefenseChoice& defense,
+                             int& out_hp_after)
+{
+	_last_rejection.clear();
+
+	int final_damage = 0;
+	if (!defense.cancel)
+	{
+		int reduction = 0;
+		if (!defense.pass)
+		{
+			const ActorInfo defender = _actors.get_actor(target_id);
+			reduction += std::max(0, defender.defense);
+			reduction += std::max(0, defense.block);
+
+			if (_actors.has_status(target_id, "difeso"))
+			{
+				reduction += DIFESO_REDUCTION;
+				_actors.remove_status(target_id, "difeso");
+			}
+
+			if (_actors.has_tag(target_id, "scudo_equipaggiato"))
+			{
+				reduction += SHIELD_REDUCTION;
+				int& charges = _shield_charges[target_id];
+				if (charges <= 0)
+				{
+					charges = SHIELD_DEFAULT_CHARGES;
+				}
+				--charges;
+				if (charges <= 0)
+				{
+					_actors.remove_tag(target_id, "scudo_equipaggiato");
+					_shield_charges.erase(target_id);
+				}
+			}
+		}
+		final_damage = std::max(0, base_damage - reduction);
+	}
+
+	if (final_damage > 0)
+	{
+		gmRules::EffectSpec damage_effect;
+		damage_effect.type = gmRules::EffectType::DEAL_DAMAGE;
+		damage_effect.source_id = target_id;
+		damage_effect.amount = final_damage;
+		damage_effect.target.kind = gmRules::TargetKind::ACTOR;
+		damage_effect.target.selector = gmRules::TargetSelector::MANUAL;
+
+		gmRules::TargetRef target;
+		target.kind = gmRules::TargetKind::ACTOR;
+		target.id = target_id;
+
+		gmRules::EffectResolver resolver;
+		gmRules::EffectResult result = resolver.resolve(
+			damage_effect,
+			target_id,
+			{target},
+			_rules,
+			100);
+
+		if (!result.succeeded())
+		{
+			_last_rejection = result.message();
+		}
+	}
+
+	out_hp_after = _actors.has_actor(target_id) ? _actors.get_actor(target_id).hp : 0;
+	return final_damage;
+}
+
+void ActionV1::reset_combat()
+{
+	_shield_charges.clear();
 }
 
 } // namespace gmDungeonBasic

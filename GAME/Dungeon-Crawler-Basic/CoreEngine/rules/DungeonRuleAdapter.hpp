@@ -85,6 +85,19 @@ public:
 	 */
 	bool can_equip(const std::string& hero_id, const std::string& item_tag) const;
 
+	/**
+	 * @brief Checks whether an attacker can legally strike a target.
+	 *
+	 * Evaluates: attacker exists AND is alive AND target exists AND is alive AND
+	 * attacker and target are enemies AND the target is in the same room as the
+	 * attacker or in an adjacent room (melee/range-1 reach).
+	 *
+	 * @param attacker_id  Actor declaring the attack (hero or monster).
+	 * @param target_id    Actor being attacked.
+	 * @return             @c true if the attack is allowed by the current rules.
+	 */
+	bool can_attack(const std::string& attacker_id, const std::string& target_id) const;
+
 	// ── Rejection reason ─────────────────────────────────────────────────────
 
 	/**

@@ -62,7 +62,7 @@ RuleResult RuleBook::resolve_rule(const RuleId&                  rule_id,
 	if (def.has_preconditions())
 	{
 		RuleResult cond_result = _condition_evaluator.evaluate_all(def.preconditions, ctx);
-		if (!cond_result.succeeded())
+		if (!cond_result.valid())
 		{
 			return cond_result; // forward the failure — don't throw
 		}
@@ -87,7 +87,7 @@ RuleResult RuleBook::resolve_rule(const RuleId&                  rule_id,
 
 	return RuleResult::fail(RuleError::EFFECT_FAILED,
 	                        "resolve_rule: effect chain failed for rule '"
-	                        + rule_id + "': " + eff_result.failure_message());
+	                        + rule_id + "': " + eff_result.message());
 }
 
 RuleResult RuleBook::resolve_rules(const std::vector<RuleId>&     rule_ids,
@@ -98,7 +98,7 @@ RuleResult RuleBook::resolve_rules(const std::vector<RuleId>&     rule_ids,
 	for (const RuleId& rid : rule_ids)
 	{
 		RuleResult r = resolve_rule(rid, source_actor_id, selected_targets, ctx);
-		if (!r.succeeded())
+		if (!r.valid())
 		{
 			return r; // stop on first failure
 		}

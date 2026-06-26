@@ -25,6 +25,8 @@ void DungeonEngine::start_game(const std::string& map_file)
 	_map.reset();
 	_actors.reset();
 	_flow.reset();
+	_actions.reset_combat();
+	_pending_attack = PendingAttack{};
 	_phase = GamePhase::HERO_TURN;
 	_outcome = GameOutcome::NONE;
 
@@ -86,8 +88,23 @@ void DungeonEngine::handle_command(const std::string& typeId, const nlohmann::js
 	if (typeId == command_id::NEW_GAME)
 	{
 		start_game(data.value("map_file", ""));
+		return;
 	}
-	else if (typeId == command_id::MOVE)
+
+	// While a reactive defense window is open the engine only accepts the
+	// defender's response (or a view-only area query); everything else is held.
+	if (_pending_attack.active
+		&& typeId != command_id::DEFEND
+		&& typeId != command_id::DEFEND_PASS
+		&& typeId != command_id::AREA_INFO_REQUEST)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Finestra di difesa aperta: il difensore deve rispondere."},
+			 {"command", typeId}});
+		return;
+	}
+
+	if (typeId == command_id::MOVE)
 	{
 		handle_move(data);
 	}
@@ -106,6 +123,18 @@ void DungeonEngine::handle_command(const std::string& typeId, const nlohmann::js
 	else if (typeId == command_id::PLAY_CARD)
 	{
 		handle_play_card(data);
+	}
+	else if (typeId == command_id::ATTACK)
+	{
+		handle_attack(data);
+	}
+	else if (typeId == command_id::DEFEND)
+	{
+		handle_defend(data);
+	}
+	else if (typeId == command_id::DEFEND_PASS)
+	{
+		handle_defend_pass(data);
 	}
 	else if (typeId == command_id::AREA_INFO_REQUEST)
 	{
@@ -184,6 +213,142 @@ void DungeonEngine::handle_play_card(const nlohmann::json& data)
 	_gui.send_event(event_id::CARD_PLAYED,
 		{{"hero_id", hero_id},
 		 {"card_id", card_id}});
+}
+
+void DungeonEngine::handle_attack(const nlohmann::json& data)
+{
+	if (_actions_this_turn >= MAX_ACTIONS_PER_TURN)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Azioni esaurite: premi Fine Turno per continuare."},
+			 {"command", command_id::ATTACK}});
+		return;
+	}
+
+	const std::string attacker_id = data.value("attacker_id", data.value("hero_id", ""));
+	const std::string target_id   = data.value("target_id", "");
+	const std::string card_id     = data.value("card_id", "");
+	const int card_damage         = data.value("card_damage", 0);
+
+	if (attacker_id.empty() || target_id.empty())
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Missing attacker_id or target_id."}, {"command", command_id::ATTACK}});
+		return;
+	}
+
+	int base_damage = 0;
+	if (!_actions.declare_attack(attacker_id, target_id, card_damage, base_damage))
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", _actions.last_rejection_reason()}, {"command", command_id::ATTACK}});
+		_log.log_rejection(attacker_id, command_id::ATTACK, _actions.last_rejection_reason());
+		return;
+	}
+
+	_pending_attack.attacker_id = attacker_id;
+	_pending_attack.defender_id = target_id;
+	_pending_attack.base_damage = base_damage;
+	_pending_attack.source      = card_id.empty() ? std::string("base") : card_id;
+	_pending_attack.active      = true;
+
+	_gui.send_event(event_id::ATTACK_DECLARED,
+		{{"attacker_id", attacker_id},
+		 {"defender_id", target_id},
+		 {"source",      _pending_attack.source},
+		 {"base_damage", base_damage}});
+	_gui.send_event(event_id::DEFENSE_WINDOW_OPENED,
+		{{"defender_id",     target_id},
+		 {"attacker_id",     attacker_id},
+		 {"incoming_damage", base_damage},
+		 {"can_pass",        true},
+		 {"can_cancel",      true}});
+	_log.log_action(attacker_id, command_id::ATTACK, target_id);
+}
+
+void DungeonEngine::handle_defend(const nlohmann::json& data)
+{
+	if (!_pending_attack.active)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Nessuna finestra di difesa aperta."}, {"command", command_id::DEFEND}});
+		return;
+	}
+
+	const std::string defender_id = data.value("defender_id", _pending_attack.defender_id);
+	if (defender_id != _pending_attack.defender_id)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Il difensore non corrisponde all'attacco in corso."},
+			 {"command", command_id::DEFEND}});
+		return;
+	}
+
+	const std::string mode = data.value("mode", "reduce");
+
+	DefenseChoice choice;
+	choice.cancel = (mode == "cancel");
+	choice.pass   = false;
+	choice.block  = data.value("block", 0);
+
+	finalize_defense(choice);
+}
+
+void DungeonEngine::handle_defend_pass(const nlohmann::json& data)
+{
+	if (!_pending_attack.active)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Nessuna finestra di difesa aperta."},
+			 {"command", command_id::DEFEND_PASS}});
+		return;
+	}
+
+	const std::string defender_id = data.value("defender_id", _pending_attack.defender_id);
+	if (defender_id != _pending_attack.defender_id)
+	{
+		_gui.send_event(event_id::ACTION_REJECTED,
+			{{"reason", "Il difensore non corrisponde all'attacco in corso."},
+			 {"command", command_id::DEFEND_PASS}});
+		return;
+	}
+
+	DefenseChoice choice;
+	choice.pass = true;
+	finalize_defense(choice);
+}
+
+void DungeonEngine::finalize_defense(const DefenseChoice& defense)
+{
+	const std::string attacker_id = _pending_attack.attacker_id;
+	const std::string defender_id = _pending_attack.defender_id;
+	const int base_damage = _pending_attack.base_damage;
+
+	const int before_hp = _actors.has_actor(defender_id)
+		? _actors.get_actor(defender_id).hp
+		: 0;
+
+	int hp_after = before_hp;
+	const int final_damage =
+		_actions.resolve_attack(defender_id, base_damage, defense, hp_after);
+
+	_gui.send_event(event_id::DEFENSE_WINDOW_CLOSED, {{"defender_id", defender_id}});
+	_gui.send_event(event_id::ATTACK_RESOLVED,
+		{{"attacker_id",  attacker_id},
+		 {"defender_id",  defender_id},
+		 {"base_damage",  base_damage},
+		 {"final_damage", final_damage},
+		 {"cancelled",    defense.cancel},
+		 {"hp_after",     hp_after}});
+	_gui.send_event(event_id::HP_CHANGED,
+		{{"actor_id", defender_id}, {"delta", hp_after - before_hp}, {"hp_after", hp_after}});
+	_gui.send_event(event_id::ACTOR_SNAPSHOT, build_actor_snapshot());
+
+	_log.log_action(attacker_id, command_id::ATTACK,
+		defender_id + " dmg=" + std::to_string(final_damage));
+
+	_pending_attack = PendingAttack{};
+	++_actions_this_turn;
 }
 
 void DungeonEngine::handle_move(const nlohmann::json& data)
@@ -387,6 +552,8 @@ nlohmann::json DungeonEngine::build_actor_snapshot() const
 		row["kind"]     = actor_kind_to_string(info.kind);
 		row["hp"]       = info.hp;
 		row["max_hp"]   = info.max_hp;
+		row["attack"]   = info.attack;
+		row["defense"]  = info.defense;
 		row["location"] = info.location;
 		row["tags"]     = info.tags;
 		row["statuses"] = info.statuses;

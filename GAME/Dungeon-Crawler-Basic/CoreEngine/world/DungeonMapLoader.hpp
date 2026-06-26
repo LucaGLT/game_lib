@@ -66,8 +66,10 @@ struct DungeonActorDef
 {
 	std::string              id;
 	std::string              kind;
-	int                      hp     = 1;
-	int                      max_hp = 1;
+	int                      hp      = 1;
+	int                      max_hp  = 1;
+	int                      attack  = 0;
+	int                      defense = 0;
 	std::string              room;
 	std::vector<std::string> tags;
 	std::vector<std::string> statuses;
