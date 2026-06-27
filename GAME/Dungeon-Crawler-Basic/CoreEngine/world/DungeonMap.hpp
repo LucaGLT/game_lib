@@ -94,6 +94,22 @@ public:
 	bool is_adjacent(const std::string& from_id, const std::string& to_id) const;
 
 	/**
+	 * @brief Checks whether a destination room is reachable within a given number of hops.
+	 *
+	 * Uses BFS over the adjacency graph.  A hop count of 1 is equivalent to
+	 * @c is_adjacent.  Returns @c false if either room does not exist or if
+	 * @p max_hops is less than 1.
+	 *
+	 * @param from_id   Starting room identifier.
+	 * @param to_id     Destination room identifier.
+	 * @param max_hops  Maximum number of adjacency steps allowed (>= 1).
+	 * @return          @c true if @p to_id is reachable within @p max_hops steps.
+	 */
+	bool is_reachable_within(const std::string& from_id,
+	                         const std::string& to_id,
+	                         int                max_hops) const;
+
+	/**
 	 * @brief Checks whether a room has a specific tag.
 	 *
 	 * @param room_id  Room to query.

@@ -84,6 +84,18 @@ public:
 private:
 	// ── Command handlers ──────────────────────────────────────────────────────
 
+	/// @brief Handles a dungeon.play_card command.
+	void handle_play_card(const nlohmann::json& data);
+
+	/// @brief Handles a dungeon.attack command (opens the reactive defense window).
+	void handle_attack(const nlohmann::json& data);
+
+	/// @brief Handles a dungeon.defend command (defender reduces or cancels the attack).
+	void handle_defend(const nlohmann::json& data);
+
+	/// @brief Handles a dungeon.defend.pass command (defender takes full damage).
+	void handle_defend_pass(const nlohmann::json& data);
+
 	/// @brief Handles a dungeon.move command.
 	void handle_move(const nlohmann::json& data);
 
@@ -112,6 +124,18 @@ private:
 
 	/// @brief Returns the list of action names available to an actor right now.
 	nlohmann::json build_available_actions(const std::string& actor_id) const;
+
+	/**
+	 * @brief Applies the defender's resolved choice and closes the defense window.
+	 *
+	 * Shared by @ref handle_defend and @ref handle_defend_pass: resolves the
+	 * pending attack, emits ATTACK_RESOLVED / HP_CHANGED / DEFENSE_WINDOW_CLOSED
+	 * and the refreshed actor snapshot, then clears the pending-attack state and
+	 * consumes the attacker's action.
+	 *
+	 * @param defense  The defender's reactive choice.
+	 */
+	void finalize_defense(const DefenseChoice& defense);
 
 	/**
 	 * @brief Rebuilds the interactable object store from the loaded map.
@@ -144,6 +168,23 @@ private:
 
 	int _actions_this_turn  = 0;            ///< Actions executed in the current turn.
 	static constexpr int MAX_ACTIONS_PER_TURN = 2; ///< Maximum actions per actor turn.
+
+	/**
+	 * @brief Live attack awaiting the defender's reactive response.
+	 *
+	 * While @c active is @c true the engine is in the AWAITING_DEFENSE state and
+	 * only defense commands are accepted.
+	 */
+	struct PendingAttack
+	{
+		std::string attacker_id;       ///< Actor that declared the attack.
+		std::string defender_id;       ///< Actor that must respond.
+		int         base_damage = 0;   ///< Declared (pre-defense) damage.
+		std::string source;            ///< "base" or the attack card id.
+		bool        active = false;    ///< Whether a defense window is open.
+	};
+
+	PendingAttack _pending_attack;  ///< Current AWAITING_DEFENSE context.
 };
 
 } // namespace gmDungeonBasic

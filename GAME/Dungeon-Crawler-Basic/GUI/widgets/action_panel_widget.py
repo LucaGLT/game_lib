@@ -30,12 +30,21 @@ class ActionPanelWidget(QWidget):
         heal_requested(hero_id, target): Player pressed Pozione.
         equip_requested(hero_id, item):  Player pressed Equipaggia.
         end_turn_requested(hero_id):     Player pressed Fine Turno.
+        attack_requested(attacker_id):   Player pressed Attacca (target chosen next).
+        defend_requested(defender_id, mode, block):
+                                         Active defense choice (reduce / cancel).
+        defend_pass_requested(defender_id):
+                                         Player declined defense (passive stat only).
     """
 
-    move_requested:     Signal = Signal(str)
-    heal_requested:     Signal = Signal(str, str)
-    equip_requested:    Signal = Signal(str, str)
-    end_turn_requested: Signal = Signal(str)
+    move_requested:            Signal = Signal(str)
+    heal_requested:            Signal = Signal(str, str)
+    equip_requested:           Signal = Signal(str, str)
+    end_turn_requested:        Signal = Signal(str)
+    attack_requested:          Signal = Signal(str)
+    defend_requested:          Signal = Signal(str, str, int)
+    defend_pass_requested:     Signal = Signal(str)
+    actions_remaining_changed: Signal = Signal(int)  # emitted after every action consumed
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -45,30 +54,46 @@ class ActionPanelWidget(QWidget):
 
         self._lbl_actor    = QLabel("—")
         self._btn_move     = QPushButton("Muovi")
+        self._btn_attack   = QPushButton("Attacca")
         self._btn_heal     = QPushButton("Pozione")
         self._btn_equip    = QPushButton("Equipaggia")
         self._lbl_actions  = QLabel("")
         self._btn_end_turn = QPushButton("Fine Turno")
+
+        # Reactive-defense buttons (hidden outside a defense window).
+        self._btn_defend   = QPushButton("Difendi")
+        self._btn_cancel   = QPushButton("Annulla colpo")
+        self._btn_pass     = QPushButton("Passa")
 
         self._lbl_actor.setProperty("text_role", "secondary")
         self._lbl_actions.setProperty("text_role", "secondary")
 
         layout.addWidget(self._lbl_actor)
         layout.addWidget(self._btn_move)
+        layout.addWidget(self._btn_attack)
         layout.addWidget(self._btn_heal)
         layout.addWidget(self._btn_equip)
+        layout.addWidget(self._btn_defend)
+        layout.addWidget(self._btn_cancel)
+        layout.addWidget(self._btn_pass)
         layout.addWidget(self._lbl_actions)
         layout.addStretch()
         layout.addWidget(self._btn_end_turn)
 
-        for btn in (self._btn_move, self._btn_heal,
+        for btn in (self._btn_move, self._btn_attack, self._btn_heal,
                     self._btn_equip, self._btn_end_turn):
             btn.setEnabled(False)
+        for btn in (self._btn_defend, self._btn_cancel, self._btn_pass):
+            btn.setVisible(False)
 
         self._btn_move.clicked.connect(self._on_move_clicked)
+        self._btn_attack.clicked.connect(self._on_attack_clicked)
         self._btn_heal.clicked.connect(self._on_heal_clicked)
         self._btn_equip.clicked.connect(self._on_equip_clicked)
         self._btn_end_turn.clicked.connect(self._on_end_turn_clicked)
+        self._btn_defend.clicked.connect(self._on_defend_clicked)
+        self._btn_cancel.clicked.connect(self._on_cancel_clicked)
+        self._btn_pass.clicked.connect(self._on_pass_clicked)
 
         # ── State ──────────────────────────────────────────────────────────────
         # Actor whose turn it is (server-authoritative).
@@ -84,6 +109,10 @@ class ActionPanelWidget(QWidget):
         self._actors_state: dict[str, dict] = {}
         # True while the player must select a destination for the Move action.
         self._awaiting_move: bool = False
+        # True while the player must select an enemy target for the Attack action.
+        self._awaiting_attack: bool = False
+        # Defender id while a reactive-defense window is open ("" = no window).
+        self._defending_id: str = ""
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -96,6 +125,53 @@ class ActionPanelWidget(QWidget):
         """Enters or exits move-targeting mode (changes Muovi button text)."""
         self._awaiting_move = active
         self._btn_move.setText("Annulla Muovi" if active else "Muovi")
+
+    def set_awaiting_attack(self, active: bool) -> None:
+        """Enters or exits attack-targeting mode (changes Attacca button text)."""
+        self._awaiting_attack = active
+        self._btn_attack.setText("Annulla Attacco" if active else "Attacca")
+
+    def is_defending(self) -> bool:
+        """True while a reactive-defense window is open for the local player."""
+        return bool(self._defending_id)
+
+    def enter_defense_mode(self, defender_id: str, incoming_damage: int,
+                           can_pass: bool, can_cancel: bool) -> None:
+        """Switches the panel into reactive-defense mode for *defender_id*.
+
+        Normal action buttons are hidden; the Difendi / Annulla colpo / Passa
+        buttons are shown according to the options advertised by the engine.
+        """
+        self._defending_id = defender_id
+        self._awaiting_move = False
+        self._awaiting_attack = False
+        self._btn_move.setText("Muovi")
+        self._btn_attack.setText("Attacca")
+        self._lbl_actor.setText(f"Difesa: {defender_id}")
+        self._lbl_actions.setText(f"Danno in arrivo: {incoming_damage}")
+
+        for btn in (self._btn_move, self._btn_attack, self._btn_heal,
+                    self._btn_equip, self._btn_end_turn):
+            btn.setVisible(False)
+
+        self._btn_defend.setVisible(True)
+        self._btn_defend.setEnabled(True)
+        self._btn_pass.setVisible(bool(can_pass))
+        self._btn_pass.setEnabled(bool(can_pass))
+        self._btn_cancel.setVisible(bool(can_cancel))
+        self._btn_cancel.setEnabled(bool(can_cancel))
+
+    def exit_defense_mode(self) -> None:
+        """Leaves reactive-defense mode and restores the normal action buttons."""
+        self._defending_id = ""
+        for btn in (self._btn_defend, self._btn_cancel, self._btn_pass):
+            btn.setVisible(False)
+            btn.setEnabled(False)
+        self._btn_move.setVisible(True)
+        self._btn_attack.setVisible(True)
+        self._btn_end_turn.setVisible(True)
+        self._update_buttons()
+
     # ── Envelope handler ─────────────────────────────────────────────────────
 
     def on_envelope(self, msg: dict) -> None:
@@ -129,11 +205,14 @@ class ActionPanelWidget(QWidget):
             self._update_buttons()
 
         elif tid in ("dungeon.turn.ended", "dungeon.game.over"):
+            if self._defending_id:
+                # A defense window overrides turn lifecycle; keep it open.
+                return
             self._active_actor_id   = ""
             self._available_actions = []
             self._actions_remaining = 0
             self._lbl_actions.setText("")
-            for btn in (self._btn_move, self._btn_heal,
+            for btn in (self._btn_move, self._btn_attack, self._btn_heal,
                         self._btn_equip, self._btn_end_turn):
                 btn.setEnabled(False)
 
@@ -154,6 +233,11 @@ class ActionPanelWidget(QWidget):
           or actions_remaining == 0.
         - Fine Turno is always visible; enabled only during a hero's active turn.
         """
+        if self._defending_id:
+            # While a defense window is open the panel is driven by
+            # enter_defense_mode()/exit_defense_mode(); skip normal evaluation.
+            return
+
         sel_id    = self._selected_actor_id
         state     = self._actors_state.get(sel_id, {})
         remaining = self._actions_remaining
@@ -170,11 +254,13 @@ class ActionPanelWidget(QWidget):
                          and not state.get("weapon_equipped", False))
 
         self._btn_move.setVisible(move_visible)
+        self._btn_attack.setVisible(move_visible)
         self._btn_heal.setVisible(heal_visible)
         self._btn_equip.setVisible(equip_visible)
 
         # ── Enable: only when it is the selected actor's turn and can act ─────
         self._btn_move.setEnabled(can_act and move_visible)
+        self._btn_attack.setEnabled(can_act and move_visible)
         self._btn_heal.setEnabled(can_act and heal_visible)
         self._btn_equip.setEnabled(can_act and equip_visible)
 
@@ -198,6 +284,13 @@ class ActionPanelWidget(QWidget):
         if self._actions_remaining > 0:
             self._actions_remaining -= 1
         self._update_buttons()
+        self.actions_remaining_changed.emit(self._actions_remaining)
+
+    def consume_actions(self, cost: int) -> None:
+        """Decrements the action counter by cost (called when a card is played)."""
+        self._actions_remaining = max(0, self._actions_remaining - cost)
+        self._update_buttons()
+        self.actions_remaining_changed.emit(self._actions_remaining)
 
     # ── Button callbacks ──────────────────────────────────────────────────────
 
@@ -205,6 +298,34 @@ class ActionPanelWidget(QWidget):
         if self._active_actor_id:
             self.move_requested.emit(self._active_actor_id)
             self._consume_action()
+
+    def _on_attack_clicked(self) -> None:
+        if self._active_actor_id:
+            self.attack_requested.emit(self._active_actor_id)
+
+    def mark_action_consumed(self) -> None:
+        """Decrements the local action counter (called once an attack is sent)."""
+        self._consume_action()
+
+    def _on_defend_clicked(self) -> None:
+        if self._defending_id:
+            self.defend_requested.emit(self._defending_id, "reduce", 0)
+            self._disable_defense_buttons()
+
+    def _on_cancel_clicked(self) -> None:
+        if self._defending_id:
+            self.defend_requested.emit(self._defending_id, "cancel", 0)
+            self._disable_defense_buttons()
+
+    def _on_pass_clicked(self) -> None:
+        if self._defending_id:
+            self.defend_pass_requested.emit(self._defending_id)
+            self._disable_defense_buttons()
+
+    def _disable_defense_buttons(self) -> None:
+        """Disables the defense buttons after a choice to prevent double submit."""
+        for btn in (self._btn_defend, self._btn_cancel, self._btn_pass):
+            btn.setEnabled(False)
 
     def _on_heal_clicked(self) -> None:
         if self._active_actor_id:
@@ -229,7 +350,13 @@ class ActionPanelWidget(QWidget):
         self._actions_remaining = 0
         self._actors_state.clear()
         self._awaiting_move = False
+        self._awaiting_attack = False
+        self._defending_id = ""
         self._btn_move.setText("Muovi")
+        self._btn_attack.setText("Attacca")
+        for btn in (self._btn_defend, self._btn_cancel, self._btn_pass):
+            btn.setVisible(False)
+            btn.setEnabled(False)
         self._lbl_actor.setText("\u2014")
         self._lbl_actions.setText("")
         self._update_buttons()

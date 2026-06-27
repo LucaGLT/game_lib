@@ -174,8 +174,6 @@ struct Parser
 		throw ERuleBookError("JSON: unterminated string");
 	}
 
-	JVal parse_value();
-
 	JVal parse_object()
 	{
 		expect('{');

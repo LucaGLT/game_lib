@@ -44,6 +44,26 @@ class LogWidget(QWidget):
             )
         elif type_id == "dungeon.actor.equipped":
             self.append_entry(f"[Equip] {data.get('actor_id')} equipped {data.get('item_tag')}")
+        elif type_id == "dungeon.attack.declared":
+            self.append_entry(
+                f"[Attack] {data.get('attacker_id')} → {data.get('defender_id')} "
+                f"(danno base {data.get('base_damage', 0)}, fonte {data.get('source', 'base')})"
+            )
+        elif type_id == "dungeon.defense.window.opened":
+            self.append_entry(
+                f"[Defense] Finestra aperta per {data.get('defender_id')} "
+                f"(danno in arrivo {data.get('incoming_damage', 0)})"
+            )
+        elif type_id == "dungeon.attack.resolved":
+            if data.get("cancelled"):
+                self.append_entry(
+                    f"[Attack] Annullato da {data.get('defender_id')} (0 danni)"
+                )
+            else:
+                self.append_entry(
+                    f"[Attack] {data.get('defender_id')} subisce "
+                    f"{data.get('final_damage', 0)} danni (HP {data.get('hp_after')})"
+                )
         elif type_id == "dungeon.action.rejected":
             self.append_entry(f"[Rejected] {data.get('command')}: {data.get('reason')}")
         elif type_id == "dungeon.game.over":

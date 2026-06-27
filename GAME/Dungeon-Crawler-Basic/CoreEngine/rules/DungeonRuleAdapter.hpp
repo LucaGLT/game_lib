@@ -64,6 +64,22 @@ public:
 	bool can_move(const std::string& hero_id, const std::string& destination) const;
 
 	/**
+	 * @brief Extended move validation allowing movement up to @p max_distance hops.
+	 *
+	 * Performs all checks of the one-argument overload, but replaces the
+	 * strict adjacency (distance = 1) check with a BFS reachability check.
+	 * A @p max_distance of 1 is equivalent to calling the standard overload.
+	 *
+	 * @param hero_id       Hero actor identifier.
+	 * @param destination   Target room identifier.
+	 * @param max_distance  Maximum hop count allowed (>= 1).
+	 * @return              @c true if the move is allowed.
+	 */
+	bool can_move(const std::string& hero_id,
+	              const std::string& destination,
+	              int                max_distance) const;
+
+	/**
 	 * @brief Checks whether the hero can use a healing potion.
 	 *
 	 * Evaluates condition C_HeroCanHeal: ACTOR_HAS_TAG(hero_id, has_potion).
@@ -85,6 +101,19 @@ public:
 	 */
 	bool can_equip(const std::string& hero_id, const std::string& item_tag) const;
 
+	/**
+	 * @brief Checks whether an attacker can legally strike a target.
+	 *
+	 * Evaluates: attacker exists AND is alive AND target exists AND is alive AND
+	 * attacker and target are enemies AND the target is in the same room as the
+	 * attacker or in an adjacent room (melee/range-1 reach).
+	 *
+	 * @param attacker_id  Actor declaring the attack (hero or monster).
+	 * @param target_id    Actor being attacked.
+	 * @return             @c true if the attack is allowed by the current rules.
+	 */
+	bool can_attack(const std::string& attacker_id, const std::string& target_id) const;
+
 	// ── Rejection reason ─────────────────────────────────────────────────────
 
 	/**
@@ -95,6 +124,38 @@ public:
 	 * @return  Rejection reason string (used in ACTION_REJECTED event).
 	 */
 	std::string rejection_reason() const;
+
+	// ── Card rule execution ───────────────────────────────────────────────────
+
+	/**
+	 * @brief Loads card rule definitions from a JSON file into the rules engine.
+	 *
+	 * The JSON file must follow the @c RuleBookLoader format (array @c "rules",
+	 * each with @c rule_id, @c description, @c preconditions[], @c effects[]).
+	 *
+	 * @param path  Absolute or working-directory-relative path to the JSON file.
+	 * @return      @c true if the file was loaded and parsed without errors.
+	 */
+	bool load_card_rules(const std::string& path);
+
+	/**
+	 * @brief Executes a card's rule group: evaluates preconditions and applies effects.
+	 *
+	 * Looks up the card_id in the rule book, evaluates all preconditions against
+	 * the current game state, and if valid applies all effects via the rule engine.
+	 * If a target_id is provided it is used for SELECTED_ENEMY effects; otherwise
+	 * the first living enemy in the same room as the hero is auto-selected.
+	 *
+	 * @param hero_id          Actor playing the card.
+	 * @param card_id          Identifier of the card being played.
+	 * @param target_id        Optional explicit target actor id.
+	 * @param out_rejection    On failure, filled with the rejection reason.
+	 * @return                 @c true if all effects were applied, @c false if rejected.
+	 */
+	bool execute_card(const std::string& hero_id,
+	                  const std::string& card_id,
+	                  const std::string& target_id,
+	                  std::string& out_rejection);
 
 private:
 	// ── gmRules::RuleContext implementation ──────────────────────────────────

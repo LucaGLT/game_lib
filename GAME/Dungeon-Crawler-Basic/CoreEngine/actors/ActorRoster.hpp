@@ -42,6 +42,8 @@ struct ActorInfo
 	DungeonActorKind         kind;      ///< Actor classification.
 	int                      hp;        ///< Current hit points.
 	int                      max_hp;    ///< Maximum hit points.
+	int                      attack = 0;  ///< Base attack value (damage stat).
+	int                      defense = 0; ///< Passive defense value (damage reduction).
 	std::string              location;  ///< Current room identifier.
 	std::vector<std::string> tags;      ///< Active tags (equipped_weapon, has_potion, …).
 	std::vector<std::string> statuses;  ///< Active status ids (defended, poisoned, …).
@@ -199,6 +201,8 @@ private:
 	std::unordered_map<std::string, DungeonActorKind> _kinds;
 	std::unordered_map<std::string, std::string> _labels;      ///< actor_id → display label.
 	std::unordered_set<std::string> _used_labels;              ///< Labels already assigned.
+	std::unordered_map<std::string, int> _attack;              ///< actor_id → base attack value.
+	std::unordered_map<std::string, int> _defense;             ///< actor_id → passive defense value.
 };
 
 } // namespace gmDungeonBasic

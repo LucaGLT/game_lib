@@ -29,7 +29,7 @@ class HpBar(QWidget):
         super().__init__(parent)
         self._current_hp: int = 0
         self._max_hp: int = 1
-        self.setMinimumHeight(16)
+        self.setMinimumHeight(24)
         self.setMinimumWidth(80)
 
         # QGraphicsOpacityEffect is the child-widget-safe way to animate opacity.
@@ -64,16 +64,23 @@ class HpBar(QWidget):
         """Returns the fill colour determined by the current HP ratio."""
         r: float = self.ratio()
         if r > 0.5:
-            return resolve_semantic_color("state_success")
+            return resolve_semantic_color("state_success_dark")
         if r >= 0.2:
             return resolve_semantic_color("state_warning")
         return resolve_semantic_color("state_error")
 
     def paintEvent(self, event) -> None:  # type: ignore[override]
-        """Draws a background rect and a coloured fill scaled to current/max HP."""
+        """Draws a background rect, a coloured fill and the HP text overlaid."""
         painter: QPainter = QPainter(self)
         painter.fillRect(self.rect(), resolve_semantic_color("border"))
         fill_width: int = int(self.width() * self.ratio())
         if fill_width > 0:
             painter.fillRect(QRect(0, 0, fill_width, self.height()), self.bar_color())
+        # HP text centred on the bar — shadow pass for readability on any theme.
+        text: str = f"{self._current_hp} / {self._max_hp}"
+        shadow_rect = self.rect().translated(1, 1)
+        painter.setPen(resolve_semantic_color("background"))
+        painter.drawText(shadow_rect, Qt.AlignmentFlag.AlignCenter, text)
+        painter.setPen(resolve_semantic_color("text"))
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, text)
         painter.end()
