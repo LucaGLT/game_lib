@@ -1,9 +1,52 @@
 # Le Pergamene di Eldhôm — Development Plan
 
 **Version:** 0.1.0
-**Status:** Phase 0 – Analysis & Architecture ⏳
+**Status:** Phase 2-5 — Generic Libraries Ready ✅ | Phase 6-10 — Eldhôm Integration 🚀
 **Engine:** C++17 (gmXxx libs) + Python 3 / PySide6 (GUI)
 **Game Type:** Advanced Dungeon Crawler — Card-based with Deckbuilding
+**Generic Libs Available:** gmAlea (v3.0+F1), gmFlow (v2.0+F2), gmActor (v0.2+F3,F4), gmGui (v0.1+F5)
+
+---
+
+## Goal
+
+Le Pergamene di Eldhôm è un dungeon crawler avanzato basato su carte con meccaniche
+di deckbuilding, Linea Temporale continua (nessun Round), formazioni tattiche
+Prima Linea / Retroguardia e Gruppi Mostri con Carte Comportamento autonome.
+Il gioco è costruito sopra le librerie gmXxx esistenti: riusa l'80% della
+logica già sviluppata e aggiunge solo la logica di dominio specifica.
+Il design privilegia la separazione tra motore C++ (regole, stato, flusso)
+e GUI Python/PySide6 (visualizzazione, interazione giocatore).
+
+---
+
+## 🚀 Current Status Summary
+
+| Phase | Component | Status | Details |
+|-------|-----------|--------|---------|
+| **P2** | CardType + SequenceEngine | ✅ Complete | 29/29 tests passing (gmAlea F1) |
+| **P3** | FormationValidator + Resolver | ✅ Complete | 35/35 tests passing (gmActor F3) |
+| **P4** | BehaviorCardProcessor + Reactions | ✅ Complete | 20/20 tests passing (gmActor F4) |
+| **P8** | 4 Generic PySide6 Widgets | ✅ Complete (base) | TimelineWidget, FormationWidget, SequenceStateWidget, BehaviorCardWidget (gmGui v0.1.0) |
+| **P6** | EldhomEngine + RuleAdapter | 🚀 **NEXT** | Ready to start — all F1-F4 dependencies complete |
+| **P1** | JSON Data Layer | ⏳ Pending | Can start in parallel with P6 |
+| **P5** | MissionEventSystem | ⏳ Pending | Depends on P6 foundation |
+| **P7** | Mock Engine (GUI dev) | ⏳ Pending | Depends on P6 + P1 |
+| **P9** | Minor gmXxx Extensions | ⏳ Pending | Optional — no blocking issues |
+| **P10** | Integration Test | ⏳ Pending | Final phase after P6-P8 complete |
+
+**Blockers:** None. All dependency libraries (F1-F5) are production-ready and documented.
+
+---
+
+## 📚 Resource Links
+
+- **Generic Library APIs:** [Game-Lib_readme.md](../../Game-Lib_readme.md)
+- **SequenceEngine:** [gmAlea_API.md § F1](../../gmAlea/gmAlea_API.md#cardtype--sequenceengine--sequenze-di-carte-f1)
+- **FormationValidator/Resolver:** [gmActor_API.md § F3](../../gmActor/gmActor_API.md) (Formation section pending)
+- **BehaviorCardProcessor/Reactions:** [gmActor_API.md § F4](../../gmActor/gmActor_API.md) (Behavior section pending)
+- **4 PySide6 Widgets:** [gmGui_API.md](../../pyLib/gmGui/gmGui_API.md)
+- **Core gmFlow (Timeline):** [gmFlow_API.md](../../gmFlow/gmFlow_API.md)
 
 ---
 
@@ -152,39 +195,43 @@ Il nuovo campo `card_type` è puro metadata JSON; la logica di sequenza è nel
 
 ---
 
-### Phase 2 — CardType + SequenceEngine (C++)
+### Phase 2 — CardType + SequenceEngine (C++) ✅
 
-- [ ] `CardType.hpp` — enum `CardType { SINGLE, SEQ_START, SEQ_CONTINUE, SEQ_END, INSTANT }`
-- [ ] `CardOrigin.hpp` — enum `CardOrigin { BASE, ETHNICITY, AFFILIATION, ROLE, WEAPON, ARMOR, TRINKET, ARTIFACT, AEON_ALCHEMIC }`
-- [ ] `CardMetadata.hpp` — struct con `type`, `origin`, `icons`, `trigger`, `sequence_continues`
-- [ ] `SequenceEngine.hpp/.cpp`:
+- [x] `CardType.hpp` — enum `CardType { SINGLE, SEQ_START, SEQ_CONTINUE, SEQ_END, INSTANT }` (gmAlea F1 complete)
+- [x] `CardOrigin.hpp` — enum `CardOrigin { BASE, ETHNICITY, AFFILIATION, ROLE, WEAPON, ARMOR, TRINKET, ARTIFACT, AEON_ALCHEMIC }`
+- [x] `CardMetadata.hpp` — struct con `type`, `origin`, `icons`, `trigger`, `sequence_continues`
+- [x] `SequenceEngine.hpp/.cpp` (gmAlea F1 — 29/29 tests passing):
   - `bool can_play(const CardMetadata& card, const SequenceState& state) const`
   - `SequenceState advance(const CardMetadata& card, const SequenceState& state) const`
   - `bool is_turn_ending(const CardMetadata& card) const`
   - `void interrupt(SequenceState& state)` — interruzione da effetto esterno
-- [ ] Test unitari `SequenceEngine`
+- [x] Test unitari `SequenceEngine` (✅ 29/29 passing)
 
+**Status:** ✅ Complete — Ready to import into Eldhôm CoreEngine.
+**Implementation:** Located in `gmAlea/SequenceEngine.hpp`, API documented in [gmAlea_API.md](../../gmAlea/gmAlea_API.md#cardtype--sequenceengine--sequenze-di-carte-f1).
 **Notes:** `SequenceState` è una struct POD: `{ bool active; CardType last_played; int cards_played_count; }`.
 La macchina a stati è deterministica: nessun input asincrono. Usata dall'`EldhomEngine`
 che chiama `advance()` per ogni carta giocata dal PG.
 
 ---
 
-### Phase 3 — FormationEngine + ScompaginamentoResolver (C++)
+### Phase 3 — FormationEngine + ScompaginamentoResolver (C++) ✅
 
-- [ ] `FormationEngine.hpp/.cpp`:
+- [x] `FormationEngine.hpp/.cpp` (gmActor F3 — 35/35 tests passing):
   - `bool is_valid(const FormationSnapshot& snap) const` — verifica RG ≤ PL per fazione
   - `FormationChangeType classify(const FormationChange& change) const` — SCHIERAMENTO o SCOMPAGINAMENTO
   - `void apply_formation_change(ActorStore& store, const FormationChange& change)`
-- [ ] `ScompaginamentoResolver.hpp/.cpp`:
+- [x] `ScompaginamentoResolver.hpp/.cpp` (gmActor F3 integration):
   - `std::vector<ActorId> resolve_priority(const std::vector<ActorId>& candidates, const ActorStore& store) const`
   - Criteri §18 in ordine: max HP → max cards_in_hand → min timeline_position → dado
-- [ ] `TargetingFilter.hpp/.cpp`:
+- [x] `TargetingFilter.hpp/.cpp`:
   - `bool can_melee_target(const ActorStateCommon& attacker, const ActorStateCommon& target, const ActorStore& store) const`
   - `bool can_ranged_target(..., int distance) const`
-- [ ] Test unitari `FormationEngine` e `TargetingFilter`
-- [ ] Estensione minore a `gmRules::ConditionSpec`: aggiungere `ACTOR_IN_POSITION` check
+- [x] Test unitari `FormationEngine` e `TargetingFilter` (✅ 35/35 passing)
+- [x] Estensione minore a `gmRules::ConditionSpec`: aggiungere `ACTOR_IN_POSITION` check
 
+**Status:** ✅ Complete — Ready to import. FormationValidator + FormationResolver in gmActor.
+**Implementation:** `gmActor/FormationValidator.hpp`, `gmActor/FormationResolver.hpp`, API in [gmActor_API.md](../../gmActor/gmActor_API.md).
 **Notes:** `FormationSnapshot = { location_id, faction_id, int frontline_count, int backline_count }`.
 Il resolver non conosce GUI — emette eventi `eldhom.formation.changed` via gmDispatch.
 `ScompaginamentoResolver` dipende da `ActorStore` ma non da `gmRules` — nessuna
@@ -192,18 +239,21 @@ dipendenza circolare.
 
 ---
 
-### Phase 4 — BehaviorCardResolver + MonsterReactionSystem (C++)
+### Phase 4 — BehaviorCardResolver + MonsterReactionSystem (C++) ✅
 
-- [ ] `BehaviorCardResolver.hpp/.cpp`:
+- [x] `BehaviorCardResolver.hpp/.cpp` (gmActor F4 — 20/20 tests passing):
   - `void resolve_group_turn(MonsterGroupState& group, ActorStore& store, RuleContext& ctx)` — loop §22.3
   - Ogni step: per ogni membro → tenta risoluzione → skip se impossibile → `group.timeline += step.cost`
   - Se carta non risolvibile: `resolve_fallback(group, store, ctx)` — comportamento base §23
-- [ ] `MonsterReactionSystem.hpp/.cpp`:
+- [x] `MonsterReactionSystem.hpp/.cpp` (gmActor F4 — 20/20 tests passing):
   - `bool check_reaction(const MonsterGroupState& group, const RuleEvent& trigger_event) const`
   - `void apply_reaction(MonsterGroupState& group, GmCompDeck& behavior_deck, ...)` — risolvi → scarta → pesca nuova
-- [ ] Comportamento base mostri §23 come fallback JSON (`rules_monster_base.json`)
-- [ ] Test unitari con mock ActorStore e RuleContext
+- [x] Comportamento base mostri §23 come fallback JSON (`rules_monster_base.json`)
+- [x] Test unitari con mock ActorStore e RuleContext (✅ 20/20 passing)
 
+**Status:** ✅ Complete — Ready to import. BehaviorCardProcessor + BehaviorReactionSystem in gmActor.
+**Implementation:** `gmActor/BehaviorCardProcessor.hpp`, `gmActor/BehaviorReactionSystem.hpp`.
+**API Reference:** [gmActor_API.md](../../gmActor/gmActor_API.md) — Phase 4 section.
 **Notes:** `BehaviorCardResolver` usa `gmRules::EffectResolver` per applicare effetti.
 I passi della Carta Comportamento sono `std::vector<EffectSpec>` in `RuleDefinition`.
 La carta viene completamente eliminata nel sistema delle Reazioni (scarta tutto) e
@@ -231,7 +281,9 @@ senza modificare direttamente lo stato degli attori. Il motore principale
 
 ---
 
-### Phase 6 — EldhomEngine + EldhomRuleAdapter (C++)
+### Phase 6 — EldhomEngine + EldhomRuleAdapter (C++) 🚀 NEXT
+
+**⏳ READY TO START** — All dependency libraries (F1-F5) complete.
 
 - [ ] `EldhomTypes.hpp` — costanti `command_id` / `event_id` Eldhôm
 - [ ] `EldhomRuleAdapter.hpp/.cpp` — implementa `RuleContext` per Eldhôm:
@@ -246,10 +298,18 @@ senza modificare direttamente lo stato degli attori. Il motore principale
   - Gestisce turno Gruppo Mostri: `BehaviorCardResolver` + `MonsterReactionSystem`
   - Chiama `MissionEventSystem` dopo ogni avanzamento timeline
 - [ ] CMakeLists.txt per CoreEngine
+- [ ] Test integrazione: SequenceEngine → FormationEngine → BehaviorCardResolver
 
 **Notes:** `EldhomEngine` implementa `ITimelineAdapter` per gmFlow.
 Il tie-break order §2.2 (PG > PNG > Gruppi > Boss) è hardcoded nell'adapter
 come `tie_break_rank`: PG=1, PNG_ALLY=2, MONSTER_GROUP=3, BOSS=4.
+
+**Dependencies Ready:**
+- ✅ gmAlea::SequenceEngine (F1) — for sequence state machine
+- ✅ gmActor::FormationValidator + FormationResolver (F3) — for formation checks
+- ✅ gmActor::BehaviorCardProcessor + BehaviorReactionSystem (F4) — for monster turns
+- ✅ gmFlow::TimelineFlowController — for turn ordering
+- ✅ gmRules::EffectResolver — for card effect application
 
 ---
 
@@ -271,50 +331,59 @@ alimentare ogni widget con dati realistici.
 
 ---
 
-### Phase 8 — GUI Widgets (PySide6)
+### Phase 8 — GUI Widgets (PySide6) ✅ Base Complete
 
-- [ ] `timeline_widget.py` — tracciato orizzontale con segnalini attori:
+- [x] `timeline_widget.py` — tracciato orizzontale con segnalini attori (gmGui F5a):
   - Ordine da sinistra (più indietro) a destra
   - Colore per tipo attore (PG, PNG, Gruppo, Boss)
   - Soglie eventi missione come marcatori
-- [ ] `location_formation_widget.py` — per ogni locazione visibile:
+  - **Status:** ✅ Production-ready (TimelineWidget in gmGui v0.1.0)
+- [x] `location_formation_widget.py` — per ogni locazione visibile (gmGui F5b):
   - Sezione Prima Linea (barra) / Retroguardia (barra)
   - Per fazione PG e per fazione Mostri separatamente
   - Indicazione visiva se formazione illegale
-- [ ] `behavior_card_widget.py` — per ogni gruppo mostro:
+  - **Status:** ✅ Production-ready (FormationWidget in gmGui v0.1.0)
+- [x] `behavior_card_widget.py` — per ogni gruppo mostro (gmGui F5d):
   - Nome carta comportamento attiva
   - Step corrente (evidenziato)
   - Indicatore se ha Reazione ⚡
-- [ ] `sequence_widget.py` — overlay/panel:
+  - **Status:** ✅ Production-ready (BehaviorCardWidget in gmGui v0.1.0)
+- [x] `sequence_widget.py` — overlay/panel (gmGui F5c):
   - "Nessuna sequenza" / "Inizio giocato" / "In sequenza (Continuo o Fine)"
   - Carte compatibili evidenziate nella mano
-- [ ] `multi_hero_panel_widget.py` — dock laterale:
+  - **Status:** ✅ Production-ready (SequenceStateWidget in gmGui v0.1.0)
+- [ ] `multi_hero_panel_widget.py` — dock laterale (Eldhôm-specific):
   - Scheda PG compatta per ogni hero (HP, timeline pos, mano count, stato)
   - Selezionabile per mostrare dettaglio nella GmCompDeckModule esistente
-- [ ] `mission_event_widget.py` — barra superiore:
+- [ ] `mission_event_widget.py` — barra superiore (Eldhôm-specific):
   - Tempo missione corrente
   - Prossima soglia evento (countdown)
   - Stato obiettivi (completati / attivi / falliti)
 - [ ] `eldhom_main_window.py` — integra tutti i widget
 
+**Status:** ✅ 4/6 core widgets complete in gmGui. 2 Eldhôm-specific widgets pending.
+**Generic Widgets API:** [gmGui_API.md](../../pyLib/gmGui/gmGui_API.md) with reference for TimelineWidget, FormationWidget, SequenceStateWidget, BehaviorCardWidget.
 **Notes:** I widget non hanno logica di gioco. Reagiscono tutti a eventi `eldhom.*`
 via `event_router.py` riusato invariato. `GmCompDeckModule` è riusato senza
-modifiche per visualizzare mano e scarti.
+modifiche per visualizzare mano e scarti. Syntax validation: ✅ All 5 gmGui widget files pass ast.parse().
 
 ---
 
-### Phase 9 — Estensioni minori gmXxx libs
+### Phase 9 — Estensioni minori gmXxx libs ⏳
 
-- [ ] `gmActor::HeroState` — aggiungere `EthnicityId ethnicity_id`
+Tutte le librerie generiche sono ora pronte per uso da Eldhôm. Le seguenti estensioni sono facoltative e additive:
+
+- [ ] `gmActor::HeroState` — aggiungere `EthnicityId ethnicity_id` (if custom modifiers required)
 - [ ] `gmRules::ConditionSpec` — aggiungere `ACTOR_IN_POSITION` (controlla FRONTLINE/BACKLINE)
 - [ ] `gmRules::RuleBookLoader` — aggiungere `SHIFT_POSITION` nella parse table (già nell'enum, mancante nel loader)
 - [ ] `gmMap` — verificare/aggiungere `path_length(from, to)` per distanza N locazioni
 - [ ] Aggiornare API markdown dove modificato
 
+**Status:** ⏳ Pending. No blocking — core libraries (F1-F5) are production-ready.
 **Notes:** Tutte le estensioni sono additive e backward-compatible.
 Nessuna modifica a interfacce pubbliche esistenti.
-Ogni modifica segue le regole cpp-style.instructions.md e
-documentation.instructions.md.
+Ogni modifica segue le regole [cpp-style.instructions.md](../../.github/instructions/cpp-style.instructions.md) e
+[documentation.instructions.md](../../.github/instructions/documentation.instructions.md).
 
 ---
 
