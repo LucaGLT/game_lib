@@ -308,6 +308,113 @@ def test_board_two_heroes_active_hero_determines_adjacency():
     print("  [OK] test_board_two_heroes_active_hero_determines_adjacency")
 
 
+# ── Combat / reactive-defense tests (Phase 5) ─────────────────────────────────
+
+def _hero_snapshot(panel: ActionPanelWidget) -> None:
+    """Feeds a hero snapshot + active turn so action buttons are evaluated."""
+    panel.on_envelope({
+        "typeId": "dungeon.actor.snapshot",
+        "data": {"actors": [
+            {"id": "hero", "kind": "HERO", "hp": 10, "max_hp": 10,
+             "tags": [], "statuses": []},
+        ]},
+    })
+    panel.on_envelope({
+        "typeId": "dungeon.turn.started",
+        "data": {"actor_id": "hero", "actions_remaining": 2},
+    })
+
+
+def test_action_panel_attack_button_emits_request():
+    w = ActionPanelWidget()
+    _hero_snapshot(w)
+    attackers: list[str] = []
+    w.attack_requested.connect(lambda a: attackers.append(a))
+    w._on_attack_clicked()
+    assert attackers == ["hero"]
+    print("  [OK] test_action_panel_attack_button_emits_request")
+
+
+def test_action_panel_enter_defense_mode_shows_defense_buttons():
+    w = ActionPanelWidget()
+    _hero_snapshot(w)
+    w.enter_defense_mode("monster_1", incoming_damage=4, can_pass=True, can_cancel=True)
+    assert w.is_defending() is True
+    assert w._defending_id == "monster_1"
+    # Defense buttons enabled; normal action buttons hidden.
+    assert w._btn_defend.isEnabled()
+    assert w._btn_pass.isEnabled()
+    assert w._btn_cancel.isEnabled()
+    assert w._btn_move.isHidden()
+    assert w._btn_heal.isHidden()
+    print("  [OK] test_action_panel_enter_defense_mode_shows_defense_buttons")
+
+
+def test_action_panel_defend_emits_reduce():
+    w = ActionPanelWidget()
+    w.enter_defense_mode("monster_1", 4, True, True)
+    choices: list[tuple] = []
+    w.defend_requested.connect(lambda d, m, b: choices.append((d, m, b)))
+    w._on_defend_clicked()
+    assert choices == [("monster_1", "reduce", 0)]
+    # Buttons disabled after a choice (no double submit).
+    assert not w._btn_defend.isEnabled()
+    print("  [OK] test_action_panel_defend_emits_reduce")
+
+
+def test_action_panel_cancel_emits_cancel():
+    w = ActionPanelWidget()
+    w.enter_defense_mode("monster_1", 4, True, True)
+    choices: list[tuple] = []
+    w.defend_requested.connect(lambda d, m, b: choices.append((d, m, b)))
+    w._on_cancel_clicked()
+    assert choices == [("monster_1", "cancel", 0)]
+    print("  [OK] test_action_panel_cancel_emits_cancel")
+
+
+def test_action_panel_pass_emits_pass():
+    w = ActionPanelWidget()
+    w.enter_defense_mode("monster_1", 4, True, True)
+    passes: list[str] = []
+    w.defend_pass_requested.connect(lambda d: passes.append(d))
+    w._on_pass_clicked()
+    assert passes == ["monster_1"]
+    print("  [OK] test_action_panel_pass_emits_pass")
+
+
+def test_action_panel_defense_window_without_options():
+    w = ActionPanelWidget()
+    w.enter_defense_mode("monster_1", 4, can_pass=True, can_cancel=False)
+    assert w._btn_pass.isHidden() is False
+    assert w._btn_cancel.isHidden() is True
+    print("  [OK] test_action_panel_defense_window_without_options")
+
+
+def test_action_panel_exit_defense_mode_restores():
+    w = ActionPanelWidget()
+    _hero_snapshot(w)
+    w.enter_defense_mode("monster_1", 4, True, True)
+    w.exit_defense_mode()
+    assert w.is_defending() is False
+    assert w._btn_defend.isHidden()
+    assert w._btn_pass.isHidden()
+    print("  [OK] test_action_panel_exit_defense_mode_restores")
+
+
+def test_log_widget_combat_entries():
+    w = LogWidget()
+    w.on_envelope({"typeId": "dungeon.attack.declared",
+                   "data": {"attacker_id": "hero", "defender_id": "m1",
+                            "base_damage": 4, "source": "base"}})
+    w.on_envelope({"typeId": "dungeon.attack.resolved",
+                   "data": {"defender_id": "m1", "final_damage": 2,
+                            "cancelled": False, "hp_after": 3}})
+    w.on_envelope({"typeId": "dungeon.attack.resolved",
+                   "data": {"defender_id": "m1", "cancelled": True}})
+    assert w._list.count() == 3
+    print("  [OK] test_log_widget_combat_entries")
+
+
 if __name__ == "__main__":
     print("=== Widget unit tests ===")
     test_log_widget_append_and_clear()
@@ -326,4 +433,12 @@ if __name__ == "__main__":
     test_board_adjacent_room_valid_after_move()
     test_board_adjacency_bidirectional()
     test_board_two_heroes_active_hero_determines_adjacency()
+    test_action_panel_attack_button_emits_request()
+    test_action_panel_enter_defense_mode_shows_defense_buttons()
+    test_action_panel_defend_emits_reduce()
+    test_action_panel_cancel_emits_cancel()
+    test_action_panel_pass_emits_pass()
+    test_action_panel_defense_window_without_options()
+    test_action_panel_exit_defense_mode_restores()
+    test_log_widget_combat_entries()
     print("All widget tests PASSED.")

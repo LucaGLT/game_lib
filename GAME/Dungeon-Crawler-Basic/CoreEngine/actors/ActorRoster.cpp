@@ -128,6 +128,8 @@ void ActorRoster::add_actor(const ActorInfo& info)
 
 	_kinds[info.id] = info.kind;
 	_labels[info.id] = make_label(info.id, _used_labels);
+	_attack[info.id] = std::max(0, info.attack);
+	_defense[info.id] = std::max(0, info.defense);
 	_insertion_order.push_back(info.id);
 }
 
@@ -152,6 +154,8 @@ void ActorRoster::remove_actor(const std::string& actor_id)
 	_kinds.clear();
 	_labels.clear();
 	_used_labels.clear();
+	_attack.clear();
+	_defense.clear();
 	_insertion_order.clear();
 
 	for (const ActorInfo& info : survivors)
@@ -311,6 +315,8 @@ void ActorRoster::reset()
 	_kinds.clear();
 	_labels.clear();
 	_used_labels.clear();
+	_attack.clear();
+	_defense.clear();
 }
 
 ActorInfo ActorRoster::snapshot_actor(const std::string& actor_id) const
@@ -319,6 +325,8 @@ ActorInfo ActorRoster::snapshot_actor(const std::string& actor_id) const
 	info.id    = actor_id;
 	info.kind  = _kinds.at(actor_id);
 	info.label = _labels.count(actor_id) ? _labels.at(actor_id) : actor_id;
+	info.attack  = _attack.count(actor_id) ? _attack.at(actor_id) : 0;
+	info.defense = _defense.count(actor_id) ? _defense.at(actor_id) : 0;
 
 	const gmActor::ActorStateCommon& common = common_ref(actor_id);
 	info.hp = common.current_hp;

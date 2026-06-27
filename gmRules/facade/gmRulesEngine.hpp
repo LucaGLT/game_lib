@@ -158,17 +158,37 @@ public:
     const RuleBook& rule_book() const { return rule_book_; }
 
     /**
-     * @brief Resolves a single named rule from the internal `RuleBook`.
+     * @brief Removes a single rule definition by ID.
      *
-     * Evaluates preconditions then applies effects via `EffectResolver`.
+     * Delegates to `RuleBook::remove_rule()`.  No-op if the rule is not
+     * registered.
      *
-     * @param rule_id          Rule identifier.
-     * @param source_actor_id  Actor triggering the rule.
-     * @param selected_targets Pre-selected targets.
-     * @param ctx              Mutable game-state adapter.
-     * @return                 `RuleResult::ok()` or `RuleResult::fail(...)`.
-     * @throws ERuleBookError  if `rule_id` is not registered.
+     * @param rule_id  Identifier of the rule to remove.
+     * @return         @c true if the rule was found and removed.
      */
+    bool remove_rule(const RuleId& rule_id);
+
+    /**
+     * @brief Replaces an existing rule with a new definition.
+     *
+     * Delegates to `RuleBook::replace_rule()`.  If the rule ID is not yet
+     * registered the definition is simply added.
+     *
+     * @param def  New `RuleDefinition` (must have a non-empty `rule_id`).
+     * @throws ERuleBookError if `def.rule_id` is empty.
+     */
+    void replace_rule(const RuleDefinition& def);
+
+    /**
+     * @brief Removes all registered rules.
+     *
+     * Use this together with `load_rules_json()` to implement full hot-reload:
+     * @code
+     *   engine.clear_rules();
+     *   engine.load_rules_json("updated_rules.json");
+     * @endcode
+     */
+    void clear_rules();
     RuleResult resolve_rule(const RuleId&                  rule_id,
                             const ActorId&                 source_actor_id,
                             const std::vector<TargetRef>&  selected_targets,

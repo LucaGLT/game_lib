@@ -118,6 +118,16 @@ class DungeonBoardWidget(QWidget):
                 self._module.on_envelope(translated)
             return
 
+        if type_id == "dungeon.actor.removed":
+            actor_id = str(data.get("actor_id", ""))
+            if actor_id in self._hero_rooms:
+                del self._hero_rooms[actor_id]
+            # Forward to gmActor module to remove the actor from the map.
+            translated = self._translate_actor_removed(data)
+            if translated is not None:
+                self._module.on_envelope(translated)
+            return
+
         if type_id == "dungeon.game.over":
             self._interaction_enabled = False
             self._module_widget.setEnabled(False)
@@ -267,6 +277,16 @@ class DungeonBoardWidget(QWidget):
                 "actor_id": actor_id,
                 "new_location_id": self._room_index(destination),
             },
+        }
+
+    def _translate_actor_removed(self, data: dict) -> dict | None:
+        """Translates dungeon.actor.removed into gmActor.actor.removed for map removal."""
+        actor_id = str(data.get("actor_id", ""))
+        if not actor_id:
+            return None
+        return {
+            "typeId": "gmActor.actor.removed",
+            "data": {"actor_id": actor_id},
         }
 
     def _selected_room_id(self) -> str | None:

@@ -73,11 +73,13 @@ void to_json(nlohmann::json& j, const DungeonRoomMeta& m)
 
 void from_json(const nlohmann::json& j, DungeonActorDef& a)
 {
-	a.id     = j.at("id").get<std::string>();
-	a.kind   = j.at("kind").get<std::string>();
-	a.hp     = j.value("hp",     1);
-	a.max_hp = j.value("max_hp", std::max(1, a.hp));
-	a.room   = j.at("room").get<std::string>();
+	a.id      = j.at("id").get<std::string>();
+	a.kind    = j.at("kind").get<std::string>();
+	a.hp      = j.value("hp",     1);
+	a.max_hp  = j.value("max_hp", std::max(1, a.hp));
+	a.attack  = j.value("attack",  0);
+	a.defense = j.value("defense", 0);
+	a.room    = j.at("room").get<std::string>();
 	if (j.contains("tags")     && j.at("tags").is_array())
 		a.tags     = j.at("tags").get<std::vector<std::string>>();
 	if (j.contains("statuses") && j.at("statuses").is_array())
@@ -90,6 +92,8 @@ void to_json(nlohmann::json& j, const DungeonActorDef& a)
 	j["kind"]     = a.kind;
 	j["hp"]       = a.hp;
 	j["max_hp"]   = a.max_hp;
+	j["attack"]   = a.attack;
+	j["defense"]  = a.defense;
 	j["room"]     = a.room;
 	j["tags"]     = a.tags;
 	j["statuses"] = a.statuses;
@@ -203,6 +207,8 @@ bool DungeonMapLoader::load_from_file(
 			info.kind     = parse_kind(a.kind);
 			info.hp       = a.hp;
 			info.max_hp   = a.max_hp;
+			info.attack   = a.attack;
+			info.defense  = a.defense;
 			info.location = a.room;
 			info.tags     = a.tags;
 			info.statuses = a.statuses;

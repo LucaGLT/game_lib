@@ -149,6 +149,7 @@ class GmFlowModule(BaseModule):
         self._btn_resume.setVisible(False)
         self._btn_pause.setVisible(False)
         self._btn_stop.setVisible(False)
+        self._btn_pass_turn.setVisible(False)
         self._btn_resume.setEnabled(False)
         self._btn_pause.setEnabled(False)
         self._btn_stop.setEnabled(False)

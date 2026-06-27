@@ -163,6 +163,64 @@ Files:
 - `EffectSpec`: effect payload + target + preconditions + failure policy
 - `EffectResult`: success/partial/failure, events, warnings
 
+### EffectType — reference table
+
+All 41 effect types implemented in `EffectResolver`.
+For each type, the relevant `EffectSpec` fields are listed.
+
+| EffectType | `amount` | `value` | Notes |
+|---|---|---|---|
+| **Health / Position** ||||
+| `DEAL_DAMAGE` | damage points (> 0) | — | Calls `modify_actor_hp(-amount)` |
+| `HEAL` | HP restored (> 0) | — | Calls `modify_actor_hp(+amount)` |
+| `MOVE_ACTOR` | — | destination location ID | Calls `move_actor_to_location()` |
+| `SHIFT_POSITION` | — | `"front"` / `"back"` | Area position within a location |
+| **Card management** ||||
+| `DRAW_CARDS` | number of cards | deck ID | Calls `draw_cards(value, amount)` |
+| `DISCARD_CARDS` | number of cards | — | Emits event only; game-specific logic |
+| `MOVE_CARD_TO_ZONE` | — | `"card_id:zone_name"` | Calls `move_card_to_zone()` |
+| **Status / Modifiers** ||||
+| `APPLY_STATUS` | — | status definition ID | Calls `add_status_instance()` |
+| `REMOVE_STATUS` | — | status ID to remove | Calls `remove_status_instance()` |
+| `ADD_MODIFIER` | — | modifier spec JSON | Game-specific delegation |
+| `REMOVE_MODIFIER` | — | modifier instance ID | Game-specific delegation |
+| **Tags / State** ||||
+| `ADD_TAG` | — | tag string | Calls `add_actor_tag()` |
+| `REMOVE_TAG` | — | tag string | Calls `remove_actor_tag()` |
+| `SET_STATE` | — | `"key=value"` | Opaque; game-specific |
+| **Actor lifecycle** ||||
+| `SPAWN_ACTOR` | — | actor spec JSON | Calls `spawn_actor()` |
+| `DESPAWN_ACTOR` | — | — | Calls `despawn_actor()` |
+| `REVIVE_ACTOR` | — | — | Calls `revive_actor()` |
+| `CHANGE_TEAM` | — | new team/faction ID | Calls `change_actor_team()` |
+| **Resources / Equipment** ||||
+| `MODIFY_RESOURCE` | signed delta | resource name | Calls `modify_resource()` |
+| `SET_RESOURCE_MAX` | new max value | resource name | Calls `set_resource_max()` |
+| `EQUIP_ITEM` | — | item ID | Calls `equip_item()` |
+| `UNEQUIP_ITEM` | — | slot ID | Calls `unequip_item()` |
+| **Deck / Dice** ||||
+| `SHUFFLE_ZONE` | — | `"deck_id:zone_name"` | Calls `shuffle_zone()` |
+| `LOOK_TOP_CARD` | N cards to peek | deck ID | Calls `look_top_cards()` |
+| `LOOK_BOTTOM_CARD` | N cards to peek | deck ID | Calls `look_bottom_cards()` |
+| `SELECT_SPECIFIC_CARD` | — | `"deck_id:card_id"` | Calls `select_specific_card()` |
+| `DISCARD_RANDOM` | N cards | `"deck_id:zone_name"` | Calls `discard_random_cards()` |
+| `PLACE_ON_TOP` | — | `"deck_id:card_id"` | Calls `place_card_on_top()` |
+| `PLACE_ON_BOTTOM` | — | `"deck_id:card_id"` | Calls `place_card_on_bottom()` |
+| `ROLL_DICE` | — | dice expression (e.g. `"2d6"`) | Calls `roll_dice()` |
+| **Map** ||||
+| `SET_LOCATION_PASSABLE` | `1`=passable / `0`=blocked | location ID | Calls `set_location_passable()` |
+| `ADD_LOCATION_TAG` | — | `"location_id:tag"` | Calls `add_location_tag()` |
+| `REMOVE_LOCATION_TAG` | — | `"location_id:tag"` | Calls `remove_location_tag()` |
+| `SET_LOCATION_OWNER` | — | `"location_id:owner_id"` | Calls `set_location_owner()` |
+| `CREATE_BARRIER` | — | `"from:to:barrier_id"` | Calls `create_barrier()` |
+| `REMOVE_BARRIER` | — | barrier ID | Calls `remove_barrier()` |
+| `SPAWN_INTERACTABLE` | — | interactable spec JSON | Calls `spawn_interactable()` |
+| `DESPAWN_INTERACTABLE` | — | interactable ID | Calls `despawn_interactable()` |
+| **Events / Escape hatch** ||||
+| `EMIT_EVENT` | — | event type string | Calls `emit_event()` without state mutation |
+| `MANUAL_EFFECT` | — | event type string | Identical to `EMIT_EVENT` |
+| `CUSTOM` | game-defined | game-defined | Delegated to `apply_extended_effect()` |
+
 ### Resolver
 
 ```cpp
