@@ -1,0 +1,139 @@
+[
+  {
+    "card_id": "base_colpo_secco",
+    "name": "Colpo Secco",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "target": "NEAREST_ENEMY_FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "base_mossa_tattica",
+    "name": "Mossa Tattica",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "MOVE",
+        "amount": 1,
+        "target": "ADJACENT_LOCATION"
+      }
+    ]
+  },
+  {
+    "card_id": "base_scudo_reattivo",
+    "name": "Scudo Reattivo",
+    "origin": "BASE",
+    "card_type": "INSTANT",
+    "timeline_cost": 0,
+    "can_target_backline": false,
+    "reaction_trigger": "eldhom.pg.attacked",
+    "effects": [
+      {
+        "effect_type": "FORMATION_PUSH",
+        "amount": 0,
+        "value": "FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "base_attacco_inizio_seq",
+    "name": "Attacco — Inizio Sequenza",
+    "origin": "BASE",
+    "card_type": "SEQ_START",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "target": "NEAREST_ENEMY_FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "base_attacco_continua_seq",
+    "name": "Attacco — Continua Sequenza",
+    "origin": "BASE",
+    "card_type": "SEQ_CONTINUE",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "target": "NEAREST_ENEMY_FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "base_attacco_chiudi_seq",
+    "name": "Attacco — Chiudi Sequenza",
+    "origin": "BASE",
+    "card_type": "SEQ_END",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "DAMAGE",
+        "amount": 2,
+        "target": "NEAREST_ENEMY_FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "thael_colpo_pesante",
+    "name": "Colpo Pesante",
+    "origin": "THAEL",
+    "card_type": "SINGLE",
+    "timeline_cost": 3,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "DAMAGE",
+        "amount": 2,
+        "target": "NEAREST_ENEMY_FRONTLINE"
+      }
+    ]
+  },
+  {
+    "card_id": "velyr_cura_rapida",
+    "name": "Cura Rapida",
+    "origin": "VELYR",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      {
+        "effect_type": "HEAL",
+        "amount": 2,
+        "target": "SELF"
+      }
+    ]
+  },
+  {
+    "card_id": "velyr_supporto_tattico",
+    "name": "Supporto Tattico",
+    "origin": "VELYR",
+    "card_type": "INSTANT",
+    "timeline_cost": 0,
+    "can_target_backline": false,
+    "reaction_trigger": "eldhom.monster.damaged",
+    "effects": [
+      {
+        "effect_type": "HEAL",
+        "amount": 1,
+        "target": "SELF"
+      }
+    ]
+  }
+]
