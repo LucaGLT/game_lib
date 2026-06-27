@@ -22,6 +22,7 @@ add_subdirectory(gmRules)
 add_subdirectory(gmSave)
 add_subdirectory(gmMap)
 add_subdirectory(gmInteraction)
+add_subdirectory(gmActor)
 
 # ── Games ──────────────────────────────────────────────────────────────────────
 add_subdirectory(GAME/Tic-Tac-Toe/CoreEngine)
