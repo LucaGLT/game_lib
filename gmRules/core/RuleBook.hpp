@@ -114,6 +114,38 @@ public:
 	 */
 	int rule_count() const;
 
+	/**
+	 * @brief Removes the rule with the given ID from the book.
+	 *
+	 * If the rule does not exist, the call is a no-op (no exception).
+	 *
+	 * @param rule_id  ID of the rule to remove.
+	 * @return         @c true if the rule was found and removed, @c false if it
+	 *                 was not registered.
+	 */
+	bool remove_rule(const RuleId& rule_id);
+
+	/**
+	 * @brief Replaces an existing rule with a new definition.
+	 *
+	 * Equivalent to calling @c remove_rule(def.rule_id) followed by
+	 * @c register_rule(def).  If the rule is not currently registered, the
+	 * new definition is simply added (same as @c register_rule).
+	 *
+	 * @param def  New definition (must have a non-empty @c rule_id).
+	 * @throws ERuleBookError if @c def.rule_id is empty.
+	 */
+	void replace_rule(const RuleDefinition& def);
+
+	/**
+	 * @brief Removes all registered rules from the book.
+	 *
+	 * After this call @c rule_count() == 0.
+	 * Useful for full hot-reload: call @c clear_rules() then
+	 * @c register_rule() / @c load_json() again.
+	 */
+	void clear_rules();
+
 	// ── Resolution ───────────────────────────────────────────────────────────
 
 	/**

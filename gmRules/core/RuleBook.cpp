@@ -47,6 +47,25 @@ int RuleBook::rule_count() const
 	return static_cast<int>(_definitions.size());
 }
 
+bool RuleBook::remove_rule(const RuleId& rule_id)
+{
+	return _definitions.erase(rule_id) > 0;
+}
+
+void RuleBook::replace_rule(const RuleDefinition& def)
+{
+	if (def.rule_id.empty())
+	{
+		throw ERuleBookError("replace_rule: rule_id must not be empty");
+	}
+	_definitions[def.rule_id] = def;
+}
+
+void RuleBook::clear_rules()
+{
+	_definitions.clear();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Resolution
 // ─────────────────────────────────────────────────────────────────────────────

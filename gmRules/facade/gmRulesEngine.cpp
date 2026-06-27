@@ -84,6 +84,21 @@ void gmRulesEngine::load_rules_json_string(const std::string& json_text)
 	RuleBookLoader::load_json_string(json_text, rule_book_);
 }
 
+bool gmRulesEngine::remove_rule(const RuleId& rule_id)
+{
+	return rule_book_.remove_rule(rule_id);
+}
+
+void gmRulesEngine::replace_rule(const RuleDefinition& def)
+{
+	rule_book_.replace_rule(def);
+}
+
+void gmRulesEngine::clear_rules()
+{
+	rule_book_.clear_rules();
+}
+
 RuleResult gmRulesEngine::resolve_rule(const RuleId&                  rule_id,
                                        const ActorId&                 source_actor_id,
                                        const std::vector<TargetRef>&  selected_targets,
