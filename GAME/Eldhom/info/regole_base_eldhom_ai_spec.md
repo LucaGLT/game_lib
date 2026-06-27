@@ -39,6 +39,40 @@ PV = punti vita
 
 Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostituita.
 
+## 0.3 Effetti
+
+### Effetti Negativi
+
+- **Vista Offuscata** : Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la peggiore. Dura fino alla fine del tuo prossimo turno.
+
+- **Rallentato** : Raddoppia il costo di ogni Azione o Carta che implica un Movimento da una Locazoine ad un'altra. Dura fino alla fine del tuo prossimo turno.
+
+- **Avvelenato** : Applica **Vista Offuscata** e **Rallentato** in modo durarturo fino alla prossima *Cura* ricevuta.
+
+- **Immobilizzato** : La miniatura non può effettuare azioni di Movimento né cambi di Formazione (sia Schieramento, sia Scompaginamento) né essere spostata (salvo specifici teletrasporti). Dura fino alla fine del tuo prossimo turno.
+
+- **Disarmato** : La miniatura non può compiere azioni di attacco. Dura fino alla fine del tuo prossimo turno.
+
+- **Sanguinante** : A inizio di ogni tuo turno, la miniatura subisce 1 danno. Perdura fino alla prossima *Cura* ricevuta.
+
+- **Svenuto**: Impedisce di eseguire qualsiasi azione durante il tuo turno ad eccezione dell'Azione Base **Recupera**. Dura fino alla fine del tuo prossimo turno.
+
+- **Maledetto** : DA DEFINRE
+
+### Effetti Positivi
+
+- **Vista Acuita** : Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la migliore. Dura fino alla fine del tuo prossimo turno.
+
+- **Concentrato** : riduce di 2⌛ il costo in Tempo della prossima Azione o Carta (minimo 1⌛). Dura per una sola Azione o Carta.
+
+- **Energizzato** : Applica **Vista Acuita** e **Concentrato** in modo durarturo fino alla fine del tuo prossimo turno.
+
+- **Invisibile** : La miniatura non può essere bersaglio di Attacchi. Dura fino alla fine del tuo prossimo turno.
+
+- **Resistente N** : Riduce di N qualunque tipo di Danno ricevuto.Dura fino alla fine del tuo prossimo turno.
+
+- **Benedetto** : DA DEFINRE
+
 ---
 
 # 1. Struttura generale del gioco
