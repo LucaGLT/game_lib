@@ -110,6 +110,7 @@ private:
 
 		try
 		{
+			std::cout << "[EldhomEngine] ✓ Received command: start_mission '" << mission_id << "'\n";
 			eldhom::MissionDefinition def =
 				eldhom::MissionLoader::load_mission(_data_dir, mission_id);
 
@@ -196,6 +197,7 @@ private:
 		const std::string& actor_id,
 		const std::string& payload)
 	{
+		std::cout << "[EldhomEngine] 📤 Forwarding event: " << type << "\n" << std::flush;
 		nlohmann::json d;
 		if (!actor_id.empty()) { d["actor_id"] = actor_id; }
 		if (!payload.empty())
@@ -255,6 +257,8 @@ private:
 	void emit_full_state()
 	{
 		if (!_engine) { return; }
+
+		std::cout << "[EldhomEngine] 📤 Building full state snapshot...\n" << std::flush;
 
 		const gmActor::ActorStore& store = _engine->actor_store();
 		nlohmann::json state;
@@ -372,7 +376,11 @@ private:
 		state["next_actor"] = nxt;
 		state["is_over"]    = _engine->is_over();
 
+		std::cout << "[EldhomEngine] 📤 Sending EVT_STATE_FULL to GUI with " 
+		          << state["heroes"].size() << " heroes, " 
+		          << state["groups"].size() << " groups\n" << std::flush;
 		_bridge.send_event(eldhom::EVT_STATE_FULL, state);
+		std::cout << "[EldhomEngine] ✓ EVT_STATE_FULL sent.\n" << std::flush;
 	}
 
 	// ── Data ──────────────────────────────────────────────────────────────────
@@ -423,7 +431,7 @@ int main(int argc, char* argv[])
 
 	cmd_server.start();
 
-	std::cout << "[EldhomEngine] Ready. Send 'eldhom.start_mission' from the GUI.\n";
+	std::cout << "[EldhomEngine] Ready. Waiting for GUI connection on port 9211...\n";
 
 	while (g_running)
 	{

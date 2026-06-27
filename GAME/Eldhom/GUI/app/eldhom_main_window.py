@@ -41,8 +41,8 @@ from widgets.action_panel_widget import ActionPanelWidget
 from widgets.timeline_widget import TimelineWidget
 from widgets.log_widget import LogWidget
 
-# Path to the data directory (relative to workspace root)
-_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+# Path to the data directory: GUI/app/ → GUI/ → Eldhom/ → Eldhom/data/
+_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 # Card name lookup: populated from full-state snapshot
 _CARD_NAMES: dict[str, str] = {}
@@ -144,17 +144,13 @@ class EldhomMainWindow(QMainWindow):
         self._action_panel.stop_sequence.connect(self._on_stop_sequence)
         self._hand_widget.card_selected.connect(self._on_card_selected)
 
-        # Apply dark stylesheet
-        self.setStyleSheet(
-            "QMainWindow { background:#141414; }"
-            "QWidget { background:#141414; color:#cccccc; }"
-            "QDockWidget { color:#aaa; }"
-            "QDockWidget::title { background:#222; padding:4px; }"
-        )
+        # Apply base stylesheet only when ThemeManager is NOT used (fallback).
+        # When ThemeManager is active it sets the global QApplication stylesheet.
 
     def _build_bridge(self) -> None:
         self._bridge = EldhomBridge()
         self._bridge.receiver.start()
+        print("[EldhomGUI] Event receiver listening on port 9210", flush=True)
 
         # Route events through the Qt signal-slot mechanism for thread safety
         self._bridge.set_on_event(self._on_engine_event_thread)
@@ -233,6 +229,8 @@ class EldhomMainWindow(QMainWindow):
 
     def _on_engine_event_thread(self, msg: dict) -> None:
         """Called from the receiver background thread — use QTimer for thread safety."""
+        type_id = msg.get("typeId", "?")
+        print(f"[EldhomGUI] ✓ Received event: {type_id}", flush=True)
         QTimer.singleShot(0, lambda: self._router.dispatch(msg))
 
     # ── Event handlers ─────────────────────────────────────────────────────────
@@ -433,6 +431,7 @@ class EldhomMainWindow(QMainWindow):
         if dialog.exec() == MissionSelectDialog.DialogCode.Accepted:
             mission_id = dialog.selected_mission_id
             if mission_id:
+                print(f"[EldhomGUI] 📤 Sending start_mission for: {mission_id}", flush=True)
                 self._log_widget.clear()
                 self._log_widget.append(
                     f"Caricamento missione: {mission_id}…", "#8ab"
@@ -440,6 +439,7 @@ class EldhomMainWindow(QMainWindow):
                 self._bridge.send_command(
                     "eldhom.start_mission", {"mission_id": mission_id}
                 )
+                print(f"[EldhomGUI] 📤 Command sent.", flush=True)
         else:
             self._log_widget.append(
                 "Nessuna missione selezionata. Seleziona Missione dal menu per iniziare.",

@@ -55,7 +55,7 @@ class EngineReceiver(QThread):
 
     # Timeout in seconds for both accept() and recv().
     # Controls the maximum delay between stop() and thread exit.
-    _TIMEOUT: float = 1.0
+    _TIMEOUT: float = 0.1
 
     def __init__(self, host: str = "127.0.0.1", port: int = 9000) -> None:
         super().__init__()

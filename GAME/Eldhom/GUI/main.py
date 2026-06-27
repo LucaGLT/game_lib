@@ -24,11 +24,21 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from app.eldhom_main_window import EldhomMainWindow  # noqa: E402
 
+try:
+    from gmGui.theme_manager import ThemeManager
+    _HAS_THEME = True
+except ImportError:
+    _HAS_THEME = False
+
 
 def main() -> int:
     """Creates the Qt application and shows the Eldhom main window."""
     app = QApplication(sys.argv)
+    if _HAS_THEME:
+        ThemeManager(app).apply_theme("dark_moon")
+    print("[EldhomGUI] Socket server starting on port 9210...")
     window = EldhomMainWindow()
+    print("[EldhomGUI] Socket server ready. Waiting for engine commands...")
     window.show()
     return app.exec()
 

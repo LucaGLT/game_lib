@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 #if defined(_WIN32)
@@ -145,9 +146,12 @@ void EldhomCmdServer::run()
 		SocketHandle client = ::accept(server, nullptr, nullptr);
 		if (client == INVALID_SOCK) { break; }
 
+		std::cout << "[EldhomCmdServer] ✓ GUI client connected on port " << _port << "\n" << std::flush;
+
 		std::string raw;
 		while (_running && recv_frame(client, raw))
 		{
+			std::cout << "[EldhomCmdServer] 📥 Received frame: " << raw.substr(0, 80) << "...\n" << std::flush;
 			try
 			{
 				const nlohmann::json msg = nlohmann::json::parse(raw);
@@ -157,6 +161,7 @@ void EldhomCmdServer::run()
 					: nlohmann::json::object();
 				if (!type_id.empty() && _handler)
 				{
+					std::cout << "[EldhomCmdServer] 📥 Parsed command: " << type_id << "\n" << std::flush;
 					_handler(type_id, data);
 				}
 			}

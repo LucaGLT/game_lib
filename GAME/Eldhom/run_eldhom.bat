@@ -28,16 +28,17 @@ if not exist "%ENGINE_EXE%" (
 rem Data directory path (absolute, forwarded to engine as first argument)
 set "DATA_DIR=%~dp0data"
 
-echo [Eldhom] Avvio GUI (porta 9210)...
-start "" /B python "%~dp0GUI\main.py"
+echo [Eldhom] Avvio GUI in finestra separata (porta 9210)...
+start "Eldhom GUI - Python" python "%~dp0GUI\main.py"
 
-echo [Eldhom] Attesa 1.5 secondi per la GUI...
-timeout /t 1 /nobreak > nul
+echo [Eldhom] Attesa 5 secondi per il socket server della GUI...
+timeout /t 5 /nobreak > nul
 
-echo [Eldhom] Avvio CoreEngine (porta 9211)...
-start "" /B "%ENGINE_EXE%" "%DATA_DIR%"
+echo [Eldhom] Avvio CoreEngine in finestra separata (porta 9211)...
+start "Eldhom Engine - C++" "%ENGINE_EXE%" "%DATA_DIR%"
 
-echo [Eldhom] Avviato. Chiudi questa finestra per terminare entrambi i processi.
-echo [Eldhom] (oppure chiudi le finestre GUI e engine separatamente)
+echo [Eldhom] Entrambe le finestre sono state aperte.
+echo [Eldhom] GUI: seleziona una missione per avviare il gioco
+echo [Eldhom] Chiudi le finestre GUI e Engine quando termini.
 pause
 endlocal

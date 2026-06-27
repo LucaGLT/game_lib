@@ -58,4 +58,4 @@ class EldhomBridge:
         Args:
             handler: Callable receiving the decoded event dict.
         """
-        self._receiver.on_message = handler
+        self._receiver.envelope_received.connect(handler)

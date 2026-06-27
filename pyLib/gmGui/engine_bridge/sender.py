@@ -57,9 +57,13 @@ class EngineSender:
         try:
             self._ensure_connected()
             msg: dict = {"typeId": type_id, "source": "GUI", "data": data}
-            send_frame(self._sock, json.dumps(msg))  # type: ignore[arg-type]
-        except OSError:
+            frame_data = json.dumps(msg)
+            print(f"[EngineSender] 📤 Sending: {frame_data[:80]}...", flush=True)
+            send_frame(self._sock, frame_data)  # type: ignore[arg-type]
+            print(f"[EngineSender] ✓ Sent command to engine.", flush=True)
+        except OSError as e:
             # Engine not reachable; reset so the next call retries the connection.
+            print(f"[EngineSender] ✗ Connection error: {e}", flush=True)
             self.close()
 
     def close(self) -> None:
