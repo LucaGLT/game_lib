@@ -25,8 +25,15 @@ set(_ELDHOM_ENGINE_SRCS
     formation/EldhomFormationAdapter.cpp
     monsters/EldhomBehaviorAdapter.cpp
     mission/MissionEventSystem.cpp
+    mission/MissionLoader.cpp
     targeting/TargetingFilter.cpp
     rules/EldhomRuleAdapter.cpp
+)
+
+# Bridge sources are only needed by the main executable, not by unit tests
+set(_ELDHOM_BRIDGE_SRCS
+    bridge/EldhomGuiBridge.cpp
+    bridge/EldhomCmdServer.cpp
 )
 
 # ── eldhom_engine — standalone executable (entry point for CLI / tests) ───────
@@ -34,6 +41,7 @@ set(_ELDHOM_ENGINE_SRCS
 add_executable(eldhom_engine
     main.cpp
     ${_ELDHOM_ENGINE_SRCS}
+    ${_ELDHOM_BRIDGE_SRCS}
 )
 
 target_include_directories(eldhom_engine PRIVATE
@@ -45,7 +53,13 @@ target_link_libraries(eldhom_engine PRIVATE
     gmAlea
     gmActor
     gmLog
+    gmDispatch
+    gmSave
 )
+
+if(WIN32)
+    target_link_libraries(eldhom_engine PRIVATE ws2_32)
+endif()
 
 if(MSVC)
     target_compile_options(eldhom_engine PRIVATE
@@ -70,7 +84,10 @@ macro(eldhom_add_test TEST_NAME TEST_SRC)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}
     )
-    target_link_libraries(${TEST_NAME} PRIVATE gmAlea gmActor gmLog)
+    target_link_libraries(${TEST_NAME} PRIVATE gmAlea gmActor gmLog gmSave)
+    if(WIN32)
+        target_link_libraries(${TEST_NAME} PRIVATE ws2_32)
+    endif()
     if(MSVC)
         target_compile_options(${TEST_NAME} PRIVATE /Zc:__cplusplus /W4)
     endif()

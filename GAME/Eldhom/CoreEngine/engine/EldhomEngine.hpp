@@ -70,6 +70,22 @@ using EngineEventCallback =
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * @struct HeroHandState
+ * @brief Per-hero hand and deck tracking state.
+ *
+ * Tracks the shuffled draw pile, the current hand, and the discard pile.
+ * Managed internally by EldhomEngine; accessed via hand_cards().
+ */
+struct HeroHandState
+{
+	std::vector<CardId> hand;    ///< Cards currently in the hero's hand
+	std::vector<CardId> deck;    ///< Shuffled draw pile (top = back())
+	std::vector<CardId> discard; ///< Played / discarded cards
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
  * @class EldhomEngine
  * @brief Main game-engine orchestrator for Le Pergamene di Eldhôm.
  */
@@ -252,6 +268,27 @@ public:
 	/** @brief Read-only access to the actor store. */
 	const gmActor::ActorStore& actor_store() const;
 
+	/**
+	 * @brief Returns the cards currently in a hero's hand.
+	 *
+	 * @param hero_id  Hero actor ID.
+	 * @return Const reference to the hand card list.
+	 * @throws std::out_of_range if hero_id is not registered.
+	 */
+	const std::vector<CardId>& hand_cards(const HeroId& hero_id) const;
+
+	/**
+	 * @brief Returns the number of cards in the hero's draw pile.
+	 * @param hero_id  Hero actor ID.
+	 */
+	int deck_count(const HeroId& hero_id) const;
+
+	/**
+	 * @brief Returns the number of cards in the hero's discard pile.
+	 * @param hero_id  Hero actor ID.
+	 */
+	int discard_count(const HeroId& hero_id) const;
+
 	// ── Event callback ────────────────────────────────────────────────────────
 
 	/**
@@ -265,6 +302,7 @@ private:
 	gmActor::ActorStore                               _store;
 	std::unordered_map<HeroId, gmAlea::SequenceState> _seq_states;
 	std::unordered_map<CardId, EldhomCard>            _card_catalog;
+	std::unordered_map<HeroId, HeroHandState>         _hand_states; ///< Per-hero deck/hand
 
 	// ── Configuration ─────────────────────────────────────────────────────────
 	std::vector<std::string>                                  _hero_factions;
@@ -313,6 +351,23 @@ private:
 	 *        and notifies the mission event system if the group is eliminated.
 	 */
 	void handle_monster_instance_death(const gmActor::ActorId& instance_id);
+
+	/**
+	 * @brief Builds and shuffles initial hand states from the PG roster.
+	 *
+	 * Called by `from_definition` after construction.  Shuffles each hero's
+	 * mission_deck and deals `hand_limit` cards into the hand.
+	 */
+	void build_initial_hands(const std::vector<PgEntry>& roster);
+
+	/**
+	 * @brief Draws cards for a hero until the hand reaches hand_limit.
+	 *
+	 * If the draw pile is exhausted the discard pile is reshuffled back into
+	 * the deck before drawing continues.  Emits EVT_DECK_RESHUFFLED when a
+	 * reshuffle occurs.
+	 */
+	void draw_to_hand(const HeroId& hero_id);
 };
 
 } // namespace eldhom

@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <random>
 #include <stdexcept>
 
 namespace eldhom {
@@ -199,7 +200,7 @@ EldhomEngine EldhomEngine::from_definition(
 			}
 		};
 
-	return EldhomEngine(
+	EldhomEngine eng(
 		std::move(store),
 		std::move(seq_states),
 		card_catalog,                 // copy — catalog may be shared by tests
@@ -209,6 +210,80 @@ EldhomEngine EldhomEngine::from_definition(
 		std::move(behavior_adapter),
 		std::move(event_system),
 		std::move(engine_cb));
+
+	eng.build_initial_hands(def.pg_roster);
+	return eng;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hand management
+// ─────────────────────────────────────────────────────────────────────────────
+
+void EldhomEngine::build_initial_hands(const std::vector<PgEntry>& roster)
+{
+	std::mt19937 rng(std::random_device{}());
+
+	for (const PgEntry& pg : roster)
+	{
+		// Skip heroes without a defined mission deck (e.g. test fixtures).
+		// play_card() only validates hand membership when a hand state exists.
+		if (pg.mission_deck.empty()) { continue; }
+
+		HeroHandState hs;
+		hs.deck = pg.mission_deck;
+		std::shuffle(hs.deck.begin(), hs.deck.end(), rng);
+
+		const gmActor::HeroState& hero = _store.hero(pg.hero_id);
+		int limit = hero.hand_limit;
+		int to_draw = std::min(limit, static_cast<int>(hs.deck.size()));
+		for (int i = 0; i < to_draw; ++i)
+		{
+			hs.hand.push_back(hs.deck.back());
+			hs.deck.pop_back();
+		}
+		_hand_states[pg.hero_id] = std::move(hs);
+	}
+}
+
+void EldhomEngine::draw_to_hand(const HeroId& hero_id)
+{
+	if (_hand_states.find(hero_id) == _hand_states.end()) { return; }
+
+	const gmActor::HeroState& hero = _store.hero(hero_id);
+	int limit = hero.hand_limit;
+
+	HeroHandState& hs = _hand_states.at(hero_id);
+	while (static_cast<int>(hs.hand.size()) < limit)
+	{
+		if (hs.deck.empty())
+		{
+			if (hs.discard.empty()) { break; }  // truly no cards left
+
+			// Reshuffle discard into deck
+			hs.deck = std::move(hs.discard);
+			hs.discard.clear();
+			std::mt19937 rng(std::random_device{}());
+			std::shuffle(hs.deck.begin(), hs.deck.end(), rng);
+			emit(EVT_DECK_RESHUFFLED, hero_id, {});
+		}
+		hs.hand.push_back(hs.deck.back());
+		hs.deck.pop_back();
+	}
+}
+
+const std::vector<CardId>& EldhomEngine::hand_cards(const HeroId& hero_id) const
+{
+	return _hand_states.at(hero_id).hand;
+}
+
+int EldhomEngine::deck_count(const HeroId& hero_id) const
+{
+	return static_cast<int>(_hand_states.at(hero_id).deck.size());
+}
+
+int EldhomEngine::discard_count(const HeroId& hero_id) const
+{
+	return static_cast<int>(_hand_states.at(hero_id).discard.size());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -427,6 +502,19 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 	}
 	const EldhomCard& card = card_it->second;
 
+	// Validate card is in the hero's hand (if hand tracking is active)
+	auto hand_it = _hand_states.find(hero_id);
+	if (hand_it != _hand_states.end())
+	{
+		const std::vector<CardId>& h = hand_it->second.hand;
+		auto pos = std::find(h.begin(), h.end(), card_id);
+		if (pos == h.end())
+		{
+			return { ActionResultCode::ERR_CARD_NOT_IN_HAND,
+			         "Card not in hand: " + card_id };
+		}
+	}
+
 	// Sequence check
 	const gmAlea::SequenceState& seq = _seq_states.at(hero_id);
 	if (!_sequence_adapter.can_play(card.card_type, seq))
@@ -459,6 +547,18 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 	// Advance timeline
 	_store.common(hero_id).timeline_position += card.timeline_cost;
 	_mission_events.advance_time(card.timeline_cost);
+
+	// Move played card from hand to discard
+	if (_hand_states.count(hero_id))
+	{
+		HeroHandState& hs = _hand_states.at(hero_id);
+		auto pos = std::find(hs.hand.begin(), hs.hand.end(), card_id);
+		if (pos != hs.hand.end())
+		{
+			hs.discard.push_back(*pos);
+			hs.hand.erase(pos);
+		}
+	}
 
 	emit(EVT_PG_PLAYED_CARD, hero_id, card_id);
 
@@ -688,6 +788,23 @@ void EldhomEngine::end_hero_turn(const HeroId& hero_id)
 	{
 		_seq_states[hero_id] = _sequence_adapter.reset();
 	}
+
+	// Draw back up to hand limit and emit hand update
+	if (_hand_states.count(hero_id))
+	{
+		draw_to_hand(hero_id);
+
+		const std::vector<CardId>& hand = _hand_states.at(hero_id).hand;
+		std::string payload = "[";
+		for (std::size_t i = 0; i < hand.size(); ++i)
+		{
+			if (i > 0) { payload += ","; }
+			payload += "\"" + hand[i] + "\"";
+		}
+		payload += "]";
+		emit(EVT_HAND_CHANGED, hero_id, payload);
+	}
+
 	emit(EVT_PG_TURN_ENDED, hero_id, {});
 }
 

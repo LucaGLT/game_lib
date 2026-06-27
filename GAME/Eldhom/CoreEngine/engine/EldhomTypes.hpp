@@ -10,6 +10,7 @@
  * file is the foundation layer that other engine headers build on.
  */
 
+#include <cstdint>
 #include <string>
 
 namespace eldhom {
@@ -141,10 +142,44 @@ inline const EventType EVT_GROUP_ELIMINATED  = "eldhom.group.eliminated";
 inline const EventType EVT_FORMATION_CHECKED = "eldhom.formation.checked";
 inline const EventType EVT_FORMATION_CHANGED = "eldhom.formation.changed";
 
+// Deck / hand events
+inline const EventType EVT_HAND_CHANGED      = "eldhom.deck.hand_updated";
+inline const EventType EVT_DECK_RESHUFFLED   = "eldhom.deck.reshuffled";
+
 // Mission events
 inline const EventType EVT_MISSION_TIME      = "eldhom.mission.time_advanced";
 inline const EventType EVT_MISSION_VICTORY   = "eldhom.mission.victory";
 inline const EventType EVT_MISSION_DEFEAT    = "eldhom.mission.defeat";
+
+// Full-state snapshot (sent on mission start / GUI reconnect)
+inline const EventType EVT_STATE_FULL        = "eldhom.state.full";
+
+// Turn notification (sent after each turn ends, before the next begins)
+inline const EventType EVT_TURN_NEXT_ACTOR   = "eldhom.turn.next_actor";
+
+// Action result feedback
+inline const EventType EVT_ACTION_RESULT     = "eldhom.action.result";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Network port constants (P7 — GUI bridge)
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace ports {
+	/** @brief GUI TCP server port — engine connects to send events. */
+	constexpr uint16_t EVENTS   = 9210;
+	/** @brief Engine TCP server port — GUI connects to send commands. */
+	constexpr uint16_t COMMANDS = 9211;
+} // namespace ports
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Command type string constants (GUI → engine)
+// ─────────────────────────────────────────────────────────────────────────────
+
+inline const std::string CMD_START_MISSION   = "eldhom.start_mission";
+inline const std::string CMD_PLAY_CARD       = "eldhom.play_card";
+inline const std::string CMD_SIMPLE_ACTION   = "eldhom.simple_action";
+inline const std::string CMD_STOP_SEQUENCE   = "eldhom.stop_sequence";
+inline const std::string CMD_REQUEST_STATE   = "eldhom.request_state";
 
 } // namespace eldhom
 

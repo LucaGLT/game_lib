@@ -1,27 +1,438 @@
 /**
  * @file main.cpp
- * @brief Entry point for Le Pergamene di Eldhôm CoreEngine CLI.
+ * @brief Entry point for Le Pergamene di Eldhôm CoreEngine (P7 — GUI bridge).
  *
- * Loads missione_01, runs one full test cycle (PG turns + monster turns)
- * and prints the result.  Full GUI integration is in P7 (mock ZMQ server).
+ * Loads the selected mission from GAME/Eldhom/data/, builds an EldhomEngine
+ * and connects it to the PySide6 GUI via two TCP sockets:
+ *
+ * - Port 9210 (EVENTS):   engine connects to GUI as a client.  GUI is server.
+ * - Port 9211 (COMMANDS): engine is the TCP server.  GUI connects as client.
+ *
+ * Wire format: 4-byte big-endian length prefix + UTF-8 JSON (identical to the
+ * Dungeon Crawler Basic bridge, compatible with pyLib/gmGui/engine_bridge).
+ *
+ * Turn loop:
+ * 1. Receive `eldhom.start_mission` command → load mission, emit full state.
+ * 2. main loop:
+ *    a. If next actor is HERO         → wait for GUI command.
+ *    b. If next actor is MONSTER_GROUP → auto-resolve turn, emit events.
+ *    c. If is_over()                  → emit victory/defeat, await new game.
  */
 
+#include "GAME/Eldhom/CoreEngine/bridge/EldhomCmdServer.hpp"
+#include "GAME/Eldhom/CoreEngine/bridge/EldhomGuiBridge.hpp"
 #include "GAME/Eldhom/CoreEngine/engine/EldhomEngine.hpp"
-#include "GAME/Eldhom/CoreEngine/mission/MissionDefinition.hpp"
+#include "GAME/Eldhom/CoreEngine/engine/EldhomTypes.hpp"
+#include "GAME/Eldhom/CoreEngine/mission/MissionLoader.hpp"
 
+#include "gmActor/core/Enums.hpp"
+#include "gmSave/json.hpp"
+
+#include <chrono>
+#include <csignal>
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 
-int main()
+// ─────────────────────────────────────────────────────────────────────────────
+// Global shutdown flag
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace {
+volatile std::sig_atomic_t g_running = 1;
+void handle_signal(int) { g_running = 0; }
+} // namespace
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EldhomServer — owns engine + bridge and handles commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+class EldhomServer
 {
-	std::cout << "Le Pergamene di Eldhom — CoreEngine P6\n";
-	std::cout << "======================================\n";
-	std::cout << "Caricamento missione_01 ...\n";
+public:
+	explicit EldhomServer(const std::string& data_dir)
+		: _data_dir(data_dir)
+		, _bridge("127.0.0.1", eldhom::ports::EVENTS)
+	{
+	}
 
-	// TODO: Phase 7 — load from JSON (data/mission_01.json)
-	// For now, just confirm the engine compiles and links correctly.
-	std::cout << "OK — build successful.\n";
-	std::cout << "Per eseguire il gioco usa i test: test_eldhom_mission01\n";
+	// Called by main loop for auto-advancing monster turns
+	void advance_auto()
+	{
+		std::unique_lock<std::mutex> lock(_mtx);
+		if (!_engine) { return; }
+		if (_engine->is_over()) { return; }
 
+		gmActor::ActorKind kind = _engine->next_actor_kind();
+		if (kind == gmActor::ActorKind::MONSTER_GROUP)
+		{
+			std::string group_id = _engine->next_actor();
+			_engine->resolve_group_turn_for(group_id);
+			emit_next_actor_event();
+		}
+	}
+
+	// Dispatch a GUI command to the engine
+	void handle_command(const std::string& type_id, const nlohmann::json& data)
+	{
+		std::unique_lock<std::mutex> lock(_mtx);
+
+		if (type_id == eldhom::CMD_START_MISSION)
+		{
+			handle_start_mission(data);
+		}
+		else if (type_id == eldhom::CMD_PLAY_CARD)
+		{
+			handle_play_card(data);
+		}
+		else if (type_id == eldhom::CMD_SIMPLE_ACTION)
+		{
+			handle_simple_action(data);
+		}
+		else if (type_id == eldhom::CMD_STOP_SEQUENCE)
+		{
+			handle_stop_sequence(data);
+		}
+		else if (type_id == eldhom::CMD_REQUEST_STATE)
+		{
+			if (_engine) { emit_full_state(); }
+		}
+	}
+
+private:
+	// ── Mission start ──────────────────────────────────────────────────────────
+
+	void handle_start_mission(const nlohmann::json& data)
+	{
+		std::string mission_id = data.value("mission_id", std::string{"missione_01"});
+
+		try
+		{
+			eldhom::MissionDefinition def =
+				eldhom::MissionLoader::load_mission(_data_dir, mission_id);
+
+			std::unordered_map<eldhom::CardId, eldhom::EldhomCard> card_catalog =
+				eldhom::MissionLoader::load_card_catalog(_data_dir);
+
+			std::unordered_map<gmActor::CardId, gmActor::BehaviorCard> behavior_catalog =
+				eldhom::MissionLoader::load_behavior_catalogs_for_mission(def, _data_dir);
+
+			_bridge_ref = &_bridge;
+			_engine = std::make_unique<eldhom::EldhomEngine>(
+				eldhom::EldhomEngine::from_definition(
+					def,
+					card_catalog,
+					behavior_catalog,
+					[this](const eldhom::EventType& type,
+					       const std::string& actor_id,
+					       const std::string& payload)
+					{
+						forward_engine_event(type, actor_id, payload);
+					}));
+
+			_last_def = def;
+
+			emit_full_state();
+			emit_next_actor_event();
+
+			std::cout << "[EldhomEngine] Mission '" << mission_id << "' started.\n";
+		}
+		catch (const std::exception& ex)
+		{
+			nlohmann::json err;
+			err["ok"]    = false;
+			err["error"] = ex.what();
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			std::cerr << "[EldhomEngine] load error: " << ex.what() << "\n";
+		}
+	}
+
+	// ── PG commands ───────────────────────────────────────────────────────────
+
+	void handle_play_card(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+		std::string card_id = data.value("card_id", std::string{});
+
+		eldhom::ActionResult r = _engine->play_card(hero_id, card_id);
+		send_action_result(r);
+		if (r.ok()) { emit_next_actor_event(); }
+	}
+
+	void handle_simple_action(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id     = data.value("hero_id",     std::string{});
+		std::string action_str  = data.value("action_type", std::string{});
+		std::string destination = data.value("destination", std::string{});
+
+		eldhom::SimpleActionType action = eldhom::SimpleActionType::RECOVER;
+		if      (action_str == "MOVE")    { action = eldhom::SimpleActionType::MOVE; }
+		else if (action_str == "ATTACK")  { action = eldhom::SimpleActionType::ATTACK; }
+		else if (action_str == "INTERACT") { action = eldhom::SimpleActionType::INTERACT; }
+
+		eldhom::ActionResult r = _engine->do_simple_action(hero_id, action, destination);
+		send_action_result(r);
+		if (r.ok()) { emit_next_actor_event(); }
+	}
+
+	void handle_stop_sequence(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+
+		eldhom::ActionResult r = _engine->stop_sequence(hero_id);
+		send_action_result(r);
+		if (r.ok()) { emit_next_actor_event(); }
+	}
+
+	// ── Event forwarding ──────────────────────────────────────────────────────
+
+	void forward_engine_event(
+		const eldhom::EventType& type,
+		const std::string& actor_id,
+		const std::string& payload)
+	{
+		nlohmann::json d;
+		if (!actor_id.empty()) { d["actor_id"] = actor_id; }
+		if (!payload.empty())
+		{
+			// payload may be a JSON array or plain string
+			try
+			{
+				d["payload"] = nlohmann::json::parse(payload);
+			}
+			catch (...)
+			{
+				d["payload"] = payload;
+			}
+		}
+
+		_bridge.send_event(type, d);
+
+		// After victory/defeat, emit a summary
+		if (type == eldhom::EVT_MISSION_VICTORY || type == eldhom::EVT_MISSION_DEFEAT)
+		{
+			std::cout << "[EldhomEngine] Mission ended: " << type << "\n";
+		}
+	}
+
+	void send_action_result(const eldhom::ActionResult& r)
+	{
+		nlohmann::json d;
+		d["ok"]    = r.ok();
+		d["code"]  = static_cast<int>(r.code);
+		d["error"] = r.message;
+		_bridge.send_event(eldhom::EVT_ACTION_RESULT, d);
+	}
+
+	// ── State snapshot helpers ────────────────────────────────────────────────
+
+	void emit_next_actor_event()
+	{
+		if (!_engine || _engine->is_over()) { return; }
+
+		const std::string& id   = _engine->next_actor();
+		gmActor::ActorKind  kind = _engine->next_actor_kind();
+
+		std::string kind_str;
+		switch (kind)
+		{
+		case gmActor::ActorKind::HERO:           kind_str = "HERO";          break;
+		case gmActor::ActorKind::MONSTER_GROUP:  kind_str = "MONSTER_GROUP"; break;
+		default:                                 kind_str = "OTHER";         break;
+		}
+
+		nlohmann::json d;
+		d["actor_id"] = id;
+		d["kind"]     = kind_str;
+		_bridge.send_event(eldhom::EVT_TURN_NEXT_ACTOR, d);
+	}
+
+	void emit_full_state()
+	{
+		if (!_engine) { return; }
+
+		const gmActor::ActorStore& store = _engine->actor_store();
+		nlohmann::json state;
+
+		state["mission_id"] = _last_def.mission_id;
+		state["title"]      = _last_def.title;
+		state["time"]       = _engine->mission_time();
+
+		// Locations
+		nlohmann::json locs = nlohmann::json::array();
+		for (const eldhom::LocationNode& loc : _last_def.locations)
+		{
+			nlohmann::json lj;
+			lj["id"]   = loc.id;
+			lj["name"] = loc.name;
+			nlohmann::json adj = nlohmann::json::array();
+			for (const std::string& a : loc.adjacent) { adj.push_back(a); }
+			lj["adjacent"] = adj;
+			locs.push_back(lj);
+		}
+		state["locations"] = locs;
+
+		// Heroes
+		nlohmann::json heroes = nlohmann::json::array();
+		for (const auto& kv : store.heroes())
+		{
+			const gmActor::HeroState& h = kv.second;
+			const gmActor::ActorStateCommon& c = h.common;
+			nlohmann::json hj;
+			hj["id"]       = c.actor_id;
+			hj["name"]     = c.display_name;
+			hj["faction"]  = c.faction_id;
+			hj["location"] = c.area_id;
+			hj["position"] =
+				(c.area_position == gmActor::AreaPosition::FRONTLINE) ? "FRONTLINE" : "BACKLINE";
+			hj["hp"]         = c.current_hp;
+			hj["max_hp"]     = c.max_hp;
+			hj["timeline"]   = c.timeline_position;
+			hj["life_state"] = static_cast<int>(c.life_state);
+			hj["hand_limit"] = h.hand_limit;
+
+			// Hand cards
+			try
+			{
+				nlohmann::json hand_arr = nlohmann::json::array();
+				for (const eldhom::CardId& cid : _engine->hand_cards(c.actor_id))
+				{
+					hand_arr.push_back(cid);
+				}
+				hj["hand"]          = hand_arr;
+				hj["deck_count"]    = _engine->deck_count(c.actor_id);
+				hj["discard_count"] = _engine->discard_count(c.actor_id);
+			}
+			catch (...)
+			{
+				hj["hand"] = nlohmann::json::array();
+				hj["deck_count"]    = 0;
+				hj["discard_count"] = 0;
+			}
+
+			heroes.push_back(hj);
+		}
+		state["heroes"] = heroes;
+
+		// Monster groups
+		nlohmann::json groups = nlohmann::json::array();
+		for (const auto& kv : store.monster_groups())
+		{
+			const gmActor::MonsterGroupState& g = kv.second;
+			if (g.removed) { continue; }
+			nlohmann::json gj;
+			gj["id"]       = g.actor_id;
+			gj["name"]     = g.display_name;
+			gj["timeline"] = g.timeline_position;
+
+			// First member's location
+			std::string loc_id;
+			if (!g.members.empty() && store.has_actor(g.members.front()))
+			{
+				loc_id = store.common(g.members.front()).area_id;
+			}
+			gj["location"] = loc_id;
+
+			nlohmann::json insts = nlohmann::json::array();
+			for (const gmActor::ActorId& mid : g.members)
+			{
+				if (!store.has_actor(mid)) { continue; }
+				const gmActor::ActorStateCommon& mc = store.common(mid);
+				nlohmann::json ij;
+				ij["id"]       = mc.actor_id;
+				ij["location"] = mc.area_id;
+				ij["position"] =
+					(mc.area_position == gmActor::AreaPosition::FRONTLINE) ? "FRONTLINE" : "BACKLINE";
+				ij["hp"]     = mc.current_hp;
+				ij["max_hp"] = mc.max_hp;
+				ij["alive"]  = (mc.life_state == gmActor::ActorLifeState::ACTIVE);
+				insts.push_back(ij);
+			}
+			gj["instances"] = insts;
+			groups.push_back(gj);
+		}
+		state["groups"] = groups;
+
+		// Next actor
+		nlohmann::json nxt;
+		nxt["actor_id"] = _engine->next_actor();
+		nxt["kind"]     = [this]() -> std::string {
+			switch (_engine->next_actor_kind())
+			{
+			case gmActor::ActorKind::HERO:          return "HERO";
+			case gmActor::ActorKind::MONSTER_GROUP: return "MONSTER_GROUP";
+			default:                                return "OTHER";
+			}
+		}();
+		state["next_actor"] = nxt;
+		state["is_over"]    = _engine->is_over();
+
+		_bridge.send_event(eldhom::EVT_STATE_FULL, state);
+	}
+
+	// ── Data ──────────────────────────────────────────────────────────────────
+
+	std::string                        _data_dir;
+	eldhom::EldhomGuiBridge            _bridge;
+	std::unique_ptr<eldhom::EldhomEngine> _engine;
+	eldhom::MissionDefinition          _last_def;
+	std::mutex                         _mtx;
+	eldhom::EldhomGuiBridge*           _bridge_ref = nullptr;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// main
+// ─────────────────────────────────────────────────────────────────────────────
+
+int main(int argc, char* argv[])
+{
+	std::signal(SIGINT,  handle_signal);
+	std::signal(SIGTERM, handle_signal);
+
+	// data_dir: first arg or default relative to build location
+	std::string data_dir = "GAME/Eldhom/data";
+	if (argc >= 2) { data_dir = argv[1]; }
+
+	std::cout << "[EldhomEngine] Le Pergamene di Eldhom — CoreEngine P7\n";
+	std::cout << "[EldhomEngine] Data dir : " << data_dir << "\n";
+	std::cout << "[EldhomEngine] Events   : connecting to GUI on port "
+	          << eldhom::ports::EVENTS << "\n";
+	std::cout << "[EldhomEngine] Commands : listening on port "
+	          << eldhom::ports::COMMANDS << "\n";
+
+	EldhomServer server(data_dir);
+
+	eldhom::EldhomCmdServer cmd_server(
+		eldhom::ports::COMMANDS,
+		[&server](const std::string& type_id, const nlohmann::json& data)
+		{
+			try
+			{
+				server.handle_command(type_id, data);
+			}
+			catch (const std::exception& ex)
+			{
+				std::cerr << "[EldhomEngine] Command error: " << ex.what() << "\n";
+			}
+		});
+
+	cmd_server.start();
+
+	std::cout << "[EldhomEngine] Ready. Send 'eldhom.start_mission' from the GUI.\n";
+
+	while (g_running)
+	{
+		server.advance_auto();
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	}
+
+	cmd_server.stop();
+	std::cout << "[EldhomEngine] Stopped.\n";
 	return 0;
 }
+
