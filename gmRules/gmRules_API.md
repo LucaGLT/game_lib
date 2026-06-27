@@ -220,6 +220,12 @@ For each type, the relevant `EffectSpec` fields are listed.
 | `EMIT_EVENT` | — | event type string | Calls `emit_event()` without state mutation |
 | `MANUAL_EFFECT` | — | event type string | Identical to `EMIT_EVENT` |
 | `CUSTOM` | game-defined | game-defined | Delegated to `apply_extended_effect()` |
+| **Advanced / Dungeon Crawler** ||||
+| `SET_ACTOR_RESOURCE` | target value | resource ID | Sets resource to exact `amount` via delta |
+| `TRIGGER_RULE` | — | rule ID to chain | Delegates to `apply_extended_effect()`; avoids circular dep |
+| `SCALE_EFFECT` | multiplier (≥1) | resource ID (source) | Deals `resource × amount` damage to target |
+| `CHAIN_EFFECT` | damage per hit | — | Primary damage + bounces to `chain_count` extra enemies |
+| `DELAY_EFFECT` | inner `amount` | inner effect type name | Emits `gmRules.effect.delayed`; `chain_count` = turns delay |
 
 ### Resolver
 

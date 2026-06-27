@@ -70,7 +70,14 @@ enum class EffectType
     // ── Events / escape hatch ─────────────────────────────────────────────────
     EMIT_EVENT,       ///< Emit a `RuleEvent` without mutating state
     MANUAL_EFFECT,    ///< Escape hatch: emit event, do not mutate state (D6)
-    CUSTOM            ///< Game-specific effect delegated through `RuleContext`
+    CUSTOM,           ///< Game-specific effect delegated through `RuleContext`
+
+    // ── Dungeon Crawler / advanced ────────────────────────────────────────────
+    SET_ACTOR_RESOURCE, ///< Set resource `value` to exact `amount` on target
+    TRIGGER_RULE,       ///< Delegate to ctx.apply_extended_effect for chained rule `value`
+    SCALE_EFFECT,       ///< DEAL_DAMAGE scaled by actor resource: damage = resource(`value`) × `amount`
+    CHAIN_EFFECT,       ///< DEAL_DAMAGE `amount` to primary target + bounce to `chain_count` enemies
+    DELAY_EFFECT        ///< Schedule inner effect `value`/`amount` via ctx after `chain_count` turns
 };
 
 /**
@@ -119,6 +126,11 @@ inline const char* effect_type_name(EffectType type)
     if (type == EffectType::EMIT_EVENT) return "EMIT_EVENT";
     if (type == EffectType::MANUAL_EFFECT) return "MANUAL_EFFECT";
     if (type == EffectType::CUSTOM) return "CUSTOM";
+    if (type == EffectType::SET_ACTOR_RESOURCE) return "SET_ACTOR_RESOURCE";
+    if (type == EffectType::TRIGGER_RULE)       return "TRIGGER_RULE";
+    if (type == EffectType::SCALE_EFFECT)       return "SCALE_EFFECT";
+    if (type == EffectType::CHAIN_EFFECT)       return "CHAIN_EFFECT";
+    if (type == EffectType::DELAY_EFFECT)       return "DELAY_EFFECT";
     return "UNKNOWN_EFFECT";
 }
 
