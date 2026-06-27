@@ -135,6 +135,9 @@ class DungeonMainWindow(QMainWindow):
         self._area_info = GmMapAreaInfoModule()
         self._flow      = GmFlowModule()
         self._deck      = GmCompDeckModule()
+        # The CoreEngine is the sole authority on action cost; disable the
+        # deck module's client-side "Azioni esaurite" warning.
+        self._deck.set_enforce_action_cost(False)
 
         # ── Main window dock options ──────────────────────────────────────────
         self.setDockOptions(

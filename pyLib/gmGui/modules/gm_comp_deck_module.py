@@ -95,6 +95,11 @@ class GmCompDeckModule(BaseModule):
         }
         # Resources of the active actor (Player_X), updated via events.
         self._active_actor_actions: int = 1
+        # When True, warn before playing a card that would exceed available
+        # actions. Games where a backend engine validates action cost should
+        # disable this via set_enforce_action_cost(False). Preserve any value
+        # set before the (lazy) widget build so the opt-out is not overwritten.
+        self._enforce_action_cost: bool = getattr(self, "_enforce_action_cost", True)
 
         container = QWidget()
         container.setObjectName("gm_comp_deck_module")
@@ -349,6 +354,20 @@ class GmCompDeckModule(BaseModule):
 
         self._zone_groups["NonInUso"] = group
         return group
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def set_enforce_action_cost(self, enabled: bool) -> None:
+        """Enables or disables the client-side action-cost warning.
+
+        When disabled, the module never blocks a card play based on its own
+        action accounting; a backend engine is expected to validate instead.
+
+        Args:
+            enabled: True to keep the local warning; False to delegate to the
+                backend engine.
+        """
+        self._enforce_action_cost = enabled
 
     # ── Envelope handler ──────────────────────────────────────────────────────
 
@@ -621,7 +640,7 @@ class GmCompDeckModule(BaseModule):
             return
         # When playing from hand to an active zone, check action cost.
         _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
-        if from_zone == "CardHand" and to_zone in _PLAY_ZONES:
+        if self._enforce_action_cost and from_zone == "CardHand" and to_zone in _PLAY_ZONES:
             action_cost: int = 1  # default
             zone_list = self._zone_lists.get(from_zone)
             if zone_list is not None:
