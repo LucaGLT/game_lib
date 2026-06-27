@@ -22,6 +22,8 @@ e GUI Python/PySide6 (visualizzazione, interazione giocatore).
 
 ## 🚀 Current Status Summary
 
+> NB: Da verificare se davvero alcune fasi sono state completate
+
 | Phase | Component | Status | Details |
 |-------|-----------|--------|---------|
 | **P2** | CardType + SequenceEngine | ✅ Complete | 29/29 tests passing (gmAlea F1) |
@@ -64,7 +66,7 @@ e GUI Python/PySide6 (visualizzazione, interazione giocatore).
 
 ## Architettura
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PySide6 GUI  (GAME/Eldhom/GUI/)                                    │
 │  TimelineWidget  FormationWidget  SequenceWidget  BehaviorCardWidget │
@@ -101,7 +103,7 @@ e GUI Python/PySide6 (visualizzazione, interazione giocatore).
 
 ## File Structure
 
-```
+```text
 GAME/Eldhom/
 ├── PLAN.md                          ← questo file
 ├── info/
