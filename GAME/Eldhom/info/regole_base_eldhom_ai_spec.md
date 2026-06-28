@@ -47,7 +47,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
   > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la peggiore. Dura fino alla fine del tuo prossimo turno.
 
 - **Rallentato** : Movimento tra Locazioni: +2⌛ ; Dura 1 Turno
-  > Aggiungi +2⌛ al costo di ogni Azione o Carta che implica un Movimento da una Locazione ad un'altra. Dura fino alla fine del tuo prossimo turno.
+  > Aggiungi +2⌛ il costo di ogni Azione o Carta che implica un Movimento da una Locazione ad un'altra. Dura fino alla fine del tuo prossimo turno.
 
 - **Avvelenato** : **Vista Offuscata** e **Rallentato**; Dura fino a *Cura*
   > Applica **Vista Offuscata** e **Rallentato** in modo durarturo fino alla prossima *Cura* ricevuta.
@@ -64,8 +64,8 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 - **Sanguinante** : Inizio Turno: -1PV ; Dura fino a *Cura*.
   > A inizio di ogni tuo turno, la miniatura perde 1 Puno Vita. Perdura fino alla prossima *Cura* ricevuta.
 
-- **Svenuto**: Nessuna Azione o Carta; +1PV e passa il turno; Dura 1 Turno
-  > Impedisce di eseguire qualsiasi Azione o Giocare alcuna Carta finché perdura l'effetto; all'inizio del tuo prossimo turno recuperi +1PV, rimuovi l'effetto e passa il turno. Dura fino alla fine del tuo prossimo turno.
+- **Svenuto**: Nessua Azione o Carta; +1PV e passa il turno; Dura 1 Turno
+  > Impedisce di eseguire qualsiasi Azione o Giocare alcuna Carta finchè perdura l'effetto; all'inizio del tuo prossimo turno recuperi +1PV, rimuovi l'effetto e passa il turno. Dura fino alla fine del tuo prossimo turno.
 
 - **Maledetto** : Alcune Carte specifiche applicheranno malus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Benedetto**: le due condizioni si annullano a vicenda.
 
@@ -74,14 +74,14 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 - **Vista Acuita** : Tiro o Lancio : pesca 2 Carte Modificatore e applica la migliore; Dura 1 Turno
   > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la migliore. Dura fino alla fine del tuo prossimo turno.
 
-- **Concentrato** : Prossima Azione/Carta  : -2⌛(min:1⌛); Dura 1 Azione/Carta
+- **Concentrato** : Prossima Azione/Carta : -2⌛ (min:1⌛); Dura 1 Azione/Carta
   > riduce di 2⌛ il costo in Tempo della prossima Azione o Carta (minimo 1⌛). Dura per una sola Azione o Carta.
 
-- **Concentrato in Sequenza** : Prossima Sequenza : -1⌛ a tutte le carte della Sequenza (min:1⌛); Dura 1 Sequanza
-  > riduce di 1⌛ (minimo 1⌛) il costo in Tempo di ogni Carta della prossima Sequenza . Dura per una sola Sequenza.
+- **Energizzato** : **Vista Acuita** e **Concentrato**; Dura 1 Turno
+  > Applica **Vista Acuita** e **Concentrato** in modo durarturo fino alla fine del tuo prossimo turno.
 
-- **Invisibile** : NON può essere attaccata; Dura 1 Turno o dopo Attacco
-  > La miniatura non può essere bersaglio di Attacchi. Dura fino alla fine del tuo prossimo turno. L’effetto termina immediatamente se la miniatura effettua un Attacco.
+- **Invisibile** : NON può essere attaccata; Dura 1 Turno
+  > La miniatura non può essere bersaglio di Attacchi. Dura fino alla fine del tuo prossimo turno.
 
 - **Resistente N** : -N❌ ricevuti; Dura 1 Turno
   > Riduce di N qualunque tipo di Danno ricevuto. Dura fino alla fine del tuo prossimo turno.
@@ -100,18 +100,18 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
   > Ogni fazione può avere massimo N miniature in Prima Linea in questa Locazione.
 
 - Barriere di Protezione N : +N miniature in Retroguardia
-  > Barriere di Protezione N: in questa Locazione, ogni Fazione può avere fino a N miniature aggiuntive in Retroguardia oltre il normale limite di Formazione. Inoltre, le miniature in Retroguardia ottengono **Resistente 1** solo da Attacchi a Distanza provenienti da altre Locazioni.
+  > Retroguardia Protetta: ogni Fazione può inserire +N miniature in Retroguardia rispetto alle normali regole di Formazione; inoltre, le miniature in Retroguardia in questa Locazione ottengono **Resistente 1** contro Attacchi a Distanza provenienti da altre Locazioni.
 
 - Fumo : Attacchi a Distanza: solo in questa Locazione
-  > Gli Attacchi a Distanza da questa Locazione possono colpire al massimo a Distanza corta, quindi solo in questa stessa Locazione. Non puoi essere bersagliato da Attacchi da altre Locazioni.
+  > Gli Attacchi a Distanza in questa Locazione possono colpire al massimo a Distanza corta = questa stessa Locazione.
 
 - Buio : NO Attacchi a Distanza
   > Non è possibile effettuare Attacchi a Distanza che partono da, attraversano o bersagliano questa Locazione, salvo effetti che permettano di vedere nel Buio.
 
-- Terreno Accidentato : Movimento : +1⌛
+- Terreno Accidentato : Movimento : +2⌛
   > Ogni Movimento che parte da, entra in o attraversa questa Locazione costa +1⌛.
 
-- In Fiamme :  Subisci 1❌; Interazione per eliminare la Condizione
+- In Fiamme :  Subisci 1❌; Interazione per elimiinare la Condizione
   > Quando una miniatura entra in questa Locazione o inizia la propria attivazione in questa Locazione, subisce 1❌. Una Locazione In Fiamme può essere spenta con una Interazione Semplice, se la Missione lo consente.
 
 - Crollo Instabile : Se Crollo: Subisci 2❌; diventa **Bloccata**
@@ -127,7 +127,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
   > Quando una miniatura inizia qui la propria attivazione, se è devota alla Divinità Xxxxxx, diventa **Benedetta**.
 
 - Altura : +1 Gittata
-  > Le miniature in Retroguardia in questa Locazione aumentano di +1 Locazoine la gittata dei propri Attacchi a Distanza.
+  > Le miniature in Retroguardia in questa Locazione aumentano di +1 la gittata dei propri Attacchi a Distanza.
 
 ---
 
