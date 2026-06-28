@@ -8,10 +8,16 @@ from __future__ import annotations
 
 import json
 import socket
+from datetime import datetime
 
 from PySide6.QtCore import QThread, Signal
 
 from .framing import recv_frame
+
+
+def _ts() -> str:
+    """Returns the current local time as ``HH:MM:SS.mmm`` for log prefixes."""
+    return datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
 
 class EngineReceiver(QThread):
@@ -73,6 +79,7 @@ class EngineReceiver(QThread):
         srv.bind((self._host, self._port))
         srv.listen(1)
         srv.settimeout(self._TIMEOUT)
+        print(f"[EngineReceiver {_ts()}] In ascolto su {self._host}:{self._port}", flush=True)
 
         client: socket.socket | None = None
         try:
@@ -80,8 +87,9 @@ class EngineReceiver(QThread):
                 # ── Phase A: accept a client if none is connected ─────────────
                 if client is None:
                     try:
-                        client, _ = srv.accept()
+                        client, addr = srv.accept()
                         client.settimeout(self._TIMEOUT)
+                        print(f"[EngineReceiver {_ts()}] Engine connesso da {addr}", flush=True)
                     except socket.timeout:
                         continue  # no C++ client yet; check _running again
                     except OSError:
@@ -93,15 +101,22 @@ class EngineReceiver(QThread):
                 except socket.timeout:
                     continue  # no data in this window; check _running again
                 except (ConnectionError, OSError):
+                    print(f"[EngineReceiver {_ts()}] Connessione persa, in attesa di nuova connessione",
+                          flush=True)
                     self.connection_lost.emit()
                     _close_socket(client)
                     client = None
                     continue
 
                 # ── Phase C: parse JSON ───────────────────────────────────────
+                print(f"[EngineReceiver {_ts()}] \U0001f4e5 Frame ricevuto ({len(raw)} byte):",
+                      flush=True)
+                print(f"[EngineReceiver {_ts()}]    {raw}", flush=True)
                 try:
                     msg: dict = json.loads(raw)
                 except (json.JSONDecodeError, ValueError):
+                    print(f"[EngineReceiver {_ts()}] ERRORE: JSON non valido, frame ignorato",
+                          flush=True)
                     continue  # malformed frame; ignore and keep reading
 
                 # ── Phase D: normalise msg["data"] ────────────────────────────
@@ -115,6 +130,8 @@ class EngineReceiver(QThread):
                     msg["data"] = {}
 
                 self.envelope_received.emit(msg)
+                print(f"[EngineReceiver {_ts()}] Segnale emesso: {msg.get('typeId', '?')}",
+                      flush=True)
 
         finally:
             _close_socket(client)

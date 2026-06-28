@@ -5,7 +5,8 @@ Run from the ``GUI`` folder::
     python main.py
 
 The GUI starts an event server on port 9210 and sends commands to the C++
-CoreEngine on port 9211.  A mission-selection dialog appears on startup.
+CoreEngine on port 9211.  The engine must already be running (start it first
+via run_eldhom.bat).
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ for _path in (str(_GUI_DIR), str(_PYLIB_DIR)):
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
+from app.eldhom_bridge import EldhomBridge           # noqa: E402
 from app.eldhom_main_window import EldhomMainWindow  # noqa: E402
 
 try:
@@ -36,12 +38,23 @@ def main() -> int:
     app = QApplication(sys.argv)
     if _HAS_THEME:
         ThemeManager(app).apply_theme("dark_moon")
-    print("[EldhomGUI] Socket server starting on port 9210...")
-    window = EldhomMainWindow()
-    print("[EldhomGUI] Socket server ready. Waiting for engine commands...")
+
+    # ── Avvia il receiver PRIMA di creare la finestra ─────────────────────────
+    # L'engine (C++) parte per PRIMO (run_eldhom.bat). La sua IpSocketChannel
+    # tenta di connettersi al receiver GUI (porta 9210) alla prima send().
+    # Avviando il receiver qui, la porta 9210 è in ascolto entro ~100 ms
+    # dall'avvio del processo Python — ben prima che l'utente selezioni una
+    # missione e l'engine tenti la connessione.
+    bridge = EldhomBridge()
+    bridge.receiver.start()
+    print("[EldhomGUI] Event receiver avviato su porta 9210", flush=True)
+
+    window = EldhomMainWindow(bridge=bridge)
+    print("[EldhomGUI] Finestra pronta. Usa Gioca > Inizia Nuova Missione.", flush=True)
     window.show()
     return app.exec()
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

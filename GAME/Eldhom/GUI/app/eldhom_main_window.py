@@ -21,6 +21,7 @@ All outgoing commands are sent via EldhomBridge.send_command().
 from __future__ import annotations
 
 import sys
+import threading
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -34,7 +35,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 
 from app.eldhom_bridge import EldhomBridge
 from app.event_router import EventRouter
@@ -104,11 +105,20 @@ class EldhomMainWindow(QMainWindow):
     No game logic lives here — only presentation and orchestration.
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    # Used by _probe_engine (background thread) to safely update the status
+    # bar from the main Qt thread via the signal/slot mechanism.
+    _engine_status = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None,
+                 bridge: EldhomBridge | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Le Pergamene di Eldhôm")
         self.resize(1280, 800)
         self._center_on_screen()
+
+        # Optional pre-built bridge (created early in main.py so the event
+        # receiver on port 9210 is bound before the window is shown).
+        self._bridge: EldhomBridge | None = bridge
 
         self._active_hero_id: str = ""
         self._hero_data: dict[str, dict] = {}
@@ -116,13 +126,14 @@ class EldhomMainWindow(QMainWindow):
         self._mission_started: bool = False
         self._hand_cards: dict[str, list[str]] = {}
 
+        # Connect status signal before _build_bridge launches the probe.
+        self._engine_status.connect(self._on_engine_status)
+
         self._build_menu()
         self._build_layout()
         self._build_bridge()
         self._build_router()
         self._setup_status_bar()
-
-        QTimer.singleShot(300, self._show_mission_select)
 
     # ── Menu (Windows-style QMenuBar) ─────────────────────────────────────────
 
@@ -277,12 +288,37 @@ class EldhomMainWindow(QMainWindow):
         self._hand.card_selected.connect(self._on_card_selected)
 
     def _build_bridge(self) -> None:
-        self._bridge = EldhomBridge()
-        self._bridge.receiver.start()
+        # Use the bridge provided by main.py (receiver already running) or
+        # create a new one (fallback for tests and direct execution).
+        if self._bridge is None:
+            self._bridge = EldhomBridge()
+            self._bridge.receiver.start()
+            print("[EldhomGUI] Event receiver avviato su porta 9210", flush=True)
+        else:
+            print("[EldhomGUI] Usando receiver pre-avviato su porta 9210", flush=True)
         # Wire deck module outgoing commands through the proxy translator
         self._deck.set_sender(_DeckProxy(self._bridge))
-        print("[EldhomGUI] Event receiver listening on port 9210", flush=True)
         self._bridge.set_on_event(self._on_engine_event_thread)
+        # Try to connect to the engine eagerly (non-blocking probe).
+        # The engine must already be running when the GUI starts.
+        threading.Thread(target=self._probe_engine, daemon=True).start()
+
+    def _probe_engine(self) -> None:
+        """Background thread: tries to connect to the C++ engine on port 9211.
+
+        Emits _engine_status Signal (thread-safe) to update the status bar
+        on the main Qt thread.  Timeout is set in EngineSender (~3 s).
+        """
+        connected = self._bridge.sender.connect()
+        if connected:
+            msg = "Engine connesso \u2014 usa Gioca \u203a Inizia Nuova Missione"
+            print("[EldhomGUI] Engine connesso su porta 9211", flush=True)
+        else:
+            msg = "\u26a0 Engine non raggiungibile \u2014 avvia eldhom_engine.exe"
+            print("[EldhomGUI] Engine NON raggiungibile su porta 9211", flush=True)
+        # Thread-safe: Signal.emit() from non-Qt thread uses AutoConnection
+        # → queued delivery on the main thread.
+        self._engine_status.emit(msg)
 
     def _build_router(self) -> None:
         self._router = EventRouter()
@@ -345,10 +381,15 @@ class EldhomMainWindow(QMainWindow):
 
     def _setup_status_bar(self) -> None:
         sb = QStatusBar(self)
-        self._status_label = QLabel("Non connesso \u2014 avvia eldhom_engine.exe", self)
+        self._status_label = QLabel("In attesa del CoreEngine...", self)
         self._status_label.setProperty("text_role", "secondary")
         sb.addWidget(self._status_label)
         self.setStatusBar(sb)
+
+    def _on_engine_status(self, msg: str) -> None:
+        """Slot: receives status updates from the probe thread (main thread)."""
+        if hasattr(self, "_status_label"):
+            self._status_label.setText(msg)
 
     # ── Event routing (thread-safe) ────────────────────────────────────────────
 
@@ -609,12 +650,18 @@ class EldhomMainWindow(QMainWindow):
     def _show_mission_select(self) -> None:
         dialog = MissionSelectDialog(data_dir=str(_DATA_DIR), parent=self)
         if dialog.exec() and dialog.selected_mission_id:
+            # Engine accepts only "eldhom.start_mission" (CMD_START_MISSION).
             self._bridge.send_command(
-                "eldhom.session.start",
+                "eldhom.start_mission",
                 {"mission_id": dialog.selected_mission_id},
             )
 
     # ── Helpers ────────────────────────────────────────────────────────────────
+
+    def closeEvent(self, event) -> None:
+        """Stops the receiver thread before closing to free port 9210."""
+        self._bridge.receiver.stop()
+        super().closeEvent(event)
 
     def _center_on_screen(self) -> None:
         screen = QApplication.primaryScreen()
