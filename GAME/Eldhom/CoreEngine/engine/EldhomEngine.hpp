@@ -262,18 +262,15 @@ public:
 	/**
 	 * @brief Performs a Turno PG: gioca una Carta Azione.
 	 *
-	 * Validates sequence legality, applies all card effects, advances the
-	 * hero's timeline_position by `card.timeline_cost`.
-	 *
-	 * If the card is turn-ending (SINGLE or SEQ_END), emits EVT_PG_TURN_ENDED.
-	 * Otherwise the hero may play another card (SEQ_CONTINUE or INSTANT).
-	 *
-	 * @param hero_id  Hero actor ID.
-	 * @param card_id  Card to play (must be in the hand for the hero — hand
-	 *                 management is external in this prototype).
+	 * @param hero_id     Hero actor ID.
+	 * @param card_id     Card to play.
+	 * @param destination Optional destination for MOVE effects requiring player choice.
 	 * @return `ActionResult`.
 	 */
-	ActionResult play_card(const HeroId& hero_id, const CardId& card_id);
+	ActionResult play_card(
+		const HeroId&      hero_id,
+		const CardId&      card_id,
+		const LocationId&  destination = {});
 
 	/**
 	 * @brief Voluntarily ends a hero's sequence turn (stop_sequence).
@@ -323,7 +320,7 @@ public:
 		DefenseReaction         reaction,
 		ReactionResolution*     out = nullptr);
 
-	/** @brief Returns true while an interactive reaction window is open. */
+	/** @brief True while an interactive reaction window is open. */
 	bool has_pending_attack() const;
 
 	/** @brief Read-only access to the current pending attack. */
@@ -331,41 +328,39 @@ public:
 
 	/**
 	 * @brief Returns the reactions the current pending defender may choose.
-	 *
-	 * Always includes TAKE and BLOCK.  DODGE is offered only when the defender
-	 * is on the FRONTLINE (so it has a BACKLINE to retreat to).  Returns an
-	 * empty vector when no attack is pending.
 	 */
 	std::vector<DefenseReaction> allowed_reactions() const;
 
 	// ── Instant-reaction window API ───────────────────────────────────────────
 
-	/**
-	 * @brief Returns the INSTANT cards any actor may play for the given trigger.
-	 *
-	 * Scans every hero hand for cards whose `card_type == INSTANT` and whose
-	 * `reaction_trigger` equals @p trigger.  Returns an empty vector when none
-	 * are eligible.
-	 *
-	 * @param trigger Event id the instant reacts to (e.g. "eldhom.monster.damaged").
-	 */
 	std::vector<InstantOption> eligible_instants(const std::string& trigger) const;
 
 	/** @brief True while the instant window is open (awaiting instant choices). */
 	bool has_pending_instants() const;
 
-	/**
-	 * @brief Plays the user-selected instant cards during the open window.
-	 *
-	 * Validates each selection against the eligible set, applies its effects,
-	 * advances the playing actor's timeline and discards the card.  After
-	 * resolution the pending attack (if any) transitions to its defense stage.
-	 *
-	 * @param selected (actor_id, card_id) pairs the user chose to play.
-	 * @return `ActionResult`.  ERR_NO_PENDING_INSTANTS if no window is open.
-	 */
 	ActionResult play_instants(
 		const std::vector<std::pair<HeroId, CardId>>& selected);
+
+	// ── Interactive formation dialog API (Scompaginamento / Schieramento) ─────
+
+	/** @brief True while at least one formation dialog is queued. */
+	bool has_pending_formation() const;
+
+	/** @brief Read-only access to the next pending formation dialog item. */
+	const PendingFormation& current_formation_dialog() const;
+
+	/**
+	 * @brief Resolves the current formation dialog with the player's choice.
+	 *
+	 * @param faction_id   Faction being resolved (must match front of queue).
+	 * @param location_id  Location being resolved (must match front of queue).
+	 * @param backline_ids Actor IDs the player assigned to Retroguardia.
+	 * @return ActionResult.  ERR_INVALID_FORMATION_CHOICE if backline > frontline.
+	 */
+	ActionResult resolve_formation(
+		const std::string&                   faction_id,
+		const LocationId&                    location_id,
+		const std::vector<gmActor::ActorId>& backline_ids);
 
 	// ── Monster group turn API ────────────────────────────────────────────────
 
@@ -482,14 +477,25 @@ private:
 	// ── Interactive attack state ──────────────────────────────────────────────
 	PendingAttack          _pending; ///< Open reaction window (active==false if none)
 
+	// ── Interactive formation dialog state ───────────────────────────────
+	std::deque<PendingFormation> _formation_queue; ///< Queued formation dialogs
+	bool        _formation_ends_turn = false; ///< True when end_hero_turn is deferred
+	std::string _formation_turn_hero;          ///< Hero whose turn to end after dialogs
+
 	void emit(const EventType& type,
 	          const std::string& actor_id  = {},
 	          const std::string& payload   = {}) const;
 
 	// ── Internal helpers ──────────────────────────────────────────────────────
 
-	/** @brief Checks and resolves formation for all factions in `location_id`. */
+	/** @brief Checks and queues interactive formation dialogs for all factions at a location. */
 	void check_formation(const LocationId& location_id);
+
+	/** @brief Queues a DISRUPT formation dialog for the enemy faction at the attacker's location. */
+	void queue_enemy_disrupt(const HeroId& attacker_id);
+
+	/** @brief Draws n cards from the hero's deck to hand; emits EVT_HAND_CHANGED. */
+	void draw_n_cards(const HeroId& hero_id, int n);
 
 	/** @brief Returns the active group count (non-removed). */
 	int active_group_count() const;

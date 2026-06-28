@@ -66,7 +66,7 @@
     "effects": [
       { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE",
         "condition": "IF_FORMATION_FRONT" },
-      { "effect_type": "PUSH_ENEMY_BACKLINE", "amount": 0, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DISRUPT_ENEMY_FORMATION", "amount": 0, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {

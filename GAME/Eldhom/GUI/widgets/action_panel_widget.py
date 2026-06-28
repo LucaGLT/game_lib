@@ -74,7 +74,16 @@ class ActionPanelWidget(QFrame):
         self._turn_label.setProperty("text_role", "secondary")
         layout.addWidget(self._turn_label)
 
-        layout.addStretch()
+        layout.addStretch(1)
+
+        # Centre area: instruction shown during targeting or defense mode.
+        self._hint_label = QLabel("", self)
+        self._hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._hint_label.setProperty("text_role", "primary")
+        self._hint_label.setVisible(False)
+        layout.addWidget(self._hint_label)
+
+        layout.addStretch(1)
 
         self._move_btn = QPushButton(self._LABEL_MOVE, self)
         self._move_btn.setProperty("role", "secondary")
@@ -136,6 +145,7 @@ class ActionPanelWidget(QFrame):
         self._stop_btn.setVisible(sequence_active)
         self.disarm_move()
         self.disarm_attack()
+        self.set_hint("")
         self.set_enabled(True)
 
     def set_sequence_active(self, active: bool) -> None:
@@ -159,6 +169,17 @@ class ActionPanelWidget(QFrame):
             self._turn_label.setText("In attesa\u2026")
             self.disarm_move()
             self.disarm_attack()
+            self.set_hint("")
+
+    def set_hint(self, text: str) -> None:
+        """Shows an instruction in the panel centre; clears when text is empty.
+
+        Args:
+            text: Instruction string (e.g. "\u25b6 Clicca la locazione…").
+                  Pass an empty string to hide the label.
+        """
+        self._hint_label.setText(text)
+        self._hint_label.setVisible(bool(text))
 
     def disarm_move(self) -> None:
         """Cancels move targeting mode and restores the button label."""
@@ -230,6 +251,7 @@ class ActionPanelWidget(QFrame):
             btn.setEnabled(False)
         for btn in self._all_action_buttons:
             btn.setVisible(True)
+        self.set_hint("")
 
     def _on_react_clicked(self, code: str) -> None:
         """Emits the chosen reaction code and disables the defense buttons."""

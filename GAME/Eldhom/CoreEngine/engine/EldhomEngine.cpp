@@ -464,6 +464,14 @@ ActionResult EldhomEngine::do_simple_action(
 	emit(EVT_PG_SIMPLE_ACTION, hero_id,
 		 std::to_string(static_cast<int>(action_type)));
 
+	// Defer end_hero_turn if formation dialogs are queued (main.cpp handles them).
+	if (!_formation_queue.empty())
+	{
+		_formation_ends_turn = true;
+		_formation_turn_hero = hero_id;
+		return {};
+	}
+
 	end_hero_turn(hero_id);
 	return {};
 }
@@ -472,7 +480,10 @@ ActionResult EldhomEngine::do_simple_action(
 // PG turn — play_card
 // ─────────────────────────────────────────────────────────────────────────────
 
-ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_id)
+ActionResult EldhomEngine::play_card(
+	const HeroId&     hero_id,
+	const CardId&     card_id,
+	const LocationId& destination)
 {
 	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
 
@@ -533,14 +544,41 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 
 	bool        has_damage    = false;
 	int         damage_amount = 0;
+	bool        has_disrupt   = false;
 
 	for (const EldhomEffect& eff : card.effects)
 	{
 		if (eff.effect_type == "DAMAGE" || eff.effect_type == "DEAL_DAMAGE")
 		{
 			has_damage    = true;
-			damage_amount = eff.amount; // last DAMAGE entry wins (cards have at most one)
+			damage_amount = eff.amount;
 			continue; // deferred — applied via reaction chain
+		}
+		if (eff.effect_type == "DISRUPT_ENEMY_FORMATION")
+		{
+			has_disrupt = true;
+			continue; // marker only — queued after resolve_reaction
+		}
+		if (eff.effect_type == "DRAW_CARD")
+		{
+			draw_n_cards(hero_id, eff.amount);
+			continue; // handled by engine directly
+		}
+		if (eff.effect_type == "MOVE")
+		{
+			// Use player-provided destination when the effect requires player choice.
+			const LocationId move_to = (!destination.empty() &&
+			                            (eff.value.empty() ||
+			                             eff.target == "ADJACENT_LOCATION" ||
+			                             eff.target == "PLAYER_CHOICE"))
+			                           ? destination
+			                           : (!eff.value.empty() ? eff.value : eff.target);
+			EffectResult mres = _rule_adapter.apply_simple_move(hero_id, move_to, _store);
+			if (mres.resolved)
+			{
+				emit(EVT_PG_MOVED, hero_id, move_to);
+			}
+			continue;
 		}
 		EffectResult res =
 			_rule_adapter.apply_effect(eff, hero_id, _store, enemy_faction);
@@ -596,6 +634,7 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 			_pending.base_damage      = damage_amount;
 			_pending.attack_cost      = 0;
 			_pending.source           = card_id;
+			_pending.has_disrupt      = has_disrupt;
 			_pending.instant_trigger  = EVT_MONSTER_DAMAGED;
 			_pending.awaiting_instants =
 				!eligible_instants(_pending.instant_trigger).empty();
@@ -888,10 +927,11 @@ ActionResult EldhomEngine::resolve_reaction(
 		         "Reaction " + to_string(reaction) + " not allowed" };
 	}
 
-	const HeroId           attacker_id = _pending.attacker_id;
-	const gmActor::ActorId target_id   = _pending.defender_id;
-	const int              base_damage = _pending.base_damage;
-	const int              cost        = _pending.attack_cost;
+	const HeroId           attacker_id  = _pending.attacker_id;
+	const gmActor::ActorId target_id    = _pending.defender_id;
+	const int              base_damage  = _pending.base_damage;
+	const int              cost         = _pending.attack_cost;
+	const bool             had_disrupt  = _pending.has_disrupt;
 
 	// Compute the final damage and apply any positional side-effect.
 	int final_damage = base_damage;
@@ -945,12 +985,45 @@ ActionResult EldhomEngine::resolve_reaction(
 	emit(EVT_MISSION_TIME, {}, std::to_string(_mission_events.mission_time()));
 
 	// Formation check in the attacker's location (defender may have retreated).
-	check_formation(_store.common(attacker_id).area_id);
+	// For DISRUPT: replace any enemy-faction dialog from check_formation with the
+	// unconditional disrupt dialog (player reorganises enemy regardless of validity).
+	if (had_disrupt)
+	{
+		const std::string enemy_fac = enemy_faction_for_hero(attacker_id);
+		const LocationId& atk_loc   = _store.common(attacker_id).area_id;
+
+		// Run check_formation for PG factions only (enemy handled via disrupt)
+		check_formation(atk_loc);
+
+		// Remove any auto-queued entry for the enemy faction (if formation was
+		// already invalid from DODGE), then add the explicit disrupt entry.
+		_formation_queue.erase(
+			std::remove_if(_formation_queue.begin(), _formation_queue.end(),
+			               [&](const PendingFormation& pf) {
+			                   return pf.faction_id == enemy_fac &&
+			                          pf.location_id == atk_loc;
+			               }),
+			_formation_queue.end());
+		queue_enemy_disrupt(attacker_id);
+	}
+	else
+	{
+		check_formation(_store.common(attacker_id).area_id);
+	}
 
 	emit(EVT_PG_SIMPLE_ACTION, attacker_id,
 		 std::to_string(static_cast<int>(SimpleActionType::ATTACK)));
 
-	end_hero_turn(attacker_id);
+	// Defer end_hero_turn if formation dialogs are queued (main.cpp handles them).
+	if (!_formation_queue.empty())
+	{
+		_formation_ends_turn = true;
+		_formation_turn_hero = attacker_id;
+	}
+	else
+	{
+		end_hero_turn(attacker_id);
+	}
 
 	if (out)
 	{
@@ -1100,12 +1173,100 @@ void EldhomEngine::set_event_callback(EngineEventCallback cb)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Formation dialog API
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool EldhomEngine::has_pending_formation() const
+{
+	return !_formation_queue.empty();
+}
+
+const PendingFormation& EldhomEngine::current_formation_dialog() const
+{
+	return _formation_queue.front();
+}
+
+ActionResult EldhomEngine::resolve_formation(
+	const std::string&                   faction_id,
+	const LocationId&                    location_id,
+	const std::vector<gmActor::ActorId>& backline_ids)
+{
+	if (_formation_queue.empty())
+	{
+		return { ActionResultCode::ERR_NO_PENDING_FORMATION,
+		         "No formation dialog is open" };
+	}
+
+	const PendingFormation& pf = _formation_queue.front();
+
+	int total       = static_cast<int>(pf.actors.size());
+	int back_count  = static_cast<int>(backline_ids.size());
+	int front_count = total - back_count;
+
+	if (back_count > front_count)
+	{
+		return { ActionResultCode::ERR_INVALID_FORMATION_CHOICE,
+		         "Retroguardia non puo' essere maggiore di Prima Linea" };
+	}
+
+	// Apply chosen formation to heroes in the location
+	for (const auto& kv : _store.heroes())
+	{
+		gmActor::HeroState& h = _store.hero(kv.first);
+		if (h.common.faction_id != faction_id)  { continue; }
+		if (h.common.area_id    != location_id) { continue; }
+		if (h.common.removed)                   { continue; }
+		bool in_back = std::find(backline_ids.begin(), backline_ids.end(),
+		                         kv.first) != backline_ids.end();
+		h.common.area_position = in_back
+			? gmActor::AreaPosition::BACKLINE
+			: gmActor::AreaPosition::FRONTLINE;
+	}
+
+	// Apply chosen formation to monster instances in the location
+	for (const auto& kv : _store.monster_instances())
+	{
+		gmActor::MonsterInstanceState& m = _store.monster_instance(kv.first);
+		if (m.common.faction_id != faction_id)  { continue; }
+		if (m.common.area_id    != location_id) { continue; }
+		if (m.common.removed)                   { continue; }
+		bool in_back = std::find(backline_ids.begin(), backline_ids.end(),
+		                         kv.first) != backline_ids.end();
+		m.common.area_position = in_back
+			? gmActor::AreaPosition::BACKLINE
+			: gmActor::AreaPosition::FRONTLINE;
+	}
+
+	emit(EVT_FORMATION_CHANGED, {},
+	     faction_id + "@" + location_id + ":player_resolved");
+
+	_formation_queue.pop_front();
+
+	if (!_formation_queue.empty())
+	{
+		// More dialogs pending; main.cpp will emit the next one.
+		return {};
+	}
+
+	// Queue exhausted: end the deferred hero turn if applicable.
+	if (_formation_ends_turn && !_formation_turn_hero.empty())
+	{
+		end_hero_turn(_formation_turn_hero);
+		_formation_ends_turn = false;
+		_formation_turn_hero = {};
+	}
+
+	return {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 void EldhomEngine::check_formation(const LocationId& location_id)
 {
-	// Check all known factions in this location
+	// Check all known factions in this location.  For invalid formations, queue
+	// an interactive dialog instead of auto-fixing (player decides who moves).
 	std::vector<std::string> all_factions;
 	for (const std::string& f : _hero_factions)    { all_factions.push_back(f); }
 	for (const std::string& f : _monster_factions) { all_factions.push_back(f); }
@@ -1115,19 +1276,97 @@ void EldhomEngine::check_formation(const LocationId& location_id)
 		FormationCheckResult res =
 			_formation_adapter.check(_store, location_id, faction);
 
-		if (res.scompaginamento)
+		if (!res.scompaginamento && res.valid) { continue; }
+
+		// Build the actor list for the formation dialog.
+		PendingFormation pf;
+		pf.location_id = location_id;
+		pf.faction_id  = faction;
+		pf.source      = res.scompaginamento ? "scompaginamento" : "overflow";
+
+		for (const auto& kv : _store.heroes())
 		{
-			_formation_adapter.resolve_scompaginamento(_store, location_id, faction);
-			emit(EVT_FORMATION_CHANGED, {},
-			     faction + "@" + location_id + ":scompaginamento");
+			const gmActor::HeroState& h = kv.second;
+			if (h.common.faction_id != faction)     { continue; }
+			if (h.common.area_id    != location_id) { continue; }
+			if (h.common.removed)                   { continue; }
+			ActorFormationEntry e;
+			e.actor_id     = kv.first;
+			e.display_name = kv.first;
+			e.in_backline  = (h.common.area_position == gmActor::AreaPosition::BACKLINE);
+			pf.actors.push_back(e);
 		}
-		else if (!res.valid)
+		for (const auto& kv : _store.monster_instances())
 		{
-			emit(EVT_FORMATION_CHECKED, {},
-			     faction + "@" + location_id + ":overflow=" +
-			     std::to_string(res.overflow));
+			const gmActor::MonsterInstanceState& m = kv.second;
+			if (m.common.faction_id != faction)     { continue; }
+			if (m.common.area_id    != location_id) { continue; }
+			if (m.common.removed)                   { continue; }
+			ActorFormationEntry e;
+			e.actor_id     = kv.first;
+			e.display_name = kv.first;
+			e.in_backline  = (m.common.area_position == gmActor::AreaPosition::BACKLINE);
+			pf.actors.push_back(e);
+		}
+
+		if (!pf.actors.empty())
+		{
+			_formation_queue.push_back(std::move(pf));
 		}
 	}
+}
+
+void EldhomEngine::queue_enemy_disrupt(const HeroId& attacker_id)
+{
+	if (!_store.has_actor(attacker_id)) { return; }
+
+	const LocationId& loc        = _store.common(attacker_id).area_id;
+	const std::string enemy_fac  = enemy_faction_for_hero(attacker_id);
+	if (enemy_fac.empty()) { return; }
+
+	PendingFormation pf;
+	pf.location_id = loc;
+	pf.faction_id  = enemy_fac;
+	pf.source      = "disrupt";
+
+	for (const auto& kv : _store.monster_instances())
+	{
+		const gmActor::MonsterInstanceState& m = kv.second;
+		if (m.common.faction_id != enemy_fac) { continue; }
+		if (m.common.area_id    != loc)       { continue; }
+		if (m.common.removed)                 { continue; }
+		ActorFormationEntry e;
+		e.actor_id     = kv.first;
+		e.display_name = kv.first;
+		e.in_backline  = (m.common.area_position == gmActor::AreaPosition::BACKLINE);
+		pf.actors.push_back(e);
+	}
+
+	if (!pf.actors.empty())
+	{
+		_formation_queue.push_back(std::move(pf));
+	}
+}
+
+void EldhomEngine::draw_n_cards(const HeroId& hero_id, int n)
+{
+	auto it = _hand_states.find(hero_id);
+	if (it == _hand_states.end()) { return; }
+	HeroHandState& hs = it->second;
+
+	for (int i = 0; i < n; ++i)
+	{
+		if (hs.deck.empty() && !hs.discard.empty())
+		{
+			hs.deck.insert(hs.deck.end(), hs.discard.begin(), hs.discard.end());
+			hs.discard.clear();
+			emit(EVT_DECK_RESHUFFLED, hero_id, {});
+		}
+		if (hs.deck.empty()) { break; }
+		hs.hand.push_back(hs.deck.back());
+		hs.deck.pop_back();
+	}
+	emit(EVT_HAND_CHANGED, hero_id, {});
 }
 
 int EldhomEngine::active_group_count() const

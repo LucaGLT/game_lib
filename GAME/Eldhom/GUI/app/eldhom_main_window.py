@@ -47,6 +47,7 @@ from widgets.board_widget import EldhomBoardWidget
 from widgets.timeline_widget import TimelineWidget
 from widgets.log_widget import LogWidget
 from widgets.instant_window_dialog import InstantWindowDialog
+from widgets.formation_dialog      import FormationDialog
 _GUI_DIR   = Path(__file__).resolve().parent
 _PYLIB_DIR = _GUI_DIR.parents[2] / "pyLib"
 for _p in (str(_GUI_DIR), str(_PYLIB_DIR)):
@@ -193,9 +194,10 @@ class _DeckProxy:
 
     _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
 
-    def __init__(self, bridge: EldhomBridge, active_hero) -> None:
-        self._bridge = bridge
-        self._active_hero = active_hero
+    def __init__(self, bridge: EldhomBridge, active_hero, pre_play_hook=None) -> None:
+        self._bridge       = bridge
+        self._active_hero  = active_hero
+        self._pre_play_hook = pre_play_hook
 
     def send_command(self, type_id: str, data: dict) -> None:
         """Routes deck commands to the Eldhom bridge.
@@ -211,6 +213,9 @@ class _DeckProxy:
             if from_zone == "CardHand" and to_zone in self._PLAY_ZONES:
                 hero_id = self._active_hero()
                 if hero_id and card_id:
+                    # Let the hook check if this is a MOVE card that needs targeting.
+                    if self._pre_play_hook and self._pre_play_hook(hero_id, card_id):
+                        return  # Hook armed targeting; don't send play_card yet.
                     self._bridge.send_command(
                         "eldhom.play_card",
                         {"hero_id": hero_id, "card_id": card_id},
@@ -261,6 +266,10 @@ class EldhomMainWindow(QMainWindow):
         # Move targeting state: when True the next map click is a move
         # destination for the active hero.
         self._awaiting_move: bool = False
+
+        # When a MOVE-effect card was dragged to PlayArea and targeting was
+        # armed, this stores the card_id waiting for a destination click.
+        self._pending_move_card_id: str = ""
 
         # Attack targeting state: when True the next actor selection is the
         # target of an interactive attack declared by the active hero.
@@ -456,7 +465,11 @@ class EldhomMainWindow(QMainWindow):
         else:
             print("[EldhomGUI] Usando receiver pre-avviato su porta 9210", flush=True)
         # Wire deck module outgoing commands through the proxy translator
-        self._deck.set_sender(_DeckProxy(self._bridge, lambda: self._active_hero_id))
+        self._deck.set_sender(_DeckProxy(
+            self._bridge,
+            lambda: self._active_hero_id,
+            lambda hid, cid: self._pre_play_card_hook(hid, cid),
+        ))
         self._bridge.set_on_event(self._on_engine_event_thread)
         # Try to connect to the engine eagerly (non-blocking probe).
         # The engine must already be running when the GUI starts.
@@ -505,6 +518,9 @@ class EldhomMainWindow(QMainWindow):
         # Instant-card reaction window (priority over defense)
         reg("eldhom.instant.window_opened",   self._on_instant_window_opened)
         reg("eldhom.instant.window_closed",   self._on_instant_window_closed)
+
+        # Interactive formation dialog (Scompaginamento / Schieramento)
+        reg("eldhom.formation.dialog_needed", self._on_formation_dialog_needed)
 
         # Actor events → EldhomActorAdapter
         for evt in (
@@ -717,13 +733,16 @@ class EldhomMainWindow(QMainWindow):
 
     def _on_move_armed(self, armed: bool) -> None:
         """Enters/exits move targeting mode triggered by the Muovi button."""
+        if not armed:
+            self._pending_move_card_id = ""  # Clear any card-driven pending move
         self._awaiting_move = armed and bool(self._active_hero_id)
         if self._awaiting_move:
-            self._status_label.setText(
-                "\u25b6 Clicca la locazione di destinazione sulla mappa"
-            )
+            msg = "\u25b6 Clicca la locazione di destinazione sulla mappa"
+            self._status_label.setText(msg)
+            self._actions.set_hint(msg)
         else:
             self._status_label.setText("")
+            self._actions.set_hint("")
 
     def _on_area_selected(self, location_id: str) -> None:
         """Handles a map location click.
@@ -740,8 +759,8 @@ class EldhomMainWindow(QMainWindow):
         self._show_area_info(location_id)
 
     def _try_move(self, destination: str) -> None:
-        """Validates adjacency and sends a MOVE simple-action."""
-        hero = self._hero_data.get(self._active_hero_id, {})
+        """Validates adjacency and sends a MOVE action (simple action or card)."""
+        hero   = self._hero_data.get(self._active_hero_id, {})
         origin = str(hero.get("location", ""))
         adjacent = self._location_adjacency.get(origin, [])
         if destination == origin:
@@ -755,14 +774,30 @@ class EldhomMainWindow(QMainWindow):
             return
         self._awaiting_move = False
         self._actions.disarm_move()
-        self._bridge.send_command(
-            "eldhom.simple_action",
-            {
-                "hero_id":     self._active_hero_id,
-                "action_type": "MOVE",
-                "destination": destination,
-            },
-        )
+        if self._pending_move_card_id:
+            # Card-driven move: send play_card with destination.
+            card_id = self._pending_move_card_id
+            self._pending_move_card_id = ""
+            self._actions.set_hint("")
+            self._bridge.send_command(
+                "eldhom.play_card",
+                {
+                    "hero_id":     self._active_hero_id,
+                    "card_id":     card_id,
+                    "destination": destination,
+                },
+            )
+        else:
+            # Simple action move.
+            self._actions.set_hint("")
+            self._bridge.send_command(
+                "eldhom.simple_action",
+                {
+                    "hero_id":     self._active_hero_id,
+                    "action_type": "MOVE",
+                    "destination": destination,
+                },
+            )
 
     def _show_area_info(self, location_id: str) -> None:
         """Populates the Info Area panel from the cached full-state snapshot."""
@@ -801,11 +836,12 @@ class EldhomMainWindow(QMainWindow):
         """Enters/exits attack targeting mode triggered by the Attacca button."""
         self._awaiting_attack = armed and bool(self._active_hero_id)
         if self._awaiting_attack:
-            self._status_label.setText(
-                "\u2694 Clicca il nemico da attaccare (mappa o pannello attori)"
-            )
+            msg = "\u2694 Clicca il nemico da attaccare (mappa o pannello attori)"
+            self._status_label.setText(msg)
+            self._actions.set_hint(msg)
         else:
             self._status_label.setText("")
+            self._actions.set_hint("")
 
     def _actor_is_enemy(self, actor_id: str) -> bool:
         """True if actor_id is a live monster instance (not a hero)."""
@@ -827,6 +863,7 @@ class EldhomMainWindow(QMainWindow):
             return
         self._awaiting_attack = False
         self._actions.disarm_attack()
+        self._actions.set_hint("")
         self._bridge.send_command(
             "eldhom.declare_attack",
             {"hero_id": self._active_hero_id, "target_id": target_id},
@@ -908,6 +945,62 @@ class EldhomMainWindow(QMainWindow):
             self._status_label.setText(
                 f"\u26a1 {count} carta/e istantanea/e giocata/e"
             )
+
+    def _pre_play_card_hook(self, hero_id: str, card_id: str) -> bool:
+        """Called by _DeckProxy before sending play_card for a card dragged to PlayArea.
+
+        If the card has a MOVE effect requiring player destination choice, arms
+        move targeting mode and returns True (play_card is NOT sent yet).
+        Returns False to let the proxy send play_card immediately.
+        """
+        meta = _CARD_CATALOG.get(card_id, {})
+        has_choice_move = any(
+            e.get("effect_type") == "MOVE" and not e.get("value", "")
+            for e in meta.get("effects", [])
+        )
+        if not has_choice_move:
+            return False
+
+        self._pending_move_card_id = card_id
+        self._awaiting_move = True
+        msg = "\u25b6 Clicca la locazione di destinazione (carta)"
+        self._status_label.setText(msg)
+        self._actions.set_hint(msg)
+        # Send the card back to CardHand visually (the drag already moved it).
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, lambda: self._deck.on_envelope({
+            "typeId": "gmAlea.deck.card_moved",
+            "data": {
+                "card_id":   card_id,
+                "from_zone": "PlayArea",
+                "to_zone":   "CardHand",
+            },
+        }))
+        return True
+
+    def _on_formation_dialog_needed(self, msg: dict) -> None:
+        """Opens the formation assignment dialog and forwards the choice.
+
+        Fields are sent at the data root by the engine (location_id, faction_id,
+        source, actors[]).  The dialog is mandatory — the player cannot skip it.
+        """
+        data        = _extract_data(msg)
+        location_id = str(data.get("location_id", ""))
+        faction_id  = str(data.get("faction_id",  ""))
+        source      = str(data.get("source",      ""))
+        actors      = data.get("actors", []) or []
+
+        dialog = FormationDialog(location_id, faction_id, source, actors, self)
+        dialog.exec()  # Always accepted (no cancel button)
+        backline = dialog.backline_actor_ids()
+        self._bridge.send_command(
+            "eldhom.resolve_formation",
+            {
+                "faction_id":  faction_id,
+                "location_id": location_id,
+                "backline":    backline,
+            },
+        )
 
     def _on_reaction_window_closed(self, msg: dict) -> None:
         """Closes the defense panel once the engine resolved the reaction."""

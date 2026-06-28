@@ -96,6 +96,20 @@ public:
 			return;
 		}
 
+		// While a formation dialog is open, only the resolve command and state
+		// requests are accepted.
+		if (_engine && _engine->has_pending_formation()
+		    && type_id != eldhom::CMD_RESOLVE_FORMATION
+		    && type_id != eldhom::CMD_REQUEST_STATE)
+		{
+			nlohmann::json err;
+			err["ok"]      = false;
+			err["error"]   = "Finestra di formazione aperta: risolvi prima la formazione.";
+			err["command"] = type_id;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
 		if (type_id == eldhom::CMD_START_MISSION)
 		{
 			handle_start_mission(data);
@@ -119,6 +133,10 @@ public:
 		else if (type_id == eldhom::CMD_PLAY_INSTANTS)
 		{
 			handle_play_instants(data);
+		}
+		else if (type_id == eldhom::CMD_RESOLVE_FORMATION)
+		{
+			handle_resolve_formation(data);
 		}
 		else if (type_id == eldhom::CMD_STOP_SEQUENCE)
 		{
@@ -184,10 +202,11 @@ private:
 	void handle_play_card(const nlohmann::json& data)
 	{
 		if (!_engine) { return; }
-		std::string hero_id = data.value("hero_id", std::string{});
-		std::string card_id = data.value("card_id", std::string{});
+		std::string hero_id     = data.value("hero_id",     std::string{});
+		std::string card_id     = data.value("card_id",     std::string{});
+		std::string destination = data.value("destination", std::string{});
 
-		eldhom::ActionResult r = _engine->play_card(hero_id, card_id);
+		eldhom::ActionResult r = _engine->play_card(hero_id, card_id, destination);
 		send_action_result(r);
 		if (!r.ok()) { return; }
 
@@ -205,6 +224,10 @@ private:
 				emit_defense_window();
 			}
 		}
+		else if (_engine->has_pending_formation())
+		{
+			emit_formation_dialog();
+		}
 		else
 		{
 			emit_next_actor_event();
@@ -220,13 +243,23 @@ private:
 		std::string destination = data.value("destination", std::string{});
 
 		eldhom::SimpleActionType action = eldhom::SimpleActionType::RECOVER;
-		if      (action_str == "MOVE")    { action = eldhom::SimpleActionType::MOVE; }
-		else if (action_str == "ATTACK")  { action = eldhom::SimpleActionType::ATTACK; }
+		if      (action_str == "MOVE")     { action = eldhom::SimpleActionType::MOVE; }
+		else if (action_str == "ATTACK")   { action = eldhom::SimpleActionType::ATTACK; }
 		else if (action_str == "INTERACT") { action = eldhom::SimpleActionType::INTERACT; }
 
 		eldhom::ActionResult r = _engine->do_simple_action(hero_id, action, destination);
 		send_action_result(r);
-		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
+		if (!r.ok()) { return; }
+
+		if (_engine->has_pending_formation())
+		{
+			emit_formation_dialog();
+		}
+		else
+		{
+			emit_next_actor_event();
+			emit_full_state();
+		}
 	}
 
 	// ── Interactive attack / reaction window commands ─────────────────────────
@@ -308,6 +341,31 @@ private:
 		_bridge.send_event(eldhom::EVT_REACTION_WINDOW_OPEN, w);
 	}
 
+	// Builds and emits the formation dialog for the front-of-queue item.
+	void emit_formation_dialog()
+	{
+		if (!_engine || !_engine->has_pending_formation()) { return; }
+
+		const eldhom::PendingFormation& pf = _engine->current_formation_dialog();
+
+		nlohmann::json actors_arr = nlohmann::json::array();
+		for (const eldhom::ActorFormationEntry& e : pf.actors)
+		{
+			nlohmann::json a;
+			a["actor_id"]    = e.actor_id;
+			a["name"]        = e.display_name;
+			a["in_backline"] = e.in_backline;
+			actors_arr.push_back(a);
+		}
+
+		nlohmann::json w;
+		w["location_id"] = pf.location_id;
+		w["faction_id"]  = pf.faction_id;
+		w["source"]      = pf.source;
+		w["actors"]      = actors_arr;
+		_bridge.send_event(eldhom::EVT_FORMATION_DIALOG, w);
+	}
+
 	void handle_play_instants(const nlohmann::json& data)
 	{
 		if (!_engine) { return; }
@@ -377,8 +435,15 @@ private:
 		rj["defender_ko"]       = res.defender_ko;
 		_bridge.send_event(eldhom::EVT_ATTACK_RESOLVED, rj);
 
-		emit_next_actor_event();
-		emit_full_state();
+		if (_engine->has_pending_formation())
+		{
+			emit_formation_dialog();
+		}
+		else
+		{
+			emit_next_actor_event();
+			emit_full_state();
+		}
 	}
 
 	void handle_stop_sequence(const nlohmann::json& data)
@@ -389,6 +454,43 @@ private:
 		eldhom::ActionResult r = _engine->stop_sequence(hero_id);
 		send_action_result(r);
 		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
+	}
+
+	void handle_resolve_formation(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+
+		std::string faction_id  = data.value("faction_id",  std::string{});
+		std::string location_id = data.value("location_id", std::string{});
+
+		std::vector<std::string> backline_ids;
+		if (data.contains("backline") && data["backline"].is_array())
+		{
+			for (const nlohmann::json& id : data["backline"])
+			{
+				if (id.is_string()) { backline_ids.push_back(id.get<std::string>()); }
+			}
+		}
+
+		eldhom::ActionResult r =
+			_engine->resolve_formation(faction_id, location_id, backline_ids);
+		send_action_result(r);
+		if (!r.ok()) { return; }
+
+		nlohmann::json done;
+		done["faction_id"]  = faction_id;
+		done["location_id"] = location_id;
+		_bridge.send_event(eldhom::EVT_FORMATION_DONE, done);
+
+		if (_engine->has_pending_formation())
+		{
+			emit_formation_dialog();
+		}
+		else
+		{
+			emit_next_actor_event();
+			emit_full_state();
+		}
 	}
 
 	// ── Event forwarding ──────────────────────────────────────────────────────
