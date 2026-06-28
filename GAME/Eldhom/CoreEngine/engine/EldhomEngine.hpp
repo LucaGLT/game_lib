@@ -102,6 +102,20 @@ struct PendingAttack
 	int              base_damage = 0;     ///< Declared (pre-reaction) damage
 	int              attack_cost = 0;     ///< Timeline cost charged on resolution
 	std::string      source;              ///< "simple" or the source card id
+	bool             awaiting_instants = false; ///< True while the instant window is open
+	std::string      instant_trigger;     ///< Event id eligible instants react to
+};
+
+/**
+ * @struct InstantOption
+ * @brief One INSTANT card a given actor may play in the open instant window.
+ */
+struct InstantOption
+{
+	gmActor::ActorId actor_id;   ///< Actor that holds the instant card
+	CardId           card_id;    ///< Instant card id
+	std::string      card_name;  ///< Display name of the instant card
+	std::string      trigger;    ///< Reaction trigger the card matched
 };
 
 /**
@@ -294,6 +308,35 @@ public:
 	 * empty vector when no attack is pending.
 	 */
 	std::vector<DefenseReaction> allowed_reactions() const;
+
+	// ── Instant-reaction window API ───────────────────────────────────────────
+
+	/**
+	 * @brief Returns the INSTANT cards any actor may play for the given trigger.
+	 *
+	 * Scans every hero hand for cards whose `card_type == INSTANT` and whose
+	 * `reaction_trigger` equals @p trigger.  Returns an empty vector when none
+	 * are eligible.
+	 *
+	 * @param trigger Event id the instant reacts to (e.g. "eldhom.monster.damaged").
+	 */
+	std::vector<InstantOption> eligible_instants(const std::string& trigger) const;
+
+	/** @brief True while the instant window is open (awaiting instant choices). */
+	bool has_pending_instants() const;
+
+	/**
+	 * @brief Plays the user-selected instant cards during the open window.
+	 *
+	 * Validates each selection against the eligible set, applies its effects,
+	 * advances the playing actor's timeline and discards the card.  After
+	 * resolution the pending attack (if any) transitions to its defense stage.
+	 *
+	 * @param selected (actor_id, card_id) pairs the user chose to play.
+	 * @return `ActionResult`.  ERR_NO_PENDING_INSTANTS if no window is open.
+	 */
+	ActionResult play_instants(
+		const std::vector<std::pair<HeroId, CardId>>& selected);
 
 	// ── Monster group turn API ────────────────────────────────────────────────
 

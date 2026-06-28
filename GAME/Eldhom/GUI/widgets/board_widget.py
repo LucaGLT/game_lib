@@ -53,6 +53,7 @@ class EldhomBoardWidget(QWidget):
 
         self._loc_index: dict[str, int] = {}      # loc_id  → integer index
         self._actor_locs: dict[str, str] = {}     # actor_id → loc_id
+        self._map_built: bool = False             # map structure built once
 
         self._module: GmMapModule = GmMapModule()
         self._module_widget: QWidget = self._module.widget()
@@ -70,43 +71,60 @@ class EldhomBoardWidget(QWidget):
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def on_state_full(self, msg: dict) -> None:
-        """Rebuilds the map and places all actor tokens from a full state snapshot."""
+        """Rebuilds the map and places all actor tokens from a full state snapshot.
+
+        The map structure (locations + edges) is built only once so that the
+        force-directed layout is not reset on every refresh; subsequent
+        snapshots only re-place the actor tokens at their current locations.
+        """
         data = _extract_data(msg)
-        self._loc_index.clear()
-        self._actor_locs.clear()
 
-        # ── Build location + edge lists ──────────────────────────────────────
-        locations_out: list[dict] = []
-        edges_out: list[list[int]] = []
-        seen_edges: set[tuple[int, int]] = set()
+        incoming_locs = {
+            str(loc.get("id", ""))
+            for loc in data.get("locations", [])
+            if loc.get("id", "")
+        }
+        # Rebuild the structure only when the map actually changes (first load
+        # or a new mission), to avoid resetting the force-directed layout.
+        if not self._map_built or incoming_locs != set(self._loc_index.keys()):
+            self._loc_index.clear()
+            self._map_built = False
 
-        for loc in data.get("locations", []):
-            lid  = str(loc.get("id", ""))
-            if not lid:
-                continue
-            idx  = self._loc_idx(lid)
-            name = loc.get("name", lid)
-            for adj in loc.get("adjacent", []):
-                a_idx = self._loc_idx(str(adj))
-                edge  = tuple(sorted((idx, a_idx)))
-                if edge not in seen_edges:
-                    edges_out.append([edge[0], edge[1]])
-                    seen_edges.add(edge)
-            locations_out.append({
-                "location_id": idx,
-                "tags":        ["location"],
-                "metadata":    {
-                    "terrain": "stone",
-                    "items":   [name],
-                },
+        if not self._map_built:
+
+            # ── Build location + edge lists ──────────────────────────────────
+            locations_out: list[dict] = []
+            edges_out: list[list[int]] = []
+            seen_edges: set[tuple[int, int]] = set()
+
+            for loc in data.get("locations", []):
+                lid  = str(loc.get("id", ""))
+                if not lid:
+                    continue
+                idx  = self._loc_idx(lid)
+                name = loc.get("name", lid)
+                for adj in loc.get("adjacent", []):
+                    a_idx = self._loc_idx(str(adj))
+                    edge  = tuple(sorted((idx, a_idx)))
+                    if edge not in seen_edges:
+                        edges_out.append([edge[0], edge[1]])
+                        seen_edges.add(edge)
+                locations_out.append({
+                    "location_id": idx,
+                    "tags":        ["location"],
+                    "metadata":    {
+                        "terrain": "stone",
+                        "items":   [name],
+                    },
+                })
+
+            map_data: dict = {"locations": locations_out, "edges": edges_out}
+            self._module.on_envelope({
+                "typeId":  "gmMap.map.loaded",
+                "headers": {"data": _json.dumps(map_data)},
+                "data":    map_data,
             })
-
-        map_data: dict = {"locations": locations_out, "edges": edges_out}
-        self._module.on_envelope({
-            "typeId":  "gmMap.map.loaded",
-            "headers": {"data": _json.dumps(map_data)},
-            "data":    map_data,
-        })
+            self._map_built = True
 
         # ── Register actor labels ────────────────────────────────────────────
         label_map: dict[str, str] = {}
@@ -118,7 +136,7 @@ class EldhomBoardWidget(QWidget):
         if label_map:
             self._module._map_scene.register_actor_labels(label_map)
 
-        # ── Place actors at their starting locations ──────────────────────────
+        # ── Place actors at their current locations ──────────────────────────
         for hero in data.get("heroes", []):
             self._place_actor(str(hero["id"]), str(hero.get("location", "")))
         for grp in data.get("groups", []):
@@ -126,10 +144,15 @@ class EldhomBoardWidget(QWidget):
                 self._place_actor(str(inst["id"]), str(inst.get("location", "")))
 
     def on_pg_moved(self, msg: dict) -> None:
-        """Moves a hero token to its new location when ``eldhom.pg.moved`` arrives."""
+        """Moves a hero token to its new location when ``eldhom.pg.moved`` arrives.
+
+        The engine forwards the destination location id in the ``payload`` field.
+        """
         data        = _extract_data(msg)
         actor_id    = str(data.get("actor_id", ""))
-        destination = str(data.get("destination", data.get("to", "")))
+        destination = str(
+            data.get("payload", data.get("destination", data.get("to", "")))
+        )
         if actor_id and destination:
             self._actor_locs[actor_id] = destination
             if destination in self._loc_index:

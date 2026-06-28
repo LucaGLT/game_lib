@@ -107,7 +107,9 @@ enum class ActionResultCode {
 	ERR_NO_PENDING_ATTACK,     ///< A reaction was sent but no attack is pending
 	ERR_NOT_DEFENDER,          ///< The reacting actor is not the pending defender
 	ERR_REACTION_NOT_ALLOWED,  ///< The chosen reaction is not in the allowed set
-	ERR_ATTACK_PENDING         ///< A different action arrived during a reaction window
+	ERR_ATTACK_PENDING,        ///< A different action arrived during a reaction window
+	ERR_NO_PENDING_INSTANTS,   ///< play_instants called with no instant window open
+	ERR_INSTANT_NOT_ELIGIBLE   ///< A selected instant is not in the eligible set
 };
 
 /** @brief Result returned by engine action methods. */
@@ -203,6 +205,10 @@ inline const EventType EVT_REACTION_WINDOW_OPEN   = "eldhom.reaction.window_open
 inline const EventType EVT_REACTION_WINDOW_CLOSED = "eldhom.reaction.window_closed";
 inline const EventType EVT_ATTACK_RESOLVED        = "eldhom.attack.resolved";
 
+// Instant-reaction window events (any actor may play matching INSTANT cards)
+inline const EventType EVT_INSTANT_WINDOW_OPEN    = "eldhom.instant.window_opened";
+inline const EventType EVT_INSTANT_WINDOW_CLOSED  = "eldhom.instant.window_closed";
+
 // Deck / hand events
 inline const EventType EVT_HAND_CHANGED      = "eldhom.deck.hand_updated";
 inline const EventType EVT_DECK_RESHUFFLED   = "eldhom.deck.reshuffled";
@@ -245,6 +251,7 @@ inline const std::string CMD_REQUEST_STATE   = "eldhom.request_state";
 // Interactive attack / reaction window commands (GUI → engine)
 inline const std::string CMD_DECLARE_ATTACK  = "eldhom.declare_attack";
 inline const std::string CMD_REACT_DEFENSE   = "eldhom.react_defense";
+inline const std::string CMD_PLAY_INSTANTS   = "eldhom.play_instants";
 
 } // namespace eldhom
 

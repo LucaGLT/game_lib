@@ -661,7 +661,133 @@ ActionResult EldhomEngine::declare_attack(
 	_pending.attack_cost = COST_SIMPLE_ATTACK;
 	_pending.source      = "simple";
 
+	// An attack on a monster may be answered by INSTANT cards reacting to
+	// "eldhom.monster.damaged".  When eligible instants exist the engine opens
+	// the instant window first (priority over the defender's reaction).
+	_pending.instant_trigger   = EVT_MONSTER_DAMAGED;
+	_pending.awaiting_instants = !eligible_instants(_pending.instant_trigger).empty();
+
 	emit(EVT_ATTACK_DECLARED, hero_id, target_id);
+	return {};
+}
+
+std::vector<InstantOption> EldhomEngine::eligible_instants(
+	const std::string& trigger) const
+{
+	std::vector<InstantOption> out;
+	if (trigger.empty()) { return out; }
+
+	for (const auto& kv : _hand_states)
+	{
+		const HeroId&        holder = kv.first;
+		const HeroHandState& hs     = kv.second;
+		for (const CardId& cid : hs.hand)
+		{
+			std::unordered_map<CardId, EldhomCard>::const_iterator it =
+				_card_catalog.find(cid);
+			if (it == _card_catalog.end()) { continue; }
+			const EldhomCard& card = it->second;
+			if (card.card_type != gmAlea::CardType::INSTANT) { continue; }
+			if (card.reaction_trigger != trigger) { continue; }
+
+			InstantOption opt;
+			opt.actor_id  = holder;
+			opt.card_id   = cid;
+			opt.card_name = card.name;
+			opt.trigger   = trigger;
+			out.push_back(opt);
+		}
+	}
+	return out;
+}
+
+bool EldhomEngine::has_pending_instants() const
+{
+	return _pending.active && _pending.awaiting_instants;
+}
+
+ActionResult EldhomEngine::play_instants(
+	const std::vector<std::pair<HeroId, CardId>>& selected)
+{
+	if (!_pending.active || !_pending.awaiting_instants)
+	{
+		return { ActionResultCode::ERR_NO_PENDING_INSTANTS, "No instant window open" };
+	}
+
+	const std::vector<InstantOption> eligible =
+		eligible_instants(_pending.instant_trigger);
+
+	// Validate every selection is eligible before applying anything.
+	for (const std::pair<HeroId, CardId>& sel : selected)
+	{
+		bool ok = false;
+		for (const InstantOption& o : eligible)
+		{
+			if (o.actor_id == sel.first && o.card_id == sel.second)
+			{
+				ok = true;
+				break;
+			}
+		}
+		if (!ok)
+		{
+			return { ActionResultCode::ERR_INSTANT_NOT_ELIGIBLE,
+			         "Instant not eligible: " + sel.second };
+		}
+	}
+
+	const std::string& enemy_faction = enemy_faction_for_hero(_pending.attacker_id);
+
+	for (const std::pair<HeroId, CardId>& sel : selected)
+	{
+		const HeroId& holder = sel.first;
+		const CardId& cid    = sel.second;
+
+		std::unordered_map<CardId, EldhomCard>::const_iterator it =
+			_card_catalog.find(cid);
+		if (it == _card_catalog.end()) { continue; }
+		const EldhomCard& card = it->second;
+
+		for (const EldhomEffect& eff : card.effects)
+		{
+			EffectResult res =
+				_rule_adapter.apply_effect(eff, holder, _store, enemy_faction);
+			if (res.target_ko && !res.target_id.empty())
+			{
+				emit(EVT_MONSTER_DEFEATED, res.target_id, {});
+				handle_monster_instance_death(res.target_id);
+			}
+		}
+
+		// Advance the playing actor's timeline by the instant's cost.
+		if (_store.has_actor(holder))
+		{
+			_store.common(holder).timeline_position += card.timeline_cost;
+		}
+		_mission_events.advance_time(card.timeline_cost);
+
+		// Move the instant from hand to discard.
+		std::unordered_map<HeroId, HeroHandState>::iterator hsit =
+			_hand_states.find(holder);
+		if (hsit != _hand_states.end())
+		{
+			std::vector<CardId>& h = hsit->second.hand;
+			std::vector<CardId>::iterator pos = std::find(h.begin(), h.end(), cid);
+			if (pos != h.end())
+			{
+				hsit->second.discard.push_back(*pos);
+				h.erase(pos);
+			}
+		}
+
+		emit(EVT_PG_PLAYED_CARD, holder, cid);
+	}
+
+	emit(EVT_MISSION_TIME, {}, std::to_string(_mission_events.mission_time()));
+
+	// Instants resolved: close the instant stage.  When a pending attack is
+	// open the defender still reacts next (defense window).
+	_pending.awaiting_instants = false;
 	return {};
 }
 

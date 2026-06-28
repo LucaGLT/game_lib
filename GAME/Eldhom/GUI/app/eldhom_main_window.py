@@ -46,7 +46,7 @@ from widgets.area_info_widget import AreaInfoWidget
 from widgets.board_widget import EldhomBoardWidget
 from widgets.timeline_widget import TimelineWidget
 from widgets.log_widget import LogWidget
-
+from widgets.instant_window_dialog import InstantWindowDialog
 _GUI_DIR   = Path(__file__).resolve().parent
 _PYLIB_DIR = _GUI_DIR.parents[2] / "pyLib"
 for _p in (str(_GUI_DIR), str(_PYLIB_DIR)):
@@ -502,6 +502,10 @@ class EldhomMainWindow(QMainWindow):
         reg("eldhom.reaction.window_closed",  self._on_reaction_window_closed)
         reg("eldhom.attack.resolved",         self._on_attack_resolved)
 
+        # Instant-card reaction window (priority over defense)
+        reg("eldhom.instant.window_opened",   self._on_instant_window_opened)
+        reg("eldhom.instant.window_closed",   self._on_instant_window_closed)
+
         # Actor events → EldhomActorAdapter
         for evt in (
             "eldhom.state.full",
@@ -651,7 +655,7 @@ class EldhomMainWindow(QMainWindow):
 
     def _on_pg_played_card(self, msg: dict) -> None:
         data    = _extract_data(msg)
-        card_id = str(data.get("card_id", ""))
+        card_id = str(data.get("payload", data.get("card_id", "")))
         if card_id:
             self._deck.on_envelope({
                 "typeId": "gmAlea.deck.card_moved",
@@ -866,6 +870,44 @@ class EldhomMainWindow(QMainWindow):
             "eldhom.react_defense",
             {"defender_id": self._pending_defender, "reaction": code},
         )
+
+    def _actor_display_name(self, actor_id: str) -> str:
+        """Resolves a friendly label for any hero or monster instance id."""
+        hero = self._hero_data.get(actor_id)
+        if hero:
+            return str(hero.get("name", hero.get("id", actor_id)))
+        return self._defender_name(actor_id)
+
+    def _on_instant_window_opened(self, msg: dict) -> None:
+        """Shows the instant-card dialog; forwards the choice to the engine.
+
+        Options are sent at the data root by the engine. The single client
+        decides which instants (if any) to play before the defense window.
+        """
+        data    = _extract_data(msg)
+        options = data.get("options", []) or []
+        names   = {
+            aid: self._actor_display_name(aid)
+            for aid in {str(o.get("actor_id", "")) for o in options}
+        }
+        dialog   = InstantWindowDialog(options, names, self)
+        accepted = dialog.exec()
+        selected = dialog.selected_options() if accepted else []
+        payload  = [
+            {"actor_id": str(o.get("actor_id", "")),
+             "card_id":  str(o.get("card_id", ""))}
+            for o in selected
+        ]
+        self._bridge.send_command("eldhom.play_instants", {"selected": payload})
+
+    def _on_instant_window_closed(self, msg: dict) -> None:
+        """Status feedback once the engine resolved the instant window."""
+        data  = _extract_data(msg)
+        count = int(data.get("count", 0))
+        if count > 0:
+            self._status_label.setText(
+                f"\u26a1 {count} carta/e istantanea/e giocata/e"
+            )
 
     def _on_reaction_window_closed(self, msg: dict) -> None:
         """Closes the defense panel once the engine resolved the reaction."""

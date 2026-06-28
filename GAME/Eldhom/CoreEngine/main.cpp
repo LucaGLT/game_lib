@@ -71,6 +71,7 @@ public:
 			std::string group_id = _engine->next_actor();
 			_engine->resolve_group_turn_for(group_id);
 			emit_next_actor_event();
+			emit_full_state();
 		}
 	}
 
@@ -84,6 +85,7 @@ public:
 		// engine stays the single source of truth for the pending attack.
 		if (_engine && _engine->has_pending_attack()
 		    && type_id != eldhom::CMD_REACT_DEFENSE
+		    && type_id != eldhom::CMD_PLAY_INSTANTS
 		    && type_id != eldhom::CMD_REQUEST_STATE)
 		{
 			nlohmann::json err;
@@ -113,6 +115,10 @@ public:
 		else if (type_id == eldhom::CMD_REACT_DEFENSE)
 		{
 			handle_react_defense(data);
+		}
+		else if (type_id == eldhom::CMD_PLAY_INSTANTS)
+		{
+			handle_play_instants(data);
 		}
 		else if (type_id == eldhom::CMD_STOP_SEQUENCE)
 		{
@@ -183,7 +189,7 @@ private:
 
 		eldhom::ActionResult r = _engine->play_card(hero_id, card_id);
 		send_action_result(r);
-		if (r.ok()) { emit_next_actor_event(); }
+		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
 	}
 
 	void handle_simple_action(const nlohmann::json& data)
@@ -200,7 +206,7 @@ private:
 
 		eldhom::ActionResult r = _engine->do_simple_action(hero_id, action, destination);
 		send_action_result(r);
-		if (r.ok()) { emit_next_actor_event(); }
+		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
 	}
 
 	// ── Interactive attack / reaction window commands ─────────────────────────
@@ -215,7 +221,44 @@ private:
 		send_action_result(r);
 		if (!r.ok()) { return; }
 
-		// Build and emit the reaction-window event with the allowed reactions.
+		// Instants have priority: if any actor may answer with a matching
+		// INSTANT card, open the instant window first; otherwise go straight
+		// to the defender's reaction window.
+		if (_engine->has_pending_instants())
+		{
+			emit_instant_window(_engine->pending_attack().instant_trigger);
+		}
+		else
+		{
+			emit_defense_window();
+		}
+	}
+
+	// Builds and emits the instant-reaction window for the given trigger.
+	void emit_instant_window(const std::string& trigger)
+	{
+		if (!_engine) { return; }
+
+		nlohmann::json options = nlohmann::json::array();
+		for (const eldhom::InstantOption& o : _engine->eligible_instants(trigger))
+		{
+			nlohmann::json oj;
+			oj["actor_id"]  = o.actor_id;
+			oj["card_id"]   = o.card_id;
+			oj["card_name"] = o.card_name;
+			options.push_back(oj);
+		}
+
+		nlohmann::json w;
+		w["trigger"] = trigger;
+		w["options"] = options;
+		_bridge.send_event(eldhom::EVT_INSTANT_WINDOW_OPEN, w);
+	}
+
+	// Builds and emits the defender's reaction window from the pending attack.
+	void emit_defense_window()
+	{
+		if (!_engine) { return; }
 		const eldhom::PendingAttack& pa = _engine->pending_attack();
 
 		nlohmann::json reactions = nlohmann::json::array();
@@ -243,6 +286,38 @@ private:
 		w["incoming_damage"] = pa.base_damage;
 		w["reactions"]       = reactions;
 		_bridge.send_event(eldhom::EVT_REACTION_WINDOW_OPEN, w);
+	}
+
+	void handle_play_instants(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+
+		// Parse the selected (actor_id, card_id) pairs.
+		std::vector<std::pair<std::string, std::string>> selected;
+		if (data.contains("selected") && data["selected"].is_array())
+		{
+			for (const nlohmann::json& s : data["selected"])
+			{
+				std::string aid = s.value("actor_id", std::string{});
+				std::string cid = s.value("card_id",  std::string{});
+				if (!aid.empty() && !cid.empty())
+				{
+					selected.emplace_back(aid, cid);
+				}
+			}
+		}
+
+		eldhom::ActionResult r = _engine->play_instants(selected);
+		send_action_result(r);
+		if (!r.ok()) { return; }
+
+		// Close the instant window, then open the defender's reaction window.
+		nlohmann::json closed;
+		closed["count"] = static_cast<int>(selected.size());
+		_bridge.send_event(eldhom::EVT_INSTANT_WINDOW_CLOSED, closed);
+
+		emit_full_state();
+		emit_defense_window();
 	}
 
 	void handle_react_defense(const nlohmann::json& data)
@@ -283,6 +358,7 @@ private:
 		_bridge.send_event(eldhom::EVT_ATTACK_RESOLVED, rj);
 
 		emit_next_actor_event();
+		emit_full_state();
 	}
 
 	void handle_stop_sequence(const nlohmann::json& data)
@@ -292,7 +368,7 @@ private:
 
 		eldhom::ActionResult r = _engine->stop_sequence(hero_id);
 		send_action_result(r);
-		if (r.ok()) { emit_next_actor_event(); }
+		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
 	}
 
 	// ── Event forwarding ──────────────────────────────────────────────────────

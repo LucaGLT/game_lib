@@ -141,7 +141,9 @@ class EldhomActorAdapter(QWidget):
 
     def _on_pg_moved(self, data: dict) -> None:
         actor_id = str(data.get("hero_id", data.get("actor_id", "")))
-        destination = str(data.get("to", data.get("destination", "")))
+        destination = str(
+            data.get("payload", data.get("to", data.get("destination", "")))
+        )
         if actor_id and destination:
             self._module.on_envelope(
                 {
