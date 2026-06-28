@@ -526,10 +526,24 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 	// Determine enemy faction for targeting
 	const std::string& enemy_faction = enemy_faction_for_hero(hero_id);
 
-	// Apply effects
+	// ── Apply effects ──────────────────────────────────────────────────────────
+	// DAMAGE effects are deferred: they park a PendingAttack so the defender
+	// can react interactively (instant window + defense window).  All other
+	// effect types are applied immediately before the card is committed.
+
+	bool        has_damage    = false;
+	int         damage_amount = 0;
+
 	for (const EldhomEffect& eff : card.effects)
 	{
-		EffectResult res = _rule_adapter.apply_effect(eff, hero_id, _store, enemy_faction);
+		if (eff.effect_type == "DAMAGE" || eff.effect_type == "DEAL_DAMAGE")
+		{
+			has_damage    = true;
+			damage_amount = eff.amount; // last DAMAGE entry wins (cards have at most one)
+			continue; // deferred — applied via reaction chain
+		}
+		EffectResult res =
+			_rule_adapter.apply_effect(eff, hero_id, _store, enemy_faction);
 		if (res.target_ko && !res.target_id.empty())
 		{
 			emit(EVT_MONSTER_DEFEATED, res.target_id, {});
@@ -538,8 +552,8 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 	}
 
 	// Save original state for is_turn_ending check BEFORE advancing
-	gmAlea::CardType original_card_type = card.card_type;
-	gmAlea::SequenceState seq_before = seq; // copy (value semantics)
+	gmAlea::CardType      original_card_type = card.card_type;
+	gmAlea::SequenceState seq_before         = seq; // copy (value semantics)
 
 	// Advance sequence state
 	_seq_states[hero_id] = _sequence_adapter.advance(original_card_type, seq_before);
@@ -564,6 +578,35 @@ ActionResult EldhomEngine::play_card(const HeroId& hero_id, const CardId& card_i
 
 	// Formation check
 	check_formation(_store.common(hero_id).area_id);
+
+	// ── DAMAGE deferred path: park pending attack ─────────────────────────────
+	if (has_damage)
+	{
+		const LocationId& loc = _store.common(hero_id).area_id;
+		gmActor::ActorId target =
+			_rule_adapter.find_nearest_target(_store, loc, enemy_faction);
+
+		if (!target.empty())
+		{
+			// Timeline was already charged above; set attack_cost = 0 so that
+			// resolve_reaction does not double-charge.
+			_pending.active           = true;
+			_pending.attacker_id      = hero_id;
+			_pending.defender_id      = target;
+			_pending.base_damage      = damage_amount;
+			_pending.attack_cost      = 0;
+			_pending.source           = card_id;
+			_pending.instant_trigger  = EVT_MONSTER_DAMAGED;
+			_pending.awaiting_instants =
+				!eligible_instants(_pending.instant_trigger).empty();
+
+			emit(EVT_ATTACK_DECLARED, hero_id, target);
+			// Do NOT call end_hero_turn here: resolve_reaction will call it
+			// once the reaction chain (instants → defense) is complete.
+			return {};
+		}
+		// No target available: fall through to normal turn-ending logic.
+	}
 
 	// Turn-ending check uses the state BEFORE the advance
 	if (_sequence_adapter.is_turn_ending(original_card_type, seq_before))

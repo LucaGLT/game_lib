@@ -219,19 +219,15 @@ Quando entri nella Locazione finale, si risolve normalmente lo Schieramento.
 ## 3. Assestarsi
 
 **Origine:** Base  
-**Tipo:** Singola  
-**Icone:** ▶️⏺️  
+**Tipo:** Istantanea  
+**Icone:** ⚡  
 **Costo:** 1⌛
+
+**Trigger:**  
+Un Nemico entra nella tua Locazione o in una Locazione adiacente.
 
 **Effetto:**  
 Opera uno Schieramento dei PG nella tua Locazione.
-
-Limitazione:
-
-```text
-Se nella tua Locazione sono presenti Nemici,
-puoi spostare solo te stesso.
-```
 
 La Formazione finale deve rispettare sempre:
 
@@ -301,11 +297,7 @@ Attacca un Nemico in mischia nella tua Locazione.
 
 Infliggi 1❌.
 
-Se il bersaglio è in Prima Linea, puoi Spingerlo in Retroguardia.
-
-Se questo rende illegale la Formazione dei Mostri, si risolve uno Scompaginamento dei Mostri.
-
-Tu sei il Giocatore che ha causato lo Scompaginamento.
+Poi il Nemico della Locazione attaccata subisce Scompaginamento da te (decidi come risolverlo).
 
 **Ruolo:** poco danno, ma può rompere la posizione nemica.
 

@@ -171,7 +171,23 @@ public:
 		int                     amount,
 		gmActor::ActorStore&    store) const;
 
-private:
+	/**
+	 * @brief Finds the nearest valid target without applying any effect.
+	 *
+	 * Convenience wrapper around the internal TargetingFilter, used by
+	 * EldhomEngine::play_card to locate a DAMAGE target before parking the
+	 * pending-attack struct.
+	 *
+	 * @param store     Actor store to query (read-only).
+	 * @param from_loc  Location from which targeting is resolved.
+	 * @param faction   Faction being targeted.
+	 * @return Actor ID of the nearest valid target, or empty string if none.
+	 */
+	gmActor::ActorId find_nearest_target(
+		const gmActor::ActorStore& store,
+		const LocationId&          from_loc,
+		const std::string&         faction) const;
+
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;
 

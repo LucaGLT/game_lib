@@ -132,9 +132,47 @@ EffectResult EldhomRuleAdapter::apply_effect(
 		res.resolved = true;
 		res.note     = "Wait";
 	}
+	else if (effect.effect_type == "INTERACT")
+	{
+		// Carta Interazione Semplice: nessuna mutazione diretta dello store;
+		// l'effetto sulla scena e' gestito dalla logica di missione.
+		res.resolved = true;
+		res.note     = "Interaction performed";
+	}
+	else if (effect.effect_type == "DRAW_CARD")
+	{
+		// La gestione della mano richiede l'accesso agli HandState di EldhomEngine;
+		// nel RuleAdapter si registra solo come risolto: il pescaggio vero avviene
+		// in end_hero_turn (draw_to_hand).
+		res.resolved = true;
+		res.note     = "Draw card (handled by end_hero_turn draw-up)";
+	}
+	else if (effect.effect_type == "PUSH_ENEMY_BACKLINE")
+	{
+		// Spinge il nemico in Prima Linea piu' vicino in Retroguardia.
+		gmActor::ActorId target =
+			_targeting.nearest_target(store, loc, target_faction);
+		if (!target.empty())
+		{
+			store.common(target).area_position = gmActor::AreaPosition::BACKLINE;
+			res.resolved  = true;
+			res.target_id = target;
+			res.note      = target + " pushed to backline";
+		}
+	}
 	// Unknown effect types are silently ignored (open-closed principle)
 
 	return res;
+}
+
+// ── apply_behavior_step (monster step) ───────────────────────────────────────
+
+gmActor::ActorId EldhomRuleAdapter::find_nearest_target(
+	const gmActor::ActorStore& store,
+	const LocationId&          from_loc,
+	const std::string&         faction) const
+{
+	return _targeting.nearest_target(store, from_loc, faction);
 }
 
 // ── apply_behavior_step (monster step) ───────────────────────────────────────

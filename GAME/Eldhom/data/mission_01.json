@@ -36,14 +36,14 @@
       "mission_deck": [
         "base_colpo_secco",
         "base_colpo_secco",
-        "base_attacco_inizio_seq",
-        "base_attacco_continua_seq",
-        "base_attacco_chiudi_seq",
-        "base_mossa_tattica",
-        "base_mossa_tattica",
-        "thael_colpo_pesante",
-        "thael_colpo_pesante",
-        "base_scudo_reattivo"
+        "base_colpo_d_apertura",
+        "base_secondo_colpo",
+        "base_colpo_di_chiusura",
+        "base_passo_cauto",
+        "base_passo_cauto",
+        "base_fendente_pesante",
+        "base_fendente_pesante",
+        "base_assestarsi"
       ]
     },
     {
@@ -59,15 +59,15 @@
       "start_timeline": 0,
       "mission_deck": [
         "base_colpo_secco",
-        "base_mossa_tattica",
-        "base_mossa_tattica",
-        "base_mossa_tattica",
+        "base_passo_cauto",
+        "base_passo_cauto",
+        "base_passo_cauto",
         "velyr_cura_rapida",
         "velyr_cura_rapida",
         "velyr_supporto_tattico",
-        "base_scudo_reattivo",
-        "base_attacco_inizio_seq",
-        "base_attacco_chiudi_seq"
+        "base_assestarsi",
+        "base_colpo_d_apertura",
+        "base_colpo_di_chiusura"
       ]
     }
   ],

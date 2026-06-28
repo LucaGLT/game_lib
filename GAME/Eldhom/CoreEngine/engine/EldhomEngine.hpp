@@ -50,6 +50,7 @@
 
 #include <functional>
 #include <string>
+#include <deque>
 #include <unordered_map>
 #include <vector>
 
@@ -102,6 +103,7 @@ struct PendingAttack
 	int              base_damage = 0;     ///< Declared (pre-reaction) damage
 	int              attack_cost = 0;     ///< Timeline cost charged on resolution
 	std::string      source;              ///< "simple" or the source card id
+	bool             has_disrupt = false; ///< True if the source card had DISRUPT_ENEMY_FORMATION
 	bool             awaiting_instants = false; ///< True while the instant window is open
 	std::string      instant_trigger;     ///< Event id eligible instants react to
 };
@@ -116,6 +118,33 @@ struct InstantOption
 	CardId           card_id;    ///< Instant card id
 	std::string      card_name;  ///< Display name of the instant card
 	std::string      trigger;    ///< Reaction trigger the card matched
+};
+
+/**
+ * @struct ActorFormationEntry
+ * @brief One actor listed in an interactive formation dialog.
+ */
+struct ActorFormationEntry
+{
+	gmActor::ActorId actor_id;           ///< Actor identifier
+	std::string      display_name;       ///< Human-readable label
+	bool             in_backline = false; ///< Current BACKLINE status
+};
+
+/**
+ * @struct PendingFormation
+ * @brief One queued formation dialog step (one faction at one location).
+ *
+ * The engine queues one item per faction/location that requires a player
+ * decision.  main.cpp dequeues one at a time via current_formation_dialog()
+ * and sends the event; resolve_formation() pops the item when resolved.
+ */
+struct PendingFormation
+{
+	LocationId                       location_id; ///< Location where actors stand
+	std::string                      faction_id;  ///< Faction to reorganise
+	std::string                      source;      ///< "scompaginamento", "overflow", "disrupt"
+	std::vector<ActorFormationEntry> actors;      ///< Actors of this faction in the location
 };
 
 /**

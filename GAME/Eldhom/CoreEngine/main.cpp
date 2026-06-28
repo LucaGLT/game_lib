@@ -189,7 +189,27 @@ private:
 
 		eldhom::ActionResult r = _engine->play_card(hero_id, card_id);
 		send_action_result(r);
-		if (r.ok()) { emit_next_actor_event(); emit_full_state(); }
+		if (!r.ok()) { return; }
+
+		// If the card parked a DAMAGE pending attack, open the reaction chain
+		// (instant window first if eligible, then defense window).  Otherwise
+		// the card had no DAMAGE effect and the turn advances normally.
+		if (_engine->has_pending_attack())
+		{
+			if (_engine->has_pending_instants())
+			{
+				emit_instant_window(_engine->pending_attack().instant_trigger);
+			}
+			else
+			{
+				emit_defense_window();
+			}
+		}
+		else
+		{
+			emit_next_actor_event();
+			emit_full_state();
+		}
 	}
 
 	void handle_simple_action(const nlohmann::json& data)

@@ -37,7 +37,7 @@ using EffectType  = std::string; ///< Card/step effect type string key
  * @brief The four simple actions a PG may perform instead of playing a card.
  */
 enum class SimpleActionType {
-	MOVE,      ///< Movimento Semplice: sposta fino a 2 Loc, cost 1⌛
+	MOVE,      ///< Movimento Semplice: sposta fino a 2 Loc, cost 2⌛
 	ATTACK,    ///< Attacco Semplice: infliggi 1❌ su bersaglio vicino, cost 2⌛
 	INTERACT,  ///< Interazione Semplice: usa elemento scena, cost 3⌛
 	RECOVER    ///< Recupero Semplice: +1 PV, scarta/pesca una carta, cost 3⌛
@@ -108,8 +108,10 @@ enum class ActionResultCode {
 	ERR_NOT_DEFENDER,          ///< The reacting actor is not the pending defender
 	ERR_REACTION_NOT_ALLOWED,  ///< The chosen reaction is not in the allowed set
 	ERR_ATTACK_PENDING,        ///< A different action arrived during a reaction window
-	ERR_NO_PENDING_INSTANTS,   ///< play_instants called with no instant window open
-	ERR_INSTANT_NOT_ELIGIBLE   ///< A selected instant is not in the eligible set
+	ERR_NO_PENDING_INSTANTS,      ///< play_instants called with no instant window open
+	ERR_INSTANT_NOT_ELIGIBLE,     ///< A selected instant is not in the eligible set
+	ERR_NO_PENDING_FORMATION,     ///< resolve_formation called without a pending dialog
+	ERR_INVALID_FORMATION_CHOICE  ///< Retroguardia count exceeds Prima Linea count
 };
 
 /** @brief Result returned by engine action methods. */
@@ -126,7 +128,7 @@ struct ActionResult {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** @brief Timeline cost for Azione Semplice: Movimento. */
-constexpr int COST_SIMPLE_MOVE      = 1;
+constexpr int COST_SIMPLE_MOVE      = 2;
 /** @brief Timeline cost for Azione Semplice: Attacco. */
 constexpr int COST_SIMPLE_ATTACK    = 2;
 /** @brief Timeline cost for Azione Semplice: Interazione. */
@@ -199,6 +201,10 @@ inline const EventType EVT_GROUP_ELIMINATED  = "eldhom.group.eliminated";
 inline const EventType EVT_FORMATION_CHECKED = "eldhom.formation.checked";
 inline const EventType EVT_FORMATION_CHANGED = "eldhom.formation.changed";
 
+// Interactive formation dialog events (Scompaginamento / Schieramento)
+inline const EventType EVT_FORMATION_DIALOG  = "eldhom.formation.dialog_needed";
+inline const EventType EVT_FORMATION_DONE    = "eldhom.formation.done";
+
 // Interactive attack / reaction window events (§5.5 — Reazioni dei Mostri)
 inline const EventType EVT_ATTACK_DECLARED        = "eldhom.attack.declared";
 inline const EventType EVT_REACTION_WINDOW_OPEN   = "eldhom.reaction.window_opened";
@@ -249,9 +255,12 @@ inline const std::string CMD_STOP_SEQUENCE   = "eldhom.stop_sequence";
 inline const std::string CMD_REQUEST_STATE   = "eldhom.request_state";
 
 // Interactive attack / reaction window commands (GUI → engine)
-inline const std::string CMD_DECLARE_ATTACK  = "eldhom.declare_attack";
-inline const std::string CMD_REACT_DEFENSE   = "eldhom.react_defense";
-inline const std::string CMD_PLAY_INSTANTS   = "eldhom.play_instants";
+inline const std::string CMD_DECLARE_ATTACK     = "eldhom.declare_attack";
+inline const std::string CMD_REACT_DEFENSE      = "eldhom.react_defense";
+inline const std::string CMD_PLAY_INSTANTS      = "eldhom.play_instants";
+
+// Interactive formation dialog command (GUI → engine)
+inline const std::string CMD_RESOLVE_FORMATION  = "eldhom.resolve_formation";
 
 } // namespace eldhom
 

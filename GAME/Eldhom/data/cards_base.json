@@ -1,5 +1,39 @@
 [
   {
+    "card_id": "base_passo_cauto",
+    "name": "Passo Cauto",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "MOVE", "amount": 2, "target": "PLAYER_CHOICE", "value": "" }
+    ]
+  },
+  {
+    "card_id": "base_scatto_breve",
+    "name": "Scatto Breve",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "" }
+    ]
+  },
+  {
+    "card_id": "base_assestarsi",
+    "name": "Assestarsi",
+    "origin": "BASE",
+    "card_type": "INSTANT",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "reaction_trigger": "eldhom.pg.attacked",
+    "effects": [
+      { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
+    ]
+  },
+  {
     "card_id": "base_colpo_secco",
     "name": "Colpo Secco",
     "origin": "BASE",
@@ -7,102 +41,134 @@
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "DAMAGE",
-        "amount": 1,
-        "target": "NEAREST_ENEMY_FRONTLINE"
-      }
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
-    "card_id": "base_mossa_tattica",
-    "name": "Mossa Tattica",
+    "card_id": "base_fendente_pesante",
+    "name": "Fendente Pesante",
     "origin": "BASE",
     "card_type": "SINGLE",
-    "timeline_cost": 1,
+    "timeline_cost": 3,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "MOVE",
-        "amount": 1,
-        "target": "ADJACENT_LOCATION"
-      }
+      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE",
+        "condition": "IF_FORMATION_FRONT" }
     ]
   },
   {
-    "card_id": "base_scudo_reattivo",
-    "name": "Scudo Reattivo",
+    "card_id": "base_spinta_di_corpo",
+    "name": "Spinta di Corpo",
     "origin": "BASE",
-    "card_type": "INSTANT",
-    "timeline_cost": 0,
+    "card_type": "SINGLE",
+    "timeline_cost": 3,
     "can_target_backline": false,
-    "reaction_trigger": "eldhom.pg.attacked",
     "effects": [
-      {
-        "effect_type": "FORMATION_PUSH",
-        "amount": 0,
-        "value": "FRONTLINE"
-      }
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE",
+        "condition": "IF_FORMATION_FRONT" },
+      { "effect_type": "PUSH_ENEMY_BACKLINE", "amount": 0, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
-    "card_id": "base_attacco_inizio_seq",
-    "name": "Attacco — Inizio Sequenza",
+    "card_id": "base_colpo_d_apertura",
+    "name": "Colpo d'Apertura",
     "origin": "BASE",
     "card_type": "SEQ_START",
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "DAMAGE",
-        "amount": 1,
-        "target": "NEAREST_ENEMY_FRONTLINE"
-      }
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
-    "card_id": "base_attacco_continua_seq",
-    "name": "Attacco — Continua Sequenza",
+    "card_id": "base_passo_e_lama",
+    "name": "Passo e Lama",
     "origin": "BASE",
-    "card_type": "SEQ_CONTINUE",
-    "timeline_cost": 1,
+    "card_type": "SEQ_START",
+    "timeline_cost": 3,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "DAMAGE",
-        "amount": 1,
-        "target": "NEAREST_ENEMY_FRONTLINE"
-      }
+      { "effect_type": "MOVE", "amount": 1, "target": "PLAYER_CHOICE", "value": "" },
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
-    "card_id": "base_attacco_chiudi_seq",
-    "name": "Attacco — Chiudi Sequenza",
+    "card_id": "base_secondo_colpo",
+    "name": "Secondo Colpo",
+    "origin": "BASE",
+    "card_type": "SEQ_CONTINUE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+    ]
+  },
+  {
+    "card_id": "base_pressione_continua",
+    "name": "Pressione Continua",
+    "origin": "BASE",
+    "card_type": "SEQ_CONTINUE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+    ]
+  },
+  {
+    "card_id": "base_colpo_di_chiusura",
+    "name": "Colpo di Chiusura",
     "origin": "BASE",
     "card_type": "SEQ_END",
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "DAMAGE",
-        "amount": 2,
-        "target": "NEAREST_ENEMY_FRONTLINE"
-      }
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
-    "card_id": "thael_colpo_pesante",
-    "name": "Colpo Pesante",
-    "origin": "THAEL",
+    "card_id": "base_lancio_di_fortuna",
+    "name": "Lancio di Fortuna",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+    ]
+  },
+  {
+    "card_id": "base_uso_arco_balestra",
+    "name": "Uso Arco/Balestra",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE",
+        "condition": "IF_WEAPON_RANGED" }
+    ]
+  },
+  {
+    "card_id": "base_mano_ferma",
+    "name": "Mano Ferma",
+    "origin": "BASE",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "INTERACT", "amount": 0, "target": "SCENE" }
+    ]
+  },
+  {
+    "card_id": "base_riprendere_fiato",
+    "name": "Riprendere Fiato",
+    "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 3,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "DAMAGE",
-        "amount": 2,
-        "target": "NEAREST_ENEMY_FRONTLINE"
-      }
+      { "effect_type": "HEAL",      "amount": 1, "target": "SELF" },
+      { "effect_type": "DRAW_CARD", "amount": 1, "target": "SELF" }
     ]
   },
   {
@@ -113,11 +179,7 @@
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      {
-        "effect_type": "HEAL",
-        "amount": 2,
-        "target": "SELF"
-      }
+      { "effect_type": "HEAL", "amount": 2, "target": "SELF" }
     ]
   },
   {
@@ -129,11 +191,7 @@
     "can_target_backline": false,
     "reaction_trigger": "eldhom.monster.damaged",
     "effects": [
-      {
-        "effect_type": "HEAL",
-        "amount": 1,
-        "target": "SELF"
-      }
+      { "effect_type": "HEAL", "amount": 1, "target": "SELF" }
     ]
   }
 ]
