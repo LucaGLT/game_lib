@@ -86,6 +86,43 @@ struct HeroHandState
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * @struct PendingAttack
+ * @brief Engine-side state held while an interactive reaction window is open.
+ *
+ * Between `declare_attack()` and `resolve_reaction()` the engine parks the
+ * attack here.  No effect is applied and the attacker's turn does not advance
+ * until the defender's reaction is resolved.  `active == false` means no
+ * reaction window is open and normal commands are accepted.
+ */
+struct PendingAttack
+{
+	bool             active      = false; ///< True while the reaction window is open
+	HeroId           attacker_id;         ///< Hero that declared the attack
+	gmActor::ActorId defender_id;         ///< Target that must react
+	int              base_damage = 0;     ///< Declared (pre-reaction) damage
+	int              attack_cost = 0;     ///< Timeline cost charged on resolution
+	std::string      source;              ///< "simple" or the source card id
+};
+
+/**
+ * @struct ReactionResolution
+ * @brief Outcome of `resolve_reaction()`, used by callers to build events.
+ */
+struct ReactionResolution
+{
+	bool             ok           = false; ///< True if the reaction was resolved
+	HeroId           attacker_id;          ///< Hero that attacked
+	gmActor::ActorId defender_id;          ///< Target that reacted
+	int              base_damage  = 0;     ///< Pre-reaction damage
+	int              final_damage = 0;     ///< Damage actually applied
+	DefenseReaction  reaction     = DefenseReaction::TAKE; ///< Chosen reaction
+	int              defender_hp_after = 0;///< Defender HP after the attack
+	bool             defender_ko  = false; ///< True if the defender reached 0 HP
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
  * @class EldhomEngine
  * @brief Main game-engine orchestrator for Le Pergamene di Eldhôm.
  */
@@ -208,6 +245,56 @@ public:
 	 */
 	ActionResult stop_sequence(const HeroId& hero_id);
 
+	// ── Interactive attack / reaction window API (§5.5) ───────────────────────
+
+	/**
+	 * @brief Declares an interactive attack against an explicit target.
+	 *
+	 * Unlike the automatic `SimpleActionType::ATTACK`, this opens a reaction
+	 * window: the engine validates the target (same location, §15 Proiezione
+	 * frontline rule) and parks a `PendingAttack`.  No damage is applied and
+	 * the attacker's turn does NOT advance until `resolve_reaction()` is
+	 * called.  The controlling player chooses the defender's reaction.
+	 *
+	 * @param hero_id   Attacking hero actor ID (must be the active actor).
+	 * @param target_id Target actor ID (must be a valid target in range).
+	 * @return `ActionResult`.  On success, `has_pending_attack()` becomes true.
+	 */
+	ActionResult declare_attack(
+		const HeroId&           hero_id,
+		const gmActor::ActorId& target_id);
+
+	/**
+	 * @brief Resolves the open reaction window with the chosen reaction.
+	 *
+	 * Applies the reaction (TAKE / BLOCK / DODGE), then charges the attacker's
+	 * timeline cost, runs the formation check and ends the hero's turn.
+	 *
+	 * @param defender_id Actor reacting (must match the pending defender).
+	 * @param reaction    The chosen defensive reaction.
+	 * @param out         Optional output filled with the resolution details.
+	 * @return `ActionResult`.  ERR_NO_PENDING_ATTACK if no window is open.
+	 */
+	ActionResult resolve_reaction(
+		const gmActor::ActorId& defender_id,
+		DefenseReaction         reaction,
+		ReactionResolution*     out = nullptr);
+
+	/** @brief Returns true while an interactive reaction window is open. */
+	bool has_pending_attack() const;
+
+	/** @brief Read-only access to the current pending attack. */
+	const PendingAttack& pending_attack() const;
+
+	/**
+	 * @brief Returns the reactions the current pending defender may choose.
+	 *
+	 * Always includes TAKE and BLOCK.  DODGE is offered only when the defender
+	 * is on the FRONTLINE (so it has a BACKLINE to retreat to).  Returns an
+	 * empty vector when no attack is pending.
+	 */
+	std::vector<DefenseReaction> allowed_reactions() const;
+
 	// ── Monster group turn API ────────────────────────────────────────────────
 
 	/**
@@ -319,6 +406,9 @@ private:
 
 	// ── Event emission ────────────────────────────────────────────────────────
 	EngineEventCallback    _on_event;
+
+	// ── Interactive attack state ──────────────────────────────────────────────
+	PendingAttack          _pending; ///< Open reaction window (active==false if none)
 
 	void emit(const EventType& type,
 	          const std::string& actor_id  = {},

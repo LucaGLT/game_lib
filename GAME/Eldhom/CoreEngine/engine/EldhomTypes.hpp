@@ -44,6 +44,50 @@ enum class SimpleActionType {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Defensive reaction (§5.5 — Reazioni dei Mostri)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @enum DefenseReaction
+ * @brief How a defender reacts to a declared attack inside the reaction window.
+ *
+ * The choice is always made by the controlling player (no automatism): the
+ * engine opens a reaction window, advertises the allowed reactions, and waits
+ * for the caller to pick one before applying any effect.
+ */
+enum class DefenseReaction {
+	TAKE,   ///< Subisci: take the full incoming damage.
+	BLOCK,  ///< Para: reduce the incoming damage by REACTION_BLOCK_REDUCTION.
+	DODGE   ///< Schiva: negate the damage, but retreat to BACKLINE (formation).
+};
+
+/** @brief Returns the wire string for a DefenseReaction ("TAKE"/"BLOCK"/"DODGE"). */
+inline std::string to_string(DefenseReaction r)
+{
+	switch (r)
+	{
+	case DefenseReaction::TAKE:  return "TAKE";
+	case DefenseReaction::BLOCK: return "BLOCK";
+	case DefenseReaction::DODGE: return "DODGE";
+	}
+	return "TAKE";
+}
+
+/**
+ * @brief Parses a wire string into a DefenseReaction.
+ * @param s   One of "TAKE", "BLOCK", "DODGE" (case-sensitive).
+ * @param out Receives the parsed reaction.
+ * @return True if the string was recognised, false otherwise.
+ */
+inline bool parse_defense_reaction(const std::string& s, DefenseReaction& out)
+{
+	if      (s == "TAKE")  { out = DefenseReaction::TAKE;  return true; }
+	else if (s == "BLOCK") { out = DefenseReaction::BLOCK; return true; }
+	else if (s == "DODGE") { out = DefenseReaction::DODGE; return true; }
+	return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Action result
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,7 +103,11 @@ enum class ActionResultCode {
 	ERR_NO_SEQUENCE_ACTIVE,    ///< stop_sequence called with no active sequence
 	ERR_UNKNOWN_ACTOR,         ///< actor_id not registered in the engine
 	ERR_ACTOR_KO,              ///< Actor is KO and cannot act
-	ERR_NO_VALID_TARGET        ///< Effect requires a target that cannot be found
+	ERR_NO_VALID_TARGET,       ///< Effect requires a target that cannot be found
+	ERR_NO_PENDING_ATTACK,     ///< A reaction was sent but no attack is pending
+	ERR_NOT_DEFENDER,          ///< The reacting actor is not the pending defender
+	ERR_REACTION_NOT_ALLOWED,  ///< The chosen reaction is not in the allowed set
+	ERR_ATTACK_PENDING         ///< A different action arrived during a reaction window
 };
 
 /** @brief Result returned by engine action methods. */
@@ -90,6 +138,13 @@ constexpr int COST_MONSTER_MOVE     = 1;
 constexpr int COST_MONSTER_ATTACK   = 2;
 /** @brief Timeline cost for basic monster wait (§23). */
 constexpr int COST_MONSTER_WAIT     = 3;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reaction / defense constants (§5.5 — Reazioni dei Mostri)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** @brief Damage reduction applied by a BLOCK (Para) reaction. */
+constexpr int REACTION_BLOCK_REDUCTION = 1;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Default PG stats
@@ -142,6 +197,12 @@ inline const EventType EVT_GROUP_ELIMINATED  = "eldhom.group.eliminated";
 inline const EventType EVT_FORMATION_CHECKED = "eldhom.formation.checked";
 inline const EventType EVT_FORMATION_CHANGED = "eldhom.formation.changed";
 
+// Interactive attack / reaction window events (§5.5 — Reazioni dei Mostri)
+inline const EventType EVT_ATTACK_DECLARED        = "eldhom.attack.declared";
+inline const EventType EVT_REACTION_WINDOW_OPEN   = "eldhom.reaction.window_opened";
+inline const EventType EVT_REACTION_WINDOW_CLOSED = "eldhom.reaction.window_closed";
+inline const EventType EVT_ATTACK_RESOLVED        = "eldhom.attack.resolved";
+
 // Deck / hand events
 inline const EventType EVT_HAND_CHANGED      = "eldhom.deck.hand_updated";
 inline const EventType EVT_DECK_RESHUFFLED   = "eldhom.deck.reshuffled";
@@ -180,6 +241,10 @@ inline const std::string CMD_PLAY_CARD       = "eldhom.play_card";
 inline const std::string CMD_SIMPLE_ACTION   = "eldhom.simple_action";
 inline const std::string CMD_STOP_SEQUENCE   = "eldhom.stop_sequence";
 inline const std::string CMD_REQUEST_STATE   = "eldhom.request_state";
+
+// Interactive attack / reaction window commands (GUI → engine)
+inline const std::string CMD_DECLARE_ATTACK  = "eldhom.declare_attack";
+inline const std::string CMD_REACT_DEFENSE   = "eldhom.react_defense";
 
 } // namespace eldhom
 

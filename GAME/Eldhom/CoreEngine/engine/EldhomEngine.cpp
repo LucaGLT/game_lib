@@ -598,6 +598,207 @@ ActionResult EldhomEngine::stop_sequence(const HeroId& hero_id)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Interactive attack / reaction window (§5.5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+ActionResult EldhomEngine::declare_attack(
+	const HeroId&           hero_id,
+	const gmActor::ActorId& target_id)
+{
+	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
+
+	if (_pending.active)
+	{
+		return { ActionResultCode::ERR_ATTACK_PENDING,
+		         "A reaction window is already open" };
+	}
+
+	if (next_actor() != hero_id)
+	{
+		return { ActionResultCode::ERR_NOT_YOUR_TURN, "Not " + hero_id + "'s turn" };
+	}
+
+	if (!_store.has_actor(hero_id))
+	{
+		return { ActionResultCode::ERR_UNKNOWN_ACTOR, hero_id };
+	}
+
+	const gmActor::ActorStateCommon& c = _store.common(hero_id);
+	if (c.life_state == gmActor::ActorLifeState::KO ||
+	    c.life_state == gmActor::ActorLifeState::DEAD)
+	{
+		return { ActionResultCode::ERR_ACTOR_KO, hero_id + " is KO" };
+	}
+
+	if (target_id.empty() || !_store.has_actor(target_id))
+	{
+		return { ActionResultCode::ERR_NO_VALID_TARGET,
+		         "Unknown target: " + target_id };
+	}
+
+	// Validate the target is reachable in the hero's location, respecting the
+	// §15 Proiezione frontline rule via the TargetingFilter.
+	const std::string& faction = enemy_faction_for_hero(hero_id);
+	if (faction.empty())
+	{
+		return { ActionResultCode::ERR_NO_VALID_TARGET,
+		         hero_id + ": no enemy in location" };
+	}
+
+	const std::vector<gmActor::ActorId> targets =
+		_targeting.valid_targets(_store, c.area_id, faction);
+	if (std::find(targets.begin(), targets.end(), target_id) == targets.end())
+	{
+		return { ActionResultCode::ERR_NO_VALID_TARGET,
+		         target_id + " is not a valid target (out of reach or covered)" };
+	}
+
+	// Park the attack: no effect applied, turn does not advance yet.
+	_pending.active      = true;
+	_pending.attacker_id = hero_id;
+	_pending.defender_id = target_id;
+	_pending.base_damage = 1; // Attacco Semplice = 1❌
+	_pending.attack_cost = COST_SIMPLE_ATTACK;
+	_pending.source      = "simple";
+
+	emit(EVT_ATTACK_DECLARED, hero_id, target_id);
+	return {};
+}
+
+std::vector<DefenseReaction> EldhomEngine::allowed_reactions() const
+{
+	std::vector<DefenseReaction> out;
+	if (!_pending.active) { return out; }
+
+	out.push_back(DefenseReaction::TAKE);
+	out.push_back(DefenseReaction::BLOCK);
+
+	// DODGE (Schiva) is offered only when the defender can retreat to BACKLINE.
+	if (_store.has_actor(_pending.defender_id))
+	{
+		const gmActor::ActorStateCommon& d = _store.common(_pending.defender_id);
+		if (d.area_position == gmActor::AreaPosition::FRONTLINE)
+		{
+			out.push_back(DefenseReaction::DODGE);
+		}
+	}
+	return out;
+}
+
+bool EldhomEngine::has_pending_attack() const
+{
+	return _pending.active;
+}
+
+const PendingAttack& EldhomEngine::pending_attack() const
+{
+	return _pending;
+}
+
+ActionResult EldhomEngine::resolve_reaction(
+	const gmActor::ActorId& defender_id,
+	DefenseReaction         reaction,
+	ReactionResolution*     out)
+{
+	if (!_pending.active)
+	{
+		return { ActionResultCode::ERR_NO_PENDING_ATTACK, "No attack pending" };
+	}
+
+	if (defender_id != _pending.defender_id)
+	{
+		return { ActionResultCode::ERR_NOT_DEFENDER,
+		         defender_id + " is not the pending defender" };
+	}
+
+	// Validate the chosen reaction is allowed for this defender.
+	const std::vector<DefenseReaction> allowed = allowed_reactions();
+	if (std::find(allowed.begin(), allowed.end(), reaction) == allowed.end())
+	{
+		return { ActionResultCode::ERR_REACTION_NOT_ALLOWED,
+		         "Reaction " + to_string(reaction) + " not allowed" };
+	}
+
+	const HeroId           attacker_id = _pending.attacker_id;
+	const gmActor::ActorId target_id   = _pending.defender_id;
+	const int              base_damage = _pending.base_damage;
+	const int              cost        = _pending.attack_cost;
+
+	// Compute the final damage and apply any positional side-effect.
+	int final_damage = base_damage;
+	switch (reaction)
+	{
+	case DefenseReaction::TAKE:
+		final_damage = base_damage;
+		break;
+	case DefenseReaction::BLOCK:
+		final_damage = std::max(0, base_damage - REACTION_BLOCK_REDUCTION);
+		break;
+	case DefenseReaction::DODGE:
+		final_damage = 0;
+		// Schiva: the defender retreats to the BACKLINE (may cause Scompaginamento).
+		_store.common(target_id).area_position = gmActor::AreaPosition::BACKLINE;
+		emit(EVT_FORMATION_CHANGED, target_id, "BACKLINE");
+		break;
+	}
+
+	EffectResult eff;
+	if (final_damage > 0)
+	{
+		eff = _rule_adapter.deal_damage(target_id, final_damage, _store);
+	}
+	else
+	{
+		eff.resolved  = true;
+		eff.target_id = target_id;
+	}
+
+	// Read the defender's HP after the attack (0 if the actor was removed).
+	int defender_hp_after = 0;
+	if (_store.has_actor(target_id))
+	{
+		defender_hp_after = _store.common(target_id).current_hp;
+	}
+
+	// Close the reaction window before applying turn-advancement side effects.
+	_pending = PendingAttack{};
+
+	emit(EVT_PG_ATTACKED, attacker_id, target_id);
+	if (eff.target_ko)
+	{
+		emit(EVT_MONSTER_DEFEATED, target_id, {});
+		handle_monster_instance_death(target_id);
+	}
+
+	// Charge the attacker's timeline and advance the mission clock.
+	_store.common(attacker_id).timeline_position += cost;
+	_mission_events.advance_time(cost);
+	emit(EVT_MISSION_TIME, {}, std::to_string(_mission_events.mission_time()));
+
+	// Formation check in the attacker's location (defender may have retreated).
+	check_formation(_store.common(attacker_id).area_id);
+
+	emit(EVT_PG_SIMPLE_ACTION, attacker_id,
+		 std::to_string(static_cast<int>(SimpleActionType::ATTACK)));
+
+	end_hero_turn(attacker_id);
+
+	if (out)
+	{
+		out->ok                = true;
+		out->attacker_id       = attacker_id;
+		out->defender_id       = target_id;
+		out->base_damage       = base_damage;
+		out->final_damage      = final_damage;
+		out->reaction          = reaction;
+		out->defender_hp_after = defender_hp_after;
+		out->defender_ko       = eff.target_ko;
+	}
+
+	return {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Monster group turn
 // ─────────────────────────────────────────────────────────────────────────────
 

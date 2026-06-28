@@ -271,4 +271,12 @@ EffectResult EldhomRuleAdapter::apply_simple_recover(
 	return res;
 }
 
+EffectResult EldhomRuleAdapter::deal_damage(
+	const gmActor::ActorId& target_id,
+	int                     amount,
+	gmActor::ActorStore&    store) const
+{
+	return apply_damage(target_id, std::max(0, amount), store);
+}
+
 } // namespace eldhom

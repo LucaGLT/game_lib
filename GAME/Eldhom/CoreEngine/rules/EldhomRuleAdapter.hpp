@@ -154,6 +154,23 @@ public:
 		const HeroId&        hero_id,
 		gmActor::ActorStore& store) const;
 
+	/**
+	 * @brief Applies a fixed amount of damage to an explicit target.
+	 *
+	 * Public primitive used by the interactive attack / reaction window: the
+	 * target is chosen by the caller (not auto-selected) and the amount is the
+	 * already-reduced final damage.
+	 *
+	 * @param target_id Actor receiving the damage.
+	 * @param amount    Final damage to apply (>= 0).
+	 * @param store     Actor store (modified in place).
+	 * @return `EffectResult` describing the outcome (target_ko on lethal hit).
+	 */
+	EffectResult deal_damage(
+		const gmActor::ActorId& target_id,
+		int                     amount,
+		gmActor::ActorStore&    store) const;
+
 private:
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;

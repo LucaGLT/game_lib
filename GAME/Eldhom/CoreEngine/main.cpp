@@ -79,6 +79,21 @@ public:
 	{
 		std::unique_lock<std::mutex> lock(_mtx);
 
+		// While a reaction window is open, only the defender's reaction (and a
+		// state request) are accepted.  Every other command is rejected so the
+		// engine stays the single source of truth for the pending attack.
+		if (_engine && _engine->has_pending_attack()
+		    && type_id != eldhom::CMD_REACT_DEFENSE
+		    && type_id != eldhom::CMD_REQUEST_STATE)
+		{
+			nlohmann::json err;
+			err["ok"]      = false;
+			err["error"]   = "Finestra di reazione aperta: il difensore deve rispondere.";
+			err["command"] = type_id;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
 		if (type_id == eldhom::CMD_START_MISSION)
 		{
 			handle_start_mission(data);
@@ -90,6 +105,14 @@ public:
 		else if (type_id == eldhom::CMD_SIMPLE_ACTION)
 		{
 			handle_simple_action(data);
+		}
+		else if (type_id == eldhom::CMD_DECLARE_ATTACK)
+		{
+			handle_declare_attack(data);
+		}
+		else if (type_id == eldhom::CMD_REACT_DEFENSE)
+		{
+			handle_react_defense(data);
 		}
 		else if (type_id == eldhom::CMD_STOP_SEQUENCE)
 		{
@@ -178,6 +201,88 @@ private:
 		eldhom::ActionResult r = _engine->do_simple_action(hero_id, action, destination);
 		send_action_result(r);
 		if (r.ok()) { emit_next_actor_event(); }
+	}
+
+	// ── Interactive attack / reaction window commands ─────────────────────────
+
+	void handle_declare_attack(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id   = data.value("hero_id",   std::string{});
+		std::string target_id = data.value("target_id", std::string{});
+
+		eldhom::ActionResult r = _engine->declare_attack(hero_id, target_id);
+		send_action_result(r);
+		if (!r.ok()) { return; }
+
+		// Build and emit the reaction-window event with the allowed reactions.
+		const eldhom::PendingAttack& pa = _engine->pending_attack();
+
+		nlohmann::json reactions = nlohmann::json::array();
+		for (eldhom::DefenseReaction rk : _engine->allowed_reactions())
+		{
+			reactions.push_back(eldhom::to_string(rk));
+		}
+
+		std::string group_id;
+		try
+		{
+			const gmActor::ActorStore& store = _engine->actor_store();
+			if (store.has_actor(pa.defender_id) &&
+			    store.actor_kind(pa.defender_id) == gmActor::ActorKind::MONSTER_INSTANCE)
+			{
+				group_id = store.monster_instance(pa.defender_id).group_id;
+			}
+		}
+		catch (...) { /* group_id stays empty */ }
+
+		nlohmann::json w;
+		w["attacker_id"]     = pa.attacker_id;
+		w["defender_id"]     = pa.defender_id;
+		w["group_id"]        = group_id;
+		w["incoming_damage"] = pa.base_damage;
+		w["reactions"]       = reactions;
+		_bridge.send_event(eldhom::EVT_REACTION_WINDOW_OPEN, w);
+	}
+
+	void handle_react_defense(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string defender_id   = data.value("defender_id", std::string{});
+		std::string reaction_str  = data.value("reaction",    std::string{"TAKE"});
+
+		eldhom::DefenseReaction reaction = eldhom::DefenseReaction::TAKE;
+		if (!eldhom::parse_defense_reaction(reaction_str, reaction))
+		{
+			nlohmann::json err;
+			err["ok"]    = false;
+			err["error"] = "Unknown reaction: " + reaction_str;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
+		eldhom::ReactionResolution res;
+		eldhom::ActionResult r =
+			_engine->resolve_reaction(defender_id, reaction, &res);
+		send_action_result(r);
+		if (!r.ok()) { return; }
+
+		// Close the window and broadcast the resolution details.
+		nlohmann::json closed;
+		closed["defender_id"] = res.defender_id;
+		_bridge.send_event(eldhom::EVT_REACTION_WINDOW_CLOSED, closed);
+
+		nlohmann::json rj;
+		rj["attacker_id"]       = res.attacker_id;
+		rj["defender_id"]       = res.defender_id;
+		rj["reaction"]          = eldhom::to_string(res.reaction);
+		rj["base_damage"]       = res.base_damage;
+		rj["final_damage"]      = res.final_damage;
+		rj["defender_hp_after"] = res.defender_hp_after;
+		rj["defender_ko"]       = res.defender_ko;
+		_bridge.send_event(eldhom::EVT_ATTACK_RESOLVED, rj);
+
+		emit_next_actor_event();
 	}
 
 	void handle_stop_sequence(const nlohmann::json& data)

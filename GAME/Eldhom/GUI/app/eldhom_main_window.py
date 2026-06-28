@@ -12,8 +12,8 @@ EldhomMainWindow assembles the full application layout:
 Actor Panel inner layout (QMainWindow con Qt.WindowType.Widget):
   Central:       GmCompDeckModule     (tutte le zone del mazzo)
   Right dock:    EldhomActorAdapter   (albero attori gmActor, HP, stati, risorse)
-  Bottom dock:   ActionPanelWidget    (Azioni Semplici ⌛)
-               + HandWidget           (carte in mano cliccabili)
+               + AreaInfoWidget       (info locazione selezionata sulla mappa)
+  Bottom dock:   ActionPanelWidget    (Azioni Base ⌛)
 
 All incoming engine events are dispatched via EldhomBridge → EventRouter.
 All outgoing commands are sent via EldhomBridge.send_command().
@@ -42,8 +42,8 @@ from app.event_router import EventRouter
 from app.mission_select_dialog import MissionSelectDialog
 from widgets.eldhom_actor_adapter import EldhomActorAdapter
 from widgets.action_panel_widget import ActionPanelWidget
+from widgets.area_info_widget import AreaInfoWidget
 from widgets.board_widget import EldhomBoardWidget
-from widgets.hand_widget import HandWidget
 from widgets.timeline_widget import TimelineWidget
 from widgets.log_widget import LogWidget
 
@@ -55,33 +55,147 @@ for _p in (str(_GUI_DIR), str(_PYLIB_DIR)):
 
 from gmGui.modules.gm_comp_deck_module import GmCompDeckModule  # noqa: E402
 
+import json as _json  # noqa: E402
+
 _DATA_DIR   = Path(__file__).resolve().parents[2] / "data"
-_CARD_NAMES: dict[str, str] = {}
+
+# Card catalog (loaded from data/cards_base.json) keyed by card_id.
+_CARD_CATALOG: dict[str, dict] = {}
+
+_CARD_TYPE_IT: dict[str, str] = {
+    "SINGLE":       "Singola",
+    "INSTANT":      "Istantanea",
+    "SEQ_START":    "Inizio sequenza",
+    "SEQ_CONTINUE": "Continua sequenza",
+    "SEQ_END":      "Chiudi sequenza",
+}
+
+_EFFECT_IT: dict[str, str] = {
+    "DAMAGE":         "Danno",
+    "HEAL":           "Cura",
+    "MOVE":           "Movimento",
+    "FORMATION_PUSH": "Spinta formazione",
+}
+
+_TARGET_IT: dict[str, str] = {
+    "NEAREST_ENEMY_FRONTLINE": "nemico frontline più vicino",
+    "ADJACENT_LOCATION":       "locazione adiacente",
+    "SELF":                    "sé stesso",
+}
+
+
+def _load_card_catalog() -> None:
+    """Loads data/cards_base.json into the module-level catalog (once)."""
+    if _CARD_CATALOG:
+        return
+    path = _DATA_DIR / "cards_base.json"
+    try:
+        raw = _json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    for card in raw:
+        cid = str(card.get("card_id", ""))
+        if cid:
+            _CARD_CATALOG[cid] = card
 
 
 def _extract_data(msg: dict) -> dict:
+    """Returns the payload dict from an event envelope."""
     return msg.get("data", msg)
 
 
-def _build_card_list(card_ids: list[str]) -> list[dict]:
-    """Converts a list of card IDs into display dicts for HandWidget."""
-    result: list[dict] = []
-    for cid in card_ids:
-        name = _CARD_NAMES.get(cid, cid.replace("_", " ").title())
-        result.append({"card_id": cid, "name": name})
-    return result
+def _card_name(card_id: str) -> str:
+    """Returns the display name for *card_id* (falls back to a prettified id)."""
+    card = _CARD_CATALOG.get(card_id)
+    if card and card.get("name"):
+        return str(card["name"])
+    return card_id.replace("_", " ").title()
+
+
+def _card_tags(card: dict) -> list[str]:
+    """Builds the tag list for a card: type + affiliation/origin."""
+    tags: list[str] = []
+    ctype = str(card.get("card_type", ""))
+    if ctype:
+        tags.append(_CARD_TYPE_IT.get(ctype, ctype))
+    origin = str(card.get("origin", ""))
+    if origin:
+        tags.append(origin)
+    return tags
+
+
+def _card_description(card: dict) -> str:
+    """Synthesises a human-readable detail block for a card.
+
+    The block lists the fixed elements requested in the UI: type, time cost,
+    affiliation/origin tags and the list of effects.  It is fed to the deck
+    module's detail panel via the card metadata ``description`` field.
+    """
+    lines: list[str] = []
+    ctype = str(card.get("card_type", ""))
+    lines.append(f"Tipo: {_CARD_TYPE_IT.get(ctype, ctype or '—')}")
+    lines.append(f"Costo: {card.get('timeline_cost', 0)}\u23f3")
+    origin = str(card.get("origin", ""))
+    if origin:
+        lines.append(f"Affiliazione: {origin}")
+    lines.append(
+        "Bersaglio retro: " + ("Sì" if card.get("can_target_backline") else "No")
+    )
+    trigger = str(card.get("reaction_trigger", ""))
+    if trigger:
+        lines.append(f"Reazione a: {trigger}")
+
+    effects = card.get("effects", [])
+    if effects:
+        lines.append("")
+        lines.append("Effetti:")
+        for eff in effects:
+            etype  = str(eff.get("effect_type", ""))
+            amount = eff.get("amount", "")
+            target = str(eff.get("target", ""))
+            etxt   = _EFFECT_IT.get(etype, etype)
+            ttxt   = _TARGET_IT.get(target, target)
+            piece  = f"  \u2022 {etxt}"
+            if amount not in ("", None):
+                piece += f" {amount}"
+            if ttxt:
+                piece += f" \u2192 {ttxt}"
+            lines.append(piece)
+    return "\n".join(lines)
+
+
+def _card_meta(card_id: str) -> dict:
+    """Builds the deck-module metadata dict for *card_id* from the catalog."""
+    card = _CARD_CATALOG.get(card_id, {})
+    return {
+        "card_id":     card_id,
+        "name":        _card_name(card_id),
+        "action_cost": int(card.get("timeline_cost", 1)),
+        "tags":        _card_tags(card),
+        "description": _card_description(card) if card else "",
+    }
+
 
 
 class _DeckProxy:
     """Intercepts outgoing gmAlea.deck.* commands from GmCompDeckModule.
 
-    Translates ``gmAlea.deck.*`` type IDs to ``eldhom.deck.*`` before
-    forwarding to the real bridge.  This keeps the generic deck module
-    decoupled from game-specific command namespaces.
+    The Eldhôm CoreEngine does not understand generic ``gmAlea.deck.move_card``
+    commands.  Playing a card is modelled engine-side as ``eldhom.play_card``.
+    This proxy therefore converts a *play* move (CardHand → PlayArea / Memory)
+    into an ``eldhom.play_card`` command for the active hero, and drops any
+    other deck move (the engine remains the single source of truth for zones).
+
+    Args:
+        bridge:        The Eldhom bridge used to send commands.
+        active_hero:   Callable returning the current active hero id (may be "").
     """
 
-    def __init__(self, bridge: EldhomBridge) -> None:
+    _PLAY_ZONES: frozenset[str] = frozenset({"PlayArea", "Memory"})
+
+    def __init__(self, bridge: EldhomBridge, active_hero) -> None:
         self._bridge = bridge
+        self._active_hero = active_hero
 
     def send_command(self, type_id: str, data: dict) -> None:
         """Routes deck commands to the Eldhom bridge.
@@ -90,11 +204,25 @@ class _DeckProxy:
             type_id: Command typeId string from GmCompDeckModule.
             data:    Command payload dict.
         """
+        if type_id == "gmAlea.deck.move_card":
+            from_zone = str(data.get("from", ""))
+            to_zone   = str(data.get("to", ""))
+            card_id   = str(data.get("card_id", ""))
+            if from_zone == "CardHand" and to_zone in self._PLAY_ZONES:
+                hero_id = self._active_hero()
+                if hero_id and card_id:
+                    self._bridge.send_command(
+                        "eldhom.play_card",
+                        {"hero_id": hero_id, "card_id": card_id},
+                    )
+            # Non-play moves are ignored: the engine drives zone changes.
+            return
         if type_id.startswith("gmAlea.deck."):
             eldhom_type = type_id.replace("gmAlea.deck.", "eldhom.deck.", 1)
             self._bridge.send_command(eldhom_type, data)
         else:
             self._bridge.send_command(type_id, data)
+
 
 
 
@@ -120,14 +248,31 @@ class EldhomMainWindow(QMainWindow):
         # receiver on port 9210 is bound before the window is shown).
         self._bridge: EldhomBridge | None = bridge
 
+        _load_card_catalog()
+
         self._active_hero_id: str = ""
         self._hero_data: dict[str, dict] = {}
         self._location_adjacency: dict[str, list[str]] = {}
+        self._location_names: dict[str, str] = {}
+        self._group_data: dict[str, dict] = {}
         self._mission_started: bool = False
         self._hand_cards: dict[str, list[str]] = {}
 
+        # Move targeting state: when True the next map click is a move
+        # destination for the active hero.
+        self._awaiting_move: bool = False
+
+        # Attack targeting state: when True the next actor selection is the
+        # target of an interactive attack declared by the active hero.
+        self._awaiting_attack: bool = False
+
+        # Pending reaction window: id of the defender that must react (engine
+        # owns the truth; the GUI only collects the player's choice).
+        self._pending_defender: str = ""
+
         # Connect status signal before _build_bridge launches the probe.
         self._engine_status.connect(self._on_engine_status)
+
 
         self._build_menu()
         self._build_layout()
@@ -175,8 +320,8 @@ class EldhomMainWindow(QMainWindow):
         Actor Panel inner layout (QMainWindow with Qt.WindowType.Widget):
           Central:  GmCompDeckModule    (tutte le zone del mazzo)
           Right:    EldhomActorAdapter  (albero attori, HP, stati, risorse)
-          Bottom:   ActionPanelWidget   (Azioni Semplici \u23f3)
-                  + HandWidget          (carte in mano cliccabili)
+                  + AreaInfoWidget      (info locazione selezionata)
+          Bottom:   ActionPanelWidget   (Azioni Base \u23f3)
         """
         self.setDockOptions(
             QMainWindow.DockOption.AllowTabbedDocks
@@ -218,15 +363,15 @@ class EldhomMainWindow(QMainWindow):
         self._deck.set_enforce_action_cost(False)
         self._actors  = EldhomActorAdapter()
         self._actions = ActionPanelWidget()
-        self._hand    = HandWidget()
+        self._area_info = AreaInfoWidget()
 
-        # Bottom container: ActionPanelWidget stacked above HandWidget
+        # Bottom container: only the simple-action buttons (cards are played
+        # from the Deck panel, not from a separate hand widget).
         bottom_widget = QWidget()
         bottom_vbox = QVBoxLayout(bottom_widget)
         bottom_vbox.setContentsMargins(0, 0, 0, 0)
         bottom_vbox.setSpacing(0)
         bottom_vbox.addWidget(self._actions)
-        bottom_vbox.addWidget(self._hand)
 
         # Inner QMainWindow owns the sub-docks of the Actor Panel
         self._actor_inner = QMainWindow()
@@ -250,8 +395,19 @@ class EldhomMainWindow(QMainWindow):
             Qt.DockWidgetArea.RightDockWidgetArea, actors_inner_dock
         )
 
-        # Inner bottom: Azioni Semplici + Mano
-        actions_inner_dock = QDockWidget("Azioni & Mano", self._actor_inner)
+        # Inner right (below Attori): Area / location info
+        area_info_dock = QDockWidget("Info Area", self._actor_inner)
+        area_info_dock.setObjectName("inner_dock_area_info")
+        area_info_dock.setWidget(self._area_info)
+        self._actor_inner.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, area_info_dock
+        )
+        self._actor_inner.splitDockWidget(
+            actors_inner_dock, area_info_dock, Qt.Orientation.Vertical
+        )
+
+        # Inner bottom: Azioni Base
+        actions_inner_dock = QDockWidget("Azioni Base", self._actor_inner)
         actions_inner_dock.setObjectName("inner_dock_actions")
         actions_inner_dock.setWidget(bottom_widget)
         self._actor_inner.addDockWidget(
@@ -280,12 +436,15 @@ class EldhomMainWindow(QMainWindow):
 
         # ── Signal wiring ──────────────────────────────────────────────────────
         self._actors.actor_selected.connect(self._on_actor_selected)
-        self._actions.action_move.connect(self._on_simple_move)
-        self._actions.action_attack.connect(self._on_simple_attack)
+        self._area_info.actor_selected.connect(self._on_actor_selected)
+        self._actions.move_armed.connect(self._on_move_armed)
+        self._actions.attack_armed.connect(self._on_attack_armed)
         self._actions.action_interact.connect(self._on_simple_interact)
         self._actions.action_recover.connect(self._on_simple_recover)
         self._actions.stop_sequence.connect(self._on_stop_sequence)
-        self._hand.card_selected.connect(self._on_card_selected)
+        self._actions.react_chosen.connect(self._on_react_chosen)
+        self._board.area_selected.connect(self._on_area_selected)
+
 
     def _build_bridge(self) -> None:
         # Use the bridge provided by main.py (receiver already running) or
@@ -297,7 +456,7 @@ class EldhomMainWindow(QMainWindow):
         else:
             print("[EldhomGUI] Usando receiver pre-avviato su porta 9210", flush=True)
         # Wire deck module outgoing commands through the proxy translator
-        self._deck.set_sender(_DeckProxy(self._bridge))
+        self._deck.set_sender(_DeckProxy(self._bridge, lambda: self._active_hero_id))
         self._bridge.set_on_event(self._on_engine_event_thread)
         # Try to connect to the engine eagerly (non-blocking probe).
         # The engine must already be running when the GUI starts.
@@ -337,6 +496,12 @@ class EldhomMainWindow(QMainWindow):
         reg("eldhom.turn.next_actor",         self._timeline.on_next_actor)
         reg("eldhom.pg.turn_ended",           self._on_pg_turn_ended)
 
+        # Interactive attack / reaction window
+        reg("eldhom.attack.declared",         self._on_attack_declared)
+        reg("eldhom.reaction.window_opened",  self._on_reaction_window_opened)
+        reg("eldhom.reaction.window_closed",  self._on_reaction_window_closed)
+        reg("eldhom.attack.resolved",         self._on_attack_resolved)
+
         # Actor events → EldhomActorAdapter
         for evt in (
             "eldhom.state.full",
@@ -373,6 +538,7 @@ class EldhomMainWindow(QMainWindow):
             "eldhom.monster.defeated", "eldhom.group.activated",
             "eldhom.group.eliminated", "eldhom.formation.changed",
             "eldhom.deck.reshuffled", "eldhom.mission.time_advanced",
+            "eldhom.attack.declared", "eldhom.attack.resolved",
         ):
             reg(evt, self._log_widget.on_any_event)
         reg("eldhom.action.result",           self._log_widget.on_action_result)
@@ -414,11 +580,17 @@ class EldhomMainWindow(QMainWindow):
             hid = str(hero["id"])
             self._hero_data[hid] = hero
             self._hand_cards[hid] = hero.get("hand", [])
+        self._group_data.clear()
+        for grp in data.get("groups", []):
+            self._group_data[str(grp.get("id", ""))] = grp
         self._location_adjacency.clear()
+        self._location_names.clear()
         for loc in data.get("locations", []):
-            self._location_adjacency[str(loc["id"])] = [
+            lid = str(loc["id"])
+            self._location_adjacency[lid] = [
                 str(a) for a in loc.get("adjacent", [])
             ]
+            self._location_names[lid] = str(loc.get("name", lid))
         next_a = data.get("next_actor", {})
         if next_a:
             self._activate_actor(next_a.get("actor_id", ""), next_a.get("kind", ""))
@@ -433,24 +605,15 @@ class EldhomMainWindow(QMainWindow):
         self._actors.select_actor(actor_id)
         if kind == "HERO" and actor_id in self._hero_data:
             hero = self._hero_data[actor_id]
-            loc  = hero.get("location", "")
-            adj  = self._location_adjacency.get(loc, [])
-            self._actions.set_turn(hero.get("name", actor_id), adj)
-            hand_ids = self._hand_cards.get(actor_id, [])
-            self._hand.set_hand(
-                hero.get("name", actor_id),
-                _build_card_list(hand_ids),
-                enabled=True,
-            )
+            self._actions.set_turn(hero.get("name", actor_id))
         else:
             self._actions.set_enabled(False)
-            self._hand.set_enabled(False)
 
     def _on_pg_turn_ended(self, msg: dict) -> None:
         data = _extract_data(msg)
         if data.get("actor_id", "") == self._active_hero_id:
             self._actions.set_enabled(False)
-            self._hand.set_enabled(False)
+
 
     # ── Deck event translation (eldhom.* → GmCompDeckModule) ─────────────────
 
@@ -459,7 +622,7 @@ class EldhomMainWindow(QMainWindow):
         data = _extract_data(msg)
         for hero in data.get("heroes", []):
             hand_ids = [str(c) for c in hero.get("hand", [])]
-            cards = [{"card_id": c, "name": c, "action_cost": 1} for c in hand_ids]
+            cards = [_card_meta(c) for c in hand_ids]
             self._deck.on_envelope({
                 "typeId": "gmAlea.deck.zone_changed",
                 "data":   {"zone_name": "CardHand", "cards": cards},
@@ -473,14 +636,12 @@ class EldhomMainWindow(QMainWindow):
         self._hand_cards[hero_id] = hand_ids
         if hero_id in self._hero_data:
             self._hero_data[hero_id]["hand"] = hand_ids
-        if hero_id == self._active_hero_id:
-            name = self._hero_data.get(hero_id, {}).get("name", hero_id)
-            self._hand.set_hand(name, _build_card_list(hand_ids), enabled=True)
-        cards = [{"card_id": c, "name": c, "action_cost": 1} for c in hand_ids]
+        cards = [_card_meta(c) for c in hand_ids]
         self._deck.on_envelope({
             "typeId": "gmAlea.deck.zone_changed",
             "data":   {"zone_name": "CardHand", "cards": cards},
         })
+
 
     def _on_deck_reshuffled(self, msg: dict) -> None:
         self._deck.on_envelope({
@@ -516,12 +677,20 @@ class EldhomMainWindow(QMainWindow):
             self._status_label.setText(f"\u26a0 {data.get('error', 'Errore')}")
 
     def _on_actor_selected(self, actor_id: str) -> None:
-        """Called when the user selects an actor in the tree."""
-        pass  # Future: switch deck view to selected actor's deck
+        """Called when the user selects an actor in the tree or area panel.
+
+        While attack targeting is armed, selecting an enemy declares an
+        interactive attack against it; otherwise it just highlights the actor.
+        """
+        if not actor_id:
+            return
+        if self._awaiting_attack and self._active_hero_id:
+            self._try_declare_attack(actor_id)
+            return
+        self._actors.select_actor(actor_id)
 
     def _on_victory(self, msg: dict) -> None:
         self._actions.set_enabled(False)
-        self._hand.set_enabled(False)
         QTimer.singleShot(
             200,
             lambda: QMessageBox.information(
@@ -533,7 +702,6 @@ class EldhomMainWindow(QMainWindow):
         data    = _extract_data(msg)
         payload = data.get("payload", "")
         self._actions.set_enabled(False)
-        self._hand.set_enabled(False)
         QTimer.singleShot(
             200,
             lambda: QMessageBox.warning(
@@ -543,17 +711,46 @@ class EldhomMainWindow(QMainWindow):
 
     # ── Player action senders ──────────────────────────────────────────────────
 
-    def _on_card_selected(self, card_id: str) -> None:
-        if not self._active_hero_id:
-            return
-        self._bridge.send_command(
-            "eldhom.play_card",
-            {"hero_id": self._active_hero_id, "card_id": card_id},
-        )
+    def _on_move_armed(self, armed: bool) -> None:
+        """Enters/exits move targeting mode triggered by the Muovi button."""
+        self._awaiting_move = armed and bool(self._active_hero_id)
+        if self._awaiting_move:
+            self._status_label.setText(
+                "\u25b6 Clicca la locazione di destinazione sulla mappa"
+            )
+        else:
+            self._status_label.setText("")
 
-    def _on_simple_move(self, destination: str) -> None:
-        if not self._active_hero_id:
+    def _on_area_selected(self, location_id: str) -> None:
+        """Handles a map location click.
+
+        While move targeting is armed the click is interpreted as a move
+        destination (with an adjacency check); otherwise it just shows the
+        location's info panel.
+        """
+        if not location_id:
             return
+        if self._awaiting_move and self._active_hero_id:
+            self._try_move(location_id)
+            return
+        self._show_area_info(location_id)
+
+    def _try_move(self, destination: str) -> None:
+        """Validates adjacency and sends a MOVE simple-action."""
+        hero = self._hero_data.get(self._active_hero_id, {})
+        origin = str(hero.get("location", ""))
+        adjacent = self._location_adjacency.get(origin, [])
+        if destination == origin:
+            self._status_label.setText("\u26a0 Sei gi\u00e0 in questa locazione")
+            return
+        if destination not in adjacent:
+            name = self._location_names.get(destination, destination)
+            self._status_label.setText(
+                f"\u26a0 {name} non \u00e8 adiacente \u2014 scegli una locazione vicina"
+            )
+            return
+        self._awaiting_move = False
+        self._actions.disarm_move()
         self._bridge.send_command(
             "eldhom.simple_action",
             {
@@ -563,13 +760,129 @@ class EldhomMainWindow(QMainWindow):
             },
         )
 
-    def _on_simple_attack(self) -> None:
-        if not self._active_hero_id:
+    def _show_area_info(self, location_id: str) -> None:
+        """Populates the Info Area panel from the cached full-state snapshot."""
+        name = self._location_names.get(location_id, location_id)
+        adj_names = [
+            self._location_names.get(a, a)
+            for a in self._location_adjacency.get(location_id, [])
+        ]
+        actors: list[dict] = []
+        for hero in self._hero_data.values():
+            if str(hero.get("location", "")) == location_id:
+                actors.append({
+                    "id":       str(hero.get("id", "")),
+                    "name":     str(hero.get("name", hero.get("id", ""))),
+                    "kind":     "HERO",
+                    "hp":       hero.get("hp"),
+                    "max_hp":   hero.get("max_hp"),
+                    "position": str(hero.get("position", "")),
+                })
+        for grp in self._group_data.values():
+            for inst in grp.get("instances", []):
+                if str(inst.get("location", "")) == location_id:
+                    actors.append({
+                        "id":       str(inst.get("id", "")),
+                        "name":     str(inst.get("id", "")),
+                        "kind":     "MONSTER",
+                        "hp":       inst.get("hp"),
+                        "max_hp":   inst.get("max_hp"),
+                        "position": str(inst.get("position", "")),
+                    })
+        self._area_info.show_area(location_id, name, adj_names, actors)
+
+    # ── Interactive attack / reaction window ────────────────────────────────────
+
+    def _on_attack_armed(self, armed: bool) -> None:
+        """Enters/exits attack targeting mode triggered by the Attacca button."""
+        self._awaiting_attack = armed and bool(self._active_hero_id)
+        if self._awaiting_attack:
+            self._status_label.setText(
+                "\u2694 Clicca il nemico da attaccare (mappa o pannello attori)"
+            )
+        else:
+            self._status_label.setText("")
+
+    def _actor_is_enemy(self, actor_id: str) -> bool:
+        """True if actor_id is a live monster instance (not a hero)."""
+        if actor_id in self._hero_data:
+            return False
+        for grp in self._group_data.values():
+            for inst in grp.get("instances", []):
+                if str(inst.get("id", "")) == actor_id:
+                    return True
+        return False
+
+    def _try_declare_attack(self, target_id: str) -> None:
+        """Validates the target then asks the engine to declare the attack."""
+        if not self._actor_is_enemy(target_id):
+            self._status_label.setText(
+                "\u26a0 Seleziona un nemico valido da attaccare"
+            )
+            self._actors.select_actor(target_id)
+            return
+        self._awaiting_attack = False
+        self._actions.disarm_attack()
+        self._bridge.send_command(
+            "eldhom.declare_attack",
+            {"hero_id": self._active_hero_id, "target_id": target_id},
+        )
+
+    def _defender_name(self, defender_id: str) -> str:
+        """Resolves a human-friendly label for a defender id."""
+        for grp in self._group_data.values():
+            for inst in grp.get("instances", []):
+                if str(inst.get("id", "")) == defender_id:
+                    return str(inst.get("id", defender_id))
+        return defender_id
+
+    def _on_attack_declared(self, msg: dict) -> None:
+        """Status feedback when the engine accepts an attack declaration."""
+        data    = _extract_data(msg)
+        target  = self._defender_name(str(data.get("payload", "")))
+        self._status_label.setText(f"\u2694 Attacco dichiarato contro {target}")
+
+    def _on_reaction_window_opened(self, msg: dict) -> None:
+        """Opens the defense panel so the player chooses the monster reaction.
+
+        Fields are sent at the data root (not under payload) by the engine.
+        """
+        data       = _extract_data(msg)
+        defender   = str(data.get("defender_id", ""))
+        damage     = int(data.get("incoming_damage", 0))
+        reactions  = data.get("reactions", []) or []
+        self._pending_defender = defender
+        name = self._defender_name(defender)
+        self._actions.enter_defense_mode(name, damage, reactions)
+        self._status_label.setText(
+            f"\U0001f6e1 {name} sotto attacco \u2014 scegli la reazione"
+        )
+
+    def _on_react_chosen(self, code: str) -> None:
+        """Sends the player's reaction choice to the engine."""
+        if not self._pending_defender:
             return
         self._bridge.send_command(
-            "eldhom.simple_action",
-            {"hero_id": self._active_hero_id, "action_type": "ATTACK"},
+            "eldhom.react_defense",
+            {"defender_id": self._pending_defender, "reaction": code},
         )
+
+    def _on_reaction_window_closed(self, msg: dict) -> None:
+        """Closes the defense panel once the engine resolved the reaction."""
+        self._actions.exit_defense_mode()
+        self._pending_defender = ""
+
+    def _on_attack_resolved(self, msg: dict) -> None:
+        """Status feedback describing the resolved attack outcome."""
+        data     = _extract_data(msg)
+        defender = self._defender_name(str(data.get("defender_id", "")))
+        dmg      = int(data.get("final_damage", 0))
+        if data.get("defender_ko", False):
+            self._status_label.setText(f"\u2620 {defender} sconfitto!")
+        elif dmg > 0:
+            self._status_label.setText(f"\u2694 {defender} subisce {dmg} danni")
+        else:
+            self._status_label.setText(f"\u26e8 {defender} non subisce danni")
 
     def _on_simple_interact(self) -> None:
         if not self._active_hero_id:
