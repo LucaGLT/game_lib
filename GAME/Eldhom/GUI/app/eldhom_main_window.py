@@ -41,8 +41,8 @@ from app.event_router import EventRouter
 from app.mission_select_dialog import MissionSelectDialog
 from widgets.eldhom_actor_adapter import EldhomActorAdapter
 from widgets.action_panel_widget import ActionPanelWidget
+from widgets.board_widget import EldhomBoardWidget
 from widgets.hand_widget import HandWidget
-from widgets.map_widget import EldhomMapWidget
 from widgets.timeline_widget import TimelineWidget
 from widgets.log_widget import LogWidget
 
@@ -176,8 +176,8 @@ class EldhomMainWindow(QMainWindow):
         self.setDockNestingEnabled(True)
 
         # ── Central: Map ──────────────────────────────────────────────────────
-        self._map_widget = EldhomMapWidget(self)
-        self.setCentralWidget(self._map_widget)
+        self._board = EldhomBoardWidget(self)
+        self.setCentralWidget(self._board)
 
         # ── Top: Timeline ──────────────────────────────────────────────────────
         self._timeline = TimelineWidget(self)
@@ -292,7 +292,7 @@ class EldhomMainWindow(QMainWindow):
 
         # Full state
         reg("eldhom.state.full",              self._on_state_full)
-        reg("eldhom.state.full",              self._map_widget.on_state_full)
+        reg("eldhom.state.full",              self._board.on_state_full)
         reg("eldhom.state.full",              self._timeline.on_state_full)
         reg("eldhom.state.full",              self._on_deck_state_full)
 
@@ -314,7 +314,8 @@ class EldhomMainWindow(QMainWindow):
             reg(evt, self._actors.on_envelope)
 
         # Map
-        reg("eldhom.monster.defeated",        self._map_widget.on_monster_defeated)
+        reg("eldhom.pg.moved",                self._board.on_pg_moved)
+        reg("eldhom.monster.defeated",        self._board.on_monster_defeated)
 
         # Deck events → GmCompDeckModule (translated)
         reg("eldhom.deck.hand_updated",       self._on_hand_updated)
@@ -369,12 +370,14 @@ class EldhomMainWindow(QMainWindow):
         )
         self._hero_data.clear()
         for hero in data.get("heroes", []):
-            hid = hero["id"]
+            hid = str(hero["id"])
             self._hero_data[hid] = hero
             self._hand_cards[hid] = hero.get("hand", [])
         self._location_adjacency.clear()
         for loc in data.get("locations", []):
-            self._location_adjacency[loc["id"]] = loc.get("adjacent", [])
+            self._location_adjacency[str(loc["id"])] = [
+                str(a) for a in loc.get("adjacent", [])
+            ]
         next_a = data.get("next_actor", {})
         if next_a:
             self._activate_actor(next_a.get("actor_id", ""), next_a.get("kind", ""))
