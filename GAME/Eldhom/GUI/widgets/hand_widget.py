@@ -1,8 +1,11 @@
-"""Le Pergamene di Eldhom — hand widget.
+"""Le Pergamene di Eldhôm — hand widget.
 
 HandWidget displays the current hand of a single hero as a row of
-clickable card buttons. Emits a ``card_selected`` signal when a button
+clickable card buttons.  Emits a ``card_selected`` signal when a button
 is pressed.
+
+All visual styling is applied exclusively through QSS — no hardcoded
+color values are present in this module.
 """
 from __future__ import annotations
 
@@ -18,22 +21,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 
 
-_CARD_STYLE = (
-    "QPushButton {"
-    "  background:#2d2510; border:1px solid #7a5a20; border-radius:5px;"
-    "  color:#d4b07a; padding:6px 8px; font-size:11px; min-width:90px; max-width:120px;"
-    "}"
-    "QPushButton:hover { background:#3d3010; border-color:#c8a060; }"
-    "QPushButton:pressed { background:#1a1508; }"
-    "QPushButton:disabled { color:#555; border-color:#333; background:#1a1a1a; }"
-)
-
 _CARD_TYPE_ICONS: dict[str, str] = {
-    "SINGLE":       "◆",
-    "SEQ_START":    "▶",
-    "SEQ_CONTINUE": "▷",
-    "SEQ_END":      "◀",
-    "INSTANT":      "⚡",
+    "SINGLE":       "\u25c6",
+    "SEQ_START":    "\u25b6",
+    "SEQ_CONTINUE": "\u25b7",
+    "SEQ_END":      "\u25c4",
+    "INSTANT":      "\u26a1",
 }
 
 
@@ -50,16 +43,16 @@ class HandWidget(QFrame):
         super().__init__(parent)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(2)
+        main_layout.setSpacing(4)
         main_layout.setContentsMargins(4, 4, 4, 4)
 
-        self._title = QLabel("Mano: —", self)
-        self._title.setStyleSheet("color:#888; font-size:11px;")
+        self._title = QLabel("Mano: \u2014", self)
+        self._title.setProperty("text_role", "secondary")
         main_layout.addWidget(self._title)
 
         card_row = QWidget(self)
         self._card_layout = QHBoxLayout(card_row)
-        self._card_layout.setSpacing(6)
+        self._card_layout.setSpacing(8)
         self._card_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self._card_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(card_row)
@@ -68,7 +61,6 @@ class HandWidget(QFrame):
         self._enabled = False
 
         self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet("QFrame { background:#181818; border:none; }")
 
     def set_hand(
         self,
@@ -92,22 +84,25 @@ class HandWidget(QFrame):
         self._buttons.clear()
 
         deck_hint = f"  ({len(cards)} carte)" if cards else "  (mano vuota)"
-        self._title.setText(f"Mano — {hero_name}{deck_hint}")
+        self._title.setText(f"Mano \u2014 {hero_name}{deck_hint}")
 
         for card in cards:
-            card_id   = card.get("card_id", "")
+            card_id   = card.get("card_id", card.get("id", ""))
             name      = card.get("name", card_id)
-            card_type = card.get("card_type", "SINGLE")
-            cost      = card.get("timeline_cost", "?")
-            icon      = _CARD_TYPE_ICONS.get(card_type, "◆")
+            card_type = card.get("card_type", card.get("type", "SINGLE"))
+            cost      = card.get("timeline_cost", card.get("cost", ""))
+            icon      = _CARD_TYPE_ICONS.get(card_type, "\u25c6")
 
-            btn = QPushButton(f"{icon} {name}\n⌛{cost}", self)
-            btn.setStyleSheet(_CARD_STYLE)
+            label = f"{icon} {name}"
+            if cost:
+                label += f"\n\u231b{cost}"
+            btn = QPushButton(label, self)
+            btn.setProperty("role", "card_hand")
             btn.setEnabled(enabled)
             btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-            btn.clicked.connect(lambda _checked=False, cid=card_id: self.card_selected.emit(cid))
-
+            btn.clicked.connect(
+                lambda _checked=False, cid=card_id: self.card_selected.emit(cid)
+            )
             self._card_layout.addWidget(btn)
             self._buttons.append(btn)
 
