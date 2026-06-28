@@ -43,35 +43,91 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 ### Effetti Negativi
 
-- **Vista Offuscata** : Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la peggiore. Dura fino alla fine del tuo prossimo turno.
+- **Vista Offuscata** : Tiro/Lancio: pesca 2 Modificatori, applica il peggiore; Dura 1 Turno
+  > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la peggiore. Dura fino alla fine del tuo prossimo turno.
 
-- **Rallentato** : Raddoppia il costo di ogni Azione o Carta che implica un Movimento da una Locazoine ad un'altra. Dura fino alla fine del tuo prossimo turno.
+- **Rallentato** : Movimento tra Locazioni: +2⌛ ; Dura 1 Turno
+  > Aggiungi +2⌛ il costo di ogni Azione o Carta che implica un Movimento da una Locazione ad un'altra. Dura fino alla fine del tuo prossimo turno.
 
-- **Avvelenato** : Applica **Vista Offuscata** e **Rallentato** in modo durarturo fino alla prossima *Cura* ricevuta.
+- **Avvelenato** : **Vista Offuscata** e **Rallentato**; Dura fino a *Cura*
+  > Applica **Vista Offuscata** e **Rallentato** in modo durarturo fino alla prossima *Cura* ricevuta.
 
-- **Immobilizzato** : La miniatura non può effettuare azioni di Movimento né cambi di Formazione (sia Schieramento, sia Scompaginamento) né essere spostata (salvo specifici teletrasporti). Dura fino alla fine del tuo prossimo turno.
+- **Immobilizzato** : NO cambi di Formazione volontari; Dura 1 Turno
+  > La miniatura non può effettuare azioni di Movimento né cambi di Formazione volontari (Non può passare volontariamente da Prima Linea a Retroguardia o da Retroguardia a Prima Linea.); Può comunque essere spostata da Scompaginamento, Spinta, Tiro, Evento o effetto forzato. Dura fino alla fine del tuo prossimo turno.
 
-- **Disarmato** : La miniatura non può compiere azioni di attacco. Dura fino alla fine del tuo prossimo turno.
+- **Disarmato** :  NO Attacchi con Arma; Dura 1 Turno
+  > La miniatura non può compiere azioni di attacco usando Armi. Dura fino alla fine del tuo prossimo turno.
 
-- **Sanguinante** : A inizio di ogni tuo turno, la miniatura subisce 1 danno. Perdura fino alla prossima *Cura* ricevuta.
+- **Difensivo** :  NO Attacchi; Dura 1 Turno
+  > La miniatura non può compiere azioni di attacco di nessun tipo. Dura fino alla fine del tuo prossimo turno.
 
-- **Svenuto**: Impedisce di eseguire qualsiasi azione durante il tuo turno ad eccezione dell'Azione Base **Recupera**. Dura fino alla fine del tuo prossimo turno.
+- **Sanguinante** : Inizio Turno: -1PV ; Dura fino a *Cura*.
+  > A inizio di ogni tuo turno, la miniatura perde 1 Puno Vita. Perdura fino alla prossima *Cura* ricevuta.
 
-- **Maledetto** : DA DEFINRE
+- **Svenuto**: Nessua Azione o Carta; +1PV e passa il turno; Dura 1 Turno
+  > Impedisce di eseguire qualsiasi Azione o Giocare alcuna Carta finchè perdura l'effetto; all'inizio del tuo prossimo turno recuperi +1PV, rimuovi l'effetto e passa il turno. Dura fino alla fine del tuo prossimo turno.
+
+- **Maledetto** : Alcune Carte specifiche applicheranno malus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Benedetto**: le due condizioni si annullano a vicenda.
 
 ### Effetti Positivi
 
-- **Vista Acuita** : Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la migliore. Dura fino alla fine del tuo prossimo turno.
+- **Vista Acuita** : Tiro o Lancio : pesca 2 Carte Modificatore e applica la migliore; Dura 1 Turno
+  > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la migliore. Dura fino alla fine del tuo prossimo turno.
 
-- **Concentrato** : riduce di 2⌛ il costo in Tempo della prossima Azione o Carta (minimo 1⌛). Dura per una sola Azione o Carta.
+- **Concentrato** : Prossima Azione/Carta : -2⌛ (min:1⌛); Dura 1 Azione/Carta
+  > riduce di 2⌛ il costo in Tempo della prossima Azione o Carta (minimo 1⌛). Dura per una sola Azione o Carta.
 
-- **Energizzato** : Applica **Vista Acuita** e **Concentrato** in modo durarturo fino alla fine del tuo prossimo turno.
+- **Energizzato** : **Vista Acuita** e **Concentrato**; Dura 1 Turno
+  > Applica **Vista Acuita** e **Concentrato** in modo durarturo fino alla fine del tuo prossimo turno.
 
-- **Invisibile** : La miniatura non può essere bersaglio di Attacchi. Dura fino alla fine del tuo prossimo turno.
+- **Invisibile** : NON può essere attaccata; Dura 1 Turno
+  > La miniatura non può essere bersaglio di Attacchi. Dura fino alla fine del tuo prossimo turno.
 
-- **Resistente N** : Riduce di N qualunque tipo di Danno ricevuto.Dura fino alla fine del tuo prossimo turno.
+- **Resistente N** : -N❌ ricevuti; Dura 1 Turno
+  > Riduce di N qualunque tipo di Danno ricevuto. Dura fino alla fine del tuo prossimo turno.
 
-- **Benedetto** : DA DEFINRE
+- **Benedetto** : Alcune Carte specifiche applicheranno bonus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Maledetto**: le due condizioni si annullano a vicenda.
+
+## 0.4 Condizioni di una Locazione (luogo)
+
+- Bloccata : NON accessibile
+  > Questa locazione non è accessibile fino a una evebtuale specifica interazione spiegata nella missione
+
+- Luogo Angusto N : max N miniature
+  > Questa Locazione può contenere massimo N miniature totali. Se un effetto dovrebbe far entrare una miniatura oltre il limite, quella miniatura non può entrare.
+
+- Passaggio Stretto N : max N miniature in Prima Linea per Fazione
+  > Ogni fazione può avere massimo N miniature in Prima Linea in questa Locazione.
+
+- Barriere di Protezione N : +N miniature in Retroguardia
+  > Retroguardia Protetta: ogni Fazione può inserire +N miniature in Retroguardia rispetto alle normali regole di Formazione; inoltre, le miniature in Retroguardia in questa Locazione ottengono **Resistente 1** contro Attacchi a Distanza provenienti da altre Locazioni.
+
+- Fumo : Attacchi a Distanza: solo in questa Locazione
+  > Gli Attacchi a Distanza in questa Locazione possono colpire al massimo a Distanza corta = questa stessa Locazione.
+
+- Buio : NO Attacchi a Distanza
+  > Non è possibile effettuare Attacchi a Distanza che partono da, attraversano o bersagliano questa Locazione, salvo effetti che permettano di vedere nel Buio.
+
+- Terreno Accidentato : Movimento : +2⌛
+  > Ogni Movimento che parte da, entra in o attraversa questa Locazione costa +1⌛.
+
+- In Fiamme :  Subisci 1❌; Interazione per elimiinare la Condizione
+  > Quando una miniatura entra in questa Locazione o inizia la propria attivazione in questa Locazione, subisce 1❌. Una Locazione In Fiamme può essere spenta con una Interazione Semplice, se la Missione lo consente.
+
+- Crollo Instabile : Se Crollo: Subisci 2❌; diventa **Bloccata**
+  > Se una Carta o un Evento indica “Crolla”, tutte le miniature nella Locazione subiscono 2❌ e la Locazione diventa Bloccata.
+
+- Zona Tossica : Inizio Turno: subisci **Avvelenato**
+  > Quando una miniatura inizia la propria attivazione in questa Locazione, diventa **Avvelenata**.
+
+- Zona Maledetta : Inizio Turno: subisci **Maledetto**
+  > Quando una miniatura inizia qui la propria attivazione, diventa **Maledetta**.
+
+- Zona Sacra a Xxxxxx : Inizio Turno: SE Devoto : subisci **Benedetto**
+  > Quando una miniatura inizia qui la propria attivazione, se è devota alla Divinità Xxxxxx, diventa **Benedetta**.
+
+- Altura : +1 Gittata
+  > Le miniature in Retroguardia in questa Locazione aumentano di +1 la gittata dei propri Attacchi a Distanza.
 
 ---
 
@@ -609,7 +665,7 @@ Un attacco in mischia colpisce bersagli nella stessa Locazione.
 ## 12.3 Distanza
 
 ```text
-Un attacco a distanza deve indicare portata valida.
+Un attacco a distanza deve indicare gittata valida.
 ```
 
 Esempi:
