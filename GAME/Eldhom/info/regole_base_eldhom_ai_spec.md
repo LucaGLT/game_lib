@@ -1,14 +1,63 @@
-# Le Pergamene di Eldhôm — Regole Base AI Spec
+﻿# Le Pergamene di Eldhôm — Regole Base AI Spec
 
 Versione: bozza consolidata
 Formato: regole schematiche / algoritmi
 Scopo: specifica leggibile da AI, software o regolamento tecnico
 
+## Indice
+
+- [0. Convenzioni](#0-convenzioni)
+- [1. Struttura generale del gioco](#1-struttura-generale-del-gioco)
+- [2. Ordine di attivazione](#2-ordine-di-attivazione)
+- [3. Turno del PG](#3-turno-del-pg)
+- [4. Scheda minima PG](#4-scheda-minima-pg)
+- [5. Azioni Semplici](#5-azioni-semplici)
+- [6. Carte Azione](#6-carte-azione)
+- [7. Risoluzione Carta Azione](#7-risoluzione-carta-azione)
+- [8. Sequenze](#8-sequenze)
+- [9. Carte Istantanee](#9-carte-istantanee)
+- [10. Mazzi del PG](#10-mazzi-del-pg)
+- [11. Mappa e Locazioni](#11-mappa-e-locazioni)
+- [12. Distanza e bersagli](#12-distanza-e-bersagli)
+- [13. Ingaggio](#13-ingaggio)
+- [14. Prima Linea e Retroguardia](#14-prima-linea-e-retroguardia)
+- [15. Bersagli con Prima Linea / Retroguardia](#15-bersagli-con-prima-linea--retroguardia)
+- [16. Schieramento](#16-schieramento)
+- [17. Scompaginamento](#17-scompaginamento)
+- [18. Indicazioni per lo Scompaginamento](#18-indicazioni-per-lo-scompaginamento)
+- [19. Chiarimenti Formazione](#19-chiarimenti-formazione)
+- [20. Capacità e casi speciali Locazione](#20-capacità-e-casi-speciali-locazione)
+- [21. Mostri](#21-mostri)
+- [22. Carte Comportamento Mostri](#22-carte-comportamento-mostri)
+- [23. Comportamento base Mostri](#23-comportamento-base-mostri)
+- [24. Bersaglio dei Mostri](#24-bersaglio-dei-mostri)
+- [25. Reazioni dei Mostri](#25-reazioni-dei-mostri)
+- [26. Boss](#26-boss)
+- [27. Eventi di Missione](#27-eventi-di-missione)
+- [28. Durata effetti](#28-durata-effetti)
+- [29. Etnie giocabili](#29-etnie-giocabili)
+- [30. Carte Etnia — Thael](#30-carte-etnia--thael)
+- [31. Carte Etnia — Velyr](#31-carte-etnia--velyr)
+- [32. Carte Etnia — Khar](#32-carte-etnia--khar)
+- [33. Carte Etnia — Erranti](#33-carte-etnia--erranti)
+- [34. Affiliazione — Compagnia del Leone](#34-affiliazione--compagnia-del-leone)
+- [35. Carte Stratega — Compagnia del Leone](#35-carte-stratega--compagnia-del-leone)
+- [36. Carte Baluardo — Compagnia del Leone](#36-carte-baluardo--compagnia-del-leone)
+- [37. Missione](#37-missione)
+- [38. Stati / Condizioni](#38-stati--condizioni)
+- [39. Algoritmo turno completo PG](#39-algoritmo-turno-completo-pg)
+- [40. Algoritmo attivazione Gruppo Mostri](#40-algoritmo-attivazione-gruppo-mostri)
+- [41. Algoritmo controllo Formazione](#41-algoritmo-controllo-formazione)
+- [42. Principi di design](#42-principi-di-design)
+- [43. Regole non ancora consolidate](#43-regole-non-ancora-consolidate)
+- [44. Invarianti principali](#44-invarianti-principali)
+- [45. Regole aggiuntive da sistemare nel corpo del regolamento](#45-regole-aggiuntive-da-sistemare-nel-corpo-del-regolamento)
+
 ---
 
-# 0. Convenzioni
+## 0. Convenzioni
 
-## 0.1 Termini principali
+### 0.1 Termini principali
 
 ```text
 PG = Personaggio Giocante
@@ -28,7 +77,7 @@ Linea Temporale = tracciato del tempo continuo
 PV = punti vita
 ```
 
-## 0.2 Icone carta
+### 0.2 Icone carta
 
 ```text
 ▶️ = Movimento / posizionamento / spostamento
@@ -39,9 +88,9 @@ PV = punti vita
 
 Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostituita.
 
-## 0.3 Effetti
+### 0.3 Condizioni della Miniatura
 
-### Effetti Negativi
+#### Condizioni Negative
 
 - **Vista Offuscata** : Tiro/Lancio: pesca 2 Modificatori, applica il peggiore; Dura 1 Turno
   > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la peggiore. Dura fino alla fine del tuo prossimo turno.
@@ -69,7 +118,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 - **Maledetto** : Alcune Carte specifiche applicheranno malus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Benedetto**: le due condizioni si annullano a vicenda.
 
-### Effetti Positivi
+#### Condizioni Positive
 
 - **Vista Acuita** : Tiro o Lancio : pesca 2 Carte Modificatore e applica la migliore; Dura 1 Turno
   > Ai tuoi attacchi di tipo Tiro o Lancio peschi 2 Carte Modificatore e applichi la migliore. Dura fino alla fine del tuo prossimo turno.
@@ -88,7 +137,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 - **Benedetto** : Alcune Carte specifiche applicheranno bonus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Maledetto**: le due condizioni si annullano a vicenda.
 
-## 0.4 Stati dei Personaggi Giocanti (PG)
+### 0.4 Stati dei Personaggi Giocanti (PG)
 
 - **Caduto**: nessuna Azione o Carta; dura fino a *Cura* da parte di un alleato; poi rientra con almeno 2PV, perde 1 Livello per il resto della Missione ed Elimina 1 Carta dalla Missione. Alla quarta volta che diventa Caduto nella stessa Missione, il PG muore definitivamente.
 
@@ -112,7 +161,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 - **Morto** : 
 
-## 0.5 Condizioni di una Locazione (luogo)
+### 0.5 Condizioni di una Locazione (luogo)
 
 - Bloccata : NON accessibile
   > Questa locazione non è accessibile fino a una evebtuale specifica interazione spiegata nella missione
@@ -158,9 +207,9 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 ---
 
-# 1. Struttura generale del gioco
+## 1. Struttura generale del gioco
 
-## 1.1 Nessun Round base
+### 1.1 Nessun Round base
 
 ```text
 Il gioco NON usa Round nel regolamento base.
@@ -179,7 +228,7 @@ Soggetti sulla Linea Temporale:
 - eventuali entità di Missione
 ```
 
-## 1.2 Regola del tempo
+### 1.2 Regola del tempo
 
 Ogni volta che un soggetto:
 
@@ -201,13 +250,13 @@ Il segnalino avanza subito dopo ogni costo pagato.
 
 Non esiste pagamento cumulativo a fine turno.
 
-## 1.3 Controllo delle Locazioni
+### 1.3 Controllo delle Locazioni
 
 Una Locazione non è mai controllata definitivamente da una miniatura. Una miniatura può muovere attraverso una Locazione occupata da miniature nemiche. Attraversare una Locazione occupata da nemici non obbliga a fermarsi, non provoca Attacchi gratuiti e non impedisce il Movimento, salvo regole specifiche.
 
 Carte, Effetti, Mostri Speciali, Boss o regole di Missione possono indicare che una Locazione è Controllata. In quel caso la Locazione non può essere attraversata liberamente secondo quanto indicato dall’effetto.
 
-## 1.4 Movimento fra Locazioni e Porte semplici
+### 1.4 Movimento fra Locazioni e Porte semplici
 
 Durante un Movimento, una miniatura può aprire e attraversare Porte Semplici.
 
@@ -217,11 +266,18 @@ Una Porta Semplice aperta rimane aperta fino alla fine della Missione.
 
 Le Porte Speciali, Bloccate, Sigillate o collegate a Obiettivi richiedono *Interazione Semplice* (o Carta analoga) o la regola indicata dalla Missione.
 
+Aprire una Porta ed entrare in una Stanza non sono automaticamente equivalenti.
+
+```text
+Regola generale: la Stanza viene rivelata quando un PG vi entra per la prima volta.
+Aprire una Porta da fuori non rivela da solo la Stanza, salvo diversa indicazione della Missione.
+```
+
 ---
 
-# 2. Ordine di attivazione
+## 2. Ordine di attivazione
 
-## 2.1 Scelta del prossimo soggetto
+### 2.1 Scelta del prossimo soggetto
 
 ```pseudocode
 function prossimo_soggetto():
@@ -230,7 +286,7 @@ function prossimo_soggetto():
     return risolvi_parità(candidati)
 ```
 
-## 2.2 Parità sulla Linea Temporale
+### 2.2 Parità sulla Linea Temporale
 
 Priorità standard:
 
@@ -246,9 +302,9 @@ Missioni, Carte o Schede Mostro possono modificare questa priorità.
 
 ---
 
-# 3. Turno del PG
+## 3. Turno del PG
 
-## 3.1 Scelta base
+### 3.1 Scelta base
 
 Nel proprio turno, un PG sceglie esattamente una opzione:
 
@@ -258,7 +314,7 @@ OPPURE
 B. giocare 1 Carta Azione dalla Mano
 ```
 
-## 3.2 Fine turno PG
+### 3.2 Fine turno PG
 
 Il turno termina quando:
 
@@ -283,7 +339,7 @@ controlla_prossimo_soggetto_sulla_Linea_Temporale()
 
 ---
 
-# 4. Scheda minima PG
+## 4. Scheda minima PG
 
 ```text
 PG
@@ -301,7 +357,7 @@ PG
 - Posizione sulla Linea Temporale
 - Locazione attuale
 - Posizione interna: Prima Linea / Retroguardia
-- Stati / Effetti attivi
+- Stati / Condizioni attive
 - Equipaggiamento
 - Affiliazioni
 - Etnia
@@ -318,11 +374,11 @@ Carte in Memoria base: 1
 
 ---
 
-# 5. Azioni Semplici
+## 5. Azioni Semplici
 
 Le Azioni Semplici sono sempre disponibili, salvo effetti contrari.
 
-## 5.1 Movimento Semplice
+### 5.1 Movimento Semplice
 
 ```text
 Icona: ▶️
@@ -344,7 +400,7 @@ PG.timeline += 1
 turno termina
 ```
 
-## 5.2 Attacco Semplice
+### 5.2 Attacco Semplice
 
 ```text
 Icona: ⏸️
@@ -361,7 +417,7 @@ PG.timeline += 2
 turno termina
 ```
 
-## 5.3 Interazione Semplice
+### 5.3 Interazione Semplice
 
 ```text
 Icona: ⏺️
@@ -391,7 +447,7 @@ PG.timeline += 3
 turno termina
 ```
 
-### Interazione Semplice e Perlustrazione
+#### Interazione Semplice e Perlustrazione
 
 Un PG può usare **Interazione Semplice** per interagire con un elemento valido nella propria Locazione oppure per **Perlustrare** la Locazione.
 
@@ -404,7 +460,7 @@ Dopo essere stata Perlustrata, la Locazione viene segnata come **Perlustrata**, 
 
 Un PG può Perlustrare anche se nella sua Locazione sono presenti nemici, salvo diversa indicazione. Tuttavia, alcune Missioni o Condizioni possono indicare che una Perlustrazione richiede una Locazione sicura.
 
-## 5.4 Recupero Semplice
+### 5.4 Recupero Semplice
 
 ```text
 Icona: ♻️ / ⏺️
@@ -425,9 +481,9 @@ turno termina
 
 ---
 
-# 6. Carte Azione
+## 6. Carte Azione
 
-## 6.1 Classificazione minima carta
+### 6.1 Classificazione minima carta
 
 Ogni Carta ha almeno:
 
@@ -442,7 +498,7 @@ Ogni Carta ha almeno:
 - Eventuali condizioni
 ```
 
-## 6.2 Origini carta
+### 6.2 Origini carta
 
 ```text
 - Base
@@ -458,7 +514,7 @@ Ogni Carta ha almeno:
 - Elemento Aeonico / Alchemico
 ```
 
-## 6.3 Tipi di uso
+### 6.3 Tipi di uso
 
 ```text
 - Singola
@@ -470,9 +526,9 @@ Ogni Carta ha almeno:
 
 ---
 
-# 7. Risoluzione Carta Azione
+## 7. Risoluzione Carta Azione
 
-## 7.1 Procedura standard
+### 7.1 Procedura standard
 
 ```pseudocode
 function gioca_carta(PG, carta):
@@ -483,14 +539,14 @@ function gioca_carta(PG, carta):
         sposta carta negli Scarti
 ```
 
-## 7.2 Carta Singola
+### 7.2 Carta Singola
 
 ```pseudocode
 gioca_carta(PG, carta_singola)
 turno termina
 ```
 
-## 7.3 Carta Inizio Sequenza
+### 7.3 Carta Inizio Sequenza
 
 ```pseudocode
 gioca_carta(PG, carta_inizio)
@@ -500,7 +556,7 @@ PG può scegliere:
     - giocare Fine Sequenza
 ```
 
-## 7.4 Carta Continuo Sequenza
+### 7.4 Carta Continuo Sequenza
 
 Condizione:
 
@@ -519,7 +575,7 @@ PG può scegliere:
     - giocare Fine Sequenza
 ```
 
-## 7.5 Carta Fine Sequenza
+### 7.5 Carta Fine Sequenza
 
 Condizione:
 
@@ -536,9 +592,9 @@ turno termina obbligatoriamente
 
 ---
 
-# 8. Sequenze
+## 8. Sequenze
 
-## 8.1 Forma valida
+### 8.1 Forma valida
 
 Sequenze valide:
 
@@ -558,7 +614,7 @@ Una Sequenza deve iniziare con Inizio Sequenza.
 Una Sequenza non deve necessariamente terminare con Fine Sequenza.
 ```
 
-## 8.2 Costo in tempo durante Sequenza
+### 8.2 Costo in tempo durante Sequenza
 
 ```pseudocode
 per ogni carta giocata nella Sequenza:
@@ -569,7 +625,7 @@ per ogni carta giocata nella Sequenza:
 
 Il costo non viene pagato alla fine.
 
-## 8.3 Interruzione Sequenza
+### 8.3 Interruzione Sequenza
 
 ```pseudocode
 se effetto dice "interrompi la Sequenza":
@@ -580,9 +636,9 @@ se effetto dice "interrompi la Sequenza":
 
 ---
 
-# 9. Carte Istantanee
+## 9. Carte Istantanee
 
-## 9.1 Definizione
+### 9.1 Definizione
 
 Una Carta Istantanea:
 
@@ -595,7 +651,7 @@ Una Carta Istantanea:
 - fa avanzare il cubetto del PG che la gioca
 ```
 
-## 9.2 Procedura
+### 9.2 Procedura
 
 ```pseudocode
 quando Trigger si verifica:
@@ -609,15 +665,15 @@ quando Trigger si verifica:
 
 ---
 
-# 10. Mazzi del PG
+## 10. Mazzi del PG
 
-## 10.1 Mazzo Totale
+### 10.1 Mazzo Totale
 
 ```text
 Contiene tutte le carte possedute dal PG durante la campagna.
 ```
 
-## 10.2 Mazzo Missione
+### 10.2 Mazzo Missione
 
 ```text
 Costruito prima della Missione.
@@ -626,20 +682,20 @@ Personale per ogni PG.
 Limite: 15 + Livello.
 ```
 
-## 10.3 Mano
+### 10.3 Mano
 
 ```text
 Si pesca dal Mazzo Missione.
 Limite: 5 + Livello.
 ```
 
-## 10.4 Scarti
+### 10.4 Scarti
 
 ```text
 Carte usate, scartate o risolte finiscono negli Scarti, salvo diversa indicazione.
 ```
 
-## 10.5 Mazzo Missione esaurito
+### 10.5 Mazzo Missione esaurito
 
 ```pseudocode
 se il Mazzo Missione è vuoto e il PG deve pescare:
@@ -648,7 +704,7 @@ se il Mazzo Missione è vuoto e il PG deve pescare:
     continua pesca
 ```
 
-## 10.6 Carte in Memoria
+### 10.6 Carte in Memoria
 
 ```text
 Base: 1 carta.
@@ -657,9 +713,9 @@ Effetti, oggetti o affiliazioni possono aumentare il limite.
 
 ---
 
-# 11. Mappa e Locazioni
+## 11. Mappa e Locazioni
 
-## 11.1 Mappa ad Aree / Locazioni
+### 11.1 Mappa ad Aree / Locazioni
 
 ```text
 La mappa non usa griglia.
@@ -668,7 +724,7 @@ Ogni Locazione può avere forma irregolare.
 Ogni Locazione può contenere più miniature.
 ```
 
-## 11.2 Collegamenti
+### 11.2 Collegamenti
 
 Due Locazioni sono adiacenti se condividono:
 
@@ -681,7 +737,7 @@ Due Locazioni sono adiacenti se condividono:
 - collegamento esplicito
 ```
 
-## 11.3 Modificatori di Locazione
+### 11.3 Modificatori di Locazione
 
 Esempi:
 
@@ -702,9 +758,9 @@ Esempi:
 
 ---
 
-# 12. Distanza e bersagli
+## 12. Distanza e bersagli
 
-## 12.1 Distanze
+### 12.1 Distanze
 
 ```text
 Stessa Locazione = mischia
@@ -713,13 +769,13 @@ Locazione adiacente = distanza breve
 3+ Locazioni = distanza lunga, solo se permesso
 ```
 
-## 12.2 Mischia
+### 12.2 Mischia
 
 ```text
 Un attacco in mischia colpisce bersagli nella stessa Locazione.
 ```
 
-## 12.3 Distanza
+### 12.3 Distanza
 
 ```text
 Un attacco a distanza deve indicare gittata valida.
@@ -735,22 +791,22 @@ Esempi:
 
 ---
 
-# 13. Ingaggio
+## 13. Ingaggio
 
-## 13.1 Definizione
+### 13.1 Definizione
 
 ```text
 Un PG è Ingaggiato se nella sua Locazione è presente almeno un Nemico.
 Un Mostro è Ingaggiato se nella sua Locazione è presente almeno un PG o Alleato ostile.
 ```
 
-## 13.2 Effetto base
+### 13.2 Effetto base
 
 ```text
 Essere Ingaggiato NON impedisce automaticamente di muoversi, attaccare, interagire o giocare carte.
 ```
 
-## 13.3 Trigger possibili
+### 13.3 Trigger possibili
 
 Carte o Mostri possono reagire quando un soggetto Ingaggiato:
 
@@ -767,9 +823,9 @@ Carte o Mostri possono reagire quando un soggetto Ingaggiato:
 
 ---
 
-# 14. Prima Linea e Retroguardia
+## 14. Prima Linea e Retroguardia
 
-## 14.1 Definizione
+### 14.1 Definizione
 
 Ogni Locazione può contenere miniature in:
 
@@ -780,14 +836,14 @@ Ogni Locazione può contenere miniature in:
 
 Queste posizioni sono tattiche, non caselle fisiche.
 
-## 14.2 Significato
+### 14.2 Significato
 
 ```text
 Prima Linea = contatto, pressione, fronte, accesso, corpo a corpo
 Retroguardia = supporto, tiro, cura, concentrazione, interazione protetta
 ```
 
-## 14.3 Regola di Formazione
+### 14.3 Regola di Formazione
 
 Per ogni fazione in ogni Locazione:
 
@@ -813,7 +869,7 @@ PL 1 / RG 2
 PL 2 / RG 3
 ```
 
-## 14.4 Fazioni separate
+### 14.4 Fazioni separate
 
 La regola si applica separatamente a:
 
@@ -826,9 +882,9 @@ La regola si applica separatamente a:
 
 ---
 
-# 15. Bersagli con Prima Linea / Retroguardia
+## 15. Bersagli con Prima Linea / Retroguardia
 
-## 15.1 Attacco in mischia
+### 15.1 Attacco in mischia
 
 ```pseudocode
 se attaccante è in Prima Linea:
@@ -839,14 +895,14 @@ se attaccante è in Retroguardia:
     non può attaccare in mischia salvo carta/arma specifica
 ```
 
-## 15.2 Protezione della Retroguardia
+### 15.2 Protezione della Retroguardia
 
 ```text
 Finché una fazione ha almeno una miniatura in Prima Linea nella Locazione,
 la sua Retroguardia non può essere bersagliata in mischia salvo effetti specifici.
 ```
 
-## 15.3 Attacco a distanza contro Retroguardia
+### 15.3 Attacco a distanza contro Retroguardia
 
 ```text
 Dalla stessa Locazione: può colpire Retroguardia solo se carta/arma lo permette.
@@ -856,9 +912,9 @@ In dubbio: Prima Linea dà copertura alla Retroguardia.
 
 ---
 
-# 16. Schieramento
+## 16. Schieramento
 
-## 16.1 Definizione
+### 16.1 Definizione
 
 Schieramento = modifica volontaria o controllata della Formazione.
 
@@ -872,7 +928,7 @@ Rientrano nello Schieramento:
 - nuovo Alleato schierato da effetto controllato
 ```
 
-## 16.2 Proprietà
+### 16.2 Proprietà
 
 ```text
 Schieramento non è una Azione autonoma.
@@ -881,7 +937,7 @@ Schieramento avviene come conseguenza di Movimento, Carta o effetto.
 Schieramento deve produrre Formazione legale.
 ```
 
-## 16.3 Schieramento PG
+### 16.3 Schieramento PG
 
 ```pseudocode
 quando Formazione PG cambia per Schieramento:
@@ -891,7 +947,7 @@ quando Formazione PG cambia per Schieramento:
         decide il Giocatore che controlla la miniatura/effetto che ha causato Schieramento
 ```
 
-## 16.4 Schieramento Mostri
+### 16.4 Schieramento Mostri
 
 ```pseudocode
 quando Mostri entrano o si ridispongono per Schieramento:
@@ -913,9 +969,9 @@ Branco guardingo: minimo necessario in Prima Linea, resto in Retroguardia.
 
 ---
 
-# 17. Scompaginamento
+## 17. Scompaginamento
 
-## 17.1 Definizione
+### 17.1 Definizione
 
 Scompaginamento = Formazione rotta da causa esterna o contro volontà della fazione.
 
@@ -932,7 +988,7 @@ Rientrano nello Scompaginamento:
 - Carta Nemica che altera Formazione
 ```
 
-## 17.2 Proprietà
+### 17.2 Proprietà
 
 ```text
 Scompaginamento non è una Azione autonoma.
@@ -942,7 +998,7 @@ Scompaginamento non attiva effetti "quando ti muovi" salvo specifica.
 Scompaginamento può attivare effetti "quando vieni Scompaginato".
 ```
 
-## 17.3 Scompaginamento PG
+### 17.3 Scompaginamento PG
 
 ```pseudocode
 quando Formazione PG viene Scompaginata:
@@ -952,7 +1008,7 @@ quando Formazione PG viene Scompaginata:
         usa Indicazioni per lo Scompaginamento
 ```
 
-## 17.4 Scompaginamento Mostri
+### 17.4 Scompaginamento Mostri
 
 ```pseudocode
 quando Formazione Mostri viene Scompaginata da PG o Alleato PG:
@@ -960,7 +1016,7 @@ quando Formazione Mostri viene Scompaginata da PG o Alleato PG:
     nuova Formazione deve essere legale
 ```
 
-## 17.5 Scompaginamento da Evento
+### 17.5 Scompaginamento da Evento
 
 ```pseudocode
 quando Carta Evento causa Scompaginamento:
@@ -981,9 +1037,9 @@ Se l'Evento colpisce più fazioni:
 
 ---
 
-# 18. Indicazioni per lo Scompaginamento
+## 18. Indicazioni per lo Scompaginamento
 
-## 18.1 Procedura
+### 18.1 Procedura
 
 Quando nessuna carta o effetto specifica come risolvere:
 
@@ -995,7 +1051,7 @@ while Formazione illegale:
     ricontrolla Formazione
 ```
 
-## 18.2 Criteri
+### 18.2 Criteri
 
 Passa in Prima Linea:
 
@@ -1007,7 +1063,7 @@ Passa in Prima Linea:
 5. se ancora parità: continuare a pescare Modificatori tra i pari
 ```
 
-## 18.3 Miniature senza Mano
+### 18.3 Miniature senza Mano
 
 ```pseudocode
 se miniatura non possiede Mano:
@@ -1017,9 +1073,9 @@ se miniatura non possiede Mano:
 
 ---
 
-# 19. Chiarimenti Formazione
+## 19. Chiarimenti Formazione
 
-## 19.1 Passaggio forzato RG -> PL
+### 19.1 Passaggio forzato RG -> PL
 
 Il passaggio forzato da Retroguardia a Prima Linea per ristabilire la Formazione:
 
@@ -1034,7 +1090,7 @@ Il passaggio forzato da Retroguardia a Prima Linea per ristabilire la Formazione
 - può attivare effetti "quando passi in Prima Linea" o "quando vieni esposto"
 ```
 
-## 19.2 Formazione illegale
+### 19.2 Formazione illegale
 
 ```text
 Una Formazione illegale non può essere lasciata irrisolta.
@@ -1053,9 +1109,9 @@ continua gioco
 
 ---
 
-# 20. Capacità e casi speciali Locazione
+## 20. Capacità e casi speciali Locazione
 
-## 20.1 Capacità massima
+### 20.1 Capacità massima
 
 Una Locazione può avere limite massimo.
 
@@ -1070,7 +1126,7 @@ Piattaforma instabile: max 4 miniature totali
 
 La regola della Locazione prevale sulla regola generale.
 
-## 20.2 Locazioni senza Retroguardia
+### 20.2 Locazioni senza Retroguardia
 
 ```text
 In Locazioni senza Retroguardia, tutte le miniature sono in Prima Linea.
@@ -1087,7 +1143,7 @@ Esempi:
 - zona completamente esposta
 ```
 
-## 20.3 Retroguardia protetta
+### 20.3 Retroguardia protetta
 
 Una Locazione può avere Retroguardia protetta.
 
@@ -1105,9 +1161,9 @@ Gli effetti della Retroguardia protetta sono indicati dalla Locazione.
 
 ---
 
-# 21. Mostri
+## 21. Mostri
 
-## 21.1 Scheda minima Mostro
+### 21.1 Scheda minima Mostro
 
 ```text
 Mostro
@@ -1121,10 +1177,10 @@ Mostro
 - Tratti speciali
 - Locazione attuale
 - Posizione interna: Prima Linea / Retroguardia
-- Stati / Effetti attivi
+- Stati / Condizioni attive
 ```
 
-## 21.2 Gruppo Mostri
+### 21.2 Gruppo Mostri
 
 ```text
 Gruppo Mostri
@@ -1137,7 +1193,7 @@ Gruppo Mostri
 - Scarti Comportamento
 ```
 
-## 21.3 Tipo vs Gruppo
+### 21.3 Tipo vs Gruppo
 
 ```text
 Tipo di Mostro = identità della creatura.
@@ -1162,11 +1218,52 @@ Ogni Gruppo ha:
 - propria Carta Comportamento attiva
 ```
 
+### 21.4 Mostri non Attivati
+
+I Mostri non ancora attivati:
+
+```text
+- non sono fisicamente presenti sulla mappa;
+- non occupano Locazioni;
+- non agiscono;
+- non attaccano;
+- non inseguono;
+- non aprono Porte;
+- non hanno un indicatore sulla Linea Temporale;
+- non possono essere bersagliati, danneggiati o influenzati.
+```
+
+### 21.5 Attivazione dei Mostri per Stanza
+
+Quando almeno 1 PG entra per la prima volta in una Stanza non ancora rivelata,
+tutti i Mostri previsti dalla Scheda Missione per quella Stanza compaiono e si
+attivano.
+
+Se l'ingresso nella Stanza avviene attraversando una Porta, la Stanza viene
+rivelata nel momento in cui il PG attraversa la Porta ed entra nella prima
+Locazione della Stanza.
+
+Da quel momento, quei Mostri restano attivi fino alla fine della Missione,
+anche se i PG escono dalla Stanza.
+
+### 21.6 Procedura di Attivazione di una Stanza
+
+Quando una Stanza viene attivata:
+
+```text
+1. Posiziona sulla mappa tutti i Mostri indicati dalla Scheda Missione per quella Stanza.
+2. Ogni Mostro viene posizionato nella Locazione indicata dalla Scheda Missione.
+3. Dividi i Mostri nei Gruppi previsti dalla Missione.
+4. Per ogni Gruppo Mostro, posiziona un indicatore sulla Linea Temporale.
+5. L'indicatore viene posizionato nello stesso Spazio Temporale del PG che ha attivato la Stanza, in coda a quello Spazio.
+6. Per ogni Gruppo Mostro attivato, pesca la sua Carta Comportamento attiva.
+```
+
 ---
 
-# 22. Carte Comportamento Mostri
+## 22. Carte Comportamento Mostri
 
-## 22.1 Principio
+### 22.1 Principio
 
 ```text
 Ogni Tipo di Mostro ha un Mazzo Comportamento.
@@ -1175,16 +1272,15 @@ La Carta Comportamento indica cosa il Gruppo sta tentando di fare.
 La Linea Temporale indica quando il Gruppo agisce.
 ```
 
-## 22.2 Attivazione Gruppo
+### 22.2 Attivazione Gruppo
 
 ```pseudocode
 quando Gruppo è più indietro sulla Linea Temporale:
     risolvi Carta Comportamento attiva
-    per ogni passaggio risolto:
-        Gruppo.timeline += costo_⌛ del passaggio
+    aggiorna timeline del Gruppo in base alle Azioni effettivamente eseguite
 ```
 
-## 22.3 Risoluzione per miniature del Gruppo
+### 22.3 Risoluzione per miniature del Gruppo
 
 ```pseudocode
 per ogni passaggio della Carta:
@@ -1193,23 +1289,39 @@ per ogni passaggio della Carta:
             risolve passaggio
         altrimenti:
             salta passaggio
-    Gruppo.timeline += costo_⌛ una sola volta
+    se almeno 1 Mostro ha risolto il passaggio:
+        Gruppo.timeline += costo_⌛ una sola volta
 ```
 
 Il Gruppo paga tempo una volta per passaggio, non una volta per miniatura.
 
-## 22.4 Se Carta non risolvibile
+Se nessun Mostro del Gruppo può eseguire quel passaggio, quella parte della
+Carta viene ignorata e la timeline non avanza per quel passaggio specifico. Tuttavia, se la Carta non produce alcuna Azione valida e anche se il Gruppo resta fermo, sulla timeline si avanza comunque di 1⌛.
+
+### 22.4 Se Carta non risolvibile
 
 ```pseudocode
 se Carta ha comportamento alternativo:
     esegui alternativo
 altrimenti:
     esegui Comportamento Base del Tipo
+
+se durante tutta la risoluzione della Carta nessun Mostro del Gruppo esegue alcuna Azione:
+    Gruppo.timeline += 1
+```
+
+### 22.5 Indicatore Temporale del Gruppo Mostro
+
+```text
+Ogni Gruppo Mostro ha un solo indicatore sulla Linea Temporale.
+I PV sono assegnati ai singoli Mostri.
+Se più Mostri del Gruppo eseguono la stessa Azione, l'indicatore avanza una sola volta.
+Regola anti-loop: se la Carta non produce alcuna Azione valida, il Gruppo resta fermo ma avanza comunque di 1⌛.
 ```
 
 ---
 
-# 23. Comportamento base Mostri
+## 23. Comportamento base Mostri
 
 Quando nessuna istruzione specifica è disponibile:
 
@@ -1233,9 +1345,17 @@ Attacco Mostro: 2⌛
 Interazione / capacità Mostro: 3⌛
 ```
 
+Regole Porte per Mostri:
+
+```text
+I Mostri non aprono Porte, salvo diversa indicazione.
+I Mostri possono attraversare Porte già aperte.
+Una Porta aperta rimane aperta fino alla fine della Missione, salvo diversa indicazione.
+```
+
 ---
 
-# 24. Bersaglio dei Mostri
+## 24. Bersaglio dei Mostri
 
 Se non specificato dalla Carta:
 
@@ -1249,11 +1369,14 @@ Se non specificato dalla Carta:
 
 Carte Comportamento possono modificare la priorità.
 
+Se il percorso verso un PG richiede di attraversare una Porta chiusa che il
+Mostro non può aprire, quel PG è considerato non raggiungibile per quel Mostro.
+
 ---
 
-# 25. Reazioni dei Mostri
+## 25. Reazioni dei Mostri
 
-## 25.1 Definizione
+### 25.1 Definizione
 
 Una Carta Comportamento può avere Reazione ⚡.
 
@@ -1264,7 +1387,7 @@ La Reazione ha un costo in ⌛.
 La Reazione può interrompere Sequenza solo se lo dice.
 ```
 
-## 25.2 Procedura Reazione Mostro
+### 25.2 Procedura Reazione Mostro
 
 ```pseudocode
 quando Trigger si verifica:
@@ -1278,7 +1401,7 @@ quando Trigger si verifica:
             termina turno soggetto attivo
 ```
 
-## 25.3 Reazioni multiple
+### 25.3 Reazioni multiple
 
 ```text
 Un Gruppo può reagire più volte solo se, dopo una Reazione, pesca una nuova Carta Comportamento con nuova Reazione e il Trigger si verifica.
@@ -1288,7 +1411,7 @@ Nessun segnalino “Reazione usata” necessario.
 
 ---
 
-# 26. Boss
+## 26. Boss
 
 ```text
 Un Boss è sempre un Gruppo individuale.
@@ -1299,9 +1422,9 @@ Può avere fasi, Reazioni, passive e regole speciali.
 
 ---
 
-# 27. Eventi di Missione
+## 27. Eventi di Missione
 
-## 27.1 Eventi temporali
+### 27.1 Eventi temporali
 
 Gli Eventi possono essere legati a soglie sulla Linea Temporale.
 
@@ -1321,7 +1444,7 @@ quando tempo_missione raggiunge o supera soglia:
     risolvi Evento associato
 ```
 
-## 27.2 Eventi non temporali
+### 27.2 Eventi non temporali
 
 Possono essere attivati da:
 
@@ -1336,7 +1459,7 @@ Possono essere attivati da:
 
 ---
 
-# 28. Durata effetti
+## 28. Durata effetti
 
 Non usare “fino alla fine del Round”.
 
@@ -1344,8 +1467,8 @@ Usare:
 
 ```text
 - per X⌛
-- fino alla tua prossima attivazione
-- fino alla prossima attivazione del bersaglio
+- fino alla fine della tua prossima attivazione (oppure: fino a Fine prossimo Turno)
+- fino alla fine della prossima attivazione del bersaglio
 - finché resti in questa Locazione
 - finché resti in Prima Linea
 - finché resti in Retroguardia
@@ -1356,9 +1479,9 @@ Usare:
 
 ---
 
-# 29. Etnie giocabili
+## 29. Etnie giocabili
 
-## 29.1 Principio
+### 29.1 Principio
 
 ```text
 Etnia = cultura d'origine / abitudine / modo di sopravvivere.
@@ -1369,7 +1492,7 @@ Le Carte Etnia entrano nel Mazzo Totale del PG.
 Prima di una Missione, il PG decide se inserirle nel Mazzo Missione entro il limite normale.
 ```
 
-## 29.2 Etnie attuali
+### 29.2 Etnie attuali
 
 ```text
 Thael = lavoro duro, attrezzi, pietra, metallo, fatica, competenza materiale
@@ -1378,7 +1501,7 @@ Khar = deserto, sopravvivenza, risorse, memoria, gestione del tempo
 Erranti = strade, carovane, debiti, deviazioni, adattamento
 ```
 
-## 29.3 Non giocabili
+### 29.3 Non giocabili
 
 ```text
 Dhôrim = popolo antico, non giocabile
@@ -1389,9 +1512,9 @@ Satiri = rari, PNG
 
 ---
 
-# 30. Carte Etnia — Thael
+## 30. Carte Etnia — Thael
 
-## 30.1 Mani da Cava
+### 30.1 Mani da Cava
 
 ```text
 Origine: Etnia — Thael
@@ -1410,7 +1533,7 @@ Se riguarda porte, leve, macchinari, detriti, carichi, serrature grezze, pietra,
 - pesca 1 carta dopo aver completato l'Interazione.
 ```
 
-## 30.2 Attrezzo Giusto
+### 30.2 Attrezzo Giusto
 
 ```text
 Origine: Etnia — Thael
@@ -1429,7 +1552,7 @@ Scegli 1:
 - ignora requisito "non Ingaggiato" per quella Interazione.
 ```
 
-## 30.3 Schiena Spezzata
+### 30.3 Schiena Spezzata
 
 ```text
 Origine: Etnia — Thael
@@ -1450,9 +1573,9 @@ Puoi scartare 1 carta. Se lo fai, scegli 1:
 
 ---
 
-# 31. Carte Etnia — Velyr
+## 31. Carte Etnia — Velyr
 
-## 31.1 Parola Giusta
+### 31.1 Parola Giusta
 
 ```text
 Origine: Etnia — Velyr
@@ -1471,7 +1594,7 @@ Fino alla sua prossima attivazione, la prima volta che quel Nemico dovrebbe usar
 - pesca 1 carta.
 ```
 
-## 31.2 Loto Bianco
+### 31.2 Loto Bianco
 
 ```text
 Origine: Etnia — Velyr
@@ -1488,7 +1611,7 @@ Riduci quel danno di 1❌.
 Se l'Alleato è in Retroguardia, può pescare 1 carta e poi scartare 1 carta.
 ```
 
-## 31.3 Maschera Gentile
+### 31.3 Maschera Gentile
 
 ```text
 Origine: Etnia — Velyr
@@ -1507,9 +1630,9 @@ Se non ci sono altri bersagli validi, riduci di 1❌ il prossimo danno che subis
 
 ---
 
-# 32. Carte Etnia — Khar
+## 32. Carte Etnia — Khar
 
-## 32.1 Respiro dell'Oasi
+### 32.1 Respiro dell'Oasi
 
 ```text
 Origine: Etnia — Khar
@@ -1529,7 +1652,7 @@ Se sei in Retroguardia, scegli anche 1:
 - sposta il tuo cubetto indietro di 1⌛, senza superare il soggetto più indietro sulla Linea Temporale.
 ```
 
-## 32.2 Acqua Nascosta
+### 32.2 Acqua Nascosta
 
 ```text
 Origine: Etnia — Khar
@@ -1548,7 +1671,7 @@ Scegli 1:
 - quel PG recupera 1 PV se ha 2 PV o meno.
 ```
 
-## 32.3 Memoria del Sale
+### 32.3 Memoria del Sale
 
 ```text
 Origine: Etnia — Khar
@@ -1569,9 +1692,9 @@ Dopo aver letto l'effetto, scegli 1:
 
 ---
 
-# 33. Carte Etnia — Erranti
+## 33. Carte Etnia — Erranti
 
-## 33.1 Strada di Traverso
+### 33.1 Strada di Traverso
 
 ```text
 Origine: Etnia — Erranti
@@ -1590,7 +1713,7 @@ Dopo lo Schieramento, se sei in Retroguardia, pesca 1 carta e poi scarta 1 carta
 Puoi continuare la Sequenza.
 ```
 
-## 33.2 Debito di Carovana
+### 33.2 Debito di Carovana
 
 ```text
 Origine: Etnia — Erranti
@@ -1610,7 +1733,7 @@ Poi scegli 1:
 - perdi 1 PV.
 ```
 
-## 33.3 Segno sul Sentiero
+### 33.3 Segno sul Sentiero
 
 ```text
 Origine: Etnia — Erranti
@@ -1629,16 +1752,17 @@ Se lo fa, pesca 1 carta.
 
 ---
 
-# 34. Affiliazione — Compagnia del Leone
+## 34. Affiliazione — Compagnia del Leone
 
-## 34.1 Principio
+### 34.1 Principio
 
 ```text
 Affiliazione = addestramento, stile organizzato, ruolo tattico.
 Non è Etnia.
+In questa specifica generale, la Compagnia del Leone è mantenuta come esempio.
 ```
 
-## 34.2 Ruoli noti
+### 34.2 Ruoli noti
 
 ```text
 Baluardo = tenere linea, proteggere fronte, assorbire rotture
@@ -1647,134 +1771,33 @@ Stratega = gestire Formazione, coordinare Schieramenti, convertire Scompaginamen
 
 ---
 
-# 35. Carte Stratega — Compagnia del Leone
+## 35. Carte Stratega — Compagnia del Leone
 
-## 35.1 Formazione!
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Stratega
-Tipo: Singola
-Icone: ⏺️
-Costo: 1⌛
-```
-
-Effetto:
+Dettaglio carte spostato in file dedicato:
 
 ```text
-Forza uno Schieramento nella tua Locazione oppure in una Locazione adiacente.
-I PG interessati ridispongono la propria Formazione rispettando Retroguardia ≤ Prima Linea.
+GAME/Eldhom/info/Affiliazione — Compagnia del Leone.md
 ```
 
-## 35.2 Serrate la Formazione!
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Stratega
-Tipo: Istantanea
-Icone: ⚡⏺️
-Costo: 1⌛
-Trigger: Formazione dei PG nella tua Locazione viene Scompaginata
-```
-
-Effetto:
-
-```text
-Converti quello Scompaginamento in uno Schieramento.
-I PG interessati decidono di comune accordo nuova Formazione legale.
-```
-
-## 35.3 Supporto
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Stratega
-Tipo: Singola
-Icone: ⏺️
-Costo: 2⌛
-```
-
-Effetto:
-
-```text
-Opera uno Schieramento nella tua Locazione.
-Se nella Locazione è presente almeno un Baluardo della Compagnia del Leone, scegli 1 PG in Retroguardia.
-Quel PG sceglie 1:
-- pesca 1 carta;
-- applica -1❌ al prossimo danno subito.
-L'effetto termina appena cambia la Formazione di quella Locazione.
-```
+In questo documento resta solo il riferimento all'esistenza dell'Affiliazione come esempio.
 
 ---
 
-# 36. Carte Baluardo — Compagnia del Leone
+## 36. Carte Baluardo — Compagnia del Leone
 
-## 36.1 Pianta di Ferro
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Baluardo
-Tipo: Istantanea
-Icone: ⚡
-Costo: 1⌛
-Trigger: Formazione dei PG nella tua Locazione viene Scompaginata
-```
-
-Effetto:
+Dettaglio carte spostato in file dedicato:
 
 ```text
-Se sei in Prima Linea, puoi dichiararti Perno della Formazione.
-Durante questo Scompaginamento, se un PG deve passare da Retroguardia a Prima Linea, scegli tu chi passa, ignorando Indicazioni per lo Scompaginamento.
-Se scegli te stesso come miniatura che resta esposta o mantiene la linea, riduci di 1❌ il prossimo danno che subisci entro 3⌛.
+GAME/Eldhom/info/Affiliazione — Compagnia del Leone.md
 ```
 
-## 36.2 Spalla alla Linea
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Baluardo
-Tipo: Inizio Sequenza
-Icone: ▶️⏺️
-Costo: 1⌛
-```
-
-Effetto:
-
-```text
-Muovi di 1 Locazione.
-Quando entri nella nuova Locazione, se ci sono Alleati, puoi Schierarti direttamente in Prima Linea.
-Poi i PG interessati possono risolvere uno Schieramento nella Locazione.
-Durante questo Schieramento, tu conti come 2 miniature in Prima Linea ai soli fini di Retroguardia ≤ Prima Linea.
-Effetto dura fino alla tua prossima attivazione o finché lasci la Locazione.
-Puoi continuare la Sequenza.
-```
-
-## 36.3 Colpo che Apre
-
-```text
-Origine: Affiliazione — Compagnia del Leone
-Ruolo: Baluardo
-Tipo: Fine Sequenza
-Icone: ⏸️
-Costo: 2⌛
-```
-
-Effetto:
-
-```text
-Attacca un Nemico in Prima Linea nella tua Locazione.
-Infliggi 2❌.
-Se il bersaglio subisce almeno 1❌, puoi Spingerlo in Retroguardia.
-Se questo rende illegale la Formazione dei Mostri, si risolve Scompaginamento dei Mostri.
-Tu sei il Giocatore che lo ha causato.
-Dopo questa carta, la Sequenza termina.
-```
+In questo documento resta solo il riferimento all'esistenza dell'Affiliazione come esempio.
 
 ---
 
-# 37. Missione
+## 37. Missione
 
-## 37.1 Dati minimi Missione
+### 37.1 Dati minimi Missione
 
 ```text
 Missione
@@ -1792,7 +1815,7 @@ Missione
 - Conseguenze campagna
 ```
 
-## 37.2 Condizioni di vittoria
+### 37.2 Condizioni di vittoria
 
 Esempi:
 
@@ -1806,7 +1829,7 @@ Esempi:
 - fuggi dalla mappa
 ```
 
-## 37.3 Condizioni di sconfitta
+### 37.3 Condizioni di sconfitta
 
 Esempi:
 
@@ -1821,38 +1844,112 @@ Esempi:
 
 ---
 
-# 38. Stati / Effetti
+## 38. Stati / Condizioni
 
-## 38.1 Struttura minima Stato
+### 38.1 Terminologia operativa
+
+In questo regolamento si distinguono tre categorie:
 
 ```text
-Stato
+Condizione della Miniatura (cap. 0.3): condizione positiva o negativa applicata a una miniatura.
+Stato PG (cap. 0.4): stato critico del Personaggio Giocante (es. Caduto, Morto).
+Condizione della Locazione (cap. 0.5): regola ambientale legata a una Locazione.
+```
+
+Un elemento non deve essere classificato in più categorie contemporaneamente.
+
+### 38.2 Struttura minima voce
+
+```text
+Voce Stato/Condizione
 - Nome
-- Bersaglio
+- Categoria (Condizione della Miniatura / Stato PG / Condizione della Locazione)
+- Bersaglio o Ambito
 - Effetto
 - Durata
 - Trigger di rimozione
 - Stackabile sì/no
 ```
 
-## 38.2 Durata Stato
+### 38.3 Durata e rimozione
 
 Usare le durate del capitolo 28.
 
-## 38.3 Esempi Stati
+Regole pratiche:
 
 ```text
-Rallentato: prossimo Movimento costa +1⌛.
-Stordito: prossimo Attacco infligge -1❌.
-Ustione: subisci 1❌ alla prossima attivazione.
-Veleno: quando Recuperi, recuperi 1 PV in meno.
-Esposto: prossimo danno subito +1❌.
-Protetto: prossimo danno subito -1❌.
+- Se una voce indica durata esplicita, prevale la durata esplicita.
+- Se una voce indica rimozione specifica (es. fino a Cura), prevale la rimozione specifica.
+- Le durate non usano mai il concetto di fine Round.
 ```
+
+### 38.4 Riepilogo Condizioni della Miniatura (riferimento: 0.3)
+
+Condizioni negative consolidate:
+
+```text
+Vista Offuscata
+Rallentato
+Avvelenato
+Immobilizzato
+Disarmato
+Difensivo
+Sanguinante
+Svenuto
+Maledetto
+```
+
+Condizioni positive consolidate:
+
+```text
+Vista Acuita
+Concentrato
+Energizzato
+Invisibile
+Resistente N
+Benedetto
+```
+
+### 38.5 Riepilogo Stati PG (riferimento: 0.4)
+
+```text
+Caduto
+Morto
+```
+
+Note consolidate:
+
+```text
+- Caduto: stato recuperabile tramite Cura secondo regole del cap. 0.4.
+- Morto: stato non recuperabile durante la Missione.
+```
+
+### 38.6 Riepilogo Condizioni della Locazione (riferimento: 0.5)
+
+```text
+Bloccata
+Controllata da Xxxxx
+Luogo Angusto N
+Passaggio Stretto N
+Barriere di Protezione N
+Fumo
+Buio
+Terreno Accidentato
+In Fiamme
+Crollo Instabile
+Zona Tossica
+Zona Maledetta
+Zona Sacra a Xxxxxx
+Altura
+```
+
+Queste condizioni modificano movimento, bersagli, formazione, danno o interazioni
+all'interno della Locazione interessata.
+
 
 ---
 
-# 39. Algoritmo turno completo PG
+## 39. Algoritmo turno completo PG
 
 ```pseudocode
 function turno_PG(PG):
@@ -1890,7 +1987,7 @@ function turno_PG(PG):
 
 ---
 
-# 40. Algoritmo attivazione Gruppo Mostri
+## 40. Algoritmo attivazione Gruppo Mostri
 
 ```pseudocode
 function attiva_Gruppo(Gruppo):
@@ -1913,7 +2010,7 @@ function attiva_Gruppo(Gruppo):
 
 ---
 
-# 41. Algoritmo controllo Formazione
+## 41. Algoritmo controllo Formazione
 
 ```pseudocode
 function controlla_Formazione(Locazione):
@@ -1932,7 +2029,7 @@ function controlla_Formazione(Locazione):
 
 ---
 
-# 42. Principi di design
+## 42. Principi di design
 
 ```text
 Linea Temporale sostituisce Round.
@@ -1947,7 +2044,7 @@ Ruolo dà funzione tattica.
 
 ---
 
-# 43. Regole non ancora consolidate
+## 43. Regole non ancora consolidate
 
 Da definire in futuro:
 
@@ -1969,7 +2066,7 @@ Da definire in futuro:
 
 ---
 
-# 44. Invarianti principali
+## 44. Invarianti principali
 
 ```text
 1. Non esiste Round base.
@@ -1991,4 +2088,5 @@ Da definire in futuro:
 
 ---
 
-# 45. Regole aggiuntive da sistemare nel corpo del regolamento
+## 45. Regole aggiuntive da sistemare nel corpo del regolamento
+
