@@ -443,6 +443,18 @@ public:
 	 */
 	int discard_count(const HeroId& hero_id) const;
 
+	/** @brief Draws n cards from the hero's deck to hand; emits EVT_HAND_CHANGED. */
+	void draw_n_cards(const HeroId& hero_id, int n);
+
+	/** @brief Discards card_id from the hero's hand to the discard pile; emits EVT_HAND_CHANGED. */
+	void discard_card(const HeroId& hero_id, const CardId& card_id);
+
+	/** @brief Moves the top card of the hero's discard pile to hand; emits EVT_HAND_CHANGED. */
+	void take_from_discard(const HeroId& hero_id);
+
+	/** @brief Shuffles the hero's discard pile back into the draw pile; emits EVT_DECK_RESHUFFLED. */
+	void reshuffle_discard(const HeroId& hero_id);
+
 	// ── Event callback ────────────────────────────────────────────────────────
 
 	/**
@@ -494,10 +506,6 @@ private:
 	/** @brief Queues a DISRUPT formation dialog for the enemy faction at the attacker's location. */
 	void queue_enemy_disrupt(const HeroId& attacker_id);
 
-	/** @brief Draws n cards from the hero's deck to hand; emits EVT_HAND_CHANGED. */
-	void draw_n_cards(const HeroId& hero_id, int n);
-
-	/** @brief Returns the active group count (non-removed). */
 	int active_group_count() const;
 
 	/** @brief Returns the active PG count (ACTIVE life state). */

@@ -262,6 +262,12 @@ inline const std::string CMD_PLAY_INSTANTS      = "eldhom.play_instants";
 // Interactive formation dialog command (GUI → engine)
 inline const std::string CMD_RESOLVE_FORMATION  = "eldhom.resolve_formation";
 
+// GM-level deck management commands (GUI → engine)
+inline const std::string CMD_DECK_DRAW          = "eldhom.deck.draw";
+inline const std::string CMD_DECK_DISCARD       = "eldhom.deck.discard";
+inline const std::string CMD_DECK_TAKE_DISCARD  = "eldhom.deck.take_discard";
+inline const std::string CMD_DECK_RESHUFFLE     = "eldhom.deck.reshuffle";
+
 } // namespace eldhom
 
 #endif // ELDHOM_ENGINE_ELDHOMTYPES_HPP

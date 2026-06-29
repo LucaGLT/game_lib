@@ -142,6 +142,22 @@ public:
 		{
 			handle_stop_sequence(data);
 		}
+		else if (type_id == eldhom::CMD_DECK_DRAW)
+		{
+			handle_deck_draw(data);
+		}
+		else if (type_id == eldhom::CMD_DECK_DISCARD)
+		{
+			handle_deck_discard(data);
+		}
+		else if (type_id == eldhom::CMD_DECK_TAKE_DISCARD)
+		{
+			handle_deck_take_discard(data);
+		}
+		else if (type_id == eldhom::CMD_DECK_RESHUFFLE)
+		{
+			handle_deck_reshuffle(data);
+		}
 		else if (type_id == eldhom::CMD_REQUEST_STATE)
 		{
 			if (_engine) { emit_full_state(); }
@@ -491,6 +507,45 @@ private:
 			emit_next_actor_event();
 			emit_full_state();
 		}
+	}
+
+	// ── GM deck management commands ──────────────────────────────────────────
+
+	void handle_deck_draw(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+		if (hero_id.empty()) { return; }
+		_engine->draw_n_cards(hero_id, 1);
+		emit_full_state();
+	}
+
+	void handle_deck_discard(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+		std::string card_id = data.value("card_id",  std::string{});
+		if (hero_id.empty() || card_id.empty()) { return; }
+		_engine->discard_card(hero_id, card_id);
+		emit_full_state();
+	}
+
+	void handle_deck_take_discard(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+		if (hero_id.empty()) { return; }
+		_engine->take_from_discard(hero_id);
+		emit_full_state();
+	}
+
+	void handle_deck_reshuffle(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+		std::string hero_id = data.value("hero_id", std::string{});
+		if (hero_id.empty()) { return; }
+		_engine->reshuffle_discard(hero_id);
+		emit_full_state();
 	}
 
 	// ── Event forwarding ──────────────────────────────────────────────────────

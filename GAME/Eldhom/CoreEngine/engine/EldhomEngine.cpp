@@ -1369,6 +1369,42 @@ void EldhomEngine::draw_n_cards(const HeroId& hero_id, int n)
 	emit(EVT_HAND_CHANGED, hero_id, {});
 }
 
+void EldhomEngine::discard_card(const HeroId& hero_id, const CardId& card_id)
+{
+	auto it = _hand_states.find(hero_id);
+	if (it == _hand_states.end()) { return; }
+	HeroHandState& hs = it->second;
+	auto pos = std::find(hs.hand.begin(), hs.hand.end(), card_id);
+	if (pos == hs.hand.end()) { return; }
+	hs.hand.erase(pos);
+	hs.discard.push_back(card_id);
+	emit(EVT_HAND_CHANGED, hero_id, {});
+}
+
+void EldhomEngine::take_from_discard(const HeroId& hero_id)
+{
+	auto it = _hand_states.find(hero_id);
+	if (it == _hand_states.end()) { return; }
+	HeroHandState& hs = it->second;
+	if (hs.discard.empty()) { return; }
+	hs.hand.push_back(hs.discard.back());
+	hs.discard.pop_back();
+	emit(EVT_HAND_CHANGED, hero_id, {});
+}
+
+void EldhomEngine::reshuffle_discard(const HeroId& hero_id)
+{
+	auto it = _hand_states.find(hero_id);
+	if (it == _hand_states.end()) { return; }
+	HeroHandState& hs = it->second;
+	if (hs.discard.empty()) { return; }
+	hs.deck.insert(hs.deck.end(), hs.discard.begin(), hs.discard.end());
+	hs.discard.clear();
+	std::mt19937 rng(std::random_device{}());
+	std::shuffle(hs.deck.begin(), hs.deck.end(), rng);
+	emit(EVT_DECK_RESHUFFLED, hero_id, {});
+}
+
 int EldhomEngine::active_group_count() const
 {
 	int count = 0;

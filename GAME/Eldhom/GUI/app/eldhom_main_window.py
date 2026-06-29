@@ -220,7 +220,40 @@ class _DeckProxy:
                         "eldhom.play_card",
                         {"hero_id": hero_id, "card_id": card_id},
                     )
-            # Non-play moves are ignored: the engine drives zone changes.
+            elif from_zone == "CardHand" and to_zone == "DiscardPile":
+                # GM override: discard a card from the active hero's hand.
+                hero_id = self._active_hero()
+                if hero_id and card_id and not card_id.startswith("__"):
+                    self._bridge.send_command(
+                        "eldhom.deck.discard",
+                        {"hero_id": hero_id, "card_id": card_id},
+                    )
+            elif from_zone == "MainDeck" and to_zone == "CardHand":
+                # GM override: draw one card for the active hero.
+                hero_id = self._active_hero()
+                if hero_id:
+                    self._bridge.send_command(
+                        "eldhom.deck.draw",
+                        {"hero_id": hero_id},
+                    )
+            elif from_zone == "DiscardPile" and to_zone == "CardHand":
+                # GM override: take the top card from the active hero's discard pile.
+                hero_id = self._active_hero()
+                if hero_id:
+                    self._bridge.send_command(
+                        "eldhom.deck.take_discard",
+                        {"hero_id": hero_id},
+                    )
+            # All other zone moves are ignored: the engine drives zone changes.
+            return
+        if type_id == "gmAlea.deck.recycle_discard":
+            # GM override: reshuffle the active hero's discard pile into the deck.
+            hero_id = self._active_hero()
+            if hero_id:
+                self._bridge.send_command(
+                    "eldhom.deck.reshuffle",
+                    {"hero_id": hero_id},
+                )
             return
         if type_id.startswith("gmAlea.deck."):
             eldhom_type = type_id.replace("gmAlea.deck.", "eldhom.deck.", 1)
@@ -262,6 +295,14 @@ class EldhomMainWindow(QMainWindow):
         self._group_data: dict[str, dict] = {}
         self._mission_started: bool = False
         self._hand_cards: dict[str, list[str]] = {}
+
+        # Per-actor deck state: hand, draw-pile count, discard-pile count, played cards.
+        # Populated from eldhom.state.full; played list is accumulated via events.
+        self._hero_deck_state: dict[str, dict] = {}
+        # Actor whose deck is currently shown in the GmCompDeckModule.
+        self._viewing_actor_id: str = ""
+        # Tracks mission_id to detect new-game resets.
+        self._current_mission_id: str = ""
 
         # Move targeting state: when True the next map click is a move
         # destination for the active hero.
@@ -595,11 +636,26 @@ class EldhomMainWindow(QMainWindow):
         self._status_label.setText(
             f"Missione: {title}  \u2022  \u231b {data.get('time', 0)}"
         )
+        # Detect new mission to reset played-card tracking.
+        mission_id = data.get("mission_id", "")
+        is_new_mission = (mission_id != self._current_mission_id)
+        self._current_mission_id = mission_id
+        old_played: dict[str, list[str]] = (
+            {} if is_new_mission
+            else {hid: s.get("played", []) for hid, s in self._hero_deck_state.items()}
+        )
+        self._hero_deck_state.clear()
         self._hero_data.clear()
         for hero in data.get("heroes", []):
             hid = str(hero["id"])
             self._hero_data[hid] = hero
             self._hand_cards[hid] = hero.get("hand", [])
+            self._hero_deck_state[hid] = {
+                "hand":          [str(c) for c in hero.get("hand", [])],
+                "deck_count":    int(hero.get("deck_count", 0)),
+                "discard_count": int(hero.get("discard_count", 0)),
+                "played":        old_played.get(hid, []),
+            }
         self._group_data.clear()
         for grp in data.get("groups", []):
             self._group_data[str(grp.get("id", ""))] = grp
@@ -628,6 +684,61 @@ class EldhomMainWindow(QMainWindow):
             self._actions.set_turn(hero.get("name", actor_id))
         else:
             self._actions.set_enabled(False)
+        self._refresh_deck_display(actor_id)
+
+    def _refresh_deck_display(self, actor_id: str) -> None:
+        """Loads the deck state for *actor_id* into the GmCompDeckModule.
+
+        Clears all zones first, then populates based on actor type:
+        - Hero: Hand (actual cards), MainDeck / DiscardPile (placeholder counts),
+          PlayArea (played cards tracked by the GUI).
+        - Monster group or unknown: all zones left empty.
+        """
+        self._viewing_actor_id = actor_id
+        # Clear every zone unconditionally.
+        for zone in ("CardHand", "MainDeck", "DiscardPile", "PlayArea", "Memory", "BanishZone"):
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.zone_changed",
+                "data":   {"zone_name": zone, "cards": []},
+            })
+        if actor_id not in self._hero_deck_state:
+            # Monster group or unknown actor — zones stay empty.
+            return
+        state = self._hero_deck_state[actor_id]
+        # Hand zone: actual card metadata.
+        self._deck.on_envelope({
+            "typeId": "gmAlea.deck.zone_changed",
+            "data":   {
+                "zone_name": "CardHand",
+                "cards":     [_card_meta(c) for c in state["hand"]],
+            },
+        })
+        # MainDeck: one placeholder item per card in the draw pile (count only).
+        deck_placeholders = [
+            {"card_id": f"__deck__{i}", "name": "Carta nel mazzo"}
+            for i in range(state["deck_count"])
+        ]
+        self._deck.on_envelope({
+            "typeId": "gmAlea.deck.zone_changed",
+            "data":   {"zone_name": "MainDeck", "cards": deck_placeholders},
+        })
+        # DiscardPile: one placeholder per card in the discard pile.
+        discard_placeholders = [
+            {"card_id": f"__discard__{i}", "name": "Carta scartata"}
+            for i in range(state["discard_count"])
+        ]
+        self._deck.on_envelope({
+            "typeId": "gmAlea.deck.zone_changed",
+            "data":   {"zone_name": "DiscardPile", "cards": discard_placeholders},
+        })
+        # PlayArea: actual played-card metadata.
+        self._deck.on_envelope({
+            "typeId": "gmAlea.deck.zone_changed",
+            "data":   {
+                "zone_name": "PlayArea",
+                "cards":     [_card_meta(c) for c in state["played"]],
+            },
+        })
 
     def _on_pg_turn_ended(self, msg: dict) -> None:
         data = _extract_data(msg)
@@ -638,41 +749,60 @@ class EldhomMainWindow(QMainWindow):
     # ── Deck event translation (eldhom.* → GmCompDeckModule) ─────────────────
 
     def _on_deck_state_full(self, msg: dict) -> None:
-        """Translates hero hand data from full state for GmCompDeckModule."""
-        data = _extract_data(msg)
-        for hero in data.get("heroes", []):
-            hand_ids = [str(c) for c in hero.get("hand", [])]
-            cards = [_card_meta(c) for c in hand_ids]
-            self._deck.on_envelope({
-                "typeId": "gmAlea.deck.zone_changed",
-                "data":   {"zone_name": "CardHand", "cards": cards},
-            })
+        """Refreshes the deck panel for the currently viewed actor after a full state update.
+
+        The hero deck states are already rebuilt by _on_state_full (registered
+        for the same event, called first); this handler just re-renders the panel.
+        """
+        if self._viewing_actor_id:
+            self._refresh_deck_display(self._viewing_actor_id)
 
     def _on_hand_updated(self, msg: dict) -> None:
         data     = _extract_data(msg)
         hero_id  = data.get("actor_id", "")
         payload  = data.get("payload", [])
         hand_ids = [str(c) for c in payload] if isinstance(payload, list) else []
+        # Guard: ignore empty-payload events (engine emits them as a signal;
+        # the subsequent full-state will carry the authoritative hand list).
+        if not hand_ids and "payload" not in data:
+            return
         self._hand_cards[hero_id] = hand_ids
         if hero_id in self._hero_data:
             self._hero_data[hero_id]["hand"] = hand_ids
-        cards = [_card_meta(c) for c in hand_ids]
-        self._deck.on_envelope({
-            "typeId": "gmAlea.deck.zone_changed",
-            "data":   {"zone_name": "CardHand", "cards": cards},
-        })
+        if hero_id in self._hero_deck_state:
+            self._hero_deck_state[hero_id]["hand"] = hand_ids
+        # Only update the deck panel if this hero is currently being viewed.
+        if hero_id == self._viewing_actor_id:
+            cards = [_card_meta(c) for c in hand_ids]
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.zone_changed",
+                "data":   {"zone_name": "CardHand", "cards": cards},
+            })
 
 
     def _on_deck_reshuffled(self, msg: dict) -> None:
-        self._deck.on_envelope({
-            "typeId": "gmAlea.deck.shuffled",
-            "data":   {"zone_name": "MainDeck"},
-        })
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        # Only flash the zone if this hero's deck is currently visible.
+        if not hero_id or hero_id == self._viewing_actor_id:
+            self._deck.on_envelope({
+                "typeId": "gmAlea.deck.shuffled",
+                "data":   {"zone_name": "MainDeck"},
+            })
 
     def _on_pg_played_card(self, msg: dict) -> None:
         data    = _extract_data(msg)
+        hero_id = data.get("actor_id", self._active_hero_id)
         card_id = str(data.get("payload", data.get("card_id", "")))
-        if card_id:
+        if not card_id:
+            return
+        # Track played cards per hero so the played zone survives actor switches.
+        if hero_id in self._hero_deck_state:
+            played = self._hero_deck_state[hero_id]["played"]
+            if card_id not in played:
+                played.append(card_id)
+        # Only animate in the deck panel if this hero is currently viewed.
+        if hero_id == self._viewing_actor_id:
             self._deck.on_envelope({
                 "typeId": "gmAlea.deck.card_moved",
                 "data":   {
@@ -700,7 +830,8 @@ class EldhomMainWindow(QMainWindow):
         """Called when the user selects an actor in the tree or area panel.
 
         While attack targeting is armed, selecting an enemy declares an
-        interactive attack against it; otherwise it just highlights the actor.
+        interactive attack against it; otherwise it just highlights the actor
+        and refreshes the deck panel to show that actor's cards.
         """
         if not actor_id:
             return
@@ -708,6 +839,7 @@ class EldhomMainWindow(QMainWindow):
             self._try_declare_attack(actor_id)
             return
         self._actors.select_actor(actor_id)
+        self._refresh_deck_display(actor_id)
 
     def _on_victory(self, msg: dict) -> None:
         self._actions.set_enabled(False)
