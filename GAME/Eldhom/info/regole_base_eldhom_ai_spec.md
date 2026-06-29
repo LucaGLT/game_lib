@@ -64,7 +64,7 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 - **Sanguinante** : Inizio Turno: -1PV ; Dura fino a *Cura*.
   > A inizio di ogni tuo turno, la miniatura perde 1 Puno Vita. Perdura fino alla prossima *Cura* ricevuta.
 
-- **Svenuto**: Nessua Azione o Carta; +1PV e passa il turno; Dura 1 Turno
+- **Svenuto**: Nessuna Azione o Carta; +1PV e passa il turno; Dura 1 Turno
   > Impedisce di eseguire qualsiasi Azione o Giocare alcuna Carta finchè perdura l'effetto; all'inizio del tuo prossimo turno recuperi +1PV, rimuovi l'effetto e passa il turno. Dura fino alla fine del tuo prossimo turno.
 
 - **Maledetto** : Alcune Carte specifiche applicheranno malus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Benedetto**: le due condizioni si annullano a vicenda.
@@ -88,10 +88,37 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
 
 - **Benedetto** : Alcune Carte specifiche applicheranno bonus se sei soggetto a questa condizione; diranno anche se la condzione sarà rimossa o rimarrà perdurante. Viene sempre rimossa se ricevi la condizione **Maledetto**: le due condizioni si annullano a vicenda.
 
-## 0.4 Condizioni di una Locazione (luogo)
+## 0.4 Stati dei Personaggi Giocanti (PG)
+
+- **Caduto**: nessuna Azione o Carta; dura fino a *Cura* da parte di un alleato; poi rientra con almeno 2PV, perde 1 Livello per il resto della Missione ed Elimina 1 Carta dalla Missione. Alla quarta volta che diventa Caduto nella stessa Missione, il PG muore definitivamente.
+
+> Un PG diventa **Caduto** quando i suoi PV scendono a 0. I PV non possono scendere sotto 0.
+>
+> Un PG Caduto non può eseguire Azioni, giocare Carte, muoversi, attaccare, interagire, usare Oggetti o portare il Tesoro.
+>
+> **Caduto** può essere rimosso solo da una Cura effettuata da un alleato.
+>
+> Quando la Cura rimuove **Caduto**, il PG torna in gioco con un numero di PV pari al valore della Cura, minimo 2 PV.
+>
+> Dopo essere stato curato, il PG deve:
+> - scartare tutte le Carte in Gioco e in Mano;
+> - rimescolare gli Scarti nel Mazzo;
+> - eliminare casualmente 1 Carta dalla propria dotazione di Missione;
+> - ridurre temporaneamente di 1 il proprio Livello PG per il resto della Missione.
+>
+> Il PG rientra in gioco nello Spazio di Tempo immediatamente successivo a quello del PG che ha effettuato la Cura.
+>
+> Se un PG diventa **Caduto** per la quarta volta nella stessa Missione, muore definitivamente.
+
+- **Morto** : 
+
+## 0.5 Condizioni di una Locazione (luogo)
 
 - Bloccata : NON accessibile
   > Questa locazione non è accessibile fino a una evebtuale specifica interazione spiegata nella missione
+
+- Controllata da Xxxxx : il PG/PnG/Mostro Xxxxx deve essere *Morto* o *Svenuto* o *Caduto* prima di passare oltre; Dura fino a neutralizzazione di Xxxxx.
+  > La Miniatura Xxxxx non permette di passare oltre finché non vine uccisa o neutralizzata con *Svenuto* o *Caduto*; ogni Movimento che interessa questa Locazione viene interrotto in questa Locazione; tuttavia una Miniatura con effetto **Invisibile** piò passare oltre, a meno di indicazioni specifiche.
 
 - Luogo Angusto N : max N miniature
   > Questa Locazione può contenere massimo N miniature totali. Se un effetto dovrebbe far entrare una miniatura oltre il limite, quella miniatura non può entrare.
@@ -106,12 +133,12 @@ Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostit
   > Gli Attacchi a Distanza in questa Locazione possono colpire al massimo a Distanza corta = questa stessa Locazione.
 
 - Buio : NO Attacchi a Distanza
-  > Non è possibile effettuare Attacchi a Distanza che partono da, attraversano o bersagliano questa Locazione, salvo effetti che permettano di vedere nel Buio.
+  > Non è possibile effettuare Attacchi a Distanza che partono da, attraversano o bersagliano questa Locazione, salvo effetti che permettano di vedere nel Buio. Alcuni oggetti pososno neutralizzare il *Buio* in una Locazione.
 
 - Terreno Accidentato : Movimento : +2⌛
   > Ogni Movimento che parte da, entra in o attraversa questa Locazione costa +1⌛.
 
-- In Fiamme :  Subisci 1❌; Interazione per elimiinare la Condizione
+- In Fiamme :  Subisci 1❌; Interazione per eliminare la Condizione
   > Quando una miniatura entra in questa Locazione o inizia la propria attivazione in questa Locazione, subisce 1❌. Una Locazione In Fiamme può essere spenta con una Interazione Semplice, se la Missione lo consente.
 
 - Crollo Instabile : Se Crollo: Subisci 2❌; diventa **Bloccata**
@@ -173,6 +200,22 @@ soggetto.timeline += costo_⌛
 Il segnalino avanza subito dopo ogni costo pagato.
 
 Non esiste pagamento cumulativo a fine turno.
+
+## 1.3 Controllo delle Locazioni
+
+Una Locazione non è mai controllata definitivamente da una miniatura. Una miniatura può muovere attraverso una Locazione occupata da miniature nemiche. Attraversare una Locazione occupata da nemici non obbliga a fermarsi, non provoca Attacchi gratuiti e non impedisce il Movimento, salvo regole specifiche.
+
+Carte, Effetti, Mostri Speciali, Boss o regole di Missione possono indicare che una Locazione è Controllata. In quel caso la Locazione non può essere attraversata liberamente secondo quanto indicato dall’effetto.
+
+## 1.4 Movimento fra Locazioni e Porte semplici
+
+Durante un Movimento, una miniatura può aprire e attraversare Porte Semplici.
+
+Ogni Porta Semplice aperta durante quel Movimento aumenta il costo del Movimento di +1⌛.
+
+Una Porta Semplice aperta rimane aperta fino alla fine della Missione.
+
+Le Porte Speciali, Bloccate, Sigillate o collegate a Obiettivi richiedono *Interazione Semplice* (o Carta analoga) o la regola indicata dalla Missione.
 
 ---
 
@@ -329,13 +372,14 @@ Costo: 3⌛
 Esempi:
 
 ```text
-- aprire porta
+- aprire porta chiusa
 - attivare leva
 - raccogliere indizio
 - manipolare oggetto
 - disinnescare trappola
 - usare elemento di mappa
 - completare obiettivo
+- **Perlustrare**
 ```
 
 Procedura:
@@ -346,6 +390,19 @@ risolvi interazione
 PG.timeline += 3
 turno termina
 ```
+
+### Interazione Semplice e Perlustrazione
+
+Un PG può usare **Interazione Semplice** per interagire con un elemento valido nella propria Locazione oppure per **Perlustrare** la Locazione.
+
+Gli elementi interagibili includono Leve, Tesori, Porte Speciali, Meccanismi, Trappole, Oggetti di Missione o altri elementi indicati dalla Scheda Missione.
+
+Se il PG usa Interazione Semplice per **Perlustrare**, consulta il risultato di Perlustrazione previsto dalla Scheda Missione per quella Locazione.
+
+Una Locazione può essere Perlustrata una sola volta per Missione. 
+Dopo essere stata Perlustrata, la Locazione viene segnata come **Perlustrata**, anche se il risultato è “Nulla”.
+
+Un PG può Perlustrare anche se nella sua Locazione sono presenti nemici, salvo diversa indicazione. Tuttavia, alcune Missioni o Condizioni possono indicare che una Perlustrazione richiede una Locazione sicura.
 
 ## 5.4 Recupero Semplice
 
@@ -1931,3 +1988,7 @@ Da definire in futuro:
 14. Le Reazioni Mostro consumano la Carta Comportamento attiva e ne pescano una nuova.
 15. Le durate non usano mai “fine Round”.
 ```
+
+---
+
+# 45. Regole aggiuntive da sistemare nel corpo del regolamento
