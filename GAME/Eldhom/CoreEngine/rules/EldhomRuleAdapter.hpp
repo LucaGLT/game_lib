@@ -197,6 +197,16 @@ public:
 		gmActor::ActorStore&    store) const;
 
 	bool is_adjacent(const LocationId& from, const LocationId& to) const;
+
+	/**
+	 * @brief Adds a new adjacency edge at runtime (e.g. when a door is opened).
+	 *
+	 * Does nothing if the pair already exists.
+	 *
+	 * @param from  Origin location ID.
+	 * @param to    Destination location ID.
+	 */
+	void add_adjacency(const LocationId& from, const LocationId& to);
 };
 
 } // namespace eldhom

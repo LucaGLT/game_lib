@@ -212,6 +212,14 @@ EldhomEngine EldhomEngine::from_definition(
 		std::move(engine_cb));
 
 	eng.build_initial_hands(def.pg_roster);
+
+	// ── Populate special objects ──────────────────────────────────────────────
+	eng._special_objects = def.special_objects;
+	for (const SpecialObject& obj : def.special_objects)
+	{
+		eng._special_object_used[obj.object_id] = false;
+	}
+
 	return eng;
 }
 
@@ -415,6 +423,7 @@ ActionResult EldhomEngine::do_simple_action(
 			         "MOVE failed: " + eff.note };
 		}
 		emit(EVT_PG_MOVED, hero_id, destination);
+		check_pg_at_location(hero_id, destination);
 		break;
 
 	case SimpleActionType::ATTACK:
@@ -444,6 +453,7 @@ ActionResult EldhomEngine::do_simple_action(
 		cost = COST_SIMPLE_INTERACT;
 		eff.resolved = true;
 		eff.note     = hero_id + " interacted";
+		trigger_special_object(hero_id);
 		break;
 
 	case SimpleActionType::RECOVER:
@@ -577,7 +587,13 @@ ActionResult EldhomEngine::play_card(
 			if (mres.resolved)
 			{
 				emit(EVT_PG_MOVED, hero_id, move_to);
+				check_pg_at_location(hero_id, move_to);
 			}
+			continue;
+		}
+		if (eff.effect_type == "INTERACT")
+		{
+			trigger_special_object(hero_id);
 			continue;
 		}
 		EffectResult res =
@@ -832,6 +848,11 @@ ActionResult EldhomEngine::play_instants(
 
 		for (const EldhomEffect& eff : card.effects)
 		{
+			if (eff.effect_type == "REDUCE_DAMAGE")
+			{
+				_pending.base_damage = std::max(0, _pending.base_damage - eff.amount);
+				continue;
+			}
 			EffectResult res =
 				_rule_adapter.apply_effect(eff, holder, _store, enemy_faction);
 			if (res.target_ko && !res.target_id.empty())
@@ -1490,6 +1511,56 @@ void EldhomEngine::handle_monster_instance_death(const gmActor::ActorId& instanc
 	}
 
 	emit(EVT_MONSTER_DAMAGED, instance_id, "killed");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Special object interaction
+// ─────────────────────────────────────────────────────────────────────────────
+
+void EldhomEngine::trigger_special_object(const HeroId& hero_id)
+{
+	if (!_store.has_actor(hero_id)) { return; }
+	const std::string& hero_loc = _store.common(hero_id).area_id;
+
+	for (SpecialObject& obj : _special_objects)
+	{
+		if (obj.location_id != hero_loc) { continue; }
+		if (_special_object_used[obj.object_id]) { continue; }
+
+		_special_object_used[obj.object_id] = true;
+
+		// Unlock adjacency pairs for all interaction types
+		for (const std::pair<LocationId, LocationId>& pair : obj.on_interact.adjacency)
+		{
+			_rule_adapter.add_adjacency(pair.first, pair.second);
+		}
+
+		if (obj.type == "LEVER")
+		{
+			emit(EVT_PORTA_APERTA, hero_id, obj.object_id);
+		}
+		else if (obj.type == "PICKUP_TESORO")
+		{
+			_tesoro_carrier = hero_id;
+			emit(EVT_TESORO_RACCOLTO, hero_id, obj.object_id);
+			emit(EVT_ALLARME_TESORO, hero_id, {});
+			emit(EVT_PASSAGGIO_APERTO, hero_id, obj.object_id);
+		}
+		break; // only one object per location is triggered per interaction
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PG_REACHED_EXIT check
+// ─────────────────────────────────────────────────────────────────────────────
+
+void EldhomEngine::check_pg_at_location(
+	const HeroId&     hero_id,
+	const LocationId& new_loc)
+{
+	const std::string item_carried =
+		(_tesoro_carrier == hero_id) ? "tesoro" : "";
+	_mission_events.notify_pg_moved(hero_id, new_loc, item_carried);
 }
 
 } // namespace eldhom

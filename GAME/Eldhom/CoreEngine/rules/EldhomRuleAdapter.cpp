@@ -32,6 +32,17 @@ bool EldhomRuleAdapter::is_adjacent(
 	return std::find(adj.begin(), adj.end(), to) != adj.end();
 }
 
+void EldhomRuleAdapter::add_adjacency(
+	const LocationId& from,
+	const LocationId& to)
+{
+	std::vector<LocationId>& adj = _adjacency[from];
+	if (std::find(adj.begin(), adj.end(), to) == adj.end())
+	{
+		adj.push_back(to);
+	}
+}
+
 EffectResult EldhomRuleAdapter::apply_damage(
 	const gmActor::ActorId& target_id,
 	int                     amount,
@@ -159,6 +170,14 @@ EffectResult EldhomRuleAdapter::apply_effect(
 			res.target_id = target;
 			res.note      = target + " pushed to backline";
 		}
+	}
+	else if (effect.effect_type == "REDUCE_DAMAGE")
+	{
+		// Handled upstream in EldhomEngine::play_instants before apply_effect is
+		// called.  If we reach here the reduction was already applied; record as
+		// resolved so the engine does not treat this as an unknown effect.
+		res.resolved = true;
+		res.note     = "Damage reduction applied";
 	}
 	// Unknown effect types are silently ignored (open-closed principle)
 

@@ -401,6 +401,9 @@ public:
 	/** @brief Returns true if the mission has ended. */
 	bool is_over() const;
 
+	/** @brief Returns the hero_id of the hero currently carrying the tesoro, or "". */
+	const std::string& tesoro_carrier() const { return _tesoro_carrier; }
+
 	/**
 	 * @brief Returns the current sequence state for a hero.
 	 * @param hero_id Hero actor ID.
@@ -469,6 +472,11 @@ private:
 	std::unordered_map<HeroId, gmAlea::SequenceState> _seq_states;
 	std::unordered_map<CardId, EldhomCard>            _card_catalog;
 	std::unordered_map<HeroId, HeroHandState>         _hand_states; ///< Per-hero deck/hand
+
+	// ── Mission special objects ───────────────────────────────────────────────
+	std::vector<SpecialObject>                        _special_objects;
+	std::string                                       _tesoro_carrier; ///< Hero carrying the tesoro ("" = none)
+	std::unordered_map<std::string, bool>             _special_object_used; ///< object_id → consumed
 
 	// ── Configuration ─────────────────────────────────────────────────────────
 	std::vector<std::string>                                  _hero_factions;
@@ -544,6 +552,25 @@ private:
 	 * reshuffle occurs.
 	 */
 	void draw_to_hand(const HeroId& hero_id);
+
+	/**
+	 * @brief Checks whether the hero's location contains an unused SpecialObject
+	 *        and triggers it if found.
+	 *
+	 * Handles: LEVER (EVT_PORTA_APERTA) and PICKUP_TESORO (EVT_TESORO_RACCOLTO,
+	 * EVT_ALLARME_TESORO, EVT_PASSAGGIO_APERTO).
+	 *
+	 * @param hero_id The hero performing the interaction.
+	 */
+	void trigger_special_object(const HeroId& hero_id);
+
+	/**
+	 * @brief Called after a hero successfully moves; checks PG_REACHED_EXIT.
+	 *
+	 * @param hero_id The hero that just moved.
+	 * @param new_loc The hero's new location.
+	 */
+	void check_pg_at_location(const HeroId& hero_id, const LocationId& new_loc);
 };
 
 } // namespace eldhom

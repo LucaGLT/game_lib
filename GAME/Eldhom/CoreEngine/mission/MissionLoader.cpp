@@ -209,6 +209,44 @@ MissionDefinition MissionLoader::parse_mission(const nlohmann::json& j)
 		}
 	}
 
+	// ── Special objects ───────────────────────────────────────────────────────
+	if (j.contains("special_objects"))
+	{
+		for (const nlohmann::json& so : j["special_objects"])
+		{
+			SpecialObject obj;
+			obj.object_id   = so.value("object_id",   std::string{});
+			obj.name        = so.value("name",         std::string{});
+			obj.type        = so.value("type",         std::string{});
+			obj.location_id = so.value("location_id",  std::string{});
+
+			if (so.contains("on_interact"))
+			{
+				const nlohmann::json& oi = so["on_interact"];
+				obj.on_interact.type = oi.value("type", std::string{});
+
+				// Support both "adjacency" and "adjacency_unlock" keys (PICKUP_TESORO uses
+				// "adjacency_unlock" in the JSON to distinguish from LEVER "adjacency").
+				const char* adj_key = oi.contains("adjacency") ? "adjacency"
+				                                                : "adjacency_unlock";
+				if (oi.contains(adj_key))
+				{
+					for (const nlohmann::json& pair : oi[adj_key])
+					{
+						if (pair.is_array() && pair.size() == 2)
+						{
+							obj.on_interact.adjacency.emplace_back(
+								pair[0].get<std::string>(),
+								pair[1].get<std::string>());
+						}
+					}
+				}
+			}
+
+			def.special_objects.push_back(std::move(obj));
+		}
+	}
+
 	// ── Victory / defeat conditions ───────────────────────────────────────────
 	if (j.contains("victory_conditions"))
 	{
@@ -217,6 +255,7 @@ MissionDefinition MissionLoader::parse_mission(const nlohmann::json& j)
 			VictoryCondition v;
 			v.type            = vc.value("type",            std::string{});
 			v.target_location = vc.value("target_location", std::string{});
+			v.require_item    = vc.value("require_item",    std::string{});
 			def.victory_conditions.push_back(v);
 		}
 	}

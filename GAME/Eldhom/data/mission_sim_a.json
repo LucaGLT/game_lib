@@ -1,0 +1,274 @@
+{
+  "mission_id": "missione_sim_a",
+  "title": "Recuperare il Tesoro — Sim A",
+  "description": "Thael e Velyr entrano dal punto IN, raggiungono la Stanza del Tesoro, recuperano il Tesoro e fuggono da OUT. Almeno 1 PG deve uscire da OUT con il Tesoro.",
+
+  "locations": [
+    {
+      "id": "IN",
+      "name": "Ingresso (Esterno)",
+      "adjacent": ["S1"]
+    },
+    {
+      "id": "S1",
+      "name": "Stanza Ingresso — S1",
+      "adjacent": ["IN", "S2"]
+    },
+    {
+      "id": "S2",
+      "name": "Stanza Ingresso — S2",
+      "adjacent": ["S1", "C1"]
+    },
+    {
+      "id": "C1",
+      "name": "Corridoio — C1",
+      "adjacent": ["S2", "C2"]
+    },
+    {
+      "id": "C2",
+      "name": "Corridoio — C2",
+      "adjacent": ["C1", "C3"]
+    },
+    {
+      "id": "C3",
+      "name": "Corridoio — C3 (Passaggio Stretto)",
+      "adjacent": ["C2", "G1"]
+    },
+    {
+      "id": "G1",
+      "name": "Stanza Grande — G1",
+      "adjacent": ["C3", "G2", "G4"]
+    },
+    {
+      "id": "G2",
+      "name": "Stanza Grande — G2 (Leva L)",
+      "adjacent": ["G1", "G3"]
+    },
+    {
+      "id": "G3",
+      "name": "Stanza Grande — G3",
+      "adjacent": ["G2", "OUT"]
+    },
+    {
+      "id": "G4",
+      "name": "Stanza Grande — G4",
+      "adjacent": ["G1", "G5"]
+    },
+    {
+      "id": "G5",
+      "name": "Stanza Grande — G5",
+      "adjacent": ["G4"]
+    },
+    {
+      "id": "T",
+      "name": "Stanza Tesoro — T",
+      "adjacent": []
+    },
+    {
+      "id": "OUT",
+      "name": "Uscita (Esterno)",
+      "adjacent": ["G3"]
+    }
+  ],
+
+  "special_objects": [
+    {
+      "object_id": "leva_L",
+      "name": "Leva L",
+      "type": "LEVER",
+      "location_id": "G2",
+      "on_interact": {
+        "type": "UNLOCK_ADJACENCY",
+        "adjacency": [["G5", "T"], ["T", "G5"]]
+      }
+    },
+    {
+      "object_id": "tesoro",
+      "name": "Tesoro",
+      "type": "PICKUP_TESORO",
+      "location_id": "T",
+      "on_interact": {
+        "type": "PICKUP_TESORO",
+        "adjacency_unlock": [["T", "G3"], ["G3", "T"]]
+      }
+    }
+  ],
+
+  "pg_roster": [
+    {
+      "hero_id": "thael",
+      "display_name": "Thael",
+      "class_name": "Guerriero",
+      "faction_id": "HEROES",
+      "start_location": "IN",
+      "start_position": "FRONTLINE",
+      "max_hp": 5,
+      "hand_limit": 6,
+      "level": 1,
+      "start_timeline": 0,
+      "mission_deck": [
+        "m0_passo_sicuro",
+        "m0_colpo_deciso",
+        "m0_mano_sicura",
+        "m0_parata_istintiva",
+        "m0_protezione_istintiva",
+        "m0_pozione_di_cura"
+      ]
+    },
+    {
+      "hero_id": "velyr",
+      "display_name": "Velyr",
+      "class_name": "Supporto",
+      "faction_id": "HEROES",
+      "start_location": "IN",
+      "start_position": "BACKLINE",
+      "max_hp": 5,
+      "hand_limit": 6,
+      "level": 1,
+      "start_timeline": 0,
+      "mission_deck": [
+        "m0_passo_sicuro",
+        "m0_colpo_deciso",
+        "m0_mano_sicura",
+        "m0_parata_istintiva",
+        "m0_protezione_istintiva",
+        "m0_pozione_di_cura"
+      ]
+    }
+  ],
+
+  "monster_groups": [
+    {
+      "group_id": "guardiani_ingresso",
+      "display_name": "Guardiani — Ingresso",
+      "monster_type": "guardiano_base",
+      "faction_id": "GUARDIANI",
+      "start_location": "S2",
+      "start_timeline": 5,
+      "tie_break_rank": 5,
+      "instances": [
+        {
+          "instance_id": "guardiano_ingresso_1",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "guardiano_sentinella"
+      ]
+    },
+    {
+      "group_id": "guardiani_corridoio",
+      "display_name": "Guardiani — Corridoio",
+      "monster_type": "guardiano_base",
+      "faction_id": "GUARDIANI",
+      "start_location": "C2",
+      "start_timeline": 5,
+      "tie_break_rank": 5,
+      "instances": [
+        {
+          "instance_id": "guardiano_corridoio_1",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        },
+        {
+          "instance_id": "guardiano_corridoio_2",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "guardiano_sentinella"
+      ]
+    },
+    {
+      "group_id": "guardiani_grande",
+      "display_name": "Guardiani — Stanza Grande",
+      "monster_type": "guardiano_base",
+      "faction_id": "GUARDIANI",
+      "start_location": "G3",
+      "start_timeline": 5,
+      "tie_break_rank": 5,
+      "instances": [
+        {
+          "instance_id": "guardiano_grande_1",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        },
+        {
+          "instance_id": "guardiano_grande_2",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "guardiano_sentinella"
+      ]
+    },
+    {
+      "group_id": "guardiano_tesoro",
+      "display_name": "Guardiano Elite — Tesoro",
+      "monster_type": "guardiano_elite",
+      "faction_id": "GUARDIANI",
+      "start_location": "T",
+      "start_timeline": 5,
+      "tie_break_rank": 5,
+      "instances": [
+        {
+          "instance_id": "guardiano_elite_1",
+          "position": "FRONTLINE",
+          "max_hp": 4,
+          "damage": 2,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "guardiano_elite_sentinella"
+      ]
+    }
+  ],
+
+  "victory_conditions": [
+    {
+      "type": "PG_REACHED_EXIT",
+      "target_location": "OUT",
+      "require_item": "tesoro"
+    }
+  ],
+
+  "defeat_conditions": [
+    {
+      "type": "ALL_PG_KO",
+      "threshold": 0
+    },
+    {
+      "type": "TIME_LIMIT",
+      "threshold": 80
+    }
+  ],
+
+  "timeline_events": [
+    {
+      "at_time": 40,
+      "effect_type": "NARRATIVE_LOG",
+      "payload": "Il tempo stringe — i Guardiani diventano più aggressivi.",
+      "repeating": false
+    },
+    {
+      "at_time": 70,
+      "effect_type": "NARRATIVE_LOG",
+      "payload": "Ultimi 10 azioni! Il dungeon trema.",
+      "repeating": false
+    }
+  ]
+}

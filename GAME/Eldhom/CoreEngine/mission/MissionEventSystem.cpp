@@ -96,6 +96,25 @@ void MissionEventSystem::notify_pg_ko(int active_pg_count)
 	}
 }
 
+void MissionEventSystem::notify_pg_moved(
+	const HeroId&      hero_id,
+	const LocationId&  new_loc,
+	const std::string& item_carried)
+{
+	if (_outcome != MissionOutcome::IN_PROGRESS) { return; }
+
+	for (const VictoryCondition& vc : _def.victory_conditions)
+	{
+		if (vc.type != "PG_REACHED_EXIT") { continue; }
+		if (new_loc != vc.target_location) { continue; }
+		if (!vc.require_item.empty() && item_carried != vc.require_item) { continue; }
+
+		_outcome = MissionOutcome::VICTORY;
+		_on_event(EVT_MISSION_VICTORY, hero_id + " reached " + new_loc);
+		return;
+	}
+}
+
 MissionOutcome MissionEventSystem::outcome() const
 {
 	return _outcome;

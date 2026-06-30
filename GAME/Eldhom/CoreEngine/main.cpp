@@ -720,6 +720,9 @@ private:
 		}
 		state["groups"] = groups;
 
+		// Special objects / items
+		state["tesoro_carrier"] = _engine->tesoro_carrier();
+
 		// Next actor
 		nlohmann::json nxt;
 		nxt["actor_id"] = _engine->next_actor();

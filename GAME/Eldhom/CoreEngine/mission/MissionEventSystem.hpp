@@ -101,6 +101,21 @@ public:
 	 */
 	void notify_pg_ko(int active_pg_count);
 
+	/**
+	 * @brief Evaluates the `"PG_REACHED_EXIT"` victory condition.
+	 *
+	 * Call this every time a hero successfully moves to a new location.
+	 *
+	 * @param hero_id     The ID of the hero that just moved.
+	 * @param new_loc     The location the hero just entered.
+	 * @param item_carried  The item currently carried by this hero (empty string
+	 *                    if none).  Compared against `VictoryCondition::require_item`.
+	 */
+	void notify_pg_moved(
+		const HeroId&     hero_id,
+		const LocationId& new_loc,
+		const std::string& item_carried);
+
 	/** @brief Returns the current mission outcome. */
 	MissionOutcome outcome() const;
 

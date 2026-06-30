@@ -107,10 +107,13 @@ struct MonsterGroupEntry {
  * type values:
  * - `"ALL_MONSTERS_ELIMINATED"` — all monster groups removed
  * - `"OBJECTIVE_REACHED"` — a PG is in `target_location`
+ * - `"PG_REACHED_EXIT"` — a PG is in `target_location` (optionally carrying
+ *   the item named by `require_item`)
  */
 struct VictoryCondition {
 	std::string type;
-	LocationId  target_location; ///< Used by OBJECTIVE_REACHED
+	LocationId  target_location; ///< Used by OBJECTIVE_REACHED / PG_REACHED_EXIT
+	std::string require_item;    ///< Item id that must be carried (empty = none)
 };
 
 /**
@@ -142,6 +145,36 @@ struct TimelineEvent {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Special interactable objects (Leva, Tesoro, …)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @struct SpecialObjectInteract
+ * @brief Effect triggered when a hero interacts with a SpecialObject.
+ *
+ * type values:
+ * - `"UNLOCK_ADJACENCY"`  — opens a locked door: adds adjacency pairs
+ * - `"PICKUP_TESORO"`     — hero picks up the treasure; also adds adjacency
+ *                           pairs (Passaggio Segreto)
+ */
+struct SpecialObjectInteract {
+	std::string                                      type;
+	std::vector<std::pair<LocationId, LocationId>>   adjacency; ///< Pairs to add
+};
+
+/**
+ * @struct SpecialObject
+ * @brief A mission-specific interactable object placed in a location.
+ */
+struct SpecialObject {
+	std::string            object_id;
+	std::string            name;
+	std::string            type;        ///< "LEVER", "PICKUP_TESORO", …
+	LocationId             location_id; ///< Starting location
+	SpecialObjectInteract  on_interact; ///< Effect when a hero interacts here
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MissionDefinition
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -156,6 +189,9 @@ struct MissionDefinition {
 
 	// ── World ─────────────────────────────────────────────────────────────────
 	std::vector<LocationNode>      locations;
+
+	// ── Special interactable objects (optional) ────────────────────────────
+	std::vector<SpecialObject>     special_objects;
 
 	// ── Actors ────────────────────────────────────────────────────────────────
 	std::vector<PgEntry>           pg_roster;

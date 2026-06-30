@@ -224,6 +224,12 @@ inline const EventType EVT_MISSION_TIME      = "eldhom.mission.time_advanced";
 inline const EventType EVT_MISSION_VICTORY   = "eldhom.mission.victory";
 inline const EventType EVT_MISSION_DEFEAT    = "eldhom.mission.defeat";
 
+// Mission special-object events (Sim A — Leva, Tesoro, Passaggio Segreto)
+inline const EventType EVT_PORTA_APERTA      = "eldhom.missione.porta_aperta";
+inline const EventType EVT_TESORO_RACCOLTO   = "eldhom.missione.tesoro_raccolto";
+inline const EventType EVT_PASSAGGIO_APERTO  = "eldhom.missione.passaggio_aperto";
+inline const EventType EVT_ALLARME_TESORO    = "eldhom.missione.allarme_tesoro";
+
 // Full-state snapshot (sent on mission start / GUI reconnect)
 inline const EventType EVT_STATE_FULL        = "eldhom.state.full";
 
