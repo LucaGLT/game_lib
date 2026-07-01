@@ -111,10 +111,11 @@ class EldhomBoardWidget(QWidget):
                         seen_edges.add(edge)
                 locations_out.append({
                     "location_id": idx,
+                    "label":       lid,
                     "tags":        ["location"],
                     "metadata":    {
                         "terrain": "stone",
-                        "items":   [name],
+                        "items":   [],
                     },
                 })
 

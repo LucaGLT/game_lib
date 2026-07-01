@@ -7,6 +7,7 @@ Each node supports five visual filter modes: terrain, items, actors, zone, regio
 from __future__ import annotations
 
 import math
+from collections import deque
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPen
@@ -22,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from ..theme_manager import resolve_semantic_color
 
-_NODE_DIAMETER: int = 32
+_NODE_DIAMETER: int = 40
 _NODE_RADIUS: float = _NODE_DIAMETER / 2.0
 # Item satellites — small red badges
 _SAT_D_ITEM: int = 14
@@ -160,6 +161,95 @@ def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]
     return positions
 
 
+def _bfs_radial_layout(
+    adj: dict[int, list[int]],
+    all_ids: list[int],
+    step: float = 90.0,
+) -> dict[int, tuple[float, float]]:
+    """BFS radial tree layout starting from the first node in *all_ids*.
+
+    Places the root at the origin, then spreads children outward at priority
+    angles (Qt screen coordinates, y increases downward):
+
+    * Cardinal: E (0°), N (270°), W (180°), S (90°)
+    * Diagonal: NE (315°), NW (225°), SW (135°), SE (45°)
+    * Fine:     330°, 300°, 240°, 210°, 150°, 120°, 60°, 30°
+
+    Each node avoids placing children in the direction it was approached from
+    (±75° around the back-direction).  Nodes not reachable from the root are
+    placed in a row below the main layout.
+
+    Args:
+        adj:     Adjacency dict ``{node_id: [neighbor_ids]}``.  Undirected.
+        all_ids: Ordered list of all node IDs (disconnected nodes included).
+        step:    Pixel distance between adjacent nodes.
+
+    Returns:
+        ``{node_id: (x, y)}`` with root at ``(0, 0)``.
+    """
+    if not all_ids:
+        return {}
+
+    # Priority angles in Qt screen space (y-down):
+    # 0°=east, 270°=north(up), 180°=west, 90°=south(down)
+    _PRIORITY: tuple[float, ...] = (
+        0.0, 270.0, 180.0, 90.0,
+        315.0, 225.0, 135.0, 45.0,
+        330.0, 300.0, 240.0, 210.0, 150.0, 120.0, 60.0, 30.0,
+    )
+
+    positions: dict[int, tuple[float, float]] = {}
+    entry_angle: dict[int, float] = {}
+
+    root = all_ids[0]
+    positions[root] = (0.0, 0.0)
+    visited: set[int] = {root}
+    queue: deque[int] = deque([root])
+
+    while queue:
+        node = queue.popleft()
+        cx_n, cy_n = positions[node]
+        unvisited = [nb for nb in adj.get(node, []) if nb not in visited]
+        if not unvisited:
+            continue
+
+        if node == root:
+            available = list(_PRIORITY)
+        else:
+            ea = entry_angle[node]
+            back = (ea + 180.0) % 360.0
+            # Keep angles at least 75° away from the back-direction
+            available = [
+                a for a in _PRIORITY
+                if abs((a - back + 180.0) % 360.0 - 180.0) > 75.0
+            ]
+            if not available:
+                available = list(_PRIORITY)
+
+        for i, neighbor in enumerate(unvisited):
+            angle_deg = available[i % len(available)]
+            angle_rad = math.radians(angle_deg)
+            nx = cx_n + step * math.cos(angle_rad)
+            ny = cy_n + step * math.sin(angle_rad)
+            positions[neighbor] = (nx, ny)
+            entry_angle[neighbor] = angle_deg
+            visited.add(neighbor)
+            queue.append(neighbor)
+
+    # Disconnected nodes: place in a row below the main graph
+    unpositioned = [n for n in all_ids if n not in positions]
+    if unpositioned:
+        if positions:
+            min_x = min(p[0] for p in positions.values())
+            max_y = max(p[1] for p in positions.values())
+        else:
+            min_x, max_y = 0.0, 0.0
+        for k, n in enumerate(unpositioned):
+            positions[n] = (min_x + k * step, max_y + step * 1.5)
+
+    return positions
+
+
 # ── LocationNode ──────────────────────────────────────────────────────────────
 
 class LocationNode(QGraphicsEllipseItem):
@@ -176,6 +266,7 @@ class LocationNode(QGraphicsEllipseItem):
         cy: float,
         tags: list[str] | None = None,
         item_ids: list[str] | None = None,
+        label: str | None = None,
         parent: QGraphicsItem | None = None,
     ) -> None:
         d = float(_NODE_DIAMETER)
@@ -192,8 +283,13 @@ class LocationNode(QGraphicsEllipseItem):
         self._border_color: QColor = resolve_semantic_color("border")
         self.setBrush(QBrush(_terrain_color_from_tags(self._tags)))
         self.setPen(QPen(self._border_color, 1))
-        # Centred location-id label.
-        lbl = QGraphicsSimpleTextItem(str(loc_id), self)
+        # Centred location label (supplied string label or integer id as fallback).
+        _lbl_text = label if label else str(loc_id)
+        _lbl_font = QFont()
+        _lbl_font.setPointSize(7)
+        _lbl_font.setBold(True)
+        lbl = QGraphicsSimpleTextItem(_lbl_text, self)
+        lbl.setFont(_lbl_font)
         br = lbl.boundingRect()
         lbl.setPos(
             cx - d / 2.0 + (d - br.width()) / 2.0,
@@ -462,11 +558,38 @@ class MapScene(QGraphicsScene):
 
         self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
 
-        positions = _circle_positions(len(locations))
+        # ── Pre-compute node positions ─────────────────────────────────────────
+        # Use BFS radial layout when no explicit x/y coordinates are provided.
+        _any_explicit = any("x" in loc and "y" in loc for loc in locations)
+        _id_order = [
+            int(loc.get("location_id", i)) for i, loc in enumerate(locations)
+        ]
+        if not _any_explicit and _id_order:
+            _adj_layout: dict[int, list[int]] = {}
+            for _pair in edges:
+                _pa, _pb = int(_pair[0]), int(_pair[1])
+                _adj_layout.setdefault(_pa, []).append(_pb)
+                _adj_layout.setdefault(_pb, []).append(_pa)
+            _bfs = _bfs_radial_layout(_adj_layout, _id_order, step=90.0)
+            if _bfs:
+                _mx = min(p[0] for p in _bfs.values())
+                _my = min(p[1] for p in _bfs.values())
+                _bfs = {
+                    k: (v[0] - _mx + 60.0, v[1] - _my + 60.0)
+                    for k, v in _bfs.items()
+                }
+        else:
+            _bfs = {}
+        _circle_fb = _circle_positions(len(locations))
+
         for i, loc in enumerate(locations):
             loc_id = int(loc.get("location_id", i))
-            cx = float(loc.get("x", positions[i][0]))
-            cy = float(loc.get("y", positions[i][1]))
+            if "x" in loc and "y" in loc:
+                cx, cy = float(loc["x"]), float(loc["y"])
+            elif _bfs:
+                cx, cy = _bfs.get(loc_id, (60.0 + i * 90.0, 60.0))
+            else:
+                cx, cy = _circle_fb[i] if i < len(_circle_fb) else (60.0, 60.0)
             meta: dict = loc.get("metadata", {})
             if not isinstance(meta, dict):
                 meta = {}
@@ -495,7 +618,8 @@ class MapScene(QGraphicsScene):
                 region_token = loc.get("region_color_token", "")
                 if region_token and region not in self._region_explicit_colors:
                     self._region_explicit_colors[region] = resolve_semantic_color(region_token)
-            node = LocationNode(loc_id, cx, cy, tags, items)
+            node_label = str(loc.get("label", "")) or str(loc_id)
+            node = LocationNode(loc_id, cx, cy, tags, items, label=node_label)
             self.addItem(node)
             self._nodes[loc_id] = node
 
