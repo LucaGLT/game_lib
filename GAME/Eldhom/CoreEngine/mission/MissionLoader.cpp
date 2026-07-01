@@ -199,6 +199,7 @@ MissionDefinition MissionLoader::parse_mission(const nlohmann::json& j)
 					MonsterInstanceEntry inst;
 					inst.instance_id = ij.value("instance_id", std::string{});
 					inst.position    = ij.value("position",    std::string{"FRONTLINE"});
+					inst.start_location = ij.value("start_location", grp.start_location);
 					inst.max_hp      = ij.value("max_hp",      3);
 					inst.damage      = ij.value("damage",      1);
 					inst.movement    = ij.value("movement",    2);

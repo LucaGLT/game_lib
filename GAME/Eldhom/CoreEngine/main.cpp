@@ -699,6 +699,7 @@ private:
 				loc_id = store.common(g.members.front()).area_id;
 			}
 			gj["location"] = loc_id;
+			gj["monster_type"] = g.monster_type_id;
 
 			nlohmann::json insts = nlohmann::json::array();
 			for (const gmActor::ActorId& mid : g.members)
@@ -722,6 +723,28 @@ private:
 
 		// Special objects / items
 		state["tesoro_carrier"] = _engine->tesoro_carrier();
+
+		// Special objects — locked adjacency exposed for map display
+		nlohmann::json spec_objs = nlohmann::json::array();
+		for (const eldhom::SpecialObject& obj : _last_def.special_objects)
+		{
+			nlohmann::json sj;
+			sj["object_id"]   = obj.object_id;
+			sj["type"]        = obj.type;
+			sj["location_id"] = obj.location_id;
+			nlohmann::json locked_adj = nlohmann::json::array();
+			for (const std::pair<eldhom::LocationId, eldhom::LocationId>& p
+				 : obj.on_interact.adjacency)
+			{
+				nlohmann::json pair_arr = nlohmann::json::array();
+				pair_arr.push_back(p.first);
+				pair_arr.push_back(p.second);
+				locked_adj.push_back(pair_arr);
+			}
+			sj["locked_adjacency"] = locked_adj;
+			spec_objs.push_back(sj);
+		}
+		state["special_objects"] = spec_objs;
 
 		// Next actor
 		nlohmann::json nxt;

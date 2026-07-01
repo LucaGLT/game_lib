@@ -170,6 +170,7 @@
       "instances": [
         {
           "instance_id": "guardiano_corridoio_1",
+          "start_location": "C2",
           "position": "FRONTLINE",
           "max_hp": 3,
           "damage": 1,
@@ -177,6 +178,7 @@
         },
         {
           "instance_id": "guardiano_corridoio_2",
+          "start_location": "C3",
           "position": "FRONTLINE",
           "max_hp": 3,
           "damage": 1,
@@ -198,6 +200,7 @@
       "instances": [
         {
           "instance_id": "guardiano_grande_1",
+          "start_location": "G1",
           "position": "FRONTLINE",
           "max_hp": 3,
           "damage": 1,
@@ -205,6 +208,15 @@
         },
         {
           "instance_id": "guardiano_grande_2",
+          "start_location": "G3",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        },
+        {
+          "instance_id": "guardiano_grande_3",
+          "start_location": "G4",
           "position": "FRONTLINE",
           "max_hp": 3,
           "damage": 1,

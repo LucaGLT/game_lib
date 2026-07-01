@@ -142,11 +142,13 @@ EldhomEngine EldhomEngine::from_definition(
 		for (const MonsterInstanceEntry& inst : entry.instances)
 		{
 			gmActor::MonsterInstanceState m;
+			const LocationId spawn_loc =
+				inst.start_location.empty() ? entry.start_location : inst.start_location;
 			m.common.actor_id          = inst.instance_id;
 			m.common.kind              = gmActor::ActorKind::MONSTER_INSTANCE;
 			m.common.display_name      = entry.display_name + " #" + inst.instance_id;
 			m.common.faction_id        = entry.faction_id;
-			m.common.area_id           = entry.start_location;
+			m.common.area_id           = spawn_loc;
 			m.common.area_position     = parse_position(inst.position);
 			m.common.max_hp            = inst.max_hp;
 			m.common.current_hp        = inst.max_hp;

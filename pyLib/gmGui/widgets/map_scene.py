@@ -149,6 +149,30 @@ def _build_palette(names: set[str], palette_tokens: list[str]) -> dict[str, QCol
     }
 
 
+# ── Edge type colours ─────────────────────────────────────────────────────────
+#
+# Edge types passed as the optional third element of each edge tuple:
+#   "FREE"          — open passage within the same zone
+#   "CLOSED_DOOR"   — door between zones, traversable by PG (costs 1 extra ⌛)
+#   "LOCKED_DOOR"   — door locked by a mechanic; neither side can pass
+#
+_EDGE_FREE_COLOR: QColor        = QColor("#707070")   # neutral grey
+_EDGE_CLOSED_DOOR_COLOR: QColor = QColor("#c89030")   # amber
+_EDGE_LOCKED_DOOR_COLOR: QColor = QColor("#c03030")   # red
+
+
+def _edge_pen(edge_type: str) -> QPen:
+    """Returns the QPen appropriate for an edge of the given type string."""
+    if edge_type == "CLOSED_DOOR":
+        return QPen(_EDGE_CLOSED_DOOR_COLOR, 2)
+    if edge_type == "LOCKED_DOOR":
+        pen = QPen(_EDGE_LOCKED_DOOR_COLOR, 2)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        return pen
+    # FREE (default)
+    return QPen(_EDGE_FREE_COLOR, 1)
+
+
 def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]]:
     """Distributes *n* positions evenly on a circle of the given radius."""
     if n == 0:
@@ -636,12 +660,13 @@ class MapScene(QGraphicsScene):
 
         for pair in edges:
             a, b = int(pair[0]), int(pair[1])
+            edge_type = str(pair[2]) if len(pair) > 2 else "FREE"
             if a in self._nodes and b in self._nodes:
                 cx_a, cy_a = self._nodes[a].center()
                 cx_b, cy_b = self._nodes[b].center()
                 line = self.addLine(
                     cx_a, cy_a, cx_b, cy_b,
-                    QPen(resolve_semantic_color("border"), 1),
+                    _edge_pen(edge_type),
                 )
                 line.setZValue(-1.0)
                 self._edges.append(line)

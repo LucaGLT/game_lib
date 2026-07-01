@@ -75,6 +75,7 @@ struct PgEntry {
 struct MonsterInstanceEntry {
 	InstanceId  instance_id;
 	std::string position;  ///< "FRONTLINE" or "BACKLINE"
+	LocationId  start_location; ///< Optional override; empty => group start_location
 	int         max_hp    = 3;
 	int         damage    = 1;
 	int         movement  = 2;
