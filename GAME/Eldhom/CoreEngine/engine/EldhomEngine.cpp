@@ -236,22 +236,39 @@ void EldhomEngine::build_initial_hands(const std::vector<PgEntry>& roster)
 	for (const PgEntry& pg : roster)
 	{
 		// Skip heroes without a defined mission deck (e.g. test fixtures).
-		// play_card() only validates hand membership when a hand state exists.
 		if (pg.mission_deck.empty()) { continue; }
 
 		HeroHandState hs;
-		hs.deck = pg.mission_deck;
+		// Rule: all cards start in the discard pile, then are shuffled into
+		// the draw pile, then hand_limit cards are dealt to the hand.
+		hs.discard = pg.mission_deck;
+		hs.deck    = std::move(hs.discard);
+		hs.discard.clear();
 		std::shuffle(hs.deck.begin(), hs.deck.end(), rng);
 
+		// Store state first so emit() can read it via _hand_states.
+		_hand_states[pg.hero_id] = std::move(hs);
+		emit(EVT_DECK_RESHUFFLED, pg.hero_id, {});
+
 		const gmActor::HeroState& hero = _store.hero(pg.hero_id);
-		int limit = hero.hand_limit;
-		int to_draw = std::min(limit, static_cast<int>(hs.deck.size()));
+		int limit   = hero.hand_limit;
+		HeroHandState& hsr = _hand_states[pg.hero_id];
+		int to_draw = std::min(limit, static_cast<int>(hsr.deck.size()));
 		for (int i = 0; i < to_draw; ++i)
 		{
-			hs.hand.push_back(hs.deck.back());
-			hs.deck.pop_back();
+			hsr.hand.push_back(hsr.deck.back());
+			hsr.deck.pop_back();
 		}
-		_hand_states[pg.hero_id] = std::move(hs);
+
+		// Build hand payload and notify.
+		std::string payload = "[";
+		for (std::size_t i = 0; i < hsr.hand.size(); ++i)
+		{
+			if (i > 0) { payload += ","; }
+			payload += "\"" + hsr.hand[i] + "\"";
+		}
+		payload += "]";
+		emit(EVT_HAND_CHANGED, pg.hero_id, payload);
 	}
 }
 
@@ -294,6 +311,21 @@ int EldhomEngine::deck_count(const HeroId& hero_id) const
 int EldhomEngine::discard_count(const HeroId& hero_id) const
 {
 	return static_cast<int>(_hand_states.at(hero_id).discard.size());
+}
+
+const std::vector<CardId>& EldhomEngine::discard_cards(const HeroId& hero_id) const
+{
+	return _hand_states.at(hero_id).discard;
+}
+
+int EldhomEngine::played_count(const HeroId& hero_id) const
+{
+	return static_cast<int>(_hand_states.at(hero_id).played.size());
+}
+
+const std::vector<CardId>& EldhomEngine::played_cards(const HeroId& hero_id) const
+{
+	return _hand_states.at(hero_id).played;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -618,14 +650,17 @@ ActionResult EldhomEngine::play_card(
 	_store.common(hero_id).timeline_position += card.timeline_cost;
 	_mission_events.advance_time(card.timeline_cost);
 
-	// Move played card from hand to discard
+	// Move played card from hand to the current-turn played zone.
+	// Played cards are only transferred to the discard pile at end of turn
+	// (end_hero_turn), preventing them from being reshuffled and redrawn
+	// during the same turn by DRAW_CARD effects.
 	if (_hand_states.count(hero_id))
 	{
 		HeroHandState& hs = _hand_states.at(hero_id);
 		auto pos = std::find(hs.hand.begin(), hs.hand.end(), card_id);
 		if (pos != hs.hand.end())
 		{
-			hs.discard.push_back(*pos);
+			hs.played.push_back(*pos);
 			hs.hand.erase(pos);
 		}
 	}
@@ -1455,6 +1490,18 @@ void EldhomEngine::end_hero_turn(const HeroId& hero_id)
 	if (seq.active)
 	{
 		_seq_states[hero_id] = _sequence_adapter.reset();
+	}
+
+	// Flush cards played this turn from the played zone to the discard pile
+	// BEFORE drawing, so they are not immediately recycled by a reshuffle.
+	if (_hand_states.count(hero_id))
+	{
+		HeroHandState& hs = _hand_states.at(hero_id);
+		for (const CardId& cid : hs.played)
+		{
+			hs.discard.push_back(cid);
+		}
+		hs.played.clear();
 	}
 
 	// Draw back up to hand limit and emit hand update

@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 namespace eldhom {
@@ -312,14 +313,35 @@ MissionDefinition MissionLoader::load_mission(
 std::unordered_map<CardId, EldhomCard>
 MissionLoader::load_card_catalog(const std::string& data_dir)
 {
-	std::string path = data_dir + "/cards_base.json";
-	nlohmann::json j = read_json_file(path);
-
+	namespace fs = std::filesystem;
 	std::unordered_map<CardId, EldhomCard> catalog;
-	for (const nlohmann::json& cj : j)
+
+	// Load all files matching "cards_*.json" in data_dir.
+	// This includes cards_base.json and any mission-specific card files
+	// (e.g., cards_mission_0.json, cards_etnia_*.json, etc.).
+	std::error_code ec;
+	for (const fs::directory_entry& entry :
+		 fs::directory_iterator(data_dir, ec))
 	{
-		EldhomCard card = parse_hero_card(cj);
-		catalog[card.card_id] = std::move(card);
+		if (!entry.is_regular_file()) { continue; }
+		const std::string filename = entry.path().filename().string();
+		if (filename.rfind("cards_", 0) != 0) { continue; }
+		if (filename.size() < 12) { continue; } // "cards_" (6) + name (1+) + ".json" (5) = 12
+		if (filename.substr(filename.size() - 5) != ".json") { continue; }
+		try
+		{
+			nlohmann::json j = read_json_file(entry.path().string());
+			for (const nlohmann::json& cj : j)
+			{
+				EldhomCard card = parse_hero_card(cj);
+				catalog[card.card_id] = std::move(card);
+			}
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << "[MissionLoader] Warning: cannot load " << filename
+			          << ": " << ex.what() << "\n";
+		}
 	}
 	return catalog;
 }

@@ -669,12 +669,30 @@ private:
 				hj["hand"]          = hand_arr;
 				hj["deck_count"]    = _engine->deck_count(c.actor_id);
 				hj["discard_count"] = _engine->discard_count(c.actor_id);
+
+				// Discard pile: include actual card IDs so the GUI can show details.
+				nlohmann::json discard_arr = nlohmann::json::array();
+				for (const eldhom::CardId& cid : _engine->discard_cards(c.actor_id))
+				{
+					discard_arr.push_back(cid);
+				}
+				hj["discard_ids"] = discard_arr;
+
+				// Cards played this turn (in played zone, not yet discarded).
+				nlohmann::json played_arr = nlohmann::json::array();
+				for (const eldhom::CardId& cid : _engine->played_cards(c.actor_id))
+				{
+					played_arr.push_back(cid);
+				}
+				hj["played_ids"] = played_arr;
 			}
 			catch (...)
 			{
-				hj["hand"] = nlohmann::json::array();
+				hj["hand"]          = nlohmann::json::array();
 				hj["deck_count"]    = 0;
 				hj["discard_count"] = 0;
+				hj["discard_ids"]   = nlohmann::json::array();
+				hj["played_ids"]    = nlohmann::json::array();
 			}
 
 			heroes.push_back(hj);

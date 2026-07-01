@@ -200,8 +200,12 @@ def _bfs_radial_layout(
     * Fine:     330°, 300°, 240°, 210°, 150°, 120°, 60°, 30°
 
     Each node avoids placing children in the direction it was approached from
-    (±75° around the back-direction).  Nodes not reachable from the root are
-    placed in a row below the main layout.
+    (±75° around the back-direction).  Before accepting a candidate position,
+    the algorithm checks that no already-placed node centre is within
+    ``_NODE_DIAMETER + 4`` pixels; if a collision is detected it tries the
+    next available angle, and if all angles at ``step`` collide it retries at
+    ``step * 1.5`` then ``step * 2``.  Nodes not reachable from the root are
+    placed in a row below the main layout (with the same collision avoidance).
 
     Args:
         adj:     Adjacency dict ``{node_id: [neighbor_ids]}``.  Undirected.
@@ -214,6 +218,9 @@ def _bfs_radial_layout(
     if not all_ids:
         return {}
 
+    # Minimum allowed centre-to-centre distance to avoid visual overlap.
+    _MIN_DIST: float = float(_NODE_DIAMETER) + 4.0
+
     # Priority angles in Qt screen space (y-down):
     # 0°=east, 270°=north(up), 180°=west, 90°=south(down)
     _PRIORITY: tuple[float, ...] = (
@@ -224,6 +231,42 @@ def _bfs_radial_layout(
 
     positions: dict[int, tuple[float, float]] = {}
     entry_angle: dict[int, float] = {}
+
+    def _is_free(x: float, y: float) -> bool:
+        """Returns True when (x, y) does not overlap any already-placed node."""
+        return all(
+            math.hypot(x - px, y - py) >= _MIN_DIST
+            for px, py in positions.values()
+        )
+
+    def _place(
+        cx_parent: float,
+        cy_parent: float,
+        angle_pool: list[float],
+    ) -> tuple[float, float, float]:
+        """Finds the first collision-free position for a child of *parent*.
+
+        Tries each angle in *angle_pool* at distances ``step``, ``step*1.5``,
+        ``step*2``.  Falls back to the first angle at ``step*3`` when all
+        combinations collide.
+
+        Returns:
+            ``(nx, ny, used_angle_deg)``
+        """
+        for trial_dist in (step, step * 1.5, step * 2.0):
+            for angle_deg in angle_pool:
+                angle_rad = math.radians(angle_deg)
+                nx = cx_parent + trial_dist * math.cos(angle_rad)
+                ny = cy_parent + trial_dist * math.sin(angle_rad)
+                if _is_free(nx, ny):
+                    return nx, ny, angle_deg
+        # Last resort: first angle at 3× step
+        angle_rad = math.radians(angle_pool[0])
+        return (
+            cx_parent + step * 3.0 * math.cos(angle_rad),
+            cy_parent + step * 3.0 * math.sin(angle_rad),
+            angle_pool[0],
+        )
 
     root = all_ids[0]
     positions[root] = (0.0, 0.0)
@@ -250,13 +293,16 @@ def _bfs_radial_layout(
             if not available:
                 available = list(_PRIORITY)
 
-        for i, neighbor in enumerate(unvisited):
-            angle_deg = available[i % len(available)]
-            angle_rad = math.radians(angle_deg)
-            nx = cx_n + step * math.cos(angle_rad)
-            ny = cy_n + step * math.sin(angle_rad)
+        used_angles: set[float] = set()
+        for neighbor in unvisited:
+            # Exclude angles already consumed by earlier siblings of this parent.
+            remaining = [a for a in available if a not in used_angles]
+            if not remaining:
+                remaining = list(available)   # recycle when pool exhausted
+            nx, ny, used_angle = _place(cx_n, cy_n, remaining)
             positions[neighbor] = (nx, ny)
-            entry_angle[neighbor] = angle_deg
+            entry_angle[neighbor] = used_angle
+            used_angles.add(used_angle)
             visited.add(neighbor)
             queue.append(neighbor)
 
@@ -269,7 +315,12 @@ def _bfs_radial_layout(
         else:
             min_x, max_y = 0.0, 0.0
         for k, n in enumerate(unpositioned):
-            positions[n] = (min_x + k * step, max_y + step * 1.5)
+            cx = min_x + k * step
+            cy = max_y + step * 1.5
+            # Nudge right if this disconnected slot also collides.
+            while not _is_free(cx, cy):
+                cx += step
+            positions[n] = (cx, cy)
 
     return positions
 

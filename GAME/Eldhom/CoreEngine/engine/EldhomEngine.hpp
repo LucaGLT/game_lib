@@ -74,14 +74,16 @@ using EngineEventCallback =
  * @struct HeroHandState
  * @brief Per-hero hand and deck tracking state.
  *
- * Tracks the shuffled draw pile, the current hand, and the discard pile.
- * Managed internally by EldhomEngine; accessed via hand_cards().
+ * Tracks the shuffled draw pile, the current hand, the discard pile, and the
+ * cards played during the current turn (not yet returned to discard).
+ * Managed internally by EldhomEngine; accessed via hand_cards() etc.
  */
 struct HeroHandState
 {
 	std::vector<CardId> hand;    ///< Cards currently in the hero's hand
 	std::vector<CardId> deck;    ///< Shuffled draw pile (top = back())
-	std::vector<CardId> discard; ///< Played / discarded cards
+	std::vector<CardId> discard; ///< Cards in the discard pile
+	std::vector<CardId> played;  ///< Cards played this turn (moved to discard at turn end)
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -445,6 +447,26 @@ public:
 	 * @param hero_id  Hero actor ID.
 	 */
 	int discard_count(const HeroId& hero_id) const;
+
+	/**
+	 * @brief Returns the hero's discard pile as a const reference.
+	 * @param hero_id  Hero actor ID.
+	 * @throws std::out_of_range if hero_id is not registered.
+	 */
+	const std::vector<CardId>& discard_cards(const HeroId& hero_id) const;
+
+	/**
+	 * @brief Returns the number of cards played this turn (not yet in discard).
+	 * @param hero_id  Hero actor ID.
+	 */
+	int played_count(const HeroId& hero_id) const;
+
+	/**
+	 * @brief Returns the cards played this turn as a const reference.
+	 * @param hero_id  Hero actor ID.
+	 * @throws std::out_of_range if hero_id is not registered.
+	 */
+	const std::vector<CardId>& played_cards(const HeroId& hero_id) const;
 
 	/** @brief Draws n cards from the hero's deck to hand; emits EVT_HAND_CHANGED. */
 	void draw_n_cards(const HeroId& hero_id, int n);

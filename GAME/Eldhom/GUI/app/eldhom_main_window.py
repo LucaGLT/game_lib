@@ -60,7 +60,7 @@ import json as _json  # noqa: E402
 
 _DATA_DIR   = Path(__file__).resolve().parents[2] / "data"
 
-# Card catalog (loaded from data/cards_base.json) keyed by card_id.
+# Card catalog (all data/cards_*.json files) keyed by card_id.
 _CARD_CATALOG: dict[str, dict] = {}
 
 _CARD_TYPE_IT: dict[str, str] = {
@@ -71,11 +71,30 @@ _CARD_TYPE_IT: dict[str, str] = {
     "SEQ_END":      "Chiudi sequenza",
 }
 
-_EFFECT_IT: dict[str, str] = {
-    "DAMAGE":         "Danno",
-    "HEAL":           "Cura",
-    "MOVE":           "Movimento",
-    "FORMATION_PUSH": "Spinta formazione",
+# ── Icon maps following UI-Standard-Carte-Missione.md §5 ─────────────────────
+
+# §5.2 — Tipo di uso
+_CARD_TYPE_ICONS: dict[str, str] = {
+    "SINGLE":       "\U0001f4c4",  # 📄
+    "INSTANT":      "\u26a1",      # ⚡
+    "SEQ_START":    "\U0001f7e2",  # 🟢
+    "SEQ_CONTINUE": "\U0001f7e1",  # 🟡
+    "SEQ_END":      "\U0001f534",  # 🔴
+}
+
+# §5.1 — Azioni principali  (effect_type → icona)
+_EFFECT_ICONS: dict[str, str] = {
+    "MOVE":                     "\u25b6\ufe0f",  # ▶️
+    "MOVE_TOWARD_PG":           "\u25b6\ufe0f",  # ▶️
+    "DAMAGE":                   "\u23f8\ufe0f",  # ⏸️
+    "DEAL_DAMAGE":              "\u23f8\ufe0f",  # ⏸️
+    "INTERACT":                 "\u23fa\ufe0f",  # ⏺️
+    "REDUCE_DAMAGE":            "\U0001f6e1\ufe0f",  # 🛡️
+    "HEAL":                     "\u2764\ufe0f",  # ❤️
+    "FORMATION_PUSH":           "\U0001f91d",    # 🤝
+    "DISRUPT_ENEMY_FORMATION":  "\U0001f91d",    # 🤝
+    "DRAW_CARD":                "\U0001f9e0",    # 🧠
+    "WAIT":                     "\u23fa\ufe0f",  # ⏺️
 }
 
 _TARGET_IT: dict[str, str] = {
@@ -86,18 +105,20 @@ _TARGET_IT: dict[str, str] = {
 
 
 def _load_card_catalog() -> None:
-    """Loads data/cards_base.json into the module-level catalog (once)."""
+    """Loads all data/cards_*.json files into the module-level catalog (once)."""
     if _CARD_CATALOG:
         return
-    path = _DATA_DIR / "cards_base.json"
-    try:
-        raw = _json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return
-    for card in raw:
-        cid = str(card.get("card_id", ""))
-        if cid:
-            _CARD_CATALOG[cid] = card
+    for path in sorted(_DATA_DIR.glob("cards_*.json")):
+        try:
+            raw = _json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(raw, list):
+            continue
+        for card in raw:
+            cid = str(card.get("card_id", ""))
+            if cid:
+                _CARD_CATALOG[cid] = card
 
 
 def _extract_data(msg: dict) -> dict:
@@ -118,62 +139,114 @@ def _card_tags(card: dict) -> list[str]:
     tags: list[str] = []
     ctype = str(card.get("card_type", ""))
     if ctype:
-        tags.append(_CARD_TYPE_IT.get(ctype, ctype))
+        icon = _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4")
+        tags.append(f"{icon} {_CARD_TYPE_IT.get(ctype, ctype)}")
     origin = str(card.get("origin", ""))
     if origin:
         tags.append(origin)
     return tags
 
 
-def _card_description(card: dict) -> str:
-    """Synthesises a human-readable detail block for a card.
+def _effect_summary_line(eff: dict) -> str:
+    """Returns a compact icon+text line for one card effect."""
+    etype  = str(eff.get("effect_type", ""))
+    amount = eff.get("amount")
+    icon   = _EFFECT_ICONS.get(etype, "\u2022")
+    if etype in ("MOVE", "MOVE_TOWARD_PG"):
+        return f"{icon} Muovi {amount}\u25fb\ufe0f" if amount else f"{icon} Muovi"
+    if etype in ("DAMAGE", "DEAL_DAMAGE"):
+        return f"{icon} {amount}\u274c" if amount else f"{icon} Attacca"
+    if etype == "HEAL":
+        return f"{icon} +{amount} PV" if amount else f"{icon} Cura"
+    if etype == "REDUCE_DAMAGE":
+        return f"{icon} Riduci {amount}\u274c" if amount else f"{icon} Riduzione danno"
+    if etype == "FORMATION_PUSH":
+        val = str(eff.get("value", ""))
+        return f"{icon} Sposta in {val}" if val else f"{icon} Sposta formazione"
+    if etype == "DRAW_CARD":
+        return f"{icon} Pesca {amount} carta/e" if amount else f"{icon} Pesca"
+    if etype == "INTERACT":
+        return f"{icon} Effettua 1 Interazione nella tua Locazione"
+    return f"{icon} {etype.replace('_', ' ').title()}"
 
-    The block lists the fixed elements requested in the UI: type, time cost,
-    affiliation/origin tags and the list of effects.  It is fed to the deck
-    module's detail panel via the card metadata ``description`` field.
-    """
+
+def _card_description(card: dict) -> str:
+    """Builds the Vista Dettaglio block following UI-Standard-Carte-Missione.md §6."""
     lines: list[str] = []
-    ctype = str(card.get("card_type", ""))
-    lines.append(f"Tipo: {_CARD_TYPE_IT.get(ctype, ctype or '—')}")
-    lines.append(f"Costo: {card.get('timeline_cost', 0)}\u23f3")
-    origin = str(card.get("origin", ""))
-    if origin:
-        lines.append(f"Affiliazione: {origin}")
-    lines.append(
-        "Bersaglio retro: " + ("Sì" if card.get("can_target_backline") else "No")
-    )
+    ctype    = str(card.get("card_type", ""))
+    type_icon = _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4")
+    type_name = _CARD_TYPE_IT.get(ctype, ctype or "\u2014")
+    cost     = card.get("timeline_cost", 0)
+    name     = str(card.get("name", ""))
+    effects  = card.get("effects", [])
+
+    # Main icon: derived from the first effect type.
+    main_etype = effects[0].get("effect_type", "") if effects else ""
+    main_icon  = _EFFECT_ICONS.get(main_etype, type_icon)
+
+    # ── Intestazione ──────────────────────────────────────────────────────────
+    lines.append(f"{main_icon} {name}   \u23f3 {cost}")
+    lines.append("")
+
+    # ── Tipo | Origine ────────────────────────────────────────────────────────
+    origin = str(card.get("origin", "Missione"))
+    lines.append(f"{type_icon} {type_name}   |   {origin}")
+    lines.append("")
+
+    # ── Effetto rapido ────────────────────────────────────────────────────────
+    if effects:
+        lines.append("\u2500\u2500 EFFETTO RAPIDO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
+        for eff in effects:
+            lines.append(f"  {_effect_summary_line(eff)}")
+        lines.append("")
+
+    # ── Testo completo ────────────────────────────────────────────────────────
+    text = str(card.get("text", card.get("description", "")))
+    if not text and effects:
+        text = "  ".join(_effect_summary_line(e) for e in effects)
+    if text:
+        lines.append("\u2500\u2500 TESTO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
+        lines.append(text)
+        lines.append("")
+
+    # ── Trigger ───────────────────────────────────────────────────────────────
     trigger = str(card.get("reaction_trigger", ""))
     if trigger:
-        lines.append(f"Reazione a: {trigger}")
-
-    effects = card.get("effects", [])
-    if effects:
+        lines.append("\u2500\u2500 TRIGGER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
+        lines.append(f"Quando: {trigger}")
         lines.append("")
-        lines.append("Effetti:")
-        for eff in effects:
-            etype  = str(eff.get("effect_type", ""))
-            amount = eff.get("amount", "")
-            target = str(eff.get("target", ""))
-            etxt   = _EFFECT_IT.get(etype, etype)
-            ttxt   = _TARGET_IT.get(target, target)
-            piece  = f"  \u2022 {etxt}"
-            if amount not in ("", None):
-                piece += f" {amount}"
-            if ttxt:
-                piece += f" \u2192 {ttxt}"
-            lines.append(piece)
+
+    # ── Condizioni ────────────────────────────────────────────────────────────
+    conditions: list[str] = []
+    if card.get("can_target_backline") is False:
+        conditions.append("\U0001f3af Solo bersagli in \U0001f9f1 Prima Linea")
+    if conditions:
+        lines.append("\u2500\u2500 CONDIZIONI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
+        for cond in conditions:
+            lines.append(f"  {cond}")
+        lines.append("")
+
     return "\n".join(lines)
 
 
 def _card_meta(card_id: str) -> dict:
     """Builds the deck-module metadata dict for *card_id* from the catalog."""
-    card = _CARD_CATALOG.get(card_id, {})
+    card      = _CARD_CATALOG.get(card_id, {})
+    ctype     = str(card.get("card_type", "SINGLE"))
+    effects   = card.get("effects", [])
+    main_etype = effects[0].get("effect_type", "") if effects else ""
+    main_icon  = _EFFECT_ICONS.get(main_etype, _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4"))
+    type_icon  = _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4")
+    # Compact name shown in card list: "icon Name ⌛cost  type_icon"
+    cost      = int(card.get("timeline_cost", 1))
+    base_name = _card_name(card_id)
+    compact   = f"{main_icon} {base_name}   \u23f3{cost}  {type_icon}"
     return {
         "card_id":     card_id,
-        "name":        _card_name(card_id),
-        "action_cost": int(card.get("timeline_cost", 1)),
+        "name":        compact,
+        "action_cost": cost,
         "tags":        _card_tags(card),
-        "description": _card_description(card) if card else "",
+        "description": _card_description(card) if card else f"[{card_id}]",
     }
 
 
@@ -654,7 +727,13 @@ class EldhomMainWindow(QMainWindow):
                 "hand":          [str(c) for c in hero.get("hand", [])],
                 "deck_count":    int(hero.get("deck_count", 0)),
                 "discard_count": int(hero.get("discard_count", 0)),
-                "played":        old_played.get(hid, []),
+                "discard_ids":   [str(c) for c in hero.get("discard_ids", [])],
+                # Engine is authoritative for played_ids; fall back to GUI
+                # tracking only when the engine field is absent (old binary).
+                "played":        [
+                    str(c) for c in
+                    hero.get("played_ids", old_played.get(hid, []))
+                ],
             }
         self._group_data.clear()
         for grp in data.get("groups", []):
@@ -722,15 +801,8 @@ class EldhomMainWindow(QMainWindow):
             "typeId": "gmAlea.deck.zone_changed",
             "data":   {"zone_name": "MainDeck", "cards": deck_placeholders},
         })
-        # DiscardPile: one placeholder per card in the discard pile.
-        discard_placeholders = [
-            {"card_id": f"__discard__{i}", "name": "Carta scartata"}
-            for i in range(state["discard_count"])
-        ]
-        self._deck.on_envelope({
-            "typeId": "gmAlea.deck.zone_changed",
-            "data":   {"zone_name": "DiscardPile", "cards": discard_placeholders},
-        })
+        # DiscardPile: use actual card metadata when available, else placeholders.
+        self._refresh_discard_zone(actor_id)
         # PlayArea: actual played-card metadata.
         self._deck.on_envelope({
             "typeId": "gmAlea.deck.zone_changed",
@@ -740,9 +812,48 @@ class EldhomMainWindow(QMainWindow):
             },
         })
 
+    def _refresh_discard_zone(self, hero_id: str) -> None:
+        """Pushes the current discard-pile contents to the GmCompDeckModule.
+
+        Uses ``discard_ids`` when the list is non-empty (populated either from
+        the engine's full-state snapshot or from client-side inference in
+        ``_on_hand_updated``).  Falls back to generic placeholders otherwise.
+        """
+        state = self._hero_deck_state.get(hero_id, {})
+        discard_ids: list[str] = state.get("discard_ids", [])
+        if discard_ids:
+            cards = [_card_meta(c) for c in discard_ids]
+        else:
+            cards = [
+                {"card_id": f"__discard__{i}", "name": "\U0001f4c4 Carta scartata"}
+                for i in range(state.get("discard_count", 0))
+            ]
+        self._deck.on_envelope({
+            "typeId": "gmAlea.deck.zone_changed",
+            "data":   {"zone_name": "DiscardPile", "cards": cards},
+        })
+
     def _on_pg_turn_ended(self, msg: dict) -> None:
-        data = _extract_data(msg)
-        if data.get("actor_id", "") == self._active_hero_id:
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        # At end of turn: flush played cards to discard, then clear PlayArea.
+        if hero_id in self._hero_deck_state:
+            state  = self._hero_deck_state[hero_id]
+            played = list(state.get("played", []))
+            if played:
+                cur = state.setdefault("discard_ids", [])
+                for cid in played:
+                    if cid not in cur:
+                        cur.append(cid)
+                state["played"]        = []
+                state["discard_count"] = len(cur)
+                if hero_id == self._viewing_actor_id:
+                    self._deck.on_envelope({
+                        "typeId": "gmAlea.deck.zone_changed",
+                        "data":   {"zone_name": "PlayArea", "cards": []},
+                    })
+                    self._refresh_discard_zone(hero_id)
+        if hero_id == self._active_hero_id:
             self._actions.set_enabled(False)
 
 
@@ -766,6 +877,29 @@ class EldhomMainWindow(QMainWindow):
         # the subsequent full-state will carry the authoritative hand list).
         if not hand_ids and "payload" not in data:
             return
+
+        # ── Client-side discard inference ────────────────────────────────────────
+        # Cards that leave the hand without being in the "played" list are inferred
+        # as discards.  _on_pg_played_card fires BEFORE this handler, so played
+        # cards are already tracked and won't be misclassified as discards.
+        if hero_id in self._hero_deck_state:
+            state      = self._hero_deck_state[hero_id]
+            old_hand   = set(state.get("hand", []))
+            played_set = set(state.get("played", []))
+            new_hand   = set(hand_ids)
+            gone       = old_hand - new_hand
+            newly_discarded = [
+                c for c in gone
+                if c not in played_set and not c.startswith("__")
+            ]
+            if newly_discarded:
+                cur = state.setdefault("discard_ids", [])
+                for cid in newly_discarded:
+                    if cid not in cur:
+                        cur.append(cid)
+                state["discard_count"] = len(cur)
+        # ─────────────────────────────────────────────────────────────────────────
+
         self._hand_cards[hero_id] = hand_ids
         if hero_id in self._hero_data:
             self._hero_data[hero_id]["hand"] = hand_ids
@@ -778,11 +912,17 @@ class EldhomMainWindow(QMainWindow):
                 "typeId": "gmAlea.deck.zone_changed",
                 "data":   {"zone_name": "CardHand", "cards": cards},
             })
+            # Refresh discard zone with updated discard_ids.
+            self._refresh_discard_zone(hero_id)
 
 
     def _on_deck_reshuffled(self, msg: dict) -> None:
         data    = _extract_data(msg)
         hero_id = data.get("actor_id", "")
+        # Clear client-side discard tracking: cards returned to the deck.
+        if hero_id in self._hero_deck_state:
+            self._hero_deck_state[hero_id]["discard_ids"]   = []
+            self._hero_deck_state[hero_id]["discard_count"] = 0
         # Only flash the zone if this hero's deck is currently visible.
         if not hero_id or hero_id == self._viewing_actor_id:
             self._deck.on_envelope({
@@ -890,20 +1030,66 @@ class EldhomMainWindow(QMainWindow):
             return
         self._show_area_info(location_id)
 
+    def _bfs_reach(self, origin: str, max_steps: int) -> set[str]:
+        """Returns all location IDs reachable from *origin* in at most *max_steps* BFS steps.
+
+        Uses the cached ``_location_adjacency`` graph.  The origin itself is
+        excluded from the returned set (a move must end at a different location).
+        """
+        visited: set[str] = {origin}
+        frontier: set[str] = {origin}
+        for _ in range(max_steps):
+            next_front: set[str] = set()
+            for loc in frontier:
+                for nb in self._location_adjacency.get(loc, []):
+                    if nb not in visited:
+                        next_front.add(nb)
+            visited |= next_front
+            frontier = next_front
+            if not frontier:
+                break
+        visited.discard(origin)
+        return visited
+
     def _try_move(self, destination: str) -> None:
-        """Validates adjacency and sends a MOVE action (simple action or card)."""
+        """Validates reachability and sends a MOVE action (simple action or card).
+
+        For a card-driven move the check is BFS reachability within the card's
+        MOVE amount (e.g. 3 for Passo Sicuro).  For a simple-action move the
+        destination must be directly adjacent (1 step).
+        """
         hero   = self._hero_data.get(self._active_hero_id, {})
         origin = str(hero.get("location", ""))
-        adjacent = self._location_adjacency.get(origin, [])
         if destination == origin:
             self._status_label.setText("\u26a0 Sei gi\u00e0 in questa locazione")
             return
-        if destination not in adjacent:
-            name = self._location_names.get(destination, destination)
-            self._status_label.setText(
-                f"\u26a0 {name} non \u00e8 adiacente \u2014 scegli una locazione vicina"
+
+        if self._pending_move_card_id:
+            # Card-driven move: validate reachability within the card's MOVE amount.
+            card   = _CARD_CATALOG.get(self._pending_move_card_id, {})
+            amount = next(
+                (int(e.get("amount", 1)) for e in card.get("effects", [])
+                 if e.get("effect_type") == "MOVE"),
+                1,
             )
-            return
+            reachable = self._bfs_reach(origin, amount)
+            if destination not in reachable:
+                name = self._location_names.get(destination, destination)
+                self._status_label.setText(
+                    f"\u26a0 {name} non \u00e8 raggiungibile in {amount} "
+                    f"{'mossa' if amount == 1 else 'mosse'}"
+                )
+                return
+        else:
+            # Simple action move: destination must be directly adjacent (1 step).
+            adjacent = self._location_adjacency.get(origin, [])
+            if destination not in adjacent:
+                name = self._location_names.get(destination, destination)
+                self._status_label.setText(
+                    f"\u26a0 {name} non \u00e8 adiacente \u2014 scegli una locazione vicina"
+                )
+                return
+
         self._awaiting_move = False
         self._actions.disarm_move()
         if self._pending_move_card_id:
