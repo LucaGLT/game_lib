@@ -621,6 +621,7 @@ class EldhomMainWindow(QMainWindow):
         # Turn management
         reg("eldhom.turn.next_actor",         self._on_next_actor)
         reg("eldhom.turn.next_actor",         self._timeline.on_next_actor)
+        reg("eldhom.turn.next_actor",         self._log_widget.on_next_actor)
         reg("eldhom.pg.turn_ended",           self._on_pg_turn_ended)
 
         # Interactive attack / reaction window
@@ -669,7 +670,8 @@ class EldhomMainWindow(QMainWindow):
         for evt in (
             "eldhom.pg.played_card", "eldhom.pg.moved", "eldhom.pg.attacked",
             "eldhom.pg.healed", "eldhom.pg.ko", "eldhom.monster.damaged",
-            "eldhom.monster.defeated", "eldhom.group.activated",
+            "eldhom.monster.defeated", "eldhom.monster.moved",
+            "eldhom.group.activated",
             "eldhom.group.eliminated", "eldhom.formation.changed",
             "eldhom.deck.reshuffled", "eldhom.mission.time_advanced",
             "eldhom.attack.declared", "eldhom.attack.resolved",
@@ -956,10 +958,16 @@ class EldhomMainWindow(QMainWindow):
 
     def _on_time_advanced(self, msg: dict) -> None:
         data     = _extract_data(msg)
+        actor_id = str(data.get("actor_id", ""))
         time_val = data.get("payload", 0)
         self._status_label.setText(
             f"Missione: {self.windowTitle().split(' \u2014 ')[-1]}  \u2022  \u231b {time_val}"
         )
+        if actor_id:
+            try:
+                self._timeline.update_actor_timeline(actor_id, int(time_val))
+            except Exception:
+                pass
 
     def _on_action_result(self, msg: dict) -> None:
         data = _extract_data(msg)
@@ -1081,12 +1089,12 @@ class EldhomMainWindow(QMainWindow):
                 )
                 return
         else:
-            # Simple action move: destination must be directly adjacent (1 step).
-            adjacent = self._location_adjacency.get(origin, [])
-            if destination not in adjacent:
+            # Simple action move: BFS up to 2 steps.
+            reachable = self._bfs_reach(origin, 2)
+            if destination not in reachable:
                 name = self._location_names.get(destination, destination)
                 self._status_label.setText(
-                    f"\u26a0 {name} non \u00e8 adiacente \u2014 scegli una locazione vicina"
+                    f"\u26a0 {name} non \u00e8 raggiungibile in 2 mosse"
                 )
                 return
 

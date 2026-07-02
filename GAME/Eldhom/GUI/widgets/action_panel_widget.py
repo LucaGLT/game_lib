@@ -48,9 +48,9 @@ class ActionPanelWidget(QFrame):
     stop_sequence   = Signal()
     react_chosen    = Signal(str)
 
-    _LABEL_MOVE: str          = "\u25b6 Muovi 1\u23f3"
+    _LABEL_MOVE: str          = "\u25b6\ufe0f 2\u25fb\ufe0f : 2\u231b"
     _LABEL_MOVE_CANCEL: str   = "\u2715 Annulla Muovi"
-    _LABEL_ATTACK: str        = "\u2694 Attacca 2\u23f3"
+    _LABEL_ATTACK: str        = "\u23f8\ufe0f\u2694 1\u274c : 2\u231b"
     _LABEL_ATTACK_CANCEL: str = "\u2715 Annulla Attacco"
 
     _REACTION_LABELS: dict[str, str] = {
@@ -87,21 +87,29 @@ class ActionPanelWidget(QFrame):
 
         self._move_btn = QPushButton(self._LABEL_MOVE, self)
         self._move_btn.setProperty("role", "secondary")
+        self._move_btn.setToolTip("Muovi fino a 2 Locazioni, spendi 2 Clessidre")
         self._move_btn.clicked.connect(self._on_move_clicked)
         layout.addWidget(self._move_btn)
 
         self._attack_btn = QPushButton(self._LABEL_ATTACK, self)
         self._attack_btn.setProperty("role", "secondary")
+        self._attack_btn.setToolTip(
+            "Attacca in Mischia nella stessa Locazione e infliggi 1 Danno, spendi 2 Clessidre"
+        )
         self._attack_btn.clicked.connect(self._on_attack_clicked)
         layout.addWidget(self._attack_btn)
 
-        self._interact_btn = QPushButton("\u23fa Interagisci 3\u23f3", self)
+        self._interact_btn = QPushButton("\u23fa\ufe0f : 3\u231b", self)
         self._interact_btn.setProperty("role", "secondary")
+        self._interact_btn.setToolTip("Interagisci nella stessa Locazione, spendi 3 Clessidre")
         self._interact_btn.clicked.connect(self.action_interact)
         layout.addWidget(self._interact_btn)
 
-        self._recover_btn = QPushButton("\u267b Recupera 3\u23f3", self)
+        self._recover_btn = QPushButton("1\u2764\ufe0f+\u267b\ufe0f1\U0001f0cf : 3\u231b", self)
         self._recover_btn.setProperty("role", "secondary")
+        self._recover_btn.setToolTip(
+            "Cura 1 PV, Pesca una Carta e Scarta una Carta, spendi 3 Clessidre"
+        )
         self._recover_btn.clicked.connect(self.action_recover)
         layout.addWidget(self._recover_btn)
 

@@ -131,6 +131,25 @@ public:
 		gmActor::ActorStore& store) const;
 
 	/**
+	 * @brief Moves a hero to dest_id if reachable within max_steps BFS steps.
+	 *
+	 * Used by card-driven MOVE effects (e.g. Passo Sicuro with amount=3).
+	 * Unlike apply_simple_move, adjacency is not required — only BFS
+	 * reachability within the given step budget.
+	 *
+	 * @param hero_id    Actor ID of the moving hero.
+	 * @param dest_id    Target LocationId.
+	 * @param max_steps  Maximum BFS distance allowed (>= 1).
+	 * @param store      Actor store (modified in place).
+	 * @return EffectResult (resolved=false if dest_id is not reachable).
+	 */
+	EffectResult apply_card_move(
+		const HeroId&        hero_id,
+		const LocationId&    dest_id,
+		int                  max_steps,
+		gmActor::ActorStore& store) const;
+
+	/**
 	 * @brief Applies an Attacco Semplice for a hero (1 damage, nearest target).
 	 *
 	 * @param hero_id        Actor ID of the attacking hero.

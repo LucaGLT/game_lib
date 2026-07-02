@@ -81,10 +81,11 @@ class EldhomActorAdapter(QWidget):
                 self._cache[entry["actor_id"]] = entry
                 actors.append(entry)
         for group in data.get("groups", []):
-            entry = self._group_to_actor(group)
-            if entry is not None:
-                self._cache[entry["actor_id"]] = entry
-                actors.append(entry)
+            for inst in group.get("instances", []):
+                entry = self._instance_to_actor(group, inst)
+                if entry is not None:
+                    self._cache[entry["actor_id"]] = entry
+                    actors.append(entry)
         self._module.on_envelope(
             {"typeId": "gmActor.snapshot", "data": {"actors": actors}}
         )
@@ -115,7 +116,7 @@ class EldhomActorAdapter(QWidget):
             )
 
     def _on_monster_damaged(self, data: dict) -> None:
-        actor_id = str(data.get("group_id", data.get("actor_id", "")))
+        actor_id = str(data.get("actor_id", ""))
         if not actor_id:
             return
         cached = self._cache.get(actor_id, {})
@@ -131,7 +132,7 @@ class EldhomActorAdapter(QWidget):
         )
 
     def _on_monster_defeated(self, data: dict) -> None:
-        actor_id = str(data.get("group_id", data.get("actor_id", "")))
+        actor_id = str(data.get("actor_id", ""))
         if not actor_id:
             return
         self._cache.pop(actor_id, None)
@@ -189,6 +190,29 @@ class EldhomActorAdapter(QWidget):
             ),
             "area_id":    str(hero.get("location", "")),
             "resources":  {"timeline": int(hero.get("timeline", 0))},
+        }
+
+    @staticmethod
+    def _instance_to_actor(group: dict, inst: dict) -> dict | None:
+        actor_id = str(inst.get("id", ""))
+        if not actor_id:
+            return None
+        hp = int(inst.get("hp", 0))
+        max_hp = max(int(inst.get("max_hp", 1)), 1)
+        alive = bool(inst.get("alive", hp > 0))
+        group_name = str(group.get("name", group.get("id", actor_id)))
+        suffix = actor_id.rsplit("_", 1)[-1]
+        return {
+            "actor_id":   actor_id,
+            "faction_id": "enemies",
+            "name":       f"{group_name} #{suffix}",
+            "current_hp": hp,
+            "max_hp":     max_hp,
+            "life_state": "DEAD" if not alive else "ALIVE",
+            "statuses":   {},
+            "equipment":  {},
+            "area_id":    str(inst.get("location", group.get("location", ""))),
+            "resources":  {"timeline": int(group.get("timeline", 0))},
         }
 
     @staticmethod

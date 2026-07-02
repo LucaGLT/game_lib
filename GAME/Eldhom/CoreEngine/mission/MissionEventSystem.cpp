@@ -57,8 +57,8 @@ void MissionEventSystem::advance_time(int delta)
 	// Check time-based defeat conditions
 	check_defeat_time_limit();
 
-	// Emit generic time-advanced event
-	_on_event(EVT_MISSION_TIME, std::to_string(_mission_time));
+	// EVT_MISSION_TIME is emitted by EldhomEngine with the individual actor's
+	// timeline position (not the global cumulative clock).
 }
 
 int MissionEventSystem::mission_time() const

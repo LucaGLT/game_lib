@@ -50,6 +50,7 @@ class LogWidget(QFrame):
 
         self._entry_count = 0
         self._labels: list[QLabel] = []
+        self._last_displayed_time: int = -1  # last mission_time shown via on_next_actor
 
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(
@@ -89,15 +90,30 @@ class LogWidget(QFrame):
             lbl.deleteLater()
         self._labels.clear()
         self._entry_count = 0
+        self._last_displayed_time = -1
 
     # ── Event handlers ─────────────────────────────────────────────────────────
 
     def on_any_event(self, msg: dict) -> None:
         """Formats and logs any engine event."""
-        type_id = msg.get("typeId", "")
-        data = _extract_data(msg)
+        type_id  = msg.get("typeId", "")
+        data     = _extract_data(msg)
         actor_id = data.get("actor_id", "")
         payload  = data.get("payload", "")
+
+        # Enriched attack event: payload is a dict with target/damage/type.
+        if type_id == "eldhom.pg.attacked" and isinstance(payload, dict):
+            target    = str(payload.get("target", "?"))
+            damage    = int(payload.get("damage", 0))
+            atk_type  = str(payload.get("type", "MELEE"))
+            atk_range = int(payload.get("range", 0))
+            attacker  = actor_id or "?"
+            if atk_type == "RANGED" and atk_range > 0:
+                text = f"{attacker} attacca {target}: \U0001f3f9 {atk_range}\u25b8 {damage}\u274c"
+            else:
+                text = f"{attacker} attacca {target}: \u2694 {damage}\u274c"
+            self.append(text, "#e08080")
+            return
 
         text, color = _format_event(type_id, actor_id, payload)
         if text:
@@ -119,7 +135,40 @@ class LogWidget(QFrame):
         data = _extract_data(msg)
         payload = data.get("payload", "")
         self.append(f"💀 MISSIONE FALLITA — {payload}", "#e06060")
+    def on_next_actor(self, msg: dict) -> None:
+        """Logs timeline progression: empty slots then the acting actor's turn.
 
+        Shows messages like:
+            \u231b Tempo 6: Nessun Attore
+            \u231b Tempo 7: \u25b6 Gioca Thael
+        """
+        data           = _extract_data(msg)
+        actor_timeline = int(data.get("actor_timeline", data.get("mission_time", 0)))
+        actor_id       = str(data.get("actor_id", ""))
+        actor_name     = str(data.get("actor_name", actor_id))
+        kind           = str(data.get("kind", "HERO"))
+
+        _MAX_EMPTY = 8  # safety cap
+        prev = self._last_displayed_time
+        if prev >= 0 and actor_timeline > prev + 1:
+            empty_count = actor_timeline - prev - 1
+            show_count  = min(empty_count, _MAX_EMPTY)
+            for t in range(prev + 1, prev + 1 + show_count):
+                self.append(f"\u231b Tempo {t}: Nessun Attore", "#506070")
+            if empty_count > _MAX_EMPTY:
+                self.append(
+                    f"  \u2026 [{empty_count - _MAX_EMPTY} slot vuoti omessi]",
+                    "#506070",
+                )
+
+        self._last_displayed_time = actor_timeline
+        if kind == "HERO":
+            color = "#a8c8e8"
+            label = f"\u25b6 Gioca {actor_name}"
+        else:
+            color = "#e0a888"
+            label = f"\u2605 Attiva {actor_name}"
+        self.append(f"\u231b Tempo {actor_timeline}: {label}", color)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Event → human-readable text
@@ -129,17 +178,18 @@ _EVENT_TEMPLATES: dict[str, tuple[str, str]] = {
     "eldhom.pg.played_card":    ("{actor} gioca {payload}", "#d4b07a"),
     "eldhom.pg.simple_action":  ("{actor} esegue azione semplice", "#c8c870"),
     "eldhom.pg.moved":          ("{actor} si sposta → {payload}", "#80c0e0"),
-    "eldhom.pg.attacked":       ("{actor} attacca {payload}", "#e08080"),
+    "eldhom.pg.attacked":       ("{actor} attacca {payload}", "#e08080"),  # actor può essere un mostro
     "eldhom.pg.healed":         ("{actor} si cura (+{payload} PV)", "#80e080"),
     "eldhom.pg.ko":             ("{actor} è KO!", "#ff6060"),
     "eldhom.pg.turn_ended":     ("{actor} termina il turno", "#888888"),
     "eldhom.monster.damaged":   ("Mostro {actor} danneggiato", "#e07070"),
     "eldhom.monster.defeated":  ("Mostro {actor} eliminato!", "#ff9900"),
-    "eldhom.group.activated":   ("Gruppo {actor} si attiva", "#c07070"),
+    "eldhom.monster.moved":     ("{actor} si sposta \u2192 {payload}", "#e0c080"),
+    "eldhom.group.activated":   ("Gruppo {actor} \u2014 turno completato", "#c07070"),
     "eldhom.group.eliminated":  ("Gruppo {actor} ELIMINATO!", "#ff6600"),
     "eldhom.formation.changed": ("Formazione cambiata: {payload}", "#a070d0"),
     "eldhom.deck.reshuffled":   ("{actor}: mazzo rimescolato", "#7090a0"),
-    "eldhom.mission.time_advanced": ("⌛ Tempo: {payload}", "#607080"),
+    "eldhom.mission.time_advanced": ("⌛ {actor} → Tempo {payload}", "#607080"),
 }
 
 

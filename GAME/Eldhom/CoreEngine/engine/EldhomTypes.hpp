@@ -194,6 +194,7 @@ inline const EventType EVT_SEQUENCE_BROKEN   = "eldhom.pg.sequence_broken";
 // Monster events (used as reaction triggers)
 inline const EventType EVT_MONSTER_DAMAGED   = "eldhom.monster.damaged";
 inline const EventType EVT_MONSTER_DEFEATED  = "eldhom.monster.defeated";
+inline const EventType EVT_MONSTER_MOVED     = "eldhom.monster.moved";
 inline const EventType EVT_GROUP_ACTIVATED   = "eldhom.group.activated";
 inline const EventType EVT_GROUP_ELIMINATED  = "eldhom.group.eliminated";
 

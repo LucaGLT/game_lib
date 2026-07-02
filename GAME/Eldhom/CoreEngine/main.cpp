@@ -606,9 +606,31 @@ private:
 		default:                                 kind_str = "OTHER";         break;
 		}
 
+		// Resolve display name and individual timeline position.
+		std::string name_str = id;
+		int actor_timeline   = 0;
+		try
+		{
+			const gmActor::ActorStore& st = _engine->actor_store();
+			if (kind == gmActor::ActorKind::HERO)
+			{
+				name_str       = st.hero(id).common.display_name;
+				actor_timeline = st.hero(id).common.timeline_position;
+			}
+			else if (kind == gmActor::ActorKind::MONSTER_GROUP)
+			{
+				name_str       = st.monster_group(id).display_name;
+				actor_timeline = st.monster_group(id).timeline_position;
+			}
+		}
+		catch (...) {}
+
 		nlohmann::json d;
-		d["actor_id"] = id;
-		d["kind"]     = kind_str;
+		d["actor_id"]       = id;
+		d["kind"]           = kind_str;
+		d["actor_name"]     = name_str;
+		d["mission_time"]   = _engine->mission_time();
+		d["actor_timeline"] = actor_timeline;
 		_bridge.send_event(eldhom::EVT_TURN_NEXT_ACTOR, d);
 	}
 

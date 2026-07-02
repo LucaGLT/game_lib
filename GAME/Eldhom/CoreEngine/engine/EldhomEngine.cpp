@@ -450,7 +450,7 @@ ActionResult EldhomEngine::do_simple_action(
 	{
 	case SimpleActionType::MOVE:
 		cost = COST_SIMPLE_MOVE;
-		eff  = _rule_adapter.apply_simple_move(hero_id, destination, _store);
+		eff  = _rule_adapter.apply_card_move(hero_id, destination, 2, _store);
 		if (!eff.resolved)
 		{
 			return { ActionResultCode::ERR_NO_VALID_TARGET,
@@ -474,7 +474,13 @@ ActionResult EldhomEngine::do_simple_action(
 		{
 			return { ActionResultCode::ERR_NO_VALID_TARGET, eff.note };
 		}
-		emit(EVT_PG_ATTACKED, hero_id, eff.target_id);
+		{
+			std::string atk_payload =
+				std::string("{\"target\":\"") + eff.target_id
+				+ "\",\"damage\":" + std::to_string(eff.damage_dealt)
+				+ ",\"type\":\"MELEE\",\"range\":0}";
+			emit(EVT_PG_ATTACKED, hero_id, atk_payload);
+		}
 		if (eff.target_ko)
 		{
 			emit(EVT_MONSTER_DEFEATED, eff.target_id, {});
@@ -500,7 +506,8 @@ ActionResult EldhomEngine::do_simple_action(
 	// Advance hero timeline
 	_store.common(hero_id).timeline_position += cost;
 	_mission_events.advance_time(cost);
-	emit(EVT_MISSION_TIME, {}, std::to_string(_mission_events.mission_time()));
+	emit(EVT_MISSION_TIME, hero_id,
+	     std::to_string(_store.common(hero_id).timeline_position));
 
 	// Formation check in the hero's current location
 	check_formation(_store.common(hero_id).area_id);
@@ -617,7 +624,10 @@ ActionResult EldhomEngine::play_card(
 			                             eff.target == "PLAYER_CHOICE"))
 			                           ? destination
 			                           : (!eff.value.empty() ? eff.value : eff.target);
-			EffectResult mres = _rule_adapter.apply_simple_move(hero_id, move_to, _store);
+			// Cards with amount > 1 allow multi-step BFS movement.
+			EffectResult mres = (eff.amount > 1)
+				? _rule_adapter.apply_card_move(hero_id, move_to, eff.amount, _store)
+				: _rule_adapter.apply_simple_move(hero_id, move_to, _store);
 			if (mres.resolved)
 			{
 				emit(EVT_PG_MOVED, hero_id, move_to);
@@ -649,6 +659,8 @@ ActionResult EldhomEngine::play_card(
 	// Advance timeline
 	_store.common(hero_id).timeline_position += card.timeline_cost;
 	_mission_events.advance_time(card.timeline_cost);
+	emit(EVT_MISSION_TIME, hero_id,
+	     std::to_string(_store.common(hero_id).timeline_position));
 
 	// Move played card from hand to the current-turn played zone.
 	// Played cards are only transferred to the discard pile at end of turn
@@ -905,6 +917,11 @@ ActionResult EldhomEngine::play_instants(
 			_store.common(holder).timeline_position += card.timeline_cost;
 		}
 		_mission_events.advance_time(card.timeline_cost);
+		if (_store.has_actor(holder))
+		{
+			emit(EVT_MISSION_TIME, holder,
+			     std::to_string(_store.common(holder).timeline_position));
+		}
 
 		// Move the instant from hand to discard.
 		std::unordered_map<HeroId, HeroHandState>::iterator hsit =
@@ -1030,7 +1047,14 @@ ActionResult EldhomEngine::resolve_reaction(
 	// Close the reaction window before applying turn-advancement side effects.
 	_pending = PendingAttack{};
 
-	emit(EVT_PG_ATTACKED, attacker_id, target_id);
+	{
+		const int log_dmg = (eff.damage_dealt > 0) ? eff.damage_dealt : final_damage;
+		std::string atk_payload =
+			std::string("{\"target\":\"") + target_id
+			+ "\",\"damage\":" + std::to_string(log_dmg)
+			+ ",\"type\":\"MELEE\",\"range\":0}";
+		emit(EVT_PG_ATTACKED, attacker_id, atk_payload);
+	}
 	if (eff.target_ko)
 	{
 		emit(EVT_MONSTER_DEFEATED, target_id, {});
@@ -1040,7 +1064,8 @@ ActionResult EldhomEngine::resolve_reaction(
 	// Charge the attacker's timeline and advance the mission clock.
 	_store.common(attacker_id).timeline_position += cost;
 	_mission_events.advance_time(cost);
-	emit(EVT_MISSION_TIME, {}, std::to_string(_mission_events.mission_time()));
+	emit(EVT_MISSION_TIME, attacker_id,
+	     std::to_string(_store.common(attacker_id).timeline_position));
 
 	// Formation check in the attacker's location (defender may have retreated).
 	// For DISRUPT: replace any enemy-faction dialog from check_formation with the
@@ -1128,8 +1153,6 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 	const std::string& hero_faction =
 		_hero_factions.empty() ? std::string{"HEROES"} : _hero_factions.front();
 
-	emit(EVT_GROUP_ACTIVATED, group_id, {});
-
 	// Build the step executor lambda.
 	// Captures only pointers/references that outlive this call.
 	EldhomRuleAdapter&   ra     = _rule_adapter;
@@ -1150,6 +1173,44 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 
 			EffectResult res =
 				ra.apply_behavior_step(step, grp_id, member_id, st, hero_faction);
+
+			// Log monster movement.
+			const bool is_move_step =
+				(step.effect_type == "MOVE_TOWARD_PG" ||
+				 step.effect_type == "MOVE_TOWARD_NEAREST_PG");
+			if (is_move_step && res.resolved && !res.target_id.empty())
+			{
+				// res.target_id == member_id when the monster actually moved
+				// (empty when already in contact). New location is already stored.
+				engine->emit(EVT_MONSTER_MOVED, member_id,
+				             st.common(member_id).area_id);
+			}
+
+			// Log monster attacks on PG heroes.
+			if (res.resolved && !res.target_id.empty() && res.damage_dealt > 0)
+			{
+				// Determine attack type from BehaviorStep:
+				// Convention: step.value=="RANGED:N" means ranged attack, range=N.
+				std::string atk_type = "MELEE";
+				int         atk_range = 0;
+				if (step.value.find("RANGED") != std::string::npos)
+				{
+					atk_type = "RANGED";
+					std::size_t colon = step.value.find(':');
+					if (colon != std::string::npos)
+					{
+						try { atk_range = std::stoi(step.value.substr(colon + 1)); }
+						catch (...) {}
+					}
+				}
+				// Build compact JSON payload (actor IDs are plain ASCII).
+				std::string atk_payload =
+					std::string("{\"target\":\"") + res.target_id
+					+ "\",\"damage\":" + std::to_string(res.damage_dealt)
+					+ ",\"type\":\"" + atk_type
+					+ "\",\"range\":" + std::to_string(atk_range) + "}";
+				engine->emit(EVT_PG_ATTACKED, member_id, atk_payload);
+			}
 
 			if (res.target_ko && !res.target_id.empty())
 			{

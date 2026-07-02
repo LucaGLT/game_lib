@@ -9,6 +9,8 @@
 #include "gmActor/core/Enums.hpp"
 
 #include <algorithm>
+#include <queue>
+#include <unordered_set>
 
 namespace eldhom {
 
@@ -285,6 +287,66 @@ EffectResult EldhomRuleAdapter::apply_simple_move(
 	if (!is_adjacent(cur, dest_id) && cur != dest_id)
 	{
 		res.note = "MOVE: " + dest_id + " not adjacent to " + cur;
+		return res;
+	}
+
+	h.common.area_id = dest_id;
+	res.resolved     = true;
+	res.target_id    = hero_id;
+	res.note         = hero_id + " moved to " + dest_id;
+	return res;
+}
+
+EffectResult EldhomRuleAdapter::apply_card_move(
+	const HeroId&        hero_id,
+	const LocationId&    dest_id,
+	int                  max_steps,
+	gmActor::ActorStore& store) const
+{
+	EffectResult res;
+	if (dest_id.empty() || max_steps <= 0) { return res; }
+
+	gmActor::HeroState& h    = store.hero(hero_id);
+	const LocationId&   cur  = h.common.area_id;
+
+	if (cur == dest_id)
+	{
+		res.note = "MOVE: already at destination";
+		return res;
+	}
+
+	// BFS reachability check within max_steps
+	bool reachable = false;
+	std::unordered_set<LocationId> visited;
+	std::queue<std::pair<LocationId, int>> frontier;
+	frontier.push({cur, 0});
+	visited.insert(cur);
+
+	while (!frontier.empty() && !reachable)
+	{
+		const LocationId step_loc = frontier.front().first;
+		const int        depth    = frontier.front().second;
+		frontier.pop();
+
+		if (depth >= max_steps) { continue; }
+
+		std::unordered_map<LocationId, std::vector<LocationId>>::const_iterator it =
+			_adjacency.find(step_loc);
+		if (it == _adjacency.end()) { continue; }
+
+		for (const LocationId& adj : it->second)
+		{
+			if (adj == dest_id) { reachable = true; break; }
+			if (visited.count(adj)) { continue; }
+			visited.insert(adj);
+			frontier.push({adj, depth + 1});
+		}
+	}
+
+	if (!reachable)
+	{
+		res.note = "MOVE: " + dest_id + " not reachable in "
+		           + std::to_string(max_steps) + " steps from " + cur;
 		return res;
 	}
 
