@@ -1,0 +1,82 @@
+# .github/specs/module-structure.yml
+# Expected folder and file layout for every module/library in {{PROJECT_NAME}}.
+# AI agents must follow this layout when creating new files or new modules.
+
+---
+module:
+  root: "{{MODULE_ROOT_PATH}}"                # e.g. {{MODULE_NAME}}/
+
+  # ── Mandatory files ────────────────────────────────────────────────────────
+  required_files:
+    - name: "PLAN.md"
+      role: development_roadmap
+      schema: ".github/specs/plan-schema.yml"
+
+    - name: "{{MODULE_NAME}}.<ext>"
+      role: module_entry_point
+      naming_rule: FILE-2
+      note: "Includes/exports all public symbols; may be the facade file itself"
+
+    - name: "ai-instructions.md"
+      role: ai_context
+      note: "Module-specific context for AI agents: architecture notes,
+             dependency chain, threading rules, current phase constraints"
+
+  # ── Optional but standard files ────────────────────────────────────────────
+  optional_files:
+    - name: "{{MODULE_NAME}}{{API_DOC_SUFFIX}}"
+      role: public_api_reference
+      note: "Human-readable API doc; mirrors doc-comments but easier to skim"
+
+    - name: "Doxyfile"
+      role: doc_generator_config
+      condition: "{{DOC_COMMENT_STYLE}} == Doxygen"
+
+  # ── Standard subfolders ────────────────────────────────────────────────────
+  subfolders:
+    tests:
+      required: true
+      contains:
+        - pattern: "*_test.*"
+          role: unit_or_smoke_test
+        - pattern: "smoke_test*.*"
+          role: smoke_test
+
+    bridges:
+      required: false
+      note: "Adapters that link this module to another; may include internals from both
+             modules — nowhere else is cross-module coupling allowed"
+      naming_rule: FILE-1
+
+  # ── File naming rules ──────────────────────────────────────────────────────
+  file_naming:
+    interface:
+      prefix: "{{INTERFACE_PREFIX}}"
+      style: PascalCase
+      example: "{{INTERFACE_PREFIX}}Channel.hpp"
+      rule_ref: FILE-3
+
+    implementation_class:
+      style: PascalCase
+      example: "SyncRouter.hpp"
+      rule_ref: FILE-1
+
+    module_entry:
+      prefix: "{{MODULE_PREFIX}} (lowercase)"
+      example: "{{MODULE_NAME}}.hpp"
+      rule_ref: FILE-2
+
+    test_file:
+      suffix: "_test"
+      example: "SyncRouter_test.cpp"
+
+  # ── Invariants ─────────────────────────────────────────────────────────────
+  invariants:
+    - "No module folder may include internals from another module folder except inside a
+       bridges/ subfolder (or the project's equivalent cross-module adapter policy:
+       {{CROSS_MODULE_POLICY}})."
+    - "Every interface class lives in its own file with the {{INTERFACE_PREFIX}} prefix."
+    - "Every module must have exactly one base exception class placed in the module root
+       (not in a subfolder)."
+    - "The facade class ({{FACADE_PREFIX}}-prefixed, if used) is always in the module root,
+       never inside a subfolder."

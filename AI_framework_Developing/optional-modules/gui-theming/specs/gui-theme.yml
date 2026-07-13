@@ -1,0 +1,243 @@
+# .github/specs/gui-theme.yml
+# Machine-readable GUI visual theme rules — {{PROJECT_NAME}}.
+# AI agents must check generated/reviewed GUI widget code against these rules.
+# Instructions file: .github/instructions/gui-style.instructions.md
+
+---
+target: "{{GUI_TOOLKIT}}"
+secondary_targets: [PyQt6, PyQt5, PySide6]   # trim to whichever are actually supported
+styling_engine: QSS
+
+# ── Mandatory Rules ────────────────────────────────────────────────────────────
+mandatory_rules:
+  - id: GUI-1
+    text: "Always use QSS for all styling."
+  - id: GUI-2
+    text: "Never hardcode color values in widget code."
+  - id: GUI-3
+    text: "Never hardcode font names or sizes in widget code."
+  - id: GUI-4
+    text: "Never hardcode border styles in widget code."
+  - id: GUI-5
+    text: "Never mix business logic with styling."
+  - id: GUI-6
+    text: "Every visual decision must derive from the active theme."
+  - id: GUI-7
+    text: "Widgets must remain reusable across all defined themes."
+  - id: GUI-8
+    text: "Theme switching must not require widget code modifications."
+  - id: GUI-9
+    text: "Domain information must never influence visual styling."
+  - id: GUI-10
+    text: "The same widget hierarchy must render correctly under every defined theme."
+
+# ── Spacing System ─────────────────────────────────────────────────────────────
+spacing:
+  allowed_px: [4, 8, 16, 24, 32]
+  density: medium
+  rule: "Use only values from allowed_px or their exact multiples."
+  rule_ref: SP-1
+  forbidden_examples: [3, 5, 6, 7, 10, 12, 15, 20, 23]
+
+# ── Corner Radius Scale ────────────────────────────────────────────────────────
+corner_radius:
+  allowed_px: [0, 2, 4, 8, 12, 16]
+  default: "per-theme corner_radius_px"
+  rule: "No arbitrary values. Use from allowed_px or the active theme default."
+  rule_ref: CR-1
+
+# ── Border Thickness ───────────────────────────────────────────────────────────
+border:
+  allowed_thickness_px: [1, 2, 3]
+  max_px: 3
+  rule_ref: BD-1
+
+# ── Shadows ────────────────────────────────────────────────────────────────────
+shadows:
+  type: decorative
+  structural_use: forbidden
+  max_blur_px: 8
+  rule_ref: SH-1
+
+# ── Typography Roles ───────────────────────────────────────────────────────────
+typography:
+  rule: "Typography is controlled exclusively via QSS. Never call setFont() with hardcoded values."
+  rule_ref: TY-1
+  roles:
+    - id: title
+      description: "Dialog titles, panel headings, major section labels"
+      weight: bold
+      relative_size: largest
+      contrast: high
+    - id: subtitle
+      description: "Section headers, group labels, category names"
+      weight: medium
+      relative_size: smaller_than_title
+      emphasis: medium
+    - id: body
+      description: "Labels, descriptions, content text"
+      weight: normal
+      readability: high
+    - id: secondary
+      description: "Hints, timestamps, metadata"
+      weight: normal
+      relative_size: smallest
+      contrast: lower
+
+# ── Visual States ──────────────────────────────────────────────────────────────
+visual_states:
+  mandatory_global:
+    [normal, hover, focused, selected, active, disabled, warning, error, success]
+  implementation: "QSS pseudo-classes or dynamic properties + polish()"
+  rule: >
+    States must be consistent across all widgets.
+    Never use hardcoded color assignments in code to implement state changes.
+  rule_ref: WS-1
+
+# ── Widget Specifications ──────────────────────────────────────────────────────
+widgets:
+  - name: Dialog
+    rules:
+      - "Visual hierarchy without heavy decorations."
+      - "No distracting borders or backgrounds."
+
+  - name: Panel
+    rules:
+      - "Subtle background differentiation from window background."
+      - "Visual containment without dominating content."
+
+  - name: Label
+    rules:
+      - "Prioritize readability."
+      - "No decorative effects or excessive color variation."
+
+  - name: PushButton
+    required_states: [normal, hover, pressed, disabled]
+    variants:
+      - name: primary
+        role: "Main / confirm action — visually emphasized."
+      - name: secondary
+        role: "Alternative / neutral action."
+      - name: danger
+        role: "Destructive / risk action — must clearly communicate risk."
+
+  - name: ToggleButton
+    required_visual_indication: [on, off]
+    rule: "Must not require textual interpretation to distinguish ON from OFF."
+
+  - name: CheckBox
+    required_states: [unchecked, checked, disabled]
+
+  - name: RadioButton
+    required_states: [selected, unselected, disabled]
+
+  - name: ComboBox
+    required_features: [visible_dropdown_indicator, hover_feedback, focus_feedback]
+
+  - name: TextBox
+    required_states: [normal, focused, disabled, error]
+    required_features: [focus_indication, disabled_indication, validation_feedback]
+
+  - name: SpinBox
+    rule: "Visual style must integrate with TextBox and ComboBox."
+
+  - name: ListView
+    required_states: [hover, selected, disabled]
+    rule: "Selection must remain visible in all themes."
+
+  - name: TreeView
+    required_features: [clear_hierarchy, visible_expand_collapse]
+    rule: "Tree structure must be readable without icons."
+
+  - name: TableView
+    required_features: [row_selection, alternating_rows, sortable_headers]
+    rule: "Headers must remain visually distinct from content rows."
+
+  - name: TabWidget
+    required_states: [inactive, hover, active]
+    rule: "Active tab must be immediately recognizable."
+
+  - name: ScrollBar
+    rules:
+      - "Visually lightweight."
+      - "No oversized handles."
+      - "No distracting colors."
+
+  - name: ProgressBar
+    rules:
+      - "Must clearly communicate progress."
+      - "No unnecessary animation."
+
+  - name: ToolTip
+    rules:
+      - "Readable and compact."
+      - "No large blocks of text."
+
+# ── Theme Definitions ──────────────────────────────────────────────────────────
+# Reference set below matches the default {{THEME_IDS}} = "scroll, stone, dark_moon, blood, techno".
+# Replace this entire list with the project's own themes if {{THEME_IDS}} differs.
+themes:
+  - id: scroll
+    display_name: "Scroll"
+    concept: "Ancient parchment"
+    keywords: [warm, organic, historical, elegant, readable]
+    colors:
+      background: "#E8DFC8"
+      panel:      "#F1E8D0"
+      border:     "#7B6444"
+      accent:     "#A8873A"
+      text:       "#2E2418"
+    corner_radius_px: 4
+    mood: ["Ancient manuscript", "Library", "Archive", "Scroll"]
+
+  - id: stone
+    display_name: "Stone"
+    concept: "Carved stone"
+    keywords: [solid, ancient, monumental, neutral]
+    colors:
+      background: "#BDB8AF"
+      panel:      "#D2CEC6"
+      border:     "#59544D"
+      accent:     "#7A7A6B"
+      text:       "#1E1E1E"
+    corner_radius_px: 2
+    mood: ["Fortress", "Temple", "Ruins", "Mountain hall"]
+
+  - id: dark_moon
+    display_name: "Dark Moon"
+    concept: "Dark fantasy"
+    keywords: [moonlight, ashes, mystery, decay]
+    colors:
+      background: "#1A1A1E"
+      panel:      "#26262D"
+      border:     "#54546A"
+      accent:     "#A89CC8"
+      text:       "#E5E5E5"
+    corner_radius_px: 6
+    mood: ["Forgotten kingdom", "Moonlit ruins", "Dark fantasy"]
+
+  - id: blood
+    display_name: "Blood"
+    concept: "Corruption and sacrifice"
+    keywords: [crimson, ritual, cathedral, violence]
+    colors:
+      background: "#140A0A"
+      panel:      "#241111"
+      border:     "#6B1515"
+      accent:     "#B52A2A"
+      text:       "#F2E6E6"
+    corner_radius_px: 8
+    mood: ["Blood ritual", "Vampiric court", "Dark cathedral"]
+
+  - id: techno
+    display_name: "Techno"
+    concept: "Futuristic control interface"
+    keywords: [digital, clean, technical, precise]
+    colors:
+      background: "#08131E"
+      panel:      "#10202D"
+      border:     "#00C8FF"
+      accent:     "#00E5FF"
+      text:       "#D8F8FF"
+    corner_radius_px: 12
+    mood: ["Control room", "Starship", "Cybernetic interface", "Mission terminal"]

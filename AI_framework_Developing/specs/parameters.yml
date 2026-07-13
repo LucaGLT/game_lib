@@ -1,0 +1,259 @@
+# specs/parameters.yml
+# Canonical registry of every placeholder token used across AI_framework_Developing templates.
+# The `setup-environment` prompt must resolve every `required: true` parameter before
+# instantiating any template file. Optional parameters fall back to `default` unless the
+# Designer overrides them.
+#
+# Placeholder syntax used in all templates: {{TOKEN_ID}}
+
+---
+groups:
+
+  # ── Identity ────────────────────────────────────────────────────────────────
+  - group: identity
+    label: "Project & Client Identity"
+    parameters:
+      - id: PROJECT_NAME
+        required: true
+        description: "Name of the overall project or product."
+        example: "game_lib"
+
+      - id: CLIENT_NAME
+        required: true
+        description: "Name of the client/customer this project is built for. Use 'Internal' if not applicable."
+        example: "Internal"
+
+      - id: MODULE_NAME
+        required: true
+        description: "Name of the specific library/module/component being developed."
+        example: "gmDispatch"
+
+      - id: MODULE_PREFIX
+        required: true
+        description: "Short acronym/prefix for the module, used to derive namespace and facade naming."
+        example: "gm"
+        validation: "^[a-zA-Z][a-zA-Z0-9]{0,9}$"
+
+      - id: TEAM_OR_AUTHOR
+        required: false
+        default: "Development Team"
+        description: "Team or author name referenced in generated docs/changelogs."
+        example: "Core Engine Team"
+
+  # ── Namespace & Naming ─────────────────────────────────────────────────────
+  - group: naming
+    label: "Namespace & Naming Conventions"
+    parameters:
+      - id: NAMESPACE_PATTERN
+        required: true
+        description: "Rule used to form the module namespace, expressed as prose + regex."
+        example: "'{{MODULE_PREFIX}}' + PascalCase (e.g. gmDispatch)"
+
+      - id: NAMESPACE_EXAMPLE
+        required: false
+        default: "(derived from MODULE_PREFIX + MODULE_NAME)"
+        description: "Concrete example namespace for documentation purposes."
+        example: "gmDispatch"
+
+      - id: FACADE_PREFIX
+        required: false
+        default: "(capitalized MODULE_PREFIX)"
+        description: "Prefix applied only to the module's main facade class, if the facade pattern is used."
+        example: "Gm"
+
+      - id: INTERFACE_PREFIX
+        required: false
+        default: "I"
+        description: "Prefix for interface/abstract types."
+        example: "I"
+
+      - id: EXCEPTION_PREFIX
+        required: false
+        default: "E"
+        description: "Prefix for exception/error types."
+        example: "E"
+
+      - id: EXCEPTION_BASE_SUFFIX
+        required: false
+        default: "Error"
+        description: "Suffix for the module's single base exception class."
+        example: "Error"
+
+      - id: PRIVATE_MEMBER_CONVENTION
+        required: false
+        default: "leading underscore (_field)"
+        description: "Naming convention for private/internal fields."
+        example: "_field"
+
+      - id: FACTORY_PREFIX
+        required: false
+        default: "create_"
+        description: "Prefix for factory functions/methods."
+        example: "create_"
+
+      - id: BOOLEAN_QUERY_PREFIXES
+        required: false
+        default: "is_, has_, can_"
+        description: "Prefixes for boolean-returning query methods."
+        example: "is_, has_, can_"
+
+      - id: FUNCTION_NAMING_CONVENTION
+        required: false
+        default: "snake_case"
+        description: "Naming convention for functions/methods (adapt to language idioms if needed)."
+        example: "snake_case | camelCase | PascalCase"
+
+      - id: CONSTANT_NAMING_CONVENTION
+        required: false
+        default: "SCREAMING_SNAKE_CASE"
+        description: "Naming convention for constants and enumerators."
+        example: "SCREAMING_SNAKE_CASE"
+
+  # ── Language & Style ───────────────────────────────────────────────────────
+  - group: language_style
+    label: "Language & Formatting Style"
+    parameters:
+      - id: LANGUAGE
+        required: true
+        description: "Primary programming language of the module."
+        example: "C++"
+
+      - id: LANGUAGE_STANDARD
+        required: true
+        description: "Language standard/version enforced for the module."
+        example: "C++17 Standard"
+
+      - id: LANGUAGE_FILE_EXTENSIONS
+        required: true
+        description: >
+          Comma-separated list of file extensions for the primary language, without dots.
+          Used inside `applyTo` glob patterns as "**/*.{{{LANGUAGE_FILE_EXTENSIONS}}}" — note the
+          outer single brace on each side belongs to the glob syntax itself and must be kept
+          when substituting the inner `{{LANGUAGE_FILE_EXTENSIONS}}` token.
+        example: "cpp,hpp,h,cc,cxx"
+
+      - id: INDENT_STYLE
+        required: false
+        default: "tab"
+        description: "Indentation style: tab or spaces."
+        example: "tab"
+
+      - id: INDENT_WIDTH
+        required: false
+        default: "4"
+        description: "Visual indentation width."
+        example: "4"
+
+      - id: BRACE_STYLE
+        required: false
+        default: "Allman"
+        description: "Brace placement style (only applicable to brace-delimited languages)."
+        example: "Allman | K&R | 1TBS"
+
+      - id: LINE_LENGTH_LIMIT
+        required: false
+        default: "100"
+        description: "Maximum line length in columns."
+        example: "100"
+
+      - id: USE_INCLUDE_GUARDS
+        required: false
+        default: "true"
+        depends_on: "LANGUAGE in [C, C++]"
+        description: "Whether header include guards are required (C/C++-family only)."
+
+      - id: HAS_PREPROCESSOR
+        required: false
+        default: "true"
+        depends_on: "LANGUAGE in [C, C++, C#]"
+        description: "Whether the language has a preprocessor/directive system to enforce rules for."
+
+  # ── Documentation ──────────────────────────────────────────────────────────
+  - group: documentation
+    label: "Documentation Conventions"
+    parameters:
+      - id: DOC_COMMENT_STYLE
+        required: false
+        default: "Doxygen"
+        description: "Doc-comment convention used for public API documentation."
+        example: "Doxygen | JSDoc | Docstring | JavaDoc | XMLDoc"
+
+      - id: API_DOC_SUFFIX
+        required: false
+        default: "_API.md"
+        description: "Suffix for the human-readable API manual filename."
+        example: "gmDispatch_API.md"
+
+  # ── Structure ──────────────────────────────────────────────────────────────
+  - group: structure
+    label: "Module Structure & Dependency Policy"
+    parameters:
+      - id: MODULE_ROOT_PATH
+        required: false
+        default: "{{MODULE_NAME}}/"
+        description: "Relative path of the module root inside the repository."
+        example: "gmDispatch/"
+
+      - id: ALLOW_EXTERNAL_DEPENDENCIES
+        required: false
+        default: "false"
+        description: "Whether the module may depend on external/third-party libraries."
+
+      - id: CROSS_MODULE_POLICY
+        required: false
+        default: "bridges/ adapters only"
+        description: "Policy for how this module may depend on other modules in the same repo."
+
+  # ── Versioning ─────────────────────────────────────────────────────────────
+  - group: versioning
+    label: "Versioning"
+    parameters:
+      - id: VERSIONING_SCHEME
+        required: false
+        default: "semver"
+        description: "Versioning scheme used for PLAN.md and release tracking."
+
+  # ── Optional GUI Module ────────────────────────────────────────────────────
+  - group: gui_optional
+    label: "Optional GUI Theming Module"
+    parameters:
+      - id: HAS_GUI_MODULE
+        required: false
+        default: "false"
+        description: "Whether the optional GUI theming module (optional-modules/gui-theming) should be instantiated."
+
+      - id: GUI_TOOLKIT
+        required: false
+        default: "PySide6"
+        depends_on: "HAS_GUI_MODULE == true"
+        description: "GUI toolkit used by the project."
+        example: "PySide6 | PyQt6 | PyQt5"
+
+      - id: THEME_IDS
+        required: false
+        default: "scroll, stone, dark_moon, blood, techno"
+        depends_on: "HAS_GUI_MODULE == true"
+        description: "Comma-separated list of theme identifiers the GUI must support."
+
+# ── Derived / Computed Tokens ──────────────────────────────────────────────────
+# These tokens are never asked directly — the setup-environment prompt computes them from
+# other confirmed parameters and substitutes them the same way as any other token.
+derived:
+  - id: MODULE_PREFIX_UPPER
+    computed_from: MODULE_PREFIX
+    rule: "Upper-case transformation of MODULE_PREFIX (e.g. 'gm' -> 'GM')."
+
+# ── Invariants ─────────────────────────────────────────────────────────────────
+invariants:
+  - "Every `required: true` parameter must be explicitly confirmed by the Designer before any
+     template is instantiated — never invent a value for a required parameter."
+  - "Derived tokens (see `derived:` above) are computed automatically once their source
+     parameter is confirmed — never ask the Designer for them directly."
+  - "When a token appears nested inside glob brace syntax (e.g. `{{{LANGUAGE_FILE_EXTENSIONS}}}`
+     in an `applyTo` pattern), only the inner `{{TOKEN}}` is replaced; the outer single brace on
+     each side is glob syntax and must be preserved."
+  - "Optional parameters may be auto-filled with `default` but must still be shown to the
+     Designer for confirmation/override."
+  - "Parameters with `depends_on` are only asked/resolved when their condition is true."
+  - "Resolved parameter values must be persisted to `PROJECT_PARAMETERS.md` at the target
+     project root so future re-runs only ask for missing/changed values."

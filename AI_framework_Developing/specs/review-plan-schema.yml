@@ -1,0 +1,131 @@
+# .github/specs/review-plan-schema.yml
+# Schema for REVIEW.md files produced by the code-review process.
+# AI agents must validate generated REVIEW.md output against this schema.
+# Reference prompt: .github/prompts/review-code.prompt.md
+# Reference instructions: .github/instructions/code-review.instructions.md
+
+---
+review:
+  # ── Header block ────────────────────────────────────────────────────────────
+  header:
+    title:
+      format: "# Code Review — {scope}"
+      note: "scope is the module name, file name, or 'Workspace'"
+
+    reviewed_scope:
+      type: string
+      required: true
+      examples: ["{{MODULE_NAME}}", "{{MODULE_NAME}}/Example.hpp", "Workspace"]
+
+    date:
+      type: date
+      format: "YYYY-MM-DD"
+      required: true
+
+    rule_set_version:
+      type: string
+      note: "Version of the coding-style rules used for this review"
+      required: true
+
+    reviewer:
+      type: string
+      const: "AI (GitHub Copilot)"
+
+  # ── Summary table ────────────────────────────────────────────────────────────
+  summary:
+    required: true
+    format: markdown_table
+    columns:
+      - name: "Category"
+        values: ["CAT-1 Naming", "CAT-2 Guards", "CAT-3 Formatting",
+                 "CAT-4 Spacing", "CAT-5 Control Flow", "CAT-6 Signatures",
+                 "CAT-7 Includes", "CAT-8 Preprocessor",
+                 "CAT-9 Documentation", "CAT-10 Constraints"]
+      - name: "Status"
+        values: ["✅ Clean", "🔴 Errors", "🟡 Warnings", "🔵 Info only"]
+      - name: "🔴"
+        type: integer
+      - name: "🟡"
+        type: integer
+      - name: "🔵"
+        type: integer
+      - name: "Total"
+        type: integer
+
+  # ── Findings section ─────────────────────────────────────────────────────────
+  findings:
+    required: true
+    note: "Omit entirely if zero violations found; replace with 'No violations found.'"
+    grouped_by: category                     # CAT-1 through CAT-10
+
+    finding:
+      rule_id:
+        type: string
+        pattern: "^[A-Z]+-[0-9]+"            # e.g. VAR-2, FMT-2
+        required: true
+
+      severity:
+        type: string
+        enum: ["🔴 Error", "🟡 Warning", "🔵 Info"]
+        required: true
+
+      file:
+        type: string
+        format: workspace_relative_path      # e.g. {{MODULE_NAME}}/Example.hpp
+        required: true
+
+      location:
+        type: string
+        note: "Symbol name and/or line range — e.g. 'class Example, line 14'"
+        required: true
+
+      description:
+        type: string
+        note: "One sentence: what rule is violated and how."
+        required: true
+
+      correction:
+        type: code_snippet
+        max_lines: 10
+        required: true
+        note: "Show the fixed version; use diff format (- old / + new) for clarity"
+
+  # ── Correction plan ──────────────────────────────────────────────────────────
+  correction_plan:
+    required: true
+    note: "Ordered list of files to edit, grouped by severity (🔴 first)"
+    entry:
+      file:
+        type: string
+        format: workspace_relative_path
+        required: true
+      violations:
+        type: list_of_rule_ids               # e.g. [VAR-2, FMT-2, SPC-1]
+        required: true
+      touch_points:
+        type: integer
+        note: "Estimated number of individual fixes in this file"
+        required: true
+
+  # ── Statistics ───────────────────────────────────────────────────────────────
+  statistics:
+    required: true
+    fields:
+      total_findings: integer
+      errors: integer
+      warnings: integer
+      info: integer
+      files_reviewed: integer
+      files_with_violations: integer
+      violation_rate:
+        type: string
+        format: "NN%"
+
+  # ── Invariants ───────────────────────────────────────────────────────────────
+  invariants:
+    - "Every finding must reference an existing rule ID from coding-style.yml."
+    - "A finding with severity 🔴 Error must have a non-empty correction snippet."
+    - "The correction_plan must list every file that has at least one 🔴 Error finding."
+    - "If zero violations are found, findings section is replaced with a clean notice
+       and correction_plan is omitted."
+    - "The summary total row must equal the sum of all individual category counts."

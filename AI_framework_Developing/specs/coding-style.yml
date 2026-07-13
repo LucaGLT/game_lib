@@ -1,0 +1,180 @@
+# .github/specs/coding-style.yml
+# Machine-readable coding style rules for {{PROJECT_NAME}}.
+# AI agents must check generated/reviewed code against these rules.
+# Human-readable version: .github/instructions/coding-style.instructions.md
+
+---
+language: "{{LANGUAGE_STANDARD}}"
+enforce_from: "(project linter/formatter config, if any)"
+
+# ── Naming ────────────────────────────────────────────────────────────────────
+naming:
+  namespace:
+    pattern: "^{{MODULE_PREFIX}}[A-Z][a-zA-Z]+"
+    examples: ["{{NAMESPACE_EXAMPLE}}"]
+    rule_ref: NS-1
+
+  class_struct_enum_alias:
+    pattern: "^[A-Z][a-zA-Z0-9]+"           # PascalCase, no prefix — adjust if project differs
+    exceptions:
+      - pattern: "^{{FACADE_PREFIX}}[A-Z][a-zA-Z0-9]+"  # facade class only
+        applies_to: main_facade_class
+      - pattern: "^{{INTERFACE_PREFIX}}[A-Z][a-zA-Z0-9]+"  # interface only
+        applies_to: interface_class
+      - pattern: "^{{EXCEPTION_PREFIX}}[A-Z][a-zA-Z0-9]+"  # exception only
+        applies_to: exception_class
+    rule_ref: CL-1
+
+  function_method:
+    convention: "{{FUNCTION_NAMING_CONVENTION}}"
+    rule_ref: FN-1
+
+  boolean_query:
+    prefix: "{{BOOLEAN_QUERY_PREFIXES}}"
+    applies_to: methods_returning_bool
+    rule_ref: FN-2
+
+  factory:
+    prefix: "{{FACTORY_PREFIX}}"
+    applies_to: [factory_free_function, static_factory_method]
+    rule_ref: FN-3
+
+  variable_parameter:
+    convention: "{{FUNCTION_NAMING_CONVENTION}}"
+    rule_ref: VAR-1
+
+  private_member:
+    convention: "{{PRIVATE_MEMBER_CONVENTION}}"
+    forbidden_prefixes: ["m_", "m"]
+    rule_ref: VAR-2
+
+  constant:
+    convention: "{{CONSTANT_NAMING_CONVENTION}}"
+    rule_ref: CONST-1
+
+  enum_enumerator:
+    convention: "{{CONSTANT_NAMING_CONVENTION}}"
+    rule_ref: CONST-2
+
+  exception_class:
+    prefix: "{{EXCEPTION_PREFIX}}"
+    base_exception_pattern: "^{{EXCEPTION_PREFIX}}[A-Z][a-zA-Z]+{{EXCEPTION_BASE_SUFFIX}}$"
+    rule_ref: EX-1
+
+  include_guard:                            # conditional: only if USE_INCLUDE_GUARDS == true
+    condition: "{{USE_INCLUDE_GUARDS}}"
+    pattern: "^[A-Z0-9_]+_HPP$"
+    format: "<NAMESPACE_UPPER>_<FILENAME_UPPER>_HPP"
+    forbidden: ["#pragma once"]
+    rule_ref: IG-1
+
+# ── Formatting ────────────────────────────────────────────────────────────────
+formatting:
+  indentation:
+    style: "{{INDENT_STYLE}}"
+    width: "{{INDENT_WIDTH}}"
+    mix_styles: forbidden
+    rule_ref: FMT-1
+
+  braces:
+    style: "{{BRACE_STYLE}}"
+    applies_to: [function, method, class, struct, enum, namespace,
+                 if, else, for, while, do, switch]
+    rule_ref: FMT-2
+
+  line_length:
+    max_columns: "{{LINE_LENGTH_LIMIT}}"
+    rule_ref: FMT-3
+
+  pointer_reference:                        # conditional: only for languages with pointers/refs
+    style: left                              # Type* ptr, Type& ref
+    rule_ref: FMT-4
+
+  single_statement_block:
+    braces_optional: true
+    condition: "trivially simple only"
+    rule_ref: FMT-5
+
+  vertical_alignment:
+    allowed: true
+    rule_ref: FMT-6
+
+# ── Spacing ───────────────────────────────────────────────────────────────────
+spacing:
+  binary_operators:
+    space_before: 1
+    space_after: 1
+    applies_to: ["=","+=","-=","*=","/=","%=","+","-","*","/","%",
+                 "==","!=","<","<=",">",">=","&&","||","&","|","^","<<",">>"]
+    rule_ref: SPC-1
+
+  unary_operators:
+    space_between_operator_and_operand: 0
+    applies_to: ["!", "++", "--", "*", "&", "~", "-"]
+    rule_ref: SPC-2
+
+  comma:
+    space_after: 1
+    space_before: 0
+    rule_ref: SPC-3
+
+  semicolon:
+    space_before: 0
+    rule_ref: SPC-3
+
+  parentheses:
+    control_statement_space_before: 1       # if (x), while (x), for (x)
+    function_call_space_before: 0           # f(x)
+    rule_ref: SPC-4
+
+# ── Control Flow Constructs (conditional) ─────────────────────────────────────
+switch_case:
+  case_indentation: 1                       # one level inside switch
+  statement_indentation: 2                  # two levels inside switch
+  implicit_fallthrough: forbidden
+  explicit_fallthrough: "[[fallthrough]];"  # adapt to language equivalent
+  rule_ref: [SW-1, SW-2, SW-3]
+
+# ── Signatures ────────────────────────────────────────────────────────────────
+signatures:
+  wrap_threshold_columns: "{{LINE_LENGTH_LIMIT}}"
+  multiline_style: one_param_per_line
+  alignment: under_opening_paren
+  closing_paren: own_line
+  opening_brace: "per {{BRACE_STYLE}}"
+  rule_ref: [SIG-1, SIG-2, SIG-3, SIG-4]
+
+# ── Includes / Imports ────────────────────────────────────────────────────────
+includes:
+  order:
+    - corresponding_header_or_module
+    - standard_library
+    - third_party                            # only if ALLOW_EXTERNAL_DEPENDENCIES == true
+    - project_modules
+  separator: blank_line
+  sort_within_group: alphabetical
+  project_style: quoted                     # #include "..." or language equivalent
+  stdlib_style: angled                      # #include <...> or language equivalent
+  no_relative_dotdot: true
+  rule_ref: [INC-1, INC-2]
+
+# ── Preprocessor (conditional) ────────────────────────────────────────────────
+preprocessor:
+  condition: "{{HAS_PREPROCESSOR}}"
+  directive_indentation: none               # always at column 1
+  endif_comment: required_for_complex       # #endif // GUARD_NAME
+  rule_ref: [PP-1, PP-2]
+
+# ── Language constraints ──────────────────────────────────────────────────────
+constraints:
+  language_standard: "{{LANGUAGE_STANDARD}}"
+  forbidden_features: []                    # list features newer than LANGUAGE_STANDARD here
+  inferred_return_in_public_prototype: forbidden
+  external_dependencies: "{{ALLOW_EXTERNAL_DEPENDENCIES}}"
+  cross_module_policy: "{{CROSS_MODULE_POLICY}}"
+
+# ── TODO markers ──────────────────────────────────────────────────────────────
+todo_format:
+  pattern: "// TODO: Phase {N} — {description}"
+  phase_number: required
+  example: "// TODO: Phase 3 — add FileChannel support"
