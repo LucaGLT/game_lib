@@ -231,6 +231,10 @@ inline const EventType EVT_TESORO_RACCOLTO   = "eldhom.missione.tesoro_raccolto"
 inline const EventType EVT_PASSAGGIO_APERTO  = "eldhom.missione.passaggio_aperto";
 inline const EventType EVT_ALLARME_TESORO    = "eldhom.missione.allarme_tesoro";
 
+// Zone-boundary door opened by a PG crossing it (CLOSED_DOOR -> free passage).
+// Payload: JSON {"a": LocationId, "b": LocationId}.
+inline const EventType EVT_ZONE_DOOR_OPENED  = "eldhom.zone_door.opened";
+
 // Full-state snapshot (sent on mission start / GUI reconnect)
 inline const EventType EVT_STATE_FULL        = "eldhom.state.full";
 

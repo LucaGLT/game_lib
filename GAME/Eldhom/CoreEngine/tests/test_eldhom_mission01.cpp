@@ -370,8 +370,11 @@ void test_pg_turn_simple_action_move()
 		"thael", eldhom::SimpleActionType::MOVE, "corridoio");
 
 	check(r.ok(), "Thael MOVE to corridoio OK");
-	check(engine.timeline_position("thael") == eldhom::COST_SIMPLE_MOVE,
-	      "Thael timeline = 1 after MOVE");
+	// "ingresso" and "corridoio" are different zones (no shared numeric
+	// suffix), so this MOVE crosses a still-closed zone-boundary door and
+	// pays +1 extra timeline cost on top of COST_SIMPLE_MOVE.
+	check(engine.timeline_position("thael") == eldhom::COST_SIMPLE_MOVE + 1,
+	      "Thael timeline = COST_SIMPLE_MOVE + 1 after crossing a zone door");
 
 	// Next actor should be Velyr (timeline 0 < 1)
 	check(engine.next_actor() == "velyr", "Velyr is next after Thael moves");
@@ -686,6 +689,74 @@ void test_defeat_time_limit()
 	      "Mission ended in DEFEAT (time limit exceeded)");
 }
 
+void test_zone_door_blocks_monster_until_pg_crosses()
+{
+	std::cout << "\n=== test_zone_door_blocks_monster_until_pg_crosses ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Move whichever hero is next into corridoio, twice, so both heroes end
+	// up there (opens the ingresso<->corridoio door; irrelevant to this test).
+	for (int i = 0; i < 2; ++i)
+	{
+		const std::string next = engine.next_actor();
+		check(engine.do_simple_action(next, eldhom::SimpleActionType::MOVE, "corridoio").ok(),
+		      next + " moves to corridoio");
+	}
+
+	// briganti_B starts in "sala" (a different zone from "corridoio"): the
+	// "sala"<->"corridoio" door is still closed, so briganti_B must NOT be
+	// able to cross it even though PGs are waiting right next door.
+	engine.resolve_group_turn_for("briganti_B");
+	const gmActor::MonsterInstanceState& bb1_before =
+		engine.actor_store().monster_instance("brigante_B1");
+	check(bb1_before.common.area_id == "sala",
+	      "briganti_B stays in sala while the zone door is still closed");
+
+	// Whichever hero is next crosses into sala (opens the zone door), then
+	// walks back to corridoio once it is their turn again (the other hero
+	// may take filler RECOVER turns in between; turn order does not matter
+	// for this test since both heroes stay put in corridoio/sala).
+	const std::string crosser = engine.next_actor();
+	check(engine.do_simple_action(crosser, eldhom::SimpleActionType::MOVE, "sala").ok(),
+	      crosser + " crosses into sala (opens the zone door)");
+
+	int guard = 0;
+	while (engine.next_actor() != crosser && guard < 20)
+	{
+		if (engine.next_actor_kind() == gmActor::ActorKind::HERO)
+		{
+			engine.do_simple_action(engine.next_actor(), eldhom::SimpleActionType::RECOVER);
+		}
+		else if (engine.next_actor_kind() == gmActor::ActorKind::MONSTER_GROUP)
+		{
+			// Whichever group activates early finds its target still in
+			// "sala" (crosser hasn't walked back yet) and simply stays put
+			// ("already in contact"), which does not affect this test.
+			engine.resolve_next_group_turn();
+		}
+		else
+		{
+			break;
+		}
+		++guard;
+	}
+	check(engine.do_simple_action(crosser, eldhom::SimpleActionType::MOVE, "corridoio").ok(),
+	      crosser + " walks back to corridoio");
+
+	// Now that the door is open, briganti_B should be able to cross it.
+	engine.resolve_group_turn_for("briganti_B");
+	const gmActor::MonsterInstanceState& bb1_after =
+		engine.actor_store().monster_instance("brigante_B1");
+	check(bb1_after.common.area_id == "corridoio",
+	      "briganti_B crosses into corridoio once the zone door is open");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -703,6 +774,7 @@ int main()
 	test_monster_group_turn();
 	test_victory_all_monsters_eliminated();
 	test_defeat_time_limit();
+	test_zone_door_blocks_monster_until_pg_crosses();
 
 	std::cout << "\n================================================\n";
 	std::cout << "PASS: " << s_pass << "   FAIL: " << s_fail << "\n";

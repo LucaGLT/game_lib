@@ -169,6 +169,7 @@ class EldhomBoardWidget(QWidget):
         self._map_built: bool = False             # map structure built once
         self._group_instances: dict[str, list[str]] = {}  # group_id → instance ids
         self._locked_pairs_sig: frozenset = frozenset()    # for rebuild-on-unlock
+        self._opened_zone_doors_sig: frozenset = frozenset()  # for rebuild-on-door-open
         self._current_mission_id: str = ""        # detects new-mission resets
 
         self._module: GmMapModule = GmMapModule()
@@ -221,15 +222,28 @@ class EldhomBoardWidget(QWidget):
                 str(data.get("mission_id", "")))
         locked_sig = frozenset(locked_pairs)
 
+        # Zone-boundary doors (CLOSED_DOOR) already crossed by a PG: rendered
+        # as free passages from then on, for PGs and monsters alike.
+        opened_zone_doors: set[tuple[str, str]] = set()
+        for pair in data.get("opened_zone_doors", []):
+            if isinstance(pair, list) and len(pair) == 2:
+                a, b = str(pair[0]), str(pair[1])
+                opened_zone_doors.add((a, b))
+                opened_zone_doors.add((b, a))
+        opened_doors_sig = frozenset(opened_zone_doors)
+
         # Rebuild the structure only when the map actually changes (first load,
-        # a new mission, or a locked passage becomes unlocked/re-locked), to
-        # avoid resetting the force-directed layout on every snapshot.
+        # a new mission, a locked passage becomes unlocked/re-locked, or a
+        # zone-boundary door is newly opened), to avoid resetting the
+        # force-directed layout on every snapshot.
         if (not self._map_built
                 or incoming_locs != set(self._loc_index.keys())
-                or locked_sig != self._locked_pairs_sig):
+                or locked_sig != self._locked_pairs_sig
+                or opened_doors_sig != self._opened_zone_doors_sig):
             self._loc_index.clear()
             self._map_built = False
         self._locked_pairs_sig = locked_sig
+        self._opened_zone_doors_sig = opened_doors_sig
 
         if not self._map_built:
 
@@ -260,6 +274,8 @@ class EldhomBoardWidget(QWidget):
                         seen_edges.add(edge)
                         if (lid, a_lid) in locked_pairs or (a_lid, lid) in locked_pairs:
                             edge_type = "LOCKED_DOOR"
+                        elif (lid, a_lid) in opened_zone_doors:
+                            edge_type = "FREE"
                         else:
                             adj_zone  = loc_zones.get(a_lid, "")
                             edge_type = "FREE" if zone == adj_zone else "CLOSED_DOOR"

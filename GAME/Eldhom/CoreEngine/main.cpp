@@ -786,6 +786,18 @@ private:
 		}
 		state["special_objects"] = spec_objs;
 
+		// Zone-boundary doors already opened by PGs (CLOSED_DOOR -> free passage)
+		nlohmann::json opened_doors = nlohmann::json::array();
+		for (const std::pair<eldhom::LocationId, eldhom::LocationId>& door
+			 : _engine->opened_zone_doors())
+		{
+			nlohmann::json pair_arr = nlohmann::json::array();
+			pair_arr.push_back(door.first);
+			pair_arr.push_back(door.second);
+			opened_doors.push_back(pair_arr);
+		}
+		state["opened_zone_doors"] = opened_doors;
+
 		// Next actor
 		nlohmann::json nxt;
 		nxt["actor_id"] = _engine->next_actor();

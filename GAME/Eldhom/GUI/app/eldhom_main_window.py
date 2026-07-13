@@ -679,6 +679,7 @@ class EldhomMainWindow(QMainWindow):
             "eldhom.group.eliminated", "eldhom.formation.changed",
             "eldhom.deck.reshuffled", "eldhom.mission.time_advanced",
             "eldhom.attack.declared", "eldhom.attack.resolved",
+            "eldhom.zone_door.opened",
         ):
             reg(evt, self._log_widget.on_any_event)
         reg("eldhom.action.result",           self._log_widget.on_action_result)

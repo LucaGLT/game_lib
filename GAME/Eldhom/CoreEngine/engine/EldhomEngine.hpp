@@ -407,6 +407,18 @@ public:
 	const std::string& tesoro_carrier() const { return _tesoro_carrier; }
 
 	/**
+	 * @brief Returns all zone-boundary doors opened so far by PGs crossing them.
+	 *
+	 * Each pair is normalized with `first < second`. Used to export door state
+	 * in the full-state snapshot so the GUI can render CLOSED_DOOR passages
+	 * that have already been opened as free passages.
+	 */
+	const std::set<std::pair<LocationId, LocationId>>& opened_zone_doors() const
+	{
+		return _rule_adapter.opened_zone_doors();
+	}
+
+	/**
 	 * @brief Returns the current sequence state for a hero.
 	 * @param hero_id Hero actor ID.
 	 * @throws std::out_of_range if hero_id is not registered.

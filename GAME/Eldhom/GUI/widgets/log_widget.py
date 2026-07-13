@@ -115,6 +115,14 @@ class LogWidget(QFrame):
             self.append(text, "#e08080")
             return
 
+        # Zone-boundary door opened: payload is a dict with the two location ids.
+        if type_id == "eldhom.zone_door.opened" and isinstance(payload, dict):
+            door_a = str(payload.get("a", "?"))
+            door_b = str(payload.get("b", "?"))
+            text = f"\U0001f6aa {actor_id or '?'} apre il passaggio {door_a} \u2194 {door_b}"
+            self.append(text, "#e0a050")
+            return
+
         text, color = _format_event(type_id, actor_id, payload)
         if text:
             self.append(text, color)

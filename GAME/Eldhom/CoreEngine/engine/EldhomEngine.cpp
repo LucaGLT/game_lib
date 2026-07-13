@@ -16,6 +16,17 @@
 
 namespace eldhom {
 
+namespace {
+
+// Builds the compact JSON payload for EVT_ZONE_DOOR_OPENED (location IDs are
+// plain ASCII, so no escaping is needed here).
+std::string zone_door_payload(const std::pair<LocationId, LocationId>& door)
+{
+	return std::string("{\"a\":\"") + door.first + "\",\"b\":\"" + door.second + "\"}";
+}
+
+} // namespace
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor
 // ─────────────────────────────────────────────────────────────────────────────
@@ -456,6 +467,13 @@ ActionResult EldhomEngine::do_simple_action(
 			return { ActionResultCode::ERR_NO_VALID_TARGET,
 			         "MOVE failed: " + eff.note };
 		}
+		// Crossing a still-closed zone-boundary door costs +1 extra timeline cost and opens
+		// it permanently (PGs and monsters can freely cross it from now on).
+		cost += eff.extra_timeline_cost;
+		for (const std::pair<LocationId, LocationId>& door : eff.opened_doors)
+		{
+			emit(EVT_ZONE_DOOR_OPENED, hero_id, zone_door_payload(door));
+		}
 		emit(EVT_PG_MOVED, hero_id, destination);
 		check_pg_at_location(hero_id, destination);
 		break;
@@ -596,6 +614,7 @@ ActionResult EldhomEngine::play_card(
 	bool        has_damage    = false;
 	int         damage_amount = 0;
 	bool        has_disrupt   = false;
+	int         extra_move_cost = 0;  ///< +1 per still-closed zone door crossed by MOVE effects
 
 	for (const EldhomEffect& eff : card.effects)
 	{
@@ -630,6 +649,11 @@ ActionResult EldhomEngine::play_card(
 				: _rule_adapter.apply_simple_move(hero_id, move_to, _store);
 			if (mres.resolved)
 			{
+				extra_move_cost += mres.extra_timeline_cost;
+				for (const std::pair<LocationId, LocationId>& door : mres.opened_doors)
+				{
+					emit(EVT_ZONE_DOOR_OPENED, hero_id, zone_door_payload(door));
+				}
 				emit(EVT_PG_MOVED, hero_id, move_to);
 				check_pg_at_location(hero_id, move_to);
 			}
@@ -657,8 +681,9 @@ ActionResult EldhomEngine::play_card(
 	_seq_states[hero_id] = _sequence_adapter.advance(original_card_type, seq_before);
 
 	// Advance timeline
-	_store.common(hero_id).timeline_position += card.timeline_cost;
-	_mission_events.advance_time(card.timeline_cost);
+	const int total_card_cost = card.timeline_cost + extra_move_cost;
+	_store.common(hero_id).timeline_position += total_card_cost;
+	_mission_events.advance_time(total_card_cost);
 	emit(EVT_MISSION_TIME, hero_id,
 	     std::to_string(_store.common(hero_id).timeline_position));
 

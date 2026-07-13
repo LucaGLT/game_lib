@@ -39,7 +39,9 @@
 #include "GAME/Eldhom/CoreEngine/targeting/TargetingFilter.hpp"
 
 #include <functional>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace eldhom {
@@ -55,6 +57,13 @@ struct EffectResult {
 	int                hp_restored  = 0;   ///< HP restored (positive)
 	bool               target_ko    = false; ///< True if the target reached 0 HP
 	std::string        note;               ///< Debug / narrative description
+
+	/// Extra timeline cost from crossing closed zone-boundary doors during a MOVE
+	/// (added on top of the action/card's base timeline cost).
+	int extra_timeline_cost = 0;
+	/// Zone-boundary doors newly opened by this MOVE (normalized pairs), so the
+	/// caller can emit a GUI notification for each one.
+	std::vector<std::pair<LocationId, LocationId>> opened_doors;
 };
 
 /**
@@ -91,7 +100,7 @@ public:
 		const EldhomEffect& effect,
 		const HeroId&       actor_id,
 		gmActor::ActorStore& store,
-		const std::string&  target_faction) const;
+		const std::string&  target_faction);
 
 	// ── Monster behavior step effects ─────────────────────────────────────────
 
@@ -128,7 +137,7 @@ public:
 	EffectResult apply_simple_move(
 		const HeroId&        hero_id,
 		const LocationId&    dest_id,
-		gmActor::ActorStore& store) const;
+		gmActor::ActorStore& store);
 
 	/**
 	 * @brief Moves a hero to dest_id if reachable within max_steps BFS steps.
@@ -147,7 +156,7 @@ public:
 		const HeroId&        hero_id,
 		const LocationId&    dest_id,
 		int                  max_steps,
-		gmActor::ActorStore& store) const;
+		gmActor::ActorStore& store);
 
 	/**
 	 * @brief Applies an Attacco Semplice for a hero (1 damage, nearest target).
@@ -209,6 +218,11 @@ public:
 
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;
+	/// Zone-boundary doors (LocationId pairs, always stored with `first < second`)
+	/// that a PG has already crossed. Until a pair is in this set, it is a
+	/// CLOSED_DOOR: PGs pay +1 extra timeline cost to cross it and monsters cannot cross it
+	/// at all. Once opened it behaves exactly like a free passage for everyone.
+	std::set<std::pair<LocationId, LocationId>>                    _opened_zone_doors;
 
 	EffectResult apply_damage(
 		const gmActor::ActorId& target_id,
@@ -216,6 +230,52 @@ public:
 		gmActor::ActorStore&    store) const;
 
 	bool is_adjacent(const LocationId& from, const LocationId& to) const;
+
+	/**
+	 * @brief Returns the zone prefix of a LocationId (trailing digits stripped).
+	 *
+	 * Examples: "S1"->"S", "C2"->"C", "IN"->"IN". Mirrors the GUI's own
+	 * heuristic (board_widget.py `_zone_from_loc_id`) so both sides always
+	 * agree on which passages are zone-boundary doors.
+	 *
+	 * @param loc_id LocationId to classify.
+	 * @return Zone prefix string.
+	 */
+	static std::string zone_of(const LocationId& loc_id);
+
+	/**
+	 * @brief True if *a* and *b* belong to different zones (a CLOSED_DOOR
+	 * candidate), regardless of whether it has already been opened.
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	bool is_zone_boundary(const LocationId& a, const LocationId& b) const;
+
+	/**
+	 * @brief True if the zone-boundary door between *a* and *b* has already
+	 * been opened by a PG (or if a and b are in the same zone, i.e. there was
+	 * never a door to open).
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	bool is_zone_door_open(const LocationId& a, const LocationId& b) const;
+
+	/**
+	 * @brief Marks the zone-boundary door between *a* and *b* as open.
+	 *
+	 * Idempotent: calling it again on an already-open pair has no effect.
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	void open_zone_door(const LocationId& a, const LocationId& b);
+
+	/**
+	 * @brief Returns all zone-boundary doors opened so far (for GUI/state export).
+	 */
+	const std::set<std::pair<LocationId, LocationId>>& opened_zone_doors() const;
 
 	/**
 	 * @brief Adds a new adjacency edge at runtime (e.g. when a door is opened).
