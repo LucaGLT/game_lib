@@ -137,6 +137,9 @@ class GmMapModule(BaseModule):
             "gmMap.location.metadata_changed",
             "gmActor.actor.moved_area",
             "gmActor.actor.position_changed",
+            "gmActor.actor.removed",
+            "gmActor.actor.turn_active",
+            "gmActor.actor.selected",
         ]
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -213,6 +216,16 @@ class GmMapModule(BaseModule):
         if layers:
             self._layer_combo.set_checked(set(layers))
             self._map_scene.set_active_layers(self._layer_combo.checked_layers())
+
+    # ── Theme ─────────────────────────────────────────────────────────────────
+
+    def refresh_theme(self) -> None:
+        """Re-applies the active application theme's colours to the map scene.
+
+        Call this after ``ThemeManager.apply_theme()`` since the scene has no
+        automatic notification mechanism for theme changes.
+        """
+        self._map_scene.refresh_theme()
 
     # ── Zoom helpers ──────────────────────────────────────────────────────────
 
@@ -297,4 +310,12 @@ class GmMapModule(BaseModule):
             actor_id = str(data.get("actor_id", ""))
             if actor_id:
                 self._map_scene.remove_actor(actor_id)
+
+        elif tid == "gmActor.actor.turn_active":
+            actor_ids = [str(a) for a in data.get("actor_ids", [])]
+            self._map_scene.set_active_actors(actor_ids)
+
+        elif tid == "gmActor.actor.selected":
+            actor_id = str(data.get("actor_id", ""))
+            self._map_scene.set_selected_actor(actor_id)
 

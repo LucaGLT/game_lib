@@ -153,24 +153,41 @@ def _build_palette(names: set[str], palette_tokens: list[str]) -> dict[str, QCol
 #
 # Edge types passed as the optional third element of each edge tuple:
 #   "FREE"          — open passage within the same zone
-#   "CLOSED_DOOR"   — door between zones, traversable by PG (costs 1 extra ⌛)
-#   "LOCKED_DOOR"   — door locked by a mechanic; neither side can pass
+#   "CLOSED_DOOR"   — door between zones, freely traversable by a PG but costs
+#                     +1 extra ⌛ (red, solid line)
+#   "LOCKED_DOOR"   — door that requires a specific interaction (lever, key,
+#                     puzzle...) before either side can pass (red, dashed line)
 #
-_EDGE_FREE_COLOR: QColor        = QColor("#707070")   # neutral grey
-_EDGE_CLOSED_DOOR_COLOR: QColor = QColor("#c89030")   # amber
-_EDGE_LOCKED_DOOR_COLOR: QColor = QColor("#c03030")   # red
+# Both door types share the same red gameplay-state colour (not theme-
+# dependent) — the line *style* (solid vs dashed) is what distinguishes them,
+# not the colour.  FREE re-resolves the theme's neutral "border" colour
+# dynamically.  All colours are resolved lazily via resolve_semantic_color()
+# so this module never constructs QColor literals directly (see
+# test_theme_guard.py).
+
+# Actor satellite highlight border widths.
+_SAT_BORDER_W_HIGHLIGHT: int  = 3
+_SAT_BORDER_W_NORMAL: int     = 1
 
 
 def _edge_pen(edge_type: str) -> QPen:
-    """Returns the QPen appropriate for an edge of the given type string."""
+    """Returns the QPen appropriate for an edge of the given type string.
+
+    Every colour is re-resolved on each call via ``resolve_semantic_color()``,
+    so ``FREE`` follows theme changes while ``CLOSED_DOOR``/``LOCKED_DOOR``
+    use the same fixed red gameplay-state token (readable regardless of
+    theme) and differ only by line style: ``LOCKED_DOOR`` is dashed (needs a
+    specific interaction to open), ``CLOSED_DOOR`` is solid (a PG can always
+    cross it, just paying +1 extra ⌛).
+    """
     if edge_type == "CLOSED_DOOR":
-        return QPen(_EDGE_CLOSED_DOOR_COLOR, 2)
+        return QPen(resolve_semantic_color("map_edge_locked_door"), 2)
     if edge_type == "LOCKED_DOOR":
-        pen = QPen(_EDGE_LOCKED_DOOR_COLOR, 2)
+        pen = QPen(resolve_semantic_color("map_edge_locked_door"), 2)
         pen.setStyle(Qt.PenStyle.DashLine)
         return pen
-    # FREE (default)
-    return QPen(_EDGE_FREE_COLOR, 1)
+    # FREE (default) — theme-dependent neutral colour.
+    return QPen(resolve_semantic_color("border"), 1)
 
 
 def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]]:
@@ -406,6 +423,8 @@ class LocationNode(QGraphicsEllipseItem):
         region_color: QColor | None = None,
         item_labels: dict | None = None,
         actor_labels: dict | None = None,
+        active_actor_ids: set[str] | None = None,
+        selected_actor_id: str = "",
     ) -> None:
         """Recolours this node and rebuilds satellite badges for *active_layers*.
 
@@ -419,6 +438,9 @@ class LocationNode(QGraphicsEllipseItem):
             region_color:  Fill colour when ``"region"`` is active.
             item_labels:   item_id → global letter for item satellite badges.
             actor_labels:  actor_id → game-unique label from the C++ engine.
+            active_actor_ids: actor ids currently taking their turn (red border).
+            selected_actor_id: actor id currently selected by the player
+                               (accent-coloured border).
         """
         self._clear_satellites()
         scene = self.scene()
@@ -440,7 +462,8 @@ class LocationNode(QGraphicsEllipseItem):
         if scene and "items" in active_layers and self._item_ids:
             self._build_item_satellites(scene, item_labels or {})
         if scene and "actors" in active_layers and self._actor_ids:
-            self._build_actor_satellites(scene, actor_labels or {})
+            self._build_actor_satellites(
+                scene, actor_labels or {}, active_actor_ids, selected_actor_id)
 
         self.setBrush(QBrush(fill))
         self._sync_border()
@@ -488,7 +511,13 @@ class LocationNode(QGraphicsEllipseItem):
                 resolve_semantic_color("map_sat_item_fg"),
             )
 
-    def _build_actor_satellites(self, scene: QGraphicsScene, actor_labels: dict) -> None:
+    def _build_actor_satellites(
+        self,
+        scene: QGraphicsScene,
+        actor_labels: dict,
+        active_actor_ids: set[str] | None = None,
+        selected_actor_id: str = "",
+    ) -> None:
         # Use engine-assigned labels; fall back to first-letter initial if absent.
         labels = [
             actor_labels.get(aid, aid[0].upper() if aid else "?")
@@ -497,11 +526,21 @@ class LocationNode(QGraphicsEllipseItem):
         positions = _sat_positions_pooled(
             len(labels), self._cx, self._cy, _SAT_ORBIT_ACTOR, _SAT_R_ACTOR,
             _ACTOR_ANGLES_DEG)
-        for (sx, sy), label in zip(positions, labels):
+        active_ids = active_actor_ids or set()
+        fg = resolve_semantic_color("map_sat_actor_fg")
+        for (sx, sy), label, aid in zip(positions, labels, self._actor_ids):
+            if aid and aid in active_ids:
+                border_color = resolve_semantic_color("map_actor_turn_border")
+                border_width = _SAT_BORDER_W_HIGHLIGHT
+            elif aid and aid == selected_actor_id:
+                border_color = resolve_semantic_color("accent")
+                border_width = _SAT_BORDER_W_HIGHLIGHT
+            else:
+                border_color, border_width = fg, _SAT_BORDER_W_NORMAL
             self._add_satellite(
                 scene, sx, sy, label, _SAT_D_ACTOR,
-                resolve_semantic_color("map_sat_actor_bg"),
-                resolve_semantic_color("map_sat_actor_fg"),
+                resolve_semantic_color("map_sat_actor_bg"), fg,
+                border_color=border_color, border_width=border_width,
             )
 
     def _add_satellite(
@@ -513,11 +552,13 @@ class LocationNode(QGraphicsEllipseItem):
         sat_d: int,
         bg: QColor,
         fg: QColor,
+        border_color: QColor | None = None,
+        border_width: int = 1,
     ) -> None:
         d = float(sat_d)
         sat = QGraphicsEllipseItem(sx, sy, d, d)
         sat.setBrush(QBrush(bg))
-        sat.setPen(QPen(fg, 1))
+        sat.setPen(QPen(border_color if border_color is not None else fg, border_width))
         sat.setZValue(3.0)
         scene.addItem(sat)
         font = QFont()
@@ -557,7 +598,7 @@ class MapScene(QGraphicsScene):
     def __init__(self, parent: object = None) -> None:
         super().__init__(parent)
         self._nodes: dict[int, LocationNode] = {}
-        self._edges: list[QGraphicsLineItem] = []
+        self._edges: list[tuple[QGraphicsLineItem, str]] = []
         self._marker_locations: dict[str, int] = {}
         self._active_layers: set[str] = {"terrain", "items", "actors"}
         self._location_actors: dict[int, list[str]] = {}
@@ -571,6 +612,8 @@ class MapScene(QGraphicsScene):
         self._global_item_letters: dict[str, str] = {}
         self._next_item_letter_idx: int = 0
         self._actor_label_map: dict[str, str] = {}
+        self._active_actor_ids: set[str] = set()
+        self._selected_actor_id: str = ""
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -720,7 +763,7 @@ class MapScene(QGraphicsScene):
                     _edge_pen(edge_type),
                 )
                 line.setZValue(-1.0)
-                self._edges.append(line)
+                self._edges.append((line, edge_type))
 
         # Apply active layers now that all nodes are in the scene.
         for loc_id in self._nodes:
@@ -771,6 +814,60 @@ class MapScene(QGraphicsScene):
             self._nodes[old_loc].set_actors(self._location_actors[old_loc])
             if "actors" in self._active_layers:
                 self._apply_node_layers(old_loc)
+
+    def set_active_actors(self, actor_ids: list[str]) -> None:
+        """Marks the given actor ids as currently taking their turn.
+
+        Their satellite markers are redrawn with a thick red border. Pass an
+        empty list to clear the highlight (e.g. at end of turn).
+
+        Args:
+            actor_ids: Actor identifiers acting this turn (a monster group's
+                       turn highlights all of its live instance tokens).
+        """
+        old_ids = self._active_actor_ids
+        new_ids = set(actor_ids)
+        if old_ids == new_ids:
+            return
+        self._active_actor_ids = new_ids
+        if "actors" not in self._active_layers:
+            return
+        for aid in old_ids | new_ids:
+            loc_id = self._marker_locations.get(aid)
+            if loc_id is not None and loc_id in self._nodes:
+                self._apply_node_layers(loc_id)
+
+    def set_selected_actor(self, actor_id: str) -> None:
+        """Marks *actor_id* as selected by the player.
+
+        Its satellite marker is redrawn with a thick accent-coloured border.
+        Pass an empty string to clear the highlight.
+        """
+        old_id = self._selected_actor_id
+        if old_id == actor_id:
+            return
+        self._selected_actor_id = actor_id
+        if "actors" not in self._active_layers:
+            return
+        for aid in (old_id, actor_id):
+            if not aid:
+                continue
+            loc_id = self._marker_locations.get(aid)
+            if loc_id is not None and loc_id in self._nodes:
+                self._apply_node_layers(loc_id)
+
+    def refresh_theme(self) -> None:
+        """Re-applies theme-derived colours after the active theme changes.
+
+        ``ThemeManager`` does not notify custom-painted scenes automatically,
+        so callers must invoke this explicitly (e.g. from the window's theme
+        menu handler) to refresh the background, edges, and node layers.
+        """
+        self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
+        for line, edge_type in self._edges:
+            line.setPen(_edge_pen(edge_type))
+        for loc_id in self._nodes:
+            self._apply_node_layers(loc_id)
 
     def update_location(self, loc_id: int, metadata: dict) -> None:
         """Applies new metadata to an existing node and re-applies active layers.
@@ -834,4 +931,7 @@ class MapScene(QGraphicsScene):
             aid: self._actor_label_map.get(aid, aid[0].upper() if aid else "?")
             for aid in actor_ids
         }
-        node.apply_layers(self._active_layers, zone_c, region_c, item_labels, actor_labels)
+        node.apply_layers(
+            self._active_layers, zone_c, region_c, item_labels, actor_labels,
+            self._active_actor_ids, self._selected_actor_id,
+        )

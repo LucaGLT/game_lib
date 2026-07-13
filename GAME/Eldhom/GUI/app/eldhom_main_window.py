@@ -374,6 +374,9 @@ class EldhomMainWindow(QMainWindow):
         self._hero_deck_state: dict[str, dict] = {}
         # Actor whose deck is currently shown in the GmCompDeckModule.
         self._viewing_actor_id: str = ""
+        # Location currently shown in the Info Area panel (re-rendered on
+        # every state_full so it never goes stale until the user changes it).
+        self._area_info_location_id: str = ""
         # Tracks mission_id to detect new-game resets.
         self._current_mission_id: str = ""
 
@@ -622,6 +625,7 @@ class EldhomMainWindow(QMainWindow):
         reg("eldhom.turn.next_actor",         self._on_next_actor)
         reg("eldhom.turn.next_actor",         self._timeline.on_next_actor)
         reg("eldhom.turn.next_actor",         self._log_widget.on_next_actor)
+        reg("eldhom.turn.next_actor",         self._board.on_next_actor)
         reg("eldhom.pg.turn_ended",           self._on_pg_turn_ended)
 
         # Interactive attack / reaction window
@@ -751,6 +755,10 @@ class EldhomMainWindow(QMainWindow):
         next_a = data.get("next_actor", {})
         if next_a:
             self._activate_actor(next_a.get("actor_id", ""), next_a.get("kind", ""))
+        # Refresh the Info Area panel with fresh data for the location the
+        # player currently has open, so it never shows stale actor/HP info.
+        if self._area_info_location_id:
+            self._show_area_info(self._area_info_location_id)
 
     def _on_next_actor(self, msg: dict) -> None:
         data = _extract_data(msg)
@@ -987,6 +995,7 @@ class EldhomMainWindow(QMainWindow):
             self._try_declare_attack(actor_id)
             return
         self._actors.select_actor(actor_id)
+        self._board.set_selected_actor(actor_id)
         self._refresh_deck_display(actor_id)
 
     def _on_victory(self, msg: dict) -> None:
@@ -1127,6 +1136,7 @@ class EldhomMainWindow(QMainWindow):
 
     def _show_area_info(self, location_id: str) -> None:
         """Populates the Info Area panel from the cached full-state snapshot."""
+        self._area_info_location_id = location_id
         name = self._location_names.get(location_id, location_id)
         adj_names = [
             self._location_names.get(a, a)
@@ -1391,7 +1401,7 @@ class EldhomMainWindow(QMainWindow):
         except ImportError:
             QMessageBox.warning(self, "Tema", "ThemeManager non disponibile.")
             return
-        themes = ["scroll", "stone", "dark_moon", "dungeon", "slate"]
+        themes = ["scroll", "stone", "dark_moon", "blood", "techno"]
         from PySide6.QtWidgets import QInputDialog
         theme, ok = QInputDialog.getItem(
             self, "Scegli Tema", "Tema:", themes, 0, False
@@ -1400,6 +1410,7 @@ class EldhomMainWindow(QMainWindow):
             app = QApplication.instance()
             if app:
                 ThemeManager(app).apply_theme(theme)
+                self._board.refresh_theme()
 
     def _on_file_settings(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
