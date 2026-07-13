@@ -27,3 +27,4 @@ add_subdirectory(gmActor)
 # ── Games ──────────────────────────────────────────────────────────────────────
 add_subdirectory(GAME/Tic-Tac-Toe/CoreEngine)
 add_subdirectory(GAME/Dungeon-Crawler-Basic/CoreEngine)
+add_subdirectory(GAME/Eldhom/CoreEngine)
