@@ -71,10 +71,12 @@ class GmActorModule(BaseModule):
             "gmActor.actor.hp_changed",
             "gmActor.actor.status_added",
             "gmActor.actor.status_removed",
+            "gmActor.actor.resource_changed",
             "gmActor.actor.moved_area",
             "gmActor.actor.life_state_changed",
             "gmActor.actor.item_equipped",
             "gmActor.actor.item_unequipped",
+            "gmActor.actor.removed",
         ]
 
     # ── Widget construction ───────────────────────────────────────────────────
@@ -155,7 +157,7 @@ class GmActorModule(BaseModule):
         name_row.addStretch()
         # The actor list is collapsible and hidden by default; the toggle lives
         # in the detail header so it stays reachable when the left pane is gone.
-        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_COLLAPSED_ICON)
+        self._toggle_tree_btn: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
         self._toggle_tree_btn.setToolTip("Mostra/Nascondi lista attori")
         self._toggle_tree_btn.setProperty("toggle_icon", "true")
         self._toggle_tree_btn.setFixedWidth(20)
@@ -200,6 +202,27 @@ class GmActorModule(BaseModule):
         vbox_status.addWidget(self._status_list)
         vbox_right.addWidget(status_group)
 
+        # ── Resources section ──────────────────────────────────────────────
+        resource_group = QGroupBox()
+        vbox_res = QVBoxLayout(resource_group)
+        res_header = QHBoxLayout()
+        res_title = QLabel("Risorse")
+        res_title.setProperty("text_role", "subtitle")
+        res_header.addWidget(res_title)
+        res_header.addStretch()
+        self._resource_expanded: bool = True
+        self._btn_toggle_resource: QPushButton = QPushButton(_TOGGLE_EXPANDED_ICON)
+        self._btn_toggle_resource.setToolTip("Mostra/Nascondi sezione Risorse")
+        self._btn_toggle_resource.setProperty("toggle_icon", "true")
+        self._btn_toggle_resource.setFixedWidth(20)
+        self._btn_toggle_resource.clicked.connect(self._toggle_resource_section)
+        res_header.addWidget(self._btn_toggle_resource)
+        vbox_res.addLayout(res_header)
+        self._resource_list: QListWidget = QListWidget()
+        self._resource_list.setMinimumHeight(70)
+        vbox_res.addWidget(self._resource_list)
+        vbox_right.addWidget(resource_group)
+
         equip_group = QGroupBox()
         vbox_equip = QVBoxLayout(equip_group)
         equip_header = QHBoxLayout()
@@ -221,12 +244,12 @@ class GmActorModule(BaseModule):
 
         splitter.addWidget(right)
         self._splitter: QSplitter = splitter
-        # Default state: actor list hidden, only the detail panel is shown.
-        self._tree_visible: bool = False
-        self._left_panel.setVisible(False)
-        splitter.setSizes([0, 1])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        # Default state: actor list visible alongside the detail panel.
+        self._tree_visible: bool = True
+        self._left_panel.setVisible(True)
+        splitter.setSizes([220, 320])
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
         return container
 
@@ -244,6 +267,8 @@ class GmActorModule(BaseModule):
             self._handle_status_added(data)
         elif tid == "gmActor.actor.status_removed":
             self._handle_status_removed(data)
+        elif tid == "gmActor.actor.resource_changed":
+            self._handle_resource_changed(data)
         elif tid == "gmActor.actor.moved_area":
             self._handle_moved_area(data)
         elif tid == "gmActor.actor.life_state_changed":
@@ -252,6 +277,8 @@ class GmActorModule(BaseModule):
             self._handle_item_equipped(data)
         elif tid == "gmActor.actor.item_unequipped":
             self._handle_item_unequipped(data)
+        elif tid == "gmActor.actor.removed":
+            self._handle_actor_removed(data)
 
     # ── Private handlers ──────────────────────────────────────────────────────
 
@@ -284,6 +311,7 @@ class GmActorModule(BaseModule):
                 "max_hp": max_hp,
                 "life_state": life_state,
                 "statuses": dict(actor.get("statuses", {})),
+                "resources": dict(actor.get("resources", {})),
                 "equipment": dict(actor.get("equipment", {})),
                 "area_id": str(actor.get("area_id", "")),
             }
@@ -353,6 +381,16 @@ class GmActorModule(BaseModule):
         if self._selected_actor_id() == actor_id:
             self._refresh_status_list(actor_id)
 
+    def _handle_resource_changed(self, data: dict) -> None:
+        actor_id: str = str(data.get("actor_id", ""))
+        if actor_id not in self._actor_data:
+            return
+        resource_id: str = str(data.get("resource_id", ""))
+        new_value: int = int(data.get("new_value", 0))
+        self._actor_data[actor_id].setdefault("resources", {})[resource_id] = new_value
+        if self._selected_actor_id() == actor_id:
+            self._refresh_resource_list(actor_id)
+
     def _handle_moved_area(self, data: dict) -> None:
         actor_id: str = str(data.get("actor_id", ""))
         if actor_id not in self._actor_data:
@@ -387,6 +425,28 @@ class GmActorModule(BaseModule):
         self._actor_data[actor_id]["equipment"].pop(str(data.get("slot", "")), None)
         if self._selected_actor_id() == actor_id:
             self._refresh_equip_list(actor_id)
+
+    def _handle_actor_removed(self, data: dict) -> None:
+        actor_id: str = str(data.get("actor_id", ""))
+        if actor_id not in self._actor_data:
+            return
+        # Remove from tree
+        item: QTreeWidgetItem | None = self._actor_items.pop(actor_id, None)
+        if item is not None:
+            parent = item.parent()
+            if parent is not None:
+                parent.removeChild(item)
+        self._actor_data.pop(actor_id, None)
+        self._refresh_faction_labels()
+        # If this actor was selected, clear the detail panel
+        if self._selected_actor_id() is None:
+            self._detail_name.setText("Seleziona un attore")
+            self._detail_faction.setText("—")
+            self._apply_detail_state("ALIVE")
+            self._hp_bar.set_hp(0, 1)
+            self._status_list.clear()
+            self._resource_list.clear()
+            self._equip_list.clear()
 
     # ── UI helpers ────────────────────────────────────────────────────────────
 
@@ -429,7 +489,7 @@ class GmActorModule(BaseModule):
         """Restores the actor-tree visibility from a previously saved state dict."""
         if self._widget is None:
             return
-        visible = bool(state.get("tree_visible", False))
+        visible = bool(state.get("tree_visible", True))
         self._tree_visible = visible
         self._apply_tree_visibility(visible)
 
@@ -439,6 +499,14 @@ class GmActorModule(BaseModule):
         self._status_list.setVisible(self._status_expanded)
         self._btn_toggle_status.setText(
             _TOGGLE_EXPANDED_ICON if self._status_expanded else _TOGGLE_COLLAPSED_ICON
+        )
+
+    def _toggle_resource_section(self) -> None:
+        """Collapses/expands the Risorse section content."""
+        self._resource_expanded = not self._resource_expanded
+        self._resource_list.setVisible(self._resource_expanded)
+        self._btn_toggle_resource.setText(
+            _TOGGLE_EXPANDED_ICON if self._resource_expanded else _TOGGLE_COLLAPSED_ICON
         )
 
     def _toggle_equip_section(self) -> None:
@@ -497,6 +565,7 @@ class GmActorModule(BaseModule):
             self._detail_faction.setText("—")
             self._apply_detail_state("ALIVE")
             self._hp_bar.set_hp(0, 1)
+
             self._status_list.clear()
             self._equip_list.clear()
 
@@ -521,6 +590,7 @@ class GmActorModule(BaseModule):
         self._apply_detail_state(state)
         self._hp_bar.set_hp(d["current_hp"], d["max_hp"])
         self._refresh_status_list(actor_id)
+        self._refresh_resource_list(actor_id)
         self._refresh_equip_list(actor_id)
 
     def _apply_detail_state(self, state: str) -> None:
@@ -535,6 +605,15 @@ class GmActorModule(BaseModule):
         self._status_list.clear()
         for status_id, stacks in self._actor_data[actor_id]["statuses"].items():
             self._status_list.addItem(f"{status_id} x{stacks}")
+
+    def _refresh_resource_list(self, actor_id: str) -> None:
+        self._resource_list.clear()
+        resources: dict = self._actor_data[actor_id].get("resources", {})
+        if not resources:
+            self._resource_list.addItem("(nessuna risorsa)")
+            return
+        for res_id, value in sorted(resources.items()):
+            self._resource_list.addItem(f"{res_id}: {value}")
 
     def _refresh_equip_list(self, actor_id: str) -> None:
         self._equip_list.clear()

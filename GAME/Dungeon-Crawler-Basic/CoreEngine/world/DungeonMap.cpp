@@ -6,7 +6,9 @@
 #include "world/DungeonMap.hpp"
 
 #include <algorithm>
+#include <queue>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace gmDungeonBasic
 {
@@ -64,6 +66,47 @@ bool DungeonMap::is_adjacent(const std::string& from_id, const std::string& to_i
 		return false;
 	}
 	return _map.are_adjacent(location_of(from_id), location_of(to_id));
+}
+
+bool DungeonMap::is_reachable_within(const std::string& from_id,
+                                     const std::string& to_id,
+                                     int                max_hops) const
+{
+	if (max_hops < 1 || !has_room(from_id) || !has_room(to_id))
+	{
+		return false;
+	}
+	if (from_id == to_id)
+	{
+		return true;
+	}
+	// BFS over the string-keyed adjacency graph.
+	std::unordered_set<std::string> visited;
+	std::queue<std::pair<std::string, int>> frontier; // (room_id, hops_used)
+	frontier.push({from_id, 0});
+	visited.insert(from_id);
+	while (!frontier.empty())
+	{
+		const auto [current, hops] = frontier.front();
+		frontier.pop();
+		if (hops >= max_hops)
+		{
+			continue;
+		}
+		for (const std::string& neighbour : rooms_adjacent_to(current))
+		{
+			if (neighbour == to_id)
+			{
+				return true;
+			}
+			if (visited.find(neighbour) == visited.end())
+			{
+				visited.insert(neighbour);
+				frontier.push({neighbour, hops + 1});
+			}
+		}
+	}
+	return false;
 }
 
 bool DungeonMap::room_has_tag(const std::string& room_id, const std::string& tag) const

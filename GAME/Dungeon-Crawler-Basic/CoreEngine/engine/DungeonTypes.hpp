@@ -92,6 +92,14 @@ constexpr const char* END_TURN  = "dungeon.end_turn";
 constexpr const char* AREA_SELECTED     = "gmMap.ui.area_selected";
 /// @brief Request the contents of a map area. data: { area_id: string, request_id?: string }
 constexpr const char* AREA_INFO_REQUEST = "gmMap.area.info.request";
+/// @brief Play a card from hand. data: { hero_id: string, card_id: string, target_id?: string }
+constexpr const char* PLAY_CARD = "dungeon.play_card";
+/// @brief Declare an attack. data: { attacker_id, target_id, card_id?, card_damage?: int }
+constexpr const char* ATTACK   = "dungeon.attack";
+/// @brief Reactive defense choice. data: { defender_id, mode: "reduce"|"cancel", block?: int }
+constexpr const char* DEFEND   = "dungeon.defend";
+/// @brief Decline to defend (take full damage). data: { defender_id }
+constexpr const char* DEFEND_PASS = "dungeon.defend.pass";
 } // namespace command_id
 
 // ── Event identifiers (CoreEngine → GUI) ─────────────────────────────────────
@@ -129,9 +137,26 @@ constexpr const char* TURN_ENDED        = "dungeon.turn.ended";
 constexpr const char* ACTION_REJECTED   = "dungeon.action.rejected";
 /// @brief The dungeon session has ended. data: { outcome: string }
 constexpr const char* GAME_OVER         = "dungeon.game.over";
+/// @brief A card was played and its effects applied. data: { hero_id, card_id, effects_applied[] }
+constexpr const char* CARD_PLAYED       = "dungeon.card.played";
+/// @brief A card play was rejected. data: { hero_id, card_id, reason: string }
+constexpr const char* CARD_REJECTED     = "dungeon.card.rejected";
 /// @brief Contents of a selected map area (view-only response to AREA_INFO_REQUEST).
 ///        data: { area_id, actors: [...], interactables: [...], request_id? }
 constexpr const char* AREA_INFO_RESPONSE = "gmMap.area.info.response";
+/// @brief An attack has been declared. data: { attacker_id, defender_id, source, base_damage }
+constexpr const char* ATTACK_DECLARED       = "dungeon.attack.declared";
+/// @brief A reactive defense window has opened.
+///        data: { defender_id, attacker_id, incoming_damage, can_pass, can_cancel }
+constexpr const char* DEFENSE_WINDOW_OPENED = "dungeon.defense.window.opened";
+/// @brief The reactive defense window has closed. data: { defender_id }
+constexpr const char* DEFENSE_WINDOW_CLOSED = "dungeon.defense.window.closed";
+/// @brief An attack has been resolved.
+///        data: { attacker_id, defender_id, base_damage, final_damage, cancelled, hp_after }
+constexpr const char* ATTACK_RESOLVED       = "dungeon.attack.resolved";
+/// @brief A non-hero actor was removed from the dungeon (reached 0 HP).
+///        data: { actor_id: string }
+constexpr const char* ACTOR_REMOVED         = "dungeon.actor.removed";
 } // namespace event_id
 
 // ── Utility helpers ───────────────────────────────────────────────────────────

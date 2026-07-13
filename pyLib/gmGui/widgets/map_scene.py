@@ -7,6 +7,7 @@ Each node supports five visual filter modes: terrain, items, actors, zone, regio
 from __future__ import annotations
 
 import math
+from collections import deque
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPen
@@ -22,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from ..theme_manager import resolve_semantic_color
 
-_NODE_DIAMETER: int = 32
+_NODE_DIAMETER: int = 40
 _NODE_RADIUS: float = _NODE_DIAMETER / 2.0
 # Item satellites — small red badges
 _SAT_D_ITEM: int = 14
@@ -148,6 +149,30 @@ def _build_palette(names: set[str], palette_tokens: list[str]) -> dict[str, QCol
     }
 
 
+# ── Edge type colours ─────────────────────────────────────────────────────────
+#
+# Edge types passed as the optional third element of each edge tuple:
+#   "FREE"          — open passage within the same zone
+#   "CLOSED_DOOR"   — door between zones, traversable by PG (costs 1 extra ⌛)
+#   "LOCKED_DOOR"   — door locked by a mechanic; neither side can pass
+#
+_EDGE_FREE_COLOR: QColor        = QColor("#707070")   # neutral grey
+_EDGE_CLOSED_DOOR_COLOR: QColor = QColor("#c89030")   # amber
+_EDGE_LOCKED_DOOR_COLOR: QColor = QColor("#c03030")   # red
+
+
+def _edge_pen(edge_type: str) -> QPen:
+    """Returns the QPen appropriate for an edge of the given type string."""
+    if edge_type == "CLOSED_DOOR":
+        return QPen(_EDGE_CLOSED_DOOR_COLOR, 2)
+    if edge_type == "LOCKED_DOOR":
+        pen = QPen(_EDGE_LOCKED_DOOR_COLOR, 2)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        return pen
+    # FREE (default)
+    return QPen(_EDGE_FREE_COLOR, 1)
+
+
 def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]]:
     """Distributes *n* positions evenly on a circle of the given radius."""
     if n == 0:
@@ -157,6 +182,146 @@ def _circle_positions(n: int, radius: float = 120.0) -> list[tuple[float, float]
         angle = 2.0 * math.pi * i / n
         positions.append((radius + radius * math.cos(angle),
                           radius + radius * math.sin(angle)))
+    return positions
+
+
+def _bfs_radial_layout(
+    adj: dict[int, list[int]],
+    all_ids: list[int],
+    step: float = 90.0,
+) -> dict[int, tuple[float, float]]:
+    """BFS radial tree layout starting from the first node in *all_ids*.
+
+    Places the root at the origin, then spreads children outward at priority
+    angles (Qt screen coordinates, y increases downward):
+
+    * Cardinal: E (0°), N (270°), W (180°), S (90°)
+    * Diagonal: NE (315°), NW (225°), SW (135°), SE (45°)
+    * Fine:     330°, 300°, 240°, 210°, 150°, 120°, 60°, 30°
+
+    Each node avoids placing children in the direction it was approached from
+    (±75° around the back-direction).  Before accepting a candidate position,
+    the algorithm checks that no already-placed node centre is within
+    ``_NODE_DIAMETER + 4`` pixels; if a collision is detected it tries the
+    next available angle, and if all angles at ``step`` collide it retries at
+    ``step * 1.5`` then ``step * 2``.  Nodes not reachable from the root are
+    placed in a row below the main layout (with the same collision avoidance).
+
+    Args:
+        adj:     Adjacency dict ``{node_id: [neighbor_ids]}``.  Undirected.
+        all_ids: Ordered list of all node IDs (disconnected nodes included).
+        step:    Pixel distance between adjacent nodes.
+
+    Returns:
+        ``{node_id: (x, y)}`` with root at ``(0, 0)``.
+    """
+    if not all_ids:
+        return {}
+
+    # Minimum allowed centre-to-centre distance to avoid visual overlap.
+    _MIN_DIST: float = float(_NODE_DIAMETER) + 4.0
+
+    # Priority angles in Qt screen space (y-down):
+    # 0°=east, 270°=north(up), 180°=west, 90°=south(down)
+    _PRIORITY: tuple[float, ...] = (
+        0.0, 270.0, 180.0, 90.0,
+        315.0, 225.0, 135.0, 45.0,
+        330.0, 300.0, 240.0, 210.0, 150.0, 120.0, 60.0, 30.0,
+    )
+
+    positions: dict[int, tuple[float, float]] = {}
+    entry_angle: dict[int, float] = {}
+
+    def _is_free(x: float, y: float) -> bool:
+        """Returns True when (x, y) does not overlap any already-placed node."""
+        return all(
+            math.hypot(x - px, y - py) >= _MIN_DIST
+            for px, py in positions.values()
+        )
+
+    def _place(
+        cx_parent: float,
+        cy_parent: float,
+        angle_pool: list[float],
+    ) -> tuple[float, float, float]:
+        """Finds the first collision-free position for a child of *parent*.
+
+        Tries each angle in *angle_pool* at distances ``step``, ``step*1.5``,
+        ``step*2``.  Falls back to the first angle at ``step*3`` when all
+        combinations collide.
+
+        Returns:
+            ``(nx, ny, used_angle_deg)``
+        """
+        for trial_dist in (step, step * 1.5, step * 2.0):
+            for angle_deg in angle_pool:
+                angle_rad = math.radians(angle_deg)
+                nx = cx_parent + trial_dist * math.cos(angle_rad)
+                ny = cy_parent + trial_dist * math.sin(angle_rad)
+                if _is_free(nx, ny):
+                    return nx, ny, angle_deg
+        # Last resort: first angle at 3× step
+        angle_rad = math.radians(angle_pool[0])
+        return (
+            cx_parent + step * 3.0 * math.cos(angle_rad),
+            cy_parent + step * 3.0 * math.sin(angle_rad),
+            angle_pool[0],
+        )
+
+    root = all_ids[0]
+    positions[root] = (0.0, 0.0)
+    visited: set[int] = {root}
+    queue: deque[int] = deque([root])
+
+    while queue:
+        node = queue.popleft()
+        cx_n, cy_n = positions[node]
+        unvisited = [nb for nb in adj.get(node, []) if nb not in visited]
+        if not unvisited:
+            continue
+
+        if node == root:
+            available = list(_PRIORITY)
+        else:
+            ea = entry_angle[node]
+            back = (ea + 180.0) % 360.0
+            # Keep angles at least 75° away from the back-direction
+            available = [
+                a for a in _PRIORITY
+                if abs((a - back + 180.0) % 360.0 - 180.0) > 75.0
+            ]
+            if not available:
+                available = list(_PRIORITY)
+
+        used_angles: set[float] = set()
+        for neighbor in unvisited:
+            # Exclude angles already consumed by earlier siblings of this parent.
+            remaining = [a for a in available if a not in used_angles]
+            if not remaining:
+                remaining = list(available)   # recycle when pool exhausted
+            nx, ny, used_angle = _place(cx_n, cy_n, remaining)
+            positions[neighbor] = (nx, ny)
+            entry_angle[neighbor] = used_angle
+            used_angles.add(used_angle)
+            visited.add(neighbor)
+            queue.append(neighbor)
+
+    # Disconnected nodes: place in a row below the main graph
+    unpositioned = [n for n in all_ids if n not in positions]
+    if unpositioned:
+        if positions:
+            min_x = min(p[0] for p in positions.values())
+            max_y = max(p[1] for p in positions.values())
+        else:
+            min_x, max_y = 0.0, 0.0
+        for k, n in enumerate(unpositioned):
+            cx = min_x + k * step
+            cy = max_y + step * 1.5
+            # Nudge right if this disconnected slot also collides.
+            while not _is_free(cx, cy):
+                cx += step
+            positions[n] = (cx, cy)
+
     return positions
 
 
@@ -176,6 +341,7 @@ class LocationNode(QGraphicsEllipseItem):
         cy: float,
         tags: list[str] | None = None,
         item_ids: list[str] | None = None,
+        label: str | None = None,
         parent: QGraphicsItem | None = None,
     ) -> None:
         d = float(_NODE_DIAMETER)
@@ -192,8 +358,13 @@ class LocationNode(QGraphicsEllipseItem):
         self._border_color: QColor = resolve_semantic_color("border")
         self.setBrush(QBrush(_terrain_color_from_tags(self._tags)))
         self.setPen(QPen(self._border_color, 1))
-        # Centred location-id label.
-        lbl = QGraphicsSimpleTextItem(str(loc_id), self)
+        # Centred location label (supplied string label or integer id as fallback).
+        _lbl_text = label if label else str(loc_id)
+        _lbl_font = QFont()
+        _lbl_font.setPointSize(7)
+        _lbl_font.setBold(True)
+        lbl = QGraphicsSimpleTextItem(_lbl_text, self)
+        lbl.setFont(_lbl_font)
         br = lbl.boundingRect()
         lbl.setPos(
             cx - d / 2.0 + (d - br.width()) / 2.0,
@@ -462,11 +633,38 @@ class MapScene(QGraphicsScene):
 
         self.setBackgroundBrush(QBrush(resolve_semantic_color("panel")))
 
-        positions = _circle_positions(len(locations))
+        # ── Pre-compute node positions ─────────────────────────────────────────
+        # Use BFS radial layout when no explicit x/y coordinates are provided.
+        _any_explicit = any("x" in loc and "y" in loc for loc in locations)
+        _id_order = [
+            int(loc.get("location_id", i)) for i, loc in enumerate(locations)
+        ]
+        if not _any_explicit and _id_order:
+            _adj_layout: dict[int, list[int]] = {}
+            for _pair in edges:
+                _pa, _pb = int(_pair[0]), int(_pair[1])
+                _adj_layout.setdefault(_pa, []).append(_pb)
+                _adj_layout.setdefault(_pb, []).append(_pa)
+            _bfs = _bfs_radial_layout(_adj_layout, _id_order, step=90.0)
+            if _bfs:
+                _mx = min(p[0] for p in _bfs.values())
+                _my = min(p[1] for p in _bfs.values())
+                _bfs = {
+                    k: (v[0] - _mx + 60.0, v[1] - _my + 60.0)
+                    for k, v in _bfs.items()
+                }
+        else:
+            _bfs = {}
+        _circle_fb = _circle_positions(len(locations))
+
         for i, loc in enumerate(locations):
             loc_id = int(loc.get("location_id", i))
-            cx = float(loc.get("x", positions[i][0]))
-            cy = float(loc.get("y", positions[i][1]))
+            if "x" in loc and "y" in loc:
+                cx, cy = float(loc["x"]), float(loc["y"])
+            elif _bfs:
+                cx, cy = _bfs.get(loc_id, (60.0 + i * 90.0, 60.0))
+            else:
+                cx, cy = _circle_fb[i] if i < len(_circle_fb) else (60.0, 60.0)
             meta: dict = loc.get("metadata", {})
             if not isinstance(meta, dict):
                 meta = {}
@@ -495,7 +693,8 @@ class MapScene(QGraphicsScene):
                 region_token = loc.get("region_color_token", "")
                 if region_token and region not in self._region_explicit_colors:
                     self._region_explicit_colors[region] = resolve_semantic_color(region_token)
-            node = LocationNode(loc_id, cx, cy, tags, items)
+            node_label = str(loc.get("label", "")) or str(loc_id)
+            node = LocationNode(loc_id, cx, cy, tags, items, label=node_label)
             self.addItem(node)
             self._nodes[loc_id] = node
 
@@ -512,12 +711,13 @@ class MapScene(QGraphicsScene):
 
         for pair in edges:
             a, b = int(pair[0]), int(pair[1])
+            edge_type = str(pair[2]) if len(pair) > 2 else "FREE"
             if a in self._nodes and b in self._nodes:
                 cx_a, cy_a = self._nodes[a].center()
                 cx_b, cy_b = self._nodes[b].center()
                 line = self.addLine(
                     cx_a, cy_a, cx_b, cy_b,
-                    QPen(resolve_semantic_color("border"), 1),
+                    _edge_pen(edge_type),
                 )
                 line.setZValue(-1.0)
                 self._edges.append(line)

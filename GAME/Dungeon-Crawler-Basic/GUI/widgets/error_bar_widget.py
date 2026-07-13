@@ -1,9 +1,7 @@
 """Dungeon Crawler Basic — error/feedback bar widget.
 
-ErrorBarWidget displays short-lived validation and feedback messages at the
-bottom of the main window (embedded in the status bar). It shows engine
-rejection reasons (``dungeon.action.rejected``) and other non-fatal
-notifications in a single line.
+ErrorBarWidget displays validation and feedback messages in the Messaggi dock.
+Messages stay visible until replaced by the next one.
 
 All visual styling is applied exclusively through QSS.
 """
@@ -15,24 +13,19 @@ from PySide6.QtWidgets import QWidget
 class ErrorBarWidget(QWidget):
     """Single-line feedback bar for action rejections and engine notifications.
 
-    Messages are shown for a fixed duration and then cleared automatically.
-    The bar is visually distinct when showing an error (styled via QSS
-    property changes) and neutral when empty.
+    Messages remain visible until the next message arrives or clear() is called
+    explicitly.  There is no auto-dismiss timer.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Creates the bar in its empty, neutral state."""
         super().__init__(parent)
         from PySide6.QtWidgets import QHBoxLayout, QLabel
-        from PySide6.QtCore import QTimer
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 0, 4, 0)
         self._label = QLabel()
         self._label.setWordWrap(False)
         layout.addWidget(self._label)
-        self._timer = QTimer(self)
-        self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self.clear)
 
     def on_envelope(self, msg: dict) -> None:
         """Receives a decoded engine event and shows feedback if relevant."""
@@ -41,15 +34,13 @@ class ErrorBarWidget(QWidget):
             self.show_error(data.get("reason", "Action rejected"))
 
     def show_error(self, message: str) -> None:
-        """Displays an error message for 4 seconds."""
+        """Displays an error message; stays until the next message or clear()."""
         self._label.setText(f"⚠ {message}")
-        self._timer.start(4000)
 
     def show_info(self, message: str) -> None:
-        """Displays a neutral informational message for 3 seconds."""
+        """Displays a neutral informational message; stays until the next message or clear()."""
         self._label.setText(message)
-        self._timer.start(3000)
 
     def clear(self) -> None:
-        """Hides any displayed message."""
+        """Removes any displayed message."""
         self._label.clear()

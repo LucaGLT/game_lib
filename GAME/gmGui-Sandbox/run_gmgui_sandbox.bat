@@ -20,7 +20,7 @@ echo [gmGui-Sandbox] Attendo apertura receiver (porta %EVENT_PORT%)...
 timeout /t 2 /nobreak >nul
 
 echo [gmGui-Sandbox] Avvio mock engine eventi...
-start "gmGui Sandbox - MockEngine" cmd /c "cd /d "%ROOT%" && set PYTHONPATH=%PYLIB% && "%PY%" "%SANDBOX%\mock_engine.py" --port %EVENT_PORT% --cmd-port %COMMAND_PORT%"
+start "gmGui Sandbox - MockEngine" cmd /c "cd /d "%ROOT%" && set PYTHONPATH=%PYLIB% && "%PY%" "%SANDBOX%\mock_engine.py" --port %EVENT_PORT% --cmd-port %COMMAND_PORT% --cards "%SANDBOX%\data\cards_dominion.json""
 
 echo [gmGui-Sandbox] Avviato.
 exit /b 0

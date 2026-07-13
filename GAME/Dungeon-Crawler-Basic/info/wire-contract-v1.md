@@ -1,7 +1,7 @@
 # Wire Contract v1 — Dungeon Crawler Basic
 
-**Version:** 1.0.0
-**Status:** Frozen ✅ (FASE A)
+**Version:** 1.1.0
+**Status:** Frozen ✅ (FASE A) — combat messages added (Phase 4, additive only)
 **Namespace:** `gmDungeonBasic`
 
 > This document is the **single source of truth** for the communication protocol
@@ -138,6 +138,80 @@ Signals that the hero has finished their actions for this turn.
 
 ---
 
+### dungeon.attack
+
+> **Added in v1.1.0 (Phase 4).**
+
+Declares an attack from one actor against an enemy. The attack does not resolve
+immediately: the engine opens a reactive **defense window** (see
+`dungeon.defense.window.opened`) and rejects any command other than
+`dungeon.defend` / `dungeon.defend.pass` / `dungeon.area.info` until the window
+is closed.
+
+```json
+{
+  "typeId": "dungeon.attack",
+  "data":   {
+    "attacker_id": "hero",
+    "target_id":   "monster_1",
+    "card_id":     "colpo_efficace",
+    "card_damage": 2
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `attacker_id` | string | yes | Attacking actor id (alias: `hero_id`). |
+| `target_id` | string | yes | Defending enemy actor id. |
+| `card_id` | string | no | Card driving the attack. Empty = base attack (`source: "base"`). |
+| `card_damage` | int | no | Bonus damage from the card. Defaults to `0`. |
+
+Base damage is `max(0, attacker.attack + card_damage)`.
+
+---
+
+### dungeon.defend
+
+> **Added in v1.1.0 (Phase 4).**
+
+Resolves an open defense window. Valid only while a `dungeon.attack` is pending.
+
+```json
+{
+  "typeId": "dungeon.defend",
+  "data":   { "defender_id": "monster_1", "mode": "reduce", "block": 2 }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `defender_id` | string | no | Must match the pending attack target. Defaults to it. |
+| `mode` | string | no | `"reduce"` (default) applies defense + block; `"cancel"` nullifies the attack. |
+| `block` | int | no | Extra damage reduction (cards). Ignored when `mode` is `"cancel"`. |
+
+---
+
+### dungeon.defend.pass
+
+> **Added in v1.1.0 (Phase 4).**
+
+Declines active defense; the defender takes full damage minus their passive
+defense stat. Valid only while a `dungeon.attack` is pending.
+
+```json
+{
+  "typeId": "dungeon.defend.pass",
+  "data":   { "defender_id": "monster_1" }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `defender_id` | string | no | Must match the pending attack target. Defaults to it. |
+
+---
+
 ## Events (CoreEngine → GUI)
 
 ### dungeon.session.started
@@ -184,6 +258,8 @@ Full roster snapshot. Emitted once after map snapshot.
       "kind":     "HERO",
       "hp":       10,
       "max_hp":   10,
+      "attack":   4,
+      "defense":  1,
       "location": "room_1",
       "tags":     [],
       "statuses": []
@@ -193,6 +269,8 @@ Full roster snapshot. Emitted once after map snapshot.
       "kind":     "MONSTER",
       "hp":       5,
       "max_hp":   5,
+      "attack":   3,
+      "defense":  0,
       "location": "room_2",
       "tags":     [],
       "statuses": []
@@ -295,6 +373,77 @@ The session ended.
 
 ---
 
+### dungeon.attack.declared
+
+> **Added in v1.1.0 (Phase 4).**
+
+An attack was validated and is now pending defense resolution.
+
+```json
+{
+  "attacker_id": "hero",
+  "defender_id": "monster_1",
+  "source":      "colpo_efficace",
+  "base_damage": 6
+}
+```
+
+`source` is the card id, or `"base"` for a base attack.
+
+---
+
+### dungeon.defense.window.opened
+
+> **Added in v1.1.0 (Phase 4).**
+
+The defender must now react with `dungeon.defend` or `dungeon.defend.pass`.
+
+```json
+{
+  "defender_id":     "monster_1",
+  "attacker_id":     "hero",
+  "incoming_damage": 6,
+  "can_pass":        true,
+  "can_cancel":      true
+}
+```
+
+---
+
+### dungeon.defense.window.closed
+
+> **Added in v1.1.0 (Phase 4).**
+
+The defense window is closed; emitted just before `dungeon.attack.resolved`.
+
+```json
+{ "defender_id": "monster_1" }
+```
+
+---
+
+### dungeon.attack.resolved
+
+> **Added in v1.1.0 (Phase 4).**
+
+Final outcome of the attack after defense.
+
+```json
+{
+  "attacker_id":  "hero",
+  "defender_id":  "monster_1",
+  "base_damage":  6,
+  "final_damage": 4,
+  "cancelled":    false,
+  "hp_after":     1
+}
+```
+
+When `cancelled` is `true`, `final_damage` is `0`. A `dungeon.actor.hp_changed`
+and a full `dungeon.actor.snapshot` are emitted immediately afterwards.
+
+---
+
 ## Map JSON format (dungeon definition file)
 
 ```json
@@ -314,32 +463,40 @@ The session ended.
   ],
   "actors": [
     {
-      "id":     "hero",
-      "kind":   "HERO",
-      "hp":     10,
-      "max_hp": 10,
-      "room":   "room_1",
-      "tags":   ["has_potion", "bigword_available"]
+      "id":      "hero",
+      "kind":    "HERO",
+      "hp":      10,
+      "max_hp":  10,
+      "attack":  4,
+      "defense": 1,
+      "room":    "room_1",
+      "tags":    ["has_potion", "bigword_available"]
     },
     {
-      "id":     "monster_1",
-      "kind":   "MONSTER",
-      "hp":     5,
-      "max_hp": 5,
-      "room":   "room_2",
-      "tags":   []
+      "id":      "monster_1",
+      "kind":    "MONSTER",
+      "hp":      5,
+      "max_hp":  5,
+      "attack":  3,
+      "defense": 0,
+      "room":    "room_2",
+      "tags":    []
     },
     {
-      "id":     "boss",
-      "kind":   "BOSS_MONSTER",
-      "hp":     20,
-      "max_hp": 20,
-      "room":   "room_5",
-      "tags":   []
+      "id":      "boss",
+      "kind":    "BOSS_MONSTER",
+      "hp":      20,
+      "max_hp":  20,
+      "attack":  6,
+      "defense": 2,
+      "room":    "room_5",
+      "tags":    []
     }
   ]
 }
 ```
+
+`attack` and `defense` default to `0` when omitted (added in v1.1.0).
 
 ---
 
@@ -348,7 +505,6 @@ The session ended.
 The following actions are **not** part of this contract and must not appear
 in any command or event:
 
-- `dungeon.attack` / Attack rule
-- `dungeon.defend` / Defend rule
-
-These will be defined in a future **contract v2** after explicit approval.
+- (none) — combat (`dungeon.attack` / `dungeon.defend` / `dungeon.defend.pass`)
+  was added in **v1.1.0** (Phase 4) as an additive, backward-compatible
+  extension. See the Combat sections above.

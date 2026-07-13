@@ -1,0 +1,99 @@
+{
+  "cards": [
+    {
+      "card_id": "colpo_efficace",
+      "name": "Colpo Efficace",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_colpo_efficace",
+      "description": "Colpo in mischia su un bersaglio adiacente.\nATTACCO : Target: 1 | Danno: 2 | Distanza: 1",
+      "rules": ["r_danno_2"]
+    },
+    {
+      "card_id": "passo_veloce",
+      "name": "Passo Veloce",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_passo_veloce",
+      "description": "Spostati velocemente per due locazioni consecutive.\nMUOVI : Locazioni: 2 | Distanza max: 2",
+      "rules": ["r_muovi_2_locazioni"]
+    },
+    {
+      "card_id": "parata",
+      "name": "Parata",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_parata",
+      "description": "Assumi una posizione difensiva che riduce il prossimo attacco subito.\nDIFESA : Target: SELF | Stato: -1 Danno in Difesa | Durata: fino al prossimo attacco",
+      "rules": ["r_applica_difeso"]
+    },
+    {
+      "card_id": "pozione_di_cura",
+      "name": "Pozione di Cura",
+      "type": "ITEM",
+      "action_cost": 1,
+      "rule_group_id": "rg_pozione_di_cura",
+      "description": "Bevi la pozione per recuperare punti vita in combattimento.\nCURA : Target: SELF | PV: +3 | Costo: 1 azione",
+      "rules": ["r_cura_3"]
+    },
+    {
+      "card_id": "pugno_di_ferro",
+      "name": "Pugno di Ferro",
+      "type": "ACTION",
+      "action_cost": 2,
+      "rule_group_id": "rg_pugno_di_ferro",
+      "description": "Colpo devastante che richiede tutta la tua forza per abbattersi sul nemico.\nATTACCO : Target: 1 | Danno: 4 | Distanza: 1 | Costo: 2 azioni",
+      "rules": ["r_danno_4"]
+    },
+    {
+      "card_id": "grido_di_guerra",
+      "name": "Grido di Guerra",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_grido_di_guerra",
+      "description": "Lanci un grido che infonde forza: il prossimo attacco questo turno infligge +2 danni.\nBUFF : Target: SELF | Stato: Energico | Bonus: +2 Danno | Durata: fino al prossimo attacco",
+      "rules": ["r_applica_energico"]
+    },
+    {
+      "card_id": "tiro_rapido",
+      "name": "Tiro Rapido",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_tiro_rapido",
+      "description": "Scocca una freccia contro un nemico nella tua visuale.\nATTACCO A DISTANZA : Target: 1 | Danno: 2 | Portata: 3 Locazioni",
+      "rules": ["r_danno_distanza_2"]
+    },
+    {
+      "card_id": "veleno",
+      "name": "Veleno",
+      "type": "ACTION",
+      "action_cost": 1,
+      "rule_group_id": "rg_veleno",
+      "description": "Inietti veleno nel bersaglio: perde 1 PV all'inizio di ogni suo turno.\nSTATUS : Target: 1 | Stato: Avvelenato | Effetto: -1 PV/turno | Distanza: 1",
+      "rules": ["r_applica_avvelenato"]
+    },
+    {
+      "card_id": "furia_cieca",
+      "name": "Furia Cieca",
+      "type": "ACTION",
+      "action_cost": 2,
+      "rule_group_id": "rg_furia_cieca",
+      "description": "Ti scateni in un turbine di colpi che investe tutti i nemici attorno a te.\nATTACCO AD AREA : Target: Tutti i Nemici Adiacenti | Danno: 2 | Portata: 1 | Costo: 2 azioni",
+      "rules": ["r_danno_aoe_2"]
+    },
+    {
+      "card_id": "scudo_antico",
+      "name": "Scudo Antico",
+      "type": "ITEM",
+      "action_cost": 1,
+      "rule_group_id": "rg_scudo_antico",
+      "description": "Impugni uno scudo rinforzato che assorbe i colpi subiti nei prossimi 2 attacchi.\nEQUIPAGGIA : Target: SELF | Tag: scudo_equipaggiato | Riduzione: -1 PV/attacco | Cariche: 2",
+      "rules": ["r_equipaggia_scudo"]
+    }
+  ],
+  "initial_hand": [
+    "colpo_efficace",
+    "passo_veloce",
+    "pozione_di_cura"
+  ]
+}

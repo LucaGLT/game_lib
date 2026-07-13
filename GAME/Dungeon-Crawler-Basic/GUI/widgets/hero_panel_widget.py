@@ -56,14 +56,38 @@ class HeroPanelWidget(QWidget):
             translated = self._translate_equipped(data)
             if translated is not None:
                 self._module.on_envelope(translated)
+        elif type_id == "dungeon.turn.started":
+            actor_id = str(data.get("actor_id", ""))
+            actions_remaining = int(data.get("actions_remaining", 2))
+            if actor_id:
+                self._current_turn_actor: str = actor_id
+                self._emit_actions_resource(actor_id, actions_remaining)
         elif type_id == "dungeon.actor.moved":
             translated = self._translate_moved(data)
             if translated is not None:
                 self._module.on_envelope(translated)
+        elif type_id == "dungeon.actor.removed":
+            actor_id = str(data.get("actor_id", ""))
+            if actor_id:
+                self._actor_cache.pop(actor_id, None)
+                self._module.on_envelope(
+                    {"typeId": "gmActor.actor.removed", "data": {"actor_id": actor_id}}
+                )
 
     def select_actor(self, actor_id: str) -> None:
         """Programmatically selects *actor_id* in the embedded actor tree."""
         self._module.select_actor(actor_id)
+
+    def update_actions_remaining(self, actor_id: str, remaining: int) -> None:
+        """Updates the 'azioni' resource for *actor_id* in the Risorse section."""
+        self._emit_actions_resource(actor_id, remaining)
+
+    def _emit_actions_resource(self, actor_id: str, remaining: int) -> None:
+        self._module.on_envelope({
+            "typeId": "gmActor.actor.resource_changed",
+            "data": {"actor_id": actor_id, "resource_id": "azioni",
+                     "new_value": remaining},
+        })
 
     def reset(self) -> None:
         """Resets the embedded module to a clean actor state."""
@@ -92,13 +116,17 @@ class HeroPanelWidget(QWidget):
             entry = {
                 "actor_id": actor_id,
                 "faction_id": self._faction_for_kind(str(actor.get("kind", ""))),
-                "name": actor_id,
+                "name": str(actor.get("label", actor_id)),
                 "current_hp": current_hp,
                 "max_hp": max_hp,
                 "life_state": "DEAD" if current_hp <= 0 else "ALIVE",
                 "statuses": status_map,
                 "equipment": self._equipment_from_tags(tags),
                 "area_id": str(actor.get("location", "")),
+                "resources": {
+                    "attacco": int(actor.get("attack", 0)),
+                    "difesa": int(actor.get("defense", 0)),
+                },
             }
             self._actor_cache[actor_id] = entry
             actors.append(entry)
@@ -159,6 +187,11 @@ class HeroPanelWidget(QWidget):
     @staticmethod
     def _equipment_from_tags(tags: list[str]) -> dict[str, str]:
         equipment: dict[str, str] = {}
-        if "bigword_available" in tags:
-            equipment["weapon"] = "bigword_available"
+        if "equipped_weapon" in tags:
+            equipment["arma"] = "equipped_weapon"
+        elif "bigword_available" in tags:
+            # Item available to equip but not yet equipped.
+            equipment["arma (inv)"] = "bigword_available"
+        if "scudo_equipaggiato" in tags:
+            equipment["scudo"] = "scudo_equipaggiato"
         return equipment

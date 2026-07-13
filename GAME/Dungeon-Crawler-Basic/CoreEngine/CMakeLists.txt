@@ -103,6 +103,7 @@ set(_DUNGEON_LINK_LIBS
     gmAlea
     gmFlow
     gmRules
+    gmSave
 )
 
 if(WIN32)
@@ -131,6 +132,7 @@ dungeon_add_test(test_actor_roster     test_actor_roster.cpp)
 dungeon_add_test(test_turn_flow        test_turn_flow.cpp)
 dungeon_add_test(test_dungeon_rules    test_dungeon_rules.cpp)
 dungeon_add_test(test_map_loader       test_map_loader.cpp)
+dungeon_add_test(test_dungeon_combat   test_dungeon_combat.cpp)
 
 # ── Python tests via CTest ────────────────────────────────────────────────────
 

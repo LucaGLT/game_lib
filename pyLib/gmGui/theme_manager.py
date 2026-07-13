@@ -384,6 +384,52 @@ QLabel[chip="true"] {{
     padding: 2px 8px;
 }}
 
+/* ── Timeline chips (TimelineWidget) ──────────────────────────── */
+
+QLabel[chip_type="hero"] {{
+    background-color: {theme.panel};
+    border: 1px solid {theme.accent};
+    border-radius: {radius}px;
+    padding: 4px 12px;
+    color: {theme.text};
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 64px;
+}}
+
+QLabel[chip_type="enemy"] {{
+    background-color: {theme.panel};
+    border: 1px solid #b05040;
+    border-radius: {radius}px;
+    padding: 4px 12px;
+    color: {theme.text};
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 64px;
+}}
+
+QLabel[chip_type="hero"][chip_active="true"] {{
+    background-color: {theme.accent};
+    border: 2px solid {theme.accent};
+    border-radius: {radius}px;
+    padding: 4px 12px;
+    color: {theme.background};
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 64px;
+}}
+
+QLabel[chip_type="enemy"][chip_active="true"] {{
+    background-color: #b05040;
+    border: 2px solid #b05040;
+    border-radius: {radius}px;
+    padding: 4px 12px;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 64px;
+}}
+
 QLabel#actor_detail_state {{
     font-weight: 700;
 }}
@@ -673,6 +719,8 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
     # State tokens used by logic widgets and custom-painted scenes.
     if name == "state_success":
         return QColor(Qt.GlobalColor.green)
+    if name == "state_success_dark":
+        return QColor(Qt.GlobalColor.darkGreen)
     if name == "state_warning":
         return QColor(Qt.GlobalColor.yellow)
     if name == "state_error":
