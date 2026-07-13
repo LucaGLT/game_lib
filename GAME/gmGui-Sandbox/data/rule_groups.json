@@ -1,0 +1,79 @@
+{
+  "_comment": "Definizioni RuleGroup corrispondenti alle carte in cards_dominion.json.",
+  "_format": "group_id corrisponde a Token::rule_group_id in C++; rule_ids = lista di RuleId in gmRules.",
+
+  "rule_groups": [
+    {
+      "group_id": "rg_village",
+      "rule_ids": ["r_add_card_1", "r_add_actions_2"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_desc": "Attivo quando Village è in PlayArea. +1 Carta, +2 Azioni."
+    },
+    {
+      "group_id": "rg_smithy",
+      "rule_ids": ["r_draw_3"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_desc": "Attivo quando Smithy è in PlayArea. Pesca 3 carte."
+    },
+    {
+      "group_id": "rg_market",
+      "rule_ids": ["r_add_card_1", "r_add_action_1", "r_add_buy_1", "r_add_coin_1"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_desc": "+1 Carta, +1 Azione, +1 Acquisto, +1 Moneta mentre Market è in PlayArea."
+    },
+    {
+      "group_id": "rg_witch",
+      "rule_ids": ["r_draw_2", "r_opponents_gain_curse"],
+      "lifecycle": "TRIGGER_BOUND",
+      "trigger_event": "turn.end",
+      "_active_zones": ["PlayArea"],
+      "_desc": "Attivo al gioco di Witch: pesca 2 carte, avversari prendono Maledizione. Si disattiva a fine turno."
+    },
+    {
+      "group_id": "rg_moat",
+      "rule_ids": ["r_block_attack"],
+      "lifecycle": "PERSISTENT",
+      "_active_zones": ["CardHand"],
+      "_note": "In C++ lifecycle=PERSISTENT: il bridge non la disattiva automaticamente.",
+      "_desc": "Blocca attacchi avversari mentre Moat è in mano. Deve essere disattivato esplicitamente."
+    },
+    {
+      "group_id": "rg_cellar",
+      "rule_ids": ["r_add_action_1", "r_discard_and_draw"],
+      "lifecycle": "TRIGGER_BOUND",
+      "trigger_event": "card.effect.resolved",
+      "_active_zones": ["PlayArea"],
+      "_desc": "+1 Azione. Scarta N carte, poi pesca N carte. Si disattiva dopo il primo uso."
+    },
+
+    {
+      "group_id": "rg_copper",
+      "rule_ids": ["r_add_coin_1"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +1 Moneta. Non richiede un'azione per essere giocato."
+    },
+
+    {
+      "group_id": "rg_silver",
+      "rule_ids": ["r_add_coins_2"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +2 Monete. Non richiede un'azione per essere giocato."
+    },
+
+    {
+      "group_id": "rg_gold",
+      "rule_ids": ["r_add_coins_3"],
+      "lifecycle": "TRANSIENT",
+      "_active_zones": ["PlayArea"],
+      "_action_cost": 0,
+      "_desc": "Tesoro: +3 Monete. Non richiede un'azione per essere giocato."
+    }
+  ]
+}

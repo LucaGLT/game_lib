@@ -1,0 +1,131 @@
+{
+  "map_id": "dungeon_02",
+  "rooms": [
+    {
+      "id": "start",
+      "tags": ["start", "terrain:grass"],
+      "adjacent": ["corridor_1"],
+      "zone_id": "External",
+      "region_id": "Extern",
+      "zone_color_token": "map_zone_dark_green",
+      "region_color_token": "map_region_green_ext",
+      "items": []
+    },
+    {
+      "id": "corridor_1",
+      "tags": ["terrain:wooden"],
+      "adjacent": ["start", "corridor_2", "room_tesoro_1"],
+      "zone_id": "Corridor",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_red",
+      "region_color_token": "map_region_red_dng",
+      "items": []
+    },
+    {
+      "id": "corridor_2",
+      "tags": ["terrain:wooden"],
+      "adjacent": ["corridor_1", "room_boss_1"],
+      "zone_id": "Corridor",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_red",
+      "region_color_token": "map_region_red_dng",
+      "items": []
+    },
+    {
+      "id": "room_tesoro_1",
+      "tags": ["terrain:stone"],
+      "adjacent": ["corridor_1", "room_tesoro_2"],
+      "zone_id": "room_tesoro",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_purple",
+      "region_color_token": "map_region_red_dng",
+      "items": ["leva_apertura"]
+    },
+    {
+      "id": "room_tesoro_2",
+      "tags": ["terrain:stone"],
+      "adjacent": ["room_tesoro_1"],
+      "zone_id": "room_tesoro",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_purple",
+      "region_color_token": "map_region_red_dng",
+      "items": ["tesoro"]
+    },
+    {
+      "id": "room_boss_1",
+      "tags": ["terrain:stone"],
+      "adjacent": ["corridor_2", "room_boss_2"],
+      "zone_id": "room_boss",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_blue",
+      "region_color_token": "map_region_red_dng",
+      "items": []
+    },
+    {
+      "id": "room_boss_2",
+      "tags": ["boss_room", "terrain:stone"],
+      "adjacent": ["room_boss_1"],
+      "zone_id": "room_boss",
+      "region_id": "Dunguen",
+      "zone_color_token": "map_zone_dark_blue",
+      "region_color_token": "map_region_red_dng",
+      "items": []
+    }
+  ],
+  "actors": [
+    {
+      "id": "hero_1",
+      "kind": "HERO",
+      "hp": 10,
+      "max_hp": 10,
+      "room": "start",
+      "tags": ["has_potion"],
+      "statuses": []
+    },
+    {
+      "id": "hero_2",
+      "kind": "HERO",
+      "hp": 8,
+      "max_hp": 8,
+      "room": "start",
+      "tags": [],
+      "statuses": []
+    },
+    {
+      "id": "goblin_1",
+      "kind": "MONSTER",
+      "hp": 5,
+      "max_hp": 5,
+      "room": "corridor_2",
+      "tags": [],
+      "statuses": []
+    },
+    {
+      "id": "orco",
+      "kind": "MONSTER",
+      "hp": 8,
+      "max_hp": 8,
+      "room": "room_tesoro_1",
+      "tags": [],
+      "statuses": []
+    },
+    {
+      "id": "goblin_2",
+      "kind": "MONSTER",
+      "hp": 5,
+      "max_hp": 5,
+      "room": "room_boss_1",
+      "tags": [],
+      "statuses": []
+    },
+    {
+      "id": "boss",
+      "kind": "BOSS_MONSTER",
+      "hp": 20,
+      "max_hp": 20,
+      "room": "room_boss_2",
+      "tags": [],
+      "statuses": []
+    }
+  ]
+}

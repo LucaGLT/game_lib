@@ -8,6 +8,9 @@
 
 add_library(gmRules STATIC
     core/RuleResult.cpp
+    core/RuleBook.cpp
+
+    loader/RuleBookLoader.cpp
 
     target/TargetResult.cpp
     target/TargetResolver.cpp
@@ -28,6 +31,8 @@ target_include_directories(gmRules PUBLIC ${CMAKE_SOURCE_DIR})
 
 set(GMRULES_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/RuleResult.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/RuleBook.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/loader/RuleBookLoader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/target/TargetResult.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/target/TargetResolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/condition/ConditionEvaluator.cpp

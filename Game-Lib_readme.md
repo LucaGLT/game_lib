@@ -19,14 +19,15 @@ the `gmRules` DSL.
 
 | Library | API Doc Link | Details |
 | ------- | ------------ | ------- |
-| `gmAlea` | [gmAlea_API.md](gmAlea/gmAlea_API.md) | v3.0 · Deterministic deck & dice toolkit |
+| `gmAlea` | [gmAlea_API.md](gmAlea/gmAlea_API.md) | v3.0 + F1 · Deterministic deck, dice, card sequences |
 | `gmDispatch` | [gmDispatch_API.md](gmDispatch/gmDispatch_API.md) | v1.0 · Message/event dispatch layer |
-| `gmFlow` | [gmFlow_API.md](gmFlow/gmFlow_API.md) | v1.0 · Flow control framework |
+| `gmFlow` | [gmFlow_API.md](gmFlow/gmFlow_API.md) | v2.0 + F2 · Flow control + timeline milestones |
 | `gmLog` | [gmLog_API.md](gmLog/gmLog_API.md) | v1.0 · Structured logging |
 | `gmMap` | [gmMap_API.md](gmMap/gmMap_API.md) | v1.0 (stub) · Topology-agnostic map model |
 | `gmRules` | [gmRules_API.md](gmRules/gmRules_API.md) | Rules toolkit (target/condition/effect/status) |
 | `gmSave` | [gmSave_API.md](gmSave/gmSave_API.md) | v1.0 · Generic JSON persistence |
-| `gmActor` | [gmActor_API.md](gmActor/gmActor_API.md) | v0.1.0 · Actor state management |
+| `gmActor` | [gmActor_API.md](gmActor/gmActor_API.md) | v0.2.0 + F3, F4 · Actor state, formations, behavior |
+| `gmGui` | [gmGui_API.md](pyLib/gmGui/gmGui_API.md) | v0.1.0 · PySide6 generic game widgets |
 
 > Each API doc contains the authoritative namespace, version, status, and detailed API reference.
 
@@ -41,14 +42,15 @@ For complete information on any library, refer to its API document linked above.
 
 | Library | Key Components | Main Use Case |
 | ------- | -------------- | ------------- |
-| **gmAlea** | `GmDeck`, `GmCompDeck`, `GmDice`, `StdDice` | Token shuffling, card zones, dice rolls |
+| **gmAlea** | `GmDeck`, `GmCompDeck`, `CardType`, `SequenceEngine`, `GmDice`, `StdDice` | Token shuffling, sequences, card zones, dice rolls |
 | **gmDispatch** | `Dispatcher`, `EventBusChannel`, `SyncDispatcher` | Event routing between engine components |
-| **gmFlow** | `GameSession`, `IFlowController`, `ActionQueue` | Turn/phase/action lifecycle management |
+| **gmFlow** | `GameSession`, `IFlowController`, `TimelineMilestoneSystem` | Turn/phase/action lifecycle, temporal triggers |
 | **gmLog** | `Logger`, `LoggerConfig`, `SyncDispatcher` | Structured JSON Lines logging |
-| **gmMap** | `gmMap<ItemT>`, `LocationId`, `TileId` | Board state without enforced coordinates |
+| **gmMap** | `gmMap<ItemT>`, `LocationId`, `ZoneId`, `RegionId` | Board state without enforced coordinates |
 | **gmRules** | `gmRulesEngine`, `TargetResolver`, `ConditionEvaluator` | Target selection, condition checks, effects, status |
 | **gmSave** | `save()`, `load()`, `try_load()` | Generic JSON persistence with versioning |
-| **gmActor** | `ActorStore`, `StatBlock`, `InventoryState` | Actor state, stats, statuses, modifiers |
+| **gmActor** | `ActorStore`, `FormationValidator`, `BehaviorCardProcessor`, `StatBlock` | Actor state, formations, behavior, modifiers |
+| **gmGui** | `TimelineWidget`, `FormationWidget`, `SequenceStateWidget`, `BehaviorCardWidget` | Generic game UI components (PySide6) |
 
 ---
 

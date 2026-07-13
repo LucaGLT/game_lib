@@ -1,0 +1,163 @@
+{
+  "mission_id": "missione_01",
+  "title": "L'Ombra sul Corridoio",
+  "description": "Thael e Velyr devono eliminare i Briganti Comuni che presidiano il corridoio e la sala del vecchio forte.",
+
+  "locations": [
+    {
+      "id": "ingresso",
+      "name": "Ingresso",
+      "adjacent": ["corridoio"]
+    },
+    {
+      "id": "corridoio",
+      "name": "Corridoio",
+      "adjacent": ["ingresso", "sala"]
+    },
+    {
+      "id": "sala",
+      "name": "Sala",
+      "adjacent": ["corridoio"]
+    }
+  ],
+
+  "pg_roster": [
+    {
+      "hero_id": "thael",
+      "display_name": "Thael",
+      "class_name": "Guerriero",
+      "faction_id": "HEROES",
+      "start_location": "ingresso",
+      "start_position": "FRONTLINE",
+      "max_hp": 6,
+      "hand_limit": 5,
+      "level": 1,
+      "start_timeline": 0,
+      "mission_deck": [
+        "base_colpo_secco",
+        "base_colpo_secco",
+        "base_colpo_d_apertura",
+        "base_secondo_colpo",
+        "base_colpo_di_chiusura",
+        "base_passo_cauto",
+        "base_passo_cauto",
+        "base_fendente_pesante",
+        "base_fendente_pesante",
+        "base_assestarsi"
+      ]
+    },
+    {
+      "hero_id": "velyr",
+      "display_name": "Velyr",
+      "class_name": "Supporto",
+      "faction_id": "HEROES",
+      "start_location": "ingresso",
+      "start_position": "BACKLINE",
+      "max_hp": 5,
+      "hand_limit": 5,
+      "level": 1,
+      "start_timeline": 0,
+      "mission_deck": [
+        "base_colpo_secco",
+        "base_passo_cauto",
+        "base_passo_cauto",
+        "base_passo_cauto",
+        "velyr_cura_rapida",
+        "velyr_cura_rapida",
+        "velyr_supporto_tattico",
+        "base_assestarsi",
+        "base_colpo_d_apertura",
+        "base_colpo_di_chiusura"
+      ]
+    }
+  ],
+
+  "monster_groups": [
+    {
+      "group_id": "briganti_A",
+      "display_name": "Briganti A",
+      "monster_type": "brigante_comune",
+      "faction_id": "BRIGANTI",
+      "start_location": "corridoio",
+      "start_timeline": 4,
+      "tie_break_rank": 3,
+      "instances": [
+        {
+          "instance_id": "brigante_A1",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        },
+        {
+          "instance_id": "brigante_A2",
+          "position": "BACKLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "brigante_assalto",
+        "brigante_avanzata_rapida",
+        "brigante_assalto"
+      ]
+    },
+    {
+      "group_id": "briganti_B",
+      "display_name": "Briganti B",
+      "monster_type": "brigante_comune",
+      "faction_id": "BRIGANTI",
+      "start_location": "sala",
+      "start_timeline": 4,
+      "tie_break_rank": 3,
+      "instances": [
+        {
+          "instance_id": "brigante_B1",
+          "position": "FRONTLINE",
+          "max_hp": 3,
+          "damage": 1,
+          "movement": 2
+        }
+      ],
+      "behavior_deck": [
+        "brigante_assalto",
+        "brigante_doppio_attacco",
+        "brigante_avanzata_rapida"
+      ]
+    }
+  ],
+
+  "victory_conditions": [
+    {
+      "type": "ALL_MONSTERS_ELIMINATED",
+      "target_location": ""
+    }
+  ],
+
+  "defeat_conditions": [
+    {
+      "type": "TIME_LIMIT",
+      "threshold": 60
+    },
+    {
+      "type": "ALL_PG_KO",
+      "threshold": 0
+    }
+  ],
+
+  "timeline_events": [
+    {
+      "at_time": 30,
+      "effect_type": "NARRATIVE_LOG",
+      "payload": "Il tempo stringe — i rinforzi si avvicinano.",
+      "repeating": false
+    },
+    {
+      "at_time": 50,
+      "effect_type": "NARRATIVE_LOG",
+      "payload": "Ultimi 10 azioni! I Briganti diventano più aggressivi.",
+      "repeating": false
+    }
+  ]
+}

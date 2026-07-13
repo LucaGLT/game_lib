@@ -16,6 +16,15 @@ add_subdirectory(gmAlea)
 add_subdirectory(gmLog)
 add_subdirectory(gmDispatch)
 add_subdirectory(gmFlow)
-# add_subdirectory(gmMap)
 add_subdirectory(gmRules)
-# add_subdirectory(gmSave)
+
+# Persistence + map + interaction stack (gmSave must precede its dependents).
+add_subdirectory(gmSave)
+add_subdirectory(gmMap)
+add_subdirectory(gmInteraction)
+add_subdirectory(gmActor)
+
+# ── Games ──────────────────────────────────────────────────────────────────────
+add_subdirectory(GAME/Tic-Tac-Toe/CoreEngine)
+add_subdirectory(GAME/Dungeon-Crawler-Basic/CoreEngine)
+add_subdirectory(GAME/Eldhom/CoreEngine)

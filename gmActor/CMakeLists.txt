@@ -33,6 +33,15 @@ add_library(gmActor STATIC
     # serialization (requires gmSave/json.hpp)
     serialization/ActorJson.cpp
 
+    # formation (no external dependencies)
+    formation/FormationValidator.cpp
+    formation/FormationCriteria.cpp
+    formation/FormationResolver.cpp
+
+    # behavior (no external dependencies)
+    behavior/BehaviorCardProcessor.cpp
+    behavior/BehaviorReactionSystem.cpp
+
     # gmFlow adapter (requires gmFlow headers)
     adapters/GmFlowActorAdapter.cpp
 )
@@ -54,6 +63,17 @@ set(GMACTOR_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/items/EquipmentState.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/actors/ActorStore.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/actors/ActorQueries.cpp
+)
+
+set(GMACTOR_FORMATION_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/formation/FormationValidator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/formation/FormationCriteria.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/formation/FormationResolver.cpp
+)
+
+set(GMACTOR_BEHAVIOR_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/behavior/BehaviorCardProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/behavior/BehaviorReactionSystem.cpp
 )
 
 # ── Test executables ──────────────────────────────────────────────────────────
@@ -89,6 +109,18 @@ add_executable(test_gmActor_store
     tests/test_actor_store.cpp
 )
 
+add_executable(test_gmActor_formation
+    ${GMACTOR_CORE_SOURCES}
+    ${GMACTOR_FORMATION_SOURCES}
+    tests/test_formation.cpp
+)
+
+add_executable(test_gmActor_behavior
+    ${GMACTOR_CORE_SOURCES}
+    ${GMACTOR_BEHAVIOR_SOURCES}
+    tests/test_behavior.cpp
+)
+
 # Serialization test (requires gmSave/json.hpp).
 add_executable(test_gmActor_serial
     ${GMACTOR_CORE_SOURCES}
@@ -103,6 +135,8 @@ foreach(_t
     test_gmActor_modifier
     test_gmActor_inventory
     test_gmActor_store
+    test_gmActor_formation
+    test_gmActor_behavior
     test_gmActor_serial
 )
     target_include_directories(${_t} PRIVATE ${CMAKE_SOURCE_DIR})
@@ -116,6 +150,8 @@ add_test(NAME gmActor_status    COMMAND test_gmActor_status)
 add_test(NAME gmActor_modifier  COMMAND test_gmActor_modifier)
 add_test(NAME gmActor_inventory COMMAND test_gmActor_inventory)
 add_test(NAME gmActor_store     COMMAND test_gmActor_store)
+add_test(NAME gmActor_formation COMMAND test_gmActor_formation)
+add_test(NAME gmActor_behavior  COMMAND test_gmActor_behavior)
 add_test(NAME gmActor_serial    COMMAND test_gmActor_serial)
 
 # ── Convenience target ────────────────────────────────────────────────────────
@@ -129,6 +165,8 @@ add_custom_target(gmActor_all_tests
         test_gmActor_modifier
         test_gmActor_inventory
         test_gmActor_store
+        test_gmActor_formation
+        test_gmActor_behavior
         test_gmActor_serial
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "=== Running all gmActor tests ==="

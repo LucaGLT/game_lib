@@ -4,6 +4,7 @@
  */
 
 #include "gmRules/facade/gmRulesEngine.hpp"
+#include "gmRules/loader/RuleBookLoader.hpp"
 
 namespace gmRules {
 
@@ -62,6 +63,56 @@ RuleResult gmRulesEngine::apply_status(const StatusDefinition& status,
                                        RuleContext& ctx)
 {
 	return status_engine_.apply_status(status, owner_actor_id, source_id, ctx);
+}
+
+} // namespace gmRules  — end of existing methods
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RuleBook integration
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace gmRules {
+
+void gmRulesEngine::load_rules_json(const std::string& path)
+{
+	RuleBookLoader::load_json(path, rule_book_);
+}
+
+void gmRulesEngine::load_rules_json_string(const std::string& json_text)
+{
+	RuleBookLoader::load_json_string(json_text, rule_book_);
+}
+
+bool gmRulesEngine::remove_rule(const RuleId& rule_id)
+{
+	return rule_book_.remove_rule(rule_id);
+}
+
+void gmRulesEngine::replace_rule(const RuleDefinition& def)
+{
+	rule_book_.replace_rule(def);
+}
+
+void gmRulesEngine::clear_rules()
+{
+	rule_book_.clear_rules();
+}
+
+RuleResult gmRulesEngine::resolve_rule(const RuleId&                  rule_id,
+                                       const ActorId&                 source_actor_id,
+                                       const std::vector<TargetRef>&  selected_targets,
+                                       RuleContext&                   ctx)
+{
+	return rule_book_.resolve_rule(rule_id, source_actor_id, selected_targets, ctx);
+}
+
+RuleResult gmRulesEngine::resolve_rules(const std::vector<RuleId>&     rule_ids,
+                                        const ActorId&                 source_actor_id,
+                                        const std::vector<TargetRef>&  selected_targets,
+                                        RuleContext&                   ctx)
+{
+	return rule_book_.resolve_rules(rule_ids, source_actor_id, selected_targets, ctx);
 }
 
 } // namespace gmRules

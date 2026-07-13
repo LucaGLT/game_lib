@@ -567,3 +567,118 @@ Per build veloci senza configurazione CMake e disponibile anche lo script ad-hoc
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\gmAlea\tests\run_all_gmAlea_tests.ps1
 ```
+
+---
+
+## CardType + SequenceEngine — Sequenze di Carte (F1)
+
+**Status:** ✅ Production-ready (29/29 tests passing)  
+**Version:** 1.0
+
+Due nuovi componenti per gestire sequenze di carte multiturno (Marvel Champions, Arkham Horror LCG, Dominion combos, Hero Quest, ecc.).
+
+### CardType (enum)
+
+**File:** `CardType.hpp`
+
+```cpp
+enum class CardType
+{
+    SINGLE,       // Carta autonoma — termina il turno
+    SEQ_START,    // Apre una sequenza (può continuare)
+    SEQ_CONTINUE, // Valida solo dentro sequenza aperta
+    SEQ_END,      // Chiude la sequenza obbligatoriamente
+    INSTANT       // Fuori turno / reazione — non affetta sequenza
+};
+```
+
+| Valore | Giocabile senza seq. | Giocabile con seq. | Termina turno? |
+|--------|--------|--------|--------|
+| `SINGLE` | ✅ | ❌ | ✅ |
+| `SEQ_START` | ✅ | ❌ | ❌ (may continue) |
+| `SEQ_CONTINUE` | ❌ | ✅ | ❌ (may continue) |
+| `SEQ_END` | ❌ | ✅ | ✅ |
+| `INSTANT` | ✅ | ✅ | ❌ |
+
+### SequenceState (struct POD)
+
+**File:** `SequenceState.hpp`
+
+```cpp
+struct SequenceState
+{
+    bool     active         = false;           // Sequenza aperta?
+    CardType last_type      = CardType::SINGLE; // Ultimo tipo giocato
+    int      cards_played   = 0;               // Total carte in questo turno
+    bool     interrupted    = false;           // Sequenza interrotta?
+};
+```
+
+### SequenceEngine
+
+**File:** `SequenceEngine.hpp` / `SequenceEngine.cpp`
+
+Macchina a stati pura e stateless per validare e avanzare sequenze.
+
+```cpp
+class SequenceEngine
+{
+public:
+    // Verifica se una carta è giocabile nello stato attuale
+    bool can_play(CardType card, const SequenceState& state) const;
+
+    // Computa il nuovo stato dopo il gioco di una carta
+    SequenceState advance(CardType card, const SequenceState& state) const;
+
+    // Verifica se una carta termina il turno dell'attore
+    bool is_turn_ending(CardType card, const SequenceState& state) const;
+
+    // Produce uno stato interrotto (bloccato finché non si chiama reset)
+    SequenceState interrupt(const SequenceState& state) const;
+
+    // Resetta lo stato ai default (no sequence, no cards played)
+    SequenceState reset() const;
+};
+```
+
+#### Tipico utilizzo
+
+```cpp
+gmAlea::SequenceEngine engine;
+gmAlea::SequenceState  state;  // default: inactive
+
+if (engine.can_play(CardType::SEQ_START, state)) {
+    state = engine.advance(CardType::SEQ_START, state);
+    // state.active == true
+}
+
+if (engine.can_play(CardType::SEQ_CONTINUE, state)) {
+    state = engine.advance(CardType::SEQ_CONTINUE, state);
+    // può continuare o player decide di giocare SEQ_END
+}
+
+bool turn_ends = engine.is_turn_ending(CardType::SEQ_END, state);
+state = engine.advance(CardType::SEQ_END, state);
+// state.active == false
+```
+
+#### State Machine Rules
+
+Tutte le transizioni sono gestite internamente e rispettano la tabella delle regole in `SequenceEngine.hpp`.
+
+- Uno stato `interrupted` blocca tutti i giochi finché `reset()` non viene chiamato
+- `INSTANT` non altera mai lo stato della sequenza (valido in qualsiasi momento)
+- `cards_played` viene incrementato per ogni carta (compresa INSTANT)
+
+#### Test Coverage
+
+- `can_play()` per tutti i 5 tipi CardType in stati active/inactive
+- `is_turn_ending()` transizioni
+- `advance()` state transitions
+- `interrupt()` e `reset()`
+- Card type naming helper: `card_type_name()`
+- **29/29 tests passing** ✅
+
+#### Dipendenze
+
+Nessuna dipendenza da altre gmXxx librerie. Solo STL (`<functional>`).
