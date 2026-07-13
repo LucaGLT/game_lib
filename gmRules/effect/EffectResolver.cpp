@@ -442,6 +442,111 @@ static RuleResult apply_to_target(const EffectSpec& effect,
 				"CUSTOM effect not handled by context: " + ext.message());
 		}
 
+		// ── Dungeon Crawler / advanced effects ────────────────────────────────
+
+		case EffectType::SET_ACTOR_RESOURCE:
+		{
+			// Sets resource `value` to exact value `amount`.
+			// Uses modify_resource(delta) to avoid requiring a set_resource() API.
+			if (effect.value.empty())
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"SET_ACTOR_RESOURCE: value must contain the resource_id");
+			const int current = ctx.actor_resource(target.id, effect.value);
+			const int delta   = effect.amount - current;
+			if (delta != 0)
+				ctx.modify_resource(target.id, effect.value, delta);
+			ev.type = "gmRules.resource.changed";
+			return publish_event(ev, "RuleEvBus", result, ctx);
+		}
+
+		case EffectType::TRIGGER_RULE:
+		{
+			// Chains to another rule by ID; delegates scheduling to the game adapter
+			// to avoid a circular dependency with RuleBook.
+			if (effect.value.empty())
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"TRIGGER_RULE: value must contain the rule_id to chain");
+			RuleEvent sub_event;
+			RuleResult sub = ctx.apply_extended_effect(effect,
+			                                          target,
+			                                          source_actor_id,
+			                                          &sub_event);
+			if (!sub.valid())
+				return RuleResult::fail(RuleError::UNSUPPORTED_EFFECT,
+					"TRIGGER_RULE: chained rule '" + effect.value + "' not handled: " +
+					sub.message());
+			if (!sub_event.type.empty())
+			{
+				sub_event.priority = rule_priority;
+				return publish_event(sub_event, "RuleEvBus", result, ctx);
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::SCALE_EFFECT:
+		{
+			// Deals damage equal to actor resource(`value`) * max(1, `amount`).
+			if (effect.value.empty())
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"SCALE_EFFECT: value must contain the resource_id to scale from");
+			const int resource_val   = ctx.actor_resource(source_actor_id, effect.value);
+			const int multiplier     = (effect.amount > 0) ? effect.amount : 1;
+			const int effective      = resource_val * multiplier;
+			if (effective > 0)
+				ctx.modify_actor_hp(target.id, -effective);
+			ev.type = "gmRules.actor.damaged";
+			return publish_event(ev, "RuleEvBus", result, ctx);
+		}
+
+		case EffectType::CHAIN_EFFECT:
+		{
+			// Deals `amount` damage to primary target, then bounces to up to
+			// `chain_count` additional enemies in the same location.
+			if (effect.amount > 0)
+				ctx.modify_actor_hp(target.id, -effect.amount);
+			ev.type = "gmRules.actor.damaged";
+			publish_event(ev, "RuleEvBus", result, ctx);
+
+			if (effect.chain_count > 0)
+			{
+				const LocationId loc        = ctx.actor_location(target.id);
+				const std::vector<ActorId> candidates = ctx.actors_in_location(loc);
+				int remaining = effect.chain_count;
+				for (const ActorId& cid : candidates)
+				{
+					if (remaining <= 0) break;
+					if (cid == target.id)              continue;
+					if (ctx.actor_current_hp(cid) <= 0) continue;
+					if (!ctx.are_enemies(source_actor_id, cid)) continue;
+					ctx.modify_actor_hp(cid, -effect.amount);
+					--remaining;
+				}
+			}
+			return RuleResult::ok();
+		}
+
+		case EffectType::DELAY_EFFECT:
+		{
+			// Schedules inner effect (`value` = type name, `amount` = amount) to fire
+			// after `chain_count` turns. Delegates to ctx.apply_extended_effect so
+			// the game engine handles the actual scheduling.
+			if (effect.value.empty())
+				return RuleResult::fail(RuleError::RULE_VIOLATION,
+					"DELAY_EFFECT: value must contain the inner effect type name");
+			ev.type = "gmRules.effect.delayed";
+			ev.payload_json =
+				"{\"inner_type\":\"" + effect.value + "\""
+				",\"inner_amount\":" + std::to_string(effect.amount) +
+				",\"delay_turns\":" + std::to_string(effect.chain_count) +
+				",\"target_id\":\"" + target.id + "\""
+				",\"source_id\":\"" + source_actor_id + "\"}";
+			publish_event(ev, "RuleEvBus", result, ctx);
+			// Also delegate to the game engine for actual scheduling
+			RuleEvent sub_event;
+			ctx.apply_extended_effect(effect, target, source_actor_id, &sub_event);
+			return RuleResult::ok();
+		}
+
 		default:
 			return RuleResult::fail(RuleError::UNSUPPORTED_EFFECT,
 				"Unsupported EffectType in V1: " + std::string(effect_type_name(effect.type)));

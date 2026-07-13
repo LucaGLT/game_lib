@@ -27,7 +27,7 @@ _MIN_ZOOM: float = 0.25
 _MAX_ZOOM: float = 4.0
 
 _LAYER_NAMES: list[str] = ["terrain", "items", "actors", "zone", "region"]
-_DEFAULT_LAYERS: set[str] = {"terrain", "items", "actors"}
+_DEFAULT_LAYERS: set[str] = {"zone", "actors"}
 
 
 class CheckableComboBox(QComboBox):

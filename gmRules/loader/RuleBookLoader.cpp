@@ -302,8 +302,15 @@ EffectType parse_effect_type(const std::string& raw)
 		{ "DISCARD_RANDOM",      EffectType::DISCARD_RANDOM      },
 		{ "PLACE_ON_TOP",        EffectType::PLACE_ON_TOP        },
 		{ "PLACE_ON_BOTTOM",     EffectType::PLACE_ON_BOTTOM     },
-		{ "ROLL_DICE",           EffectType::ROLL_DICE           },
-		{ "CUSTOM",              EffectType::CUSTOM              },
+		{ "ROLL_DICE",             EffectType::ROLL_DICE             },
+		{ "EMIT_EVENT",           EffectType::EMIT_EVENT           },
+		{ "MANUAL_EFFECT",        EffectType::MANUAL_EFFECT        },
+		{ "CUSTOM",               EffectType::CUSTOM               },
+		{ "SET_ACTOR_RESOURCE",   EffectType::SET_ACTOR_RESOURCE   },
+		{ "TRIGGER_RULE",         EffectType::TRIGGER_RULE         },
+		{ "SCALE_EFFECT",         EffectType::SCALE_EFFECT         },
+		{ "CHAIN_EFFECT",         EffectType::CHAIN_EFFECT         },
+		{ "DELAY_EFFECT",         EffectType::DELAY_EFFECT         },
 	};
 	auto it = TABLE.find(to_upper(raw));
 	if (it == TABLE.end())
@@ -366,6 +373,8 @@ EffectSpec build_effect_spec(const JObj& obj, const std::string& rule_id)
 	                         : "SELF";
 	spec.target = build_target_spec(target_str);
 
+	spec.chain_count     = (obj.count("chain_count") > 0)
+	                       ? obj.at("chain_count").as_int(ctx) : 0;
 	spec.optional        = false;
 	spec.stop_on_failure = true;
 	return spec;

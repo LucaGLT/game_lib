@@ -14,6 +14,7 @@ add_library(gmFlow STATIC
     flow/Round.cpp
     flow/SequentialFlowController.cpp
     flow/TimelineFlowController.cpp
+    flow/TimelineMilestoneSystem.cpp
     flow/PhaseContext.cpp
     flow/FlowPhase.cpp
     bridges/FlowRulesGateway.cpp
@@ -98,6 +99,15 @@ target_include_directories(test_gmFlow_flow_rules_integration PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
 
+add_executable(test_gmFlow_milestone_system
+    tests/test_milestone_system.cpp
+)
+target_link_libraries(test_gmFlow_milestone_system PRIVATE gmFlow gmDispatch gmLog)
+target_include_directories(test_gmFlow_milestone_system PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}
+)
+
 add_test(NAME gmFlow_action_queue            COMMAND test_gmFlow_action_queue)
 add_test(NAME gmFlow_action_window           COMMAND test_gmFlow_action_window)
 add_test(NAME gmFlow_sequential              COMMAND test_gmFlow_sequential)
@@ -105,6 +115,7 @@ add_test(NAME gmFlow_campaign                COMMAND test_gmFlow_campaign)
 add_test(NAME gmFlow_timeline                COMMAND test_gmFlow_timeline)
 add_test(NAME gmFlow_flow_phase              COMMAND test_gmFlow_flow_phase)
 add_test(NAME gmFlow_flow_rules_integration  COMMAND test_gmFlow_flow_rules_integration)
+add_test(NAME gmFlow_milestone_system        COMMAND test_gmFlow_milestone_system)
 
 add_custom_target(gmFlow_all_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -R gmFlow_
@@ -116,6 +127,7 @@ add_custom_target(gmFlow_all_tests
         test_gmFlow_timeline
         test_gmFlow_flow_phase
         test_gmFlow_flow_rules_integration
+        test_gmFlow_milestone_system
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "=== Running all gmFlow tests ==="
     VERBATIM

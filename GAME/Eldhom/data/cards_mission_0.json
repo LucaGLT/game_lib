@@ -1,0 +1,70 @@
+[
+  {
+    "card_id": "m0_passo_sicuro",
+    "name": "Passo Sicuro",
+    "origin": "MISSION_0",
+    "card_type": "SINGLE",
+    "timeline_cost": 3,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "" }
+    ]
+  },
+  {
+    "card_id": "m0_colpo_deciso",
+    "name": "Colpo Deciso",
+    "origin": "MISSION_0",
+    "card_type": "SINGLE",
+    "timeline_cost": 3,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE" }
+    ]
+  },
+  {
+    "card_id": "m0_mano_sicura",
+    "name": "Mano Sicura",
+    "origin": "MISSION_0",
+    "card_type": "SINGLE",
+    "timeline_cost": 2,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "INTERACT", "amount": 0, "target": "SELF", "value": "" }
+    ]
+  },
+  {
+    "card_id": "m0_parata_istintiva",
+    "name": "Parata Istintiva",
+    "origin": "MISSION_0",
+    "card_type": "INSTANT",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "reaction_trigger": "eldhom.pg.attacked",
+    "effects": [
+      { "effect_type": "REDUCE_DAMAGE", "amount": 1, "target": "SELF", "value": "" }
+    ]
+  },
+  {
+    "card_id": "m0_protezione_istintiva",
+    "name": "Protezione Istintiva",
+    "origin": "MISSION_0",
+    "card_type": "INSTANT",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "reaction_trigger": "eldhom.pg.attacked",
+    "effects": [
+      { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
+    ]
+  },
+  {
+    "card_id": "m0_pozione_di_cura",
+    "name": "Pozione di Cura",
+    "origin": "MISSION_0",
+    "card_type": "SINGLE",
+    "timeline_cost": 1,
+    "can_target_backline": false,
+    "effects": [
+      { "effect_type": "HEAL", "amount": 3, "target": "SELF", "value": "" }
+    ]
+  }
+]
