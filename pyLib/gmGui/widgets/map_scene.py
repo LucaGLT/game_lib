@@ -753,6 +753,25 @@ class MapScene(QGraphicsScene):
                 self._apply_node_layers(old_loc)
             self._apply_node_layers(new_location_id)
 
+    def remove_actor(self, actor_id: str) -> None:
+        """Removes an actor's satellite marker from the map entirely.
+
+        Used when an actor is eliminated (e.g. a defeated monster instance)
+        so its token no longer lingers on the location node.
+
+        Args:
+            actor_id: Actor identifier to remove from all tracking.
+        """
+        old_loc = self._marker_locations.pop(actor_id, None)
+        if old_loc is None:
+            return
+        old_list = self._location_actors.get(old_loc, [])
+        self._location_actors[old_loc] = [a for a in old_list if a != actor_id]
+        if old_loc in self._nodes:
+            self._nodes[old_loc].set_actors(self._location_actors[old_loc])
+            if "actors" in self._active_layers:
+                self._apply_node_layers(old_loc)
+
     def update_location(self, loc_id: int, metadata: dict) -> None:
         """Applies new metadata to an existing node and re-applies active layers.
 

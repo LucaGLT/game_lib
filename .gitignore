@@ -15,3 +15,26 @@ Thumbs.db
 *.bak
 *.pyc
 
+pyLib/gmGui/__pycache__/__init__.cpython-313.pyc
+pyLib/gmGui/__pycache__/main_window.cpython-313.pyc
+pyLib/gmGui/__pycache__/message_ids.cpython-313.pyc
+pyLib/gmGui/__pycache__/settings.cpython-313.pyc
+pyLib/gmGui/__pycache__/theme_manager.cpython-313.pyc
+pyLib/gmGui/engine_bridge/__pycache__/__init__.cpython-313.pyc
+pyLib/gmGui/engine_bridge/__pycache__/framing.cpython-313.pyc
+pyLib/gmGui/engine_bridge/__pycache__/receiver.cpython-313.pyc
+pyLib/gmGui/engine_bridge/__pycache__/sender.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/__init__.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/base_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_actor_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_comp_deck_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_dice_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_flow_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_map_area_info_module.cpython-313.pyc
+pyLib/gmGui/modules/__pycache__/gm_map_module.cpython-313.pyc
+pyLib/gmGui/tests/__pycache__/__init__.cpython-313.pyc
+pyLib/gmGui/widgets/__pycache__/__init__.cpython-313.pyc
+pyLib/gmGui/widgets/__pycache__/hp_bar.cpython-313.pyc
+pyLib/gmGui/widgets/__pycache__/map_scene.cpython-313.pyc
+pyLib/gmGui/widgets/__pycache__/timeline_scene.cpython-313.pyc
+pyLib/gmGui/widgets/__pycache__/zone_list.cpython-313.pyc

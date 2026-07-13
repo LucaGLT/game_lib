@@ -293,3 +293,8 @@ class GmMapModule(BaseModule):
             if actor_id and new_loc >= 0:
                 self._map_scene.move_actor(actor_id, new_loc)
 
+        elif tid == "gmActor.actor.removed":
+            actor_id = str(data.get("actor_id", ""))
+            if actor_id:
+                self._map_scene.remove_actor(actor_id)
+

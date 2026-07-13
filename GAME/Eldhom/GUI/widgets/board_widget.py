@@ -8,7 +8,7 @@ Public API
 ----------
 on_state_full(msg)      Build / rebuild the entire map from a full state snapshot.
 on_pg_moved(msg)        Move a hero token to its new location.
-on_monster_defeated(msg) Grey-out a defeated monster token on the map.
+on_monster_defeated(msg) Remove a defeated monster instance's token from the map.
 
 Signal
 ------
@@ -316,8 +316,21 @@ class EldhomBoardWidget(QWidget):
                 self._move_on_map(actor_id, destination)
 
     def on_monster_defeated(self, msg: dict) -> None:
-        """No visual removal (GmMapModule has no remove API); token stays in place."""
-        pass
+        """Removes the defeated monster instance's token from the map.
+
+        The engine emits ``eldhom.monster.defeated`` with the instance's
+        ``actor_id``; the token satellite is removed from its current
+        location node so it no longer lingers on the map.
+        """
+        data     = _extract_data(msg)
+        actor_id = str(data.get("actor_id", ""))
+        if actor_id:
+            self._actor_locs.pop(actor_id, None)
+            self._module.on_envelope({
+                "typeId":  "gmActor.actor.removed",
+                "headers": {"data": _json.dumps({"actor_id": actor_id})},
+                "data":    {"actor_id": actor_id},
+            })
 
     # ── Internal helpers ───────────────────────────────────────────────────────
 
