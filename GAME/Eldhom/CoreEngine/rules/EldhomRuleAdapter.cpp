@@ -268,6 +268,53 @@ gmActor::ActorId EldhomRuleAdapter::find_nearest_target(
 	return {};
 }
 
+bool EldhomRuleAdapter::is_valid_target_in_range(
+	const gmActor::ActorStore& store,
+	const LocationId&          from_loc,
+	const gmActor::ActorId&    target_id,
+	const std::string&         faction,
+	int                        range) const
+{
+	if (target_id.empty()) { return false; }
+
+	auto contains_target = [&](const LocationId& loc) -> bool
+	{
+		const std::vector<gmActor::ActorId> targets =
+			_targeting.valid_targets(store, loc, faction);
+		return std::find(targets.begin(), targets.end(), target_id) != targets.end();
+	};
+
+	// hop 0: mischia — same location as the caster.
+	if (contains_target(from_loc)) { return true; }
+	if (range <= 0) { return false; }
+
+	std::unordered_set<LocationId> visited;
+	visited.insert(from_loc);
+	std::vector<LocationId> frontier{from_loc};
+
+	for (int hop = 1; hop <= range; ++hop)
+	{
+		std::vector<LocationId> next_frontier;
+		for (const LocationId& loc : frontier)
+		{
+			auto it = _adjacency.find(loc);
+			if (it == _adjacency.end()) { continue; }
+			for (const LocationId& adj : it->second)
+			{
+				if (visited.count(adj)) { continue; }
+				visited.insert(adj);
+				next_frontier.push_back(adj);
+			}
+		}
+		for (const LocationId& loc : next_frontier)
+		{
+			if (contains_target(loc)) { return true; }
+		}
+		frontier = std::move(next_frontier);
+	}
+	return false;
+}
+
 // ── apply_behavior_step (monster step) ───────────────────────────────────────
 
 EffectResult EldhomRuleAdapter::apply_behavior_step(

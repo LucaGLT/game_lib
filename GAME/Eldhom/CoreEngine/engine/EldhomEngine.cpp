@@ -568,7 +568,8 @@ ActionResult EldhomEngine::play_card(
 	const HeroId&               hero_id,
 	const CardId&               card_id,
 	const LocationId&           destination,
-	const std::vector<CardId>&  discard_ids)
+	const std::vector<CardId>&  discard_ids,
+	const gmActor::ActorId&     target_id)
 {
 	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
 
@@ -630,6 +631,50 @@ ActionResult EldhomEngine::play_card(
 
 	// Determine enemy faction for targeting
 	const std::string& enemy_faction = enemy_faction_for_hero(hero_id);
+
+	// Explicit player-chosen target (e.g. the enemy clicked in the GUI,
+	// mirroring declare_attack() for Attacco Semplice): validate it BEFORE
+	// applying any effect, so the action stays atomic (either everything
+	// below succeeds, or nothing is mutated — no charged cost / discarded
+	// card left behind on a rejected target). Pre-scan the card's own
+	// effects to find the DAMAGE range and, if a MOVE effect precedes it
+	// (e.g. Passo e Lama), the location the caster will be in once the
+	// DAMAGE effect resolves — validation must use THAT location, not the
+	// caster's current one.
+	if (!target_id.empty())
+	{
+		LocationId effective_loc = c.area_id;
+		int        pre_range     = 0;
+		bool       pre_has_damage = false;
+		for (const EldhomEffect& eff : card.effects)
+		{
+			if (eff.effect_type == "MOVE")
+			{
+				const LocationId move_to = (!destination.empty() &&
+				                            (eff.value.empty() ||
+				                             eff.target == "ADJACENT_LOCATION" ||
+				                             eff.target == "PLAYER_CHOICE"))
+				                           ? destination
+				                           : (!eff.value.empty() ? eff.value : eff.target);
+				if (!move_to.empty()) { effective_loc = move_to; }
+				continue;
+			}
+			if (eff.effect_type == "DAMAGE" || eff.effect_type == "DEAL_DAMAGE")
+			{
+				pre_has_damage = true;
+				pre_range      = eff.range;
+				break;
+			}
+		}
+		if (pre_has_damage &&
+		    (!_store.has_actor(target_id) ||
+		     !_rule_adapter.is_valid_target_in_range(
+		         _store, effective_loc, target_id, enemy_faction, pre_range)))
+		{
+			return { ActionResultCode::ERR_NO_VALID_TARGET,
+			         "Invalid target: " + target_id };
+		}
+	}
 
 	// ── Apply effects ──────────────────────────────────────────────────────────
 	// DAMAGE effects are deferred: they park a PendingAttack so the defender
@@ -769,8 +814,12 @@ ActionResult EldhomEngine::play_card(
 	if (has_damage)
 	{
 		const LocationId& loc = _store.common(hero_id).area_id;
-		gmActor::ActorId target =
-			_rule_adapter.find_nearest_target(_store, loc, enemy_faction, damage_range);
+		// Prefer the player-chosen target (already validated above, before
+		// any effect was applied); fall back to automatic nearest-target
+		// selection when the caller didn't specify one.
+		gmActor::ActorId target = !target_id.empty()
+			? target_id
+			: _rule_adapter.find_nearest_target(_store, loc, enemy_faction, damage_range);
 
 		if (!target.empty())
 		{

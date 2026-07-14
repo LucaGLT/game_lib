@@ -399,6 +399,17 @@ class EldhomMainWindow(QMainWindow):
         # target of an interactive attack declared by the active hero.
         self._awaiting_attack: bool = False
 
+        # Card-target targeting state: when True the next actor selection is
+        # the explicit target of a DAMAGE effect on a card being played
+        # (mirrors _awaiting_attack, but sends eldhom.play_card instead of
+        # eldhom.declare_attack). card_id/destination are carried over from
+        # _pre_play_card_hook (destination is only set for a combined
+        # MOVE+DAMAGE card such as Passo e Lama, where the destination click
+        # happens first, then the target click).
+        self._awaiting_card_target: bool = False
+        self._pending_target_card_id: str = ""
+        self._pending_target_destination: str = ""
+
         # Pending reaction window: id of the defender that must react (engine
         # owns the truth; the GUI only collects the player's choice).
         self._pending_defender: str = ""
@@ -994,13 +1005,18 @@ class EldhomMainWindow(QMainWindow):
         """Called when the user selects an actor in the tree or area panel.
 
         While attack targeting is armed, selecting an enemy declares an
-        interactive attack against it; otherwise it just highlights the actor
-        and refreshes the deck panel to show that actor's cards.
+        interactive attack against it; while card-target targeting is armed,
+        it plays the pending card against that enemy instead; otherwise it
+        just highlights the actor and refreshes the deck panel to show that
+        actor's cards.
         """
         if not actor_id:
             return
         if self._awaiting_attack and self._active_hero_id:
             self._try_declare_attack(actor_id)
+            return
+        if self._awaiting_card_target and self._active_hero_id:
+            self._try_play_card_with_target(actor_id)
             return
         self._actors.select_actor(actor_id)
         self._board.set_selected_actor(actor_id)
@@ -1118,9 +1134,26 @@ class EldhomMainWindow(QMainWindow):
         self._awaiting_move = False
         self._actions.disarm_move()
         if self._pending_move_card_id:
-            # Card-driven move: send play_card with destination.
+            # Card-driven move: send play_card with destination — unless the
+            # card ALSO has a DAMAGE effect (e.g. Passo e Lama), in which case
+            # arm card-target targeting next so the player picks the enemy to
+            # hit (destination is carried over and sent together with
+            # target_id once _try_play_card_with_target fires).
             card_id = self._pending_move_card_id
             self._pending_move_card_id = ""
+            meta = _CARD_CATALOG.get(card_id, {})
+            has_damage = any(
+                e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE")
+                for e in meta.get("effects", [])
+            )
+            if has_damage:
+                self._pending_target_card_id     = card_id
+                self._pending_target_destination = destination
+                self._awaiting_card_target = True
+                msg = "\U0001f3af Clicca il nemico da colpire (mappa o pannello attori)"
+                self._status_label.setText(msg)
+                self._actions.set_hint(msg)
+                return
             self._actions.set_hint("")
             self._bridge.send_command(
                 "eldhom.play_card",
@@ -1213,6 +1246,35 @@ class EldhomMainWindow(QMainWindow):
             {"hero_id": self._active_hero_id, "target_id": target_id},
         )
 
+    def _try_play_card_with_target(self, target_id: str) -> None:
+        """Validates the target then sends play_card with the explicit target_id.
+
+        Mirrors _try_declare_attack, but for a card's DAMAGE effect (armed by
+        _pre_play_card_hook). The engine re-validates target_id against the
+        card's declared range/§15 Proiezione — this is just a friendly
+        client-side pre-check (must be a live enemy) before sending.
+        """
+        if not self._actor_is_enemy(target_id):
+            self._status_label.setText(
+                "\u26a0 Seleziona un nemico valido come bersaglio"
+            )
+            self._actors.select_actor(target_id)
+            return
+        self._awaiting_card_target = False
+        card_id     = self._pending_target_card_id
+        destination = self._pending_target_destination
+        self._pending_target_card_id     = ""
+        self._pending_target_destination = ""
+        self._actions.set_hint("")
+        data: dict = {
+            "hero_id":   self._active_hero_id,
+            "card_id":   card_id,
+            "target_id": target_id,
+        }
+        if destination:
+            data["destination"] = destination
+        self._bridge.send_command("eldhom.play_card", data)
+
     def _defender_name(self, defender_id: str) -> str:
         """Resolves a human-friendly label for a defender id."""
         for grp in self._group_data.values():
@@ -1294,20 +1356,40 @@ class EldhomMainWindow(QMainWindow):
         """Called by _DeckProxy before sending play_card for a card dragged to PlayArea.
 
         If the card has a MOVE effect requiring player destination choice, arms
-        move targeting mode and returns True (play_card is NOT sent yet).
-        Returns False to let the proxy send play_card immediately.
+        move targeting mode and returns True (play_card is NOT sent yet); the
+        destination click handler (_try_move) arms card-target targeting
+        afterwards if the card ALSO has a DAMAGE effect (e.g. Passo e Lama).
+        If the card has a DAMAGE/DEAL_DAMAGE effect but no destination choice,
+        arms card-target targeting directly — the player must click the enemy
+        to hit (mirrors declare_attack's targeting for Attacco Semplice; the
+        engine still auto-selects the nearest valid target if this is ever
+        bypassed, e.g. by a GM tool calling play_card without a target_id).
+        Returns False to let the proxy send play_card immediately (no
+        targeting needed at all, e.g. Mano Ferma, Riprendere Fiato).
         """
         meta = _CARD_CATALOG.get(card_id, {})
+        effects = meta.get("effects", [])
         has_choice_move = any(
             e.get("effect_type") == "MOVE" and not e.get("value", "")
-            for e in meta.get("effects", [])
+            for e in effects
         )
-        if not has_choice_move:
+        has_damage = any(
+            e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE") for e in effects
+        )
+
+        if not has_choice_move and not has_damage:
             return False
 
-        self._pending_move_card_id = card_id
-        self._awaiting_move = True
-        msg = "\u25b6 Clicca la locazione di destinazione (carta)"
+        if has_choice_move:
+            self._pending_move_card_id = card_id
+            self._awaiting_move = True
+            msg = "\u25b6 Clicca la locazione di destinazione (carta)"
+        else:
+            self._pending_target_card_id     = card_id
+            self._pending_target_destination = ""
+            self._awaiting_card_target = True
+            msg = "\U0001f3af Clicca il nemico da colpire (mappa o pannello attori)"
+
         self._status_label.setText(msg)
         self._actions.set_hint(msg)
         # Send the card back to CardHand visually (the drag already moved it).

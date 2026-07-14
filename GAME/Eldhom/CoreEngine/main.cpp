@@ -244,6 +244,7 @@ private:
 		std::string hero_id     = data.value("hero_id",     std::string{});
 		std::string card_id     = data.value("card_id",     std::string{});
 		std::string destination = data.value("destination", std::string{});
+		std::string target_id   = data.value("target_id",   std::string{});
 
 		std::vector<std::string> discard_ids;
 		if (data.contains("discard_ids") && data["discard_ids"].is_array())
@@ -255,7 +256,7 @@ private:
 		}
 
 		eldhom::ActionResult r =
-			_engine->play_card(hero_id, card_id, destination, discard_ids);
+			_engine->play_card(hero_id, card_id, destination, discard_ids, target_id);
 		send_action_result(r);
 		if (!r.ok()) { return; }
 

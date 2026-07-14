@@ -228,6 +228,31 @@ public:
 		const std::string&         faction,
 		int                        range = 0) const;
 
+	/**
+	 * @brief Checks whether an explicit, player-chosen target is reachable
+	 * and targetable within a card's declared range.
+	 *
+	 * Used by EldhomEngine::play_card when the caller (GUI) supplies a
+	 * specific `target_id` (e.g. the monster the player clicked) instead of
+	 * letting the engine auto-select via find_nearest_target. Performs the
+	 * same hop-by-hop BFS as find_nearest_target, but checks membership of
+	 * `target_id` in each hop's valid-target set (respecting §15 Proiezione)
+	 * instead of returning the first hit.
+	 *
+	 * @param store     Actor store to query (read-only).
+	 * @param from_loc  Location from which targeting is resolved.
+	 * @param target_id Actor the player chose.
+	 * @param faction   Faction being targeted.
+	 * @param range     Search radius in location-hops (0 = same location only).
+	 * @return True if `target_id` is a valid target within `range` hops.
+	 */
+	bool is_valid_target_in_range(
+		const gmActor::ActorStore& store,
+		const LocationId&          from_loc,
+		const gmActor::ActorId&    target_id,
+		const std::string&         faction,
+		int                        range = 0) const;
+
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;
 	/// Zone-boundary doors (LocationId pairs, always stored with `first < second`)

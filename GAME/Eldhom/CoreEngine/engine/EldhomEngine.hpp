@@ -289,13 +289,23 @@ public:
 	 * @param destination Optional destination for MOVE effects requiring player choice.
 	 * @param discard_ids Card ids to discard-then-redraw (only for cards with a
 	 *                    `DISCARD_THEN_DRAW` effect, e.g. Riprendere Fiato).
+	 * @param target_id   Optional explicit target for a DAMAGE/DEAL_DAMAGE effect
+	 *                    (e.g. the enemy the player clicked), mirroring how
+	 *                    `declare_attack()` already works for the Attacco
+	 *                    Semplice. Validated against the card's declared range
+	 *                    via `EldhomRuleAdapter::is_valid_target_in_range()`
+	 *                    (§15 Proiezione still applies). When empty, falls
+	 *                    back to automatic nearest-target selection
+	 *                    (`find_nearest_target`) — kept for callers that don't
+	 *                    pick a target explicitly (existing tests, GM tools).
 	 * @return `ActionResult`.
 	 */
 	ActionResult play_card(
 		const HeroId&               hero_id,
 		const CardId&               card_id,
 		const LocationId&           destination = {},
-		const std::vector<CardId>&  discard_ids = {});
+		const std::vector<CardId>&  discard_ids = {},
+		const gmActor::ActorId&     target_id = {});
 
 	/**
 	 * @brief Voluntarily ends a hero's sequence turn (stop_sequence).

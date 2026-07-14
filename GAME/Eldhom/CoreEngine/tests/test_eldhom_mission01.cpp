@@ -1297,6 +1297,137 @@ void test_fase2_pressione_continua()
 	      "Sequence still active after Pressione Continua (SEQ_CONTINUE keeps it open)");
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Explicit player-chosen target for card DAMAGE effects (mirrors
+// declare_attack's targeting for Attacco Semplice; see EldhomRuleAdapter::
+// is_valid_target_in_range).
+// ─────────────────────────────────────────────────────────────────────────────
+
+void test_card_explicit_target_overrides_auto_select()
+{
+	std::cout << "\n=== test_card_explicit_target_overrides_auto_select ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+
+	// Add a second FRONTLINE enemy in "corridoio" with MORE hp than
+	// brigante_A1 (3 hp), so automatic nearest-target selection (which
+	// prefers the lowest-hp candidate) would always pick brigante_A1 —
+	// letting us prove an explicit target_id actually overrides that choice.
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups)
+	{
+		if (g.group_id != "briganti_A") { continue; }
+		eldhom::MonsterInstanceEntry extra;
+		extra.instance_id = "brigante_A3";
+		extra.position    = "FRONTLINE";
+		extra.max_hp      = 9;
+		extra.damage      = 1;
+		extra.movement    = 2;
+		g.instances.push_back(extra);
+	}
+
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_colpo_secco"] =
+			make_card("base_colpo_secco", "Colpo Secco",
+			          gmAlea::CardType::SINGLE, 2, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	// Explicitly target brigante_A3 (9 hp) instead of the auto-selected
+	// brigante_A1 (3 hp, lower — would win nearest_target's HP tie-break).
+	eldhom::ActionResult r = engine.play_card(
+		"thael", "base_colpo_secco", "", {}, "brigante_A3");
+	check(r.ok(), "Thael plays base_colpo_secco with explicit target_id OK");
+	check(engine.has_pending_attack(), "Explicit target opened a pending attack");
+	check(engine.pending_attack().defender_id == "brigante_A3",
+	      "Pending attack defender is the EXPLICITLY chosen target, not the nearest/lowest-hp one");
+
+	eldhom::ReactionResolution res;
+	engine.resolve_reaction("brigante_A3", eldhom::DefenseReaction::TAKE, &res);
+	check(res.final_damage == 1, "Damage applied to the explicitly chosen target");
+	check(res.defender_hp_after == 8, "brigante_A3 HP reduced (9-1=8), brigante_A1 untouched");
+}
+
+void test_card_explicit_target_rejected_when_invalid()
+{
+	std::cout << "\n=== test_card_explicit_target_rejected_when_invalid ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_colpo_secco"] =
+			make_card("base_colpo_secco", "Colpo Secco",
+			          gmAlea::CardType::SINGLE, 2, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Thael stays in "ingresso": brigante_B1 exists but sits in "sala",
+	// out of mischia (range 0) reach — an invalid target for this card.
+	const int timeline_before = engine.timeline_position("thael");
+
+	eldhom::ActionResult r = engine.play_card(
+		"thael", "base_colpo_secco", "", {}, "brigante_B1");
+	check(r.code == eldhom::ActionResultCode::ERR_NO_VALID_TARGET,
+	      "Invalid/out-of-range target_id is rejected with ERR_NO_VALID_TARGET");
+	check(!engine.has_pending_attack(), "No pending attack was opened for a rejected target");
+	check(engine.timeline_position("thael") == timeline_before,
+	      "Action is atomic: timeline cost NOT charged when the target is rejected");
+	check(engine.next_actor() == "thael",
+	      "Thael's turn did not advance/end after the rejected target_id");
+}
+
+void test_card_no_target_falls_back_to_auto_select()
+{
+	std::cout << "\n=== test_card_no_target_falls_back_to_auto_select ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_colpo_secco"] =
+			make_card("base_colpo_secco", "Colpo Secco",
+			          gmAlea::CardType::SINGLE, 2, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	// No target_id supplied (default empty): falls back to automatic
+	// nearest-target selection — unchanged, pre-existing behaviour.
+	eldhom::ActionResult r = engine.play_card("thael", "base_colpo_secco");
+	check(r.ok(), "Thael plays base_colpo_secco without a target_id OK");
+	check(engine.has_pending_attack(), "Auto-select opened a pending attack");
+	check(engine.pending_attack().defender_id == "brigante_A1",
+	      "Auto-select still picks brigante_A1 (the only/nearest valid target)");
+}
+
 
 
 int main()
@@ -1323,6 +1454,10 @@ int main()
 	test_fase1_riprendere_fiato();
 	test_fase2_assestarsi();
 	test_fase2_pressione_continua();
+
+	test_card_explicit_target_overrides_auto_select();
+	test_card_explicit_target_rejected_when_invalid();
+	test_card_no_target_falls_back_to_auto_select();
 
 	std::cout << "\n================================================\n";
 	std::cout << "PASS: " << s_pass << "   FAIL: " << s_fail << "\n";
