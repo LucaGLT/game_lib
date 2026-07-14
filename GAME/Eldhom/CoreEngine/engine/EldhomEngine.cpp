@@ -641,6 +641,12 @@ ActionResult EldhomEngine::play_card(
 	int         damage_range  = 0;  ///< Attack range declared by the DAMAGE effect (0 = mischia)
 	bool        has_disrupt   = false;
 	int         extra_move_cost = 0;  ///< +1 per still-closed zone door crossed by MOVE effects
+	// Colpo Secco "parte A": pesca/scarta solo se attaccante E bersaglio sono
+	// entrambi in FRONTLINE. Il bersaglio non è ancora noto in questo loop
+	// (risolto più sotto insieme al DAMAGE deferred), quindi la valutazione è
+	// rimandata a dopo find_nearest_target.
+	bool        has_conditional_discard_draw   = false;
+	int         conditional_discard_amount    = 0;
 
 	for (const EldhomEffect& eff : card.effects)
 	{
@@ -663,8 +669,15 @@ ActionResult EldhomEngine::play_card(
 		}
 		if (eff.effect_type == "DISCARD_THEN_DRAW")
 		{
-			// Scarta fino a `eff.amount` carte (raddoppiato se in RETROGUARDIA),
-			// poi ripesca altrettante (e.g. Riprendere Fiato).
+			if (eff.condition == "IF_BOTH_FRONTLINE")
+			{
+				has_conditional_discard_draw = true;
+				conditional_discard_amount   = (eff.amount > 0) ? eff.amount : 1;
+				continue; // evaluated after the DAMAGE target is resolved below
+			}
+			// Unconditional case (e.g. Riprendere Fiato): scarta fino a
+			// `eff.amount` carte (raddoppiato se in RETROGUARDIA), poi ripesca
+			// altrettante.
 			const int base_amount = (eff.amount > 0) ? eff.amount : 1;
 			const int max_discard = (c.area_position == gmActor::AreaPosition::BACKLINE)
 			                        ? base_amount * 2 : base_amount;
@@ -761,6 +774,22 @@ ActionResult EldhomEngine::play_card(
 
 		if (!target.empty())
 		{
+			// Colpo Secco "parte A": applica pesca/scarta solo se l'attaccante
+			// e il bersaglio sono entrambi in FRONTLINE al momento dell'attacco.
+			if (has_conditional_discard_draw &&
+			    c.area_position == gmActor::AreaPosition::FRONTLINE &&
+			    _store.common(target).area_position == gmActor::AreaPosition::FRONTLINE)
+			{
+				int discarded = 0;
+				for (const CardId& cid : discard_ids)
+				{
+					if (discarded >= conditional_discard_amount) { break; }
+					discard_card(hero_id, cid);
+					++discarded;
+				}
+				if (discarded > 0) { draw_n_cards(hero_id, discarded); }
+			}
+
 			// Timeline was already charged above; set attack_cost = 0 so that
 			// resolve_reaction does not double-charge.
 			_pending.active           = true;
@@ -1777,6 +1806,13 @@ std::string EldhomEngine::enemy_faction_for_hero(const HeroId& hero_id) const
 	{
 		if (_targeting.has_valid_target(_store, loc, faction)) { return faction; }
 	}
+	// Fallback: no enemy of any monster faction stands in the hero's CURRENT
+	// location (e.g. before a MOVE effect relocates them). Cards that combine
+	// MOVE + DAMAGE (Passo e Lama) or MOVE with avoid_enemy_locations (Passo
+	// Cauto, Scatto Breve) still need to know which faction to target/avoid
+	// along the way, so default to the mission's (first) monster faction
+	// rather than an empty string.
+	if (!_monster_factions.empty()) { return _monster_factions.front(); }
 	return {};
 }
 

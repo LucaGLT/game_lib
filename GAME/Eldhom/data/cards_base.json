@@ -5,7 +5,6 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "MOVE", "amount": 2, "target": "PLAYER_CHOICE", "value": "",
         "avoid_enemy_locations": true }
@@ -17,7 +16,6 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "",
         "avoid_enemy_locations": true }
@@ -29,7 +27,6 @@
     "origin": "BASE",
     "card_type": "INSTANT",
     "timeline_cost": 1,
-    "can_target_backline": false,
     "reaction_trigger": "eldhom.pg.enemy_approach",
     "effects": [
       { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
@@ -41,9 +38,10 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" },
+      { "effect_type": "DISCARD_THEN_DRAW", "amount": 1, "target": "SELF",
+        "condition": "IF_BOTH_FRONTLINE" }
     ]
   },
   {
@@ -52,10 +50,9 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 2, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -64,11 +61,10 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" },
-      { "effect_type": "DISRUPT_ENEMY_FORMATION", "amount": 0, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" },
+      { "effect_type": "DISRUPT_ENEMY_FORMATION", "amount": 0, "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -77,9 +73,8 @@
     "origin": "BASE",
     "card_type": "SEQ_START",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -88,10 +83,9 @@
     "origin": "BASE",
     "card_type": "SEQ_START",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "MOVE", "amount": 1, "target": "PLAYER_CHOICE", "value": "" },
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -100,9 +94,8 @@
     "origin": "BASE",
     "card_type": "SEQ_CONTINUE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -111,9 +104,8 @@
     "origin": "BASE",
     "card_type": "SEQ_CONTINUE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -122,9 +114,8 @@
     "origin": "BASE",
     "card_type": "SEQ_END",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -133,9 +124,8 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE", "range": 1 }
+      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "RANGED", "target": "ENEMY_FRONTLINE", "range": 1 }
     ]
   },
   {
@@ -144,7 +134,6 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "INTERACT", "amount": 0, "target": "SCENE" }
     ]
@@ -155,7 +144,6 @@
     "origin": "BASE",
     "card_type": "SINGLE",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "HEAL",              "amount": 1, "target": "SELF" },
       { "effect_type": "DISCARD_THEN_DRAW", "amount": 1, "target": "SELF" }
@@ -167,7 +155,6 @@
     "origin": "VELYR",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "HEAL", "amount": 2, "target": "SELF" }
     ]
@@ -178,7 +165,6 @@
     "origin": "VELYR",
     "card_type": "INSTANT",
     "timeline_cost": 0,
-    "can_target_backline": false,
     "reaction_trigger": "eldhom.monster.damaged",
     "effects": [
       { "effect_type": "HEAL", "amount": 1, "target": "SELF" }

@@ -33,23 +33,25 @@ Comportamento Mostri (§5-7) sono **esplicitamente fuori scope** per questo pian
 
 ## 3. Stato attuale — 15 Carte Base (§2)
 
+> Aggiornato 2026-07-15 dopo l'implementazione di FASE 1 e FASE 2 (vedi §5).
+
 | # | Carta | Stato | Gap |
 |---|---|---|---|
-| 1 | Passo Cauto | Parziale | Path non deve attraversare nemici; terreno ignorato (nessun sistema terreno, non bloccante) |
-| 2 | Scatto Breve | Parziale | Come sopra |
-| 3 | Assestarsi | Mancante | Trigger istantanea "nemico entra in location/adiacente" non esiste |
-| 4 | Colpo Secco | Parziale | Scelta A/B → solo parte A (pesca+scarta) |
+| 1 | Passo Cauto | **Fatto** | F0.3 (`avoid_enemy_locations`); testata (blocco su nemico intermedio, OK su destinazione finale) |
+| 2 | Scatto Breve | **Fatto** | Come sopra |
+| 3 | Assestarsi | **Fatto** | F0.5 (finestra reattiva `EVT_ENEMY_APPROACH`); testata end-to-end |
+| 4 | Colpo Secco | **Fatto** | Danno base + parte A (pesca 1/scarta 1) condizionata a `IF_BOTH_FRONTLINE` (nuova valutazione motore); testata (bonus applicato/non applicato) |
 | 5 | Fendente Pesante | Mancante | Requisito posizionale attaccante (PL) |
 | 6 | Spinta di Corpo | Mancante | Requisito PL + Scompaginamento mirato |
-| 7 | Colpo d'Apertura | **Pronto** | Solo dati catalogo |
-| 8 | Passo e Lama | **Pronto** | Solo dati catalogo |
+| 7 | Colpo d'Apertura | **Fatto** | Testata (danno + apertura Sequenza) |
+| 8 | Passo e Lama | **Fatto** | Testata (MOVE + DAMAGE nello stesso turno) |
 | 9 | Secondo Colpo | Rimandata | Serve tracking bersaglio precedente in sequenza |
-| 10 | Pressione Continua | Parziale | Scelta A/B → solo parte A (attacco) |
+| 10 | Pressione Continua | **Fatto** | Solo parte A (attacco); testata come SEQ_CONTINUE dopo un SEQ_START |
 | 11 | Colpo di Chiusura | Rimandata | Serve tracking danno cumulativo per bersaglio in sequenza |
 | 12 | Lancio di Fortuna | Mancante | Serve sistema Range |
-| 13 | Uso Arco/Balestra | **Esclusa** | Richiede arma equipaggiata (fuori scope) |
-| 14 | Mano Ferma | **Pronto** | Solo dati catalogo |
-| 15 | Riprendere Fiato | Parziale | RECOVER non scarta/pesca oggi |
+| 13 | Uso Arco/Balestra | **Esclusa** | Richiede arma equipaggiata (fuori scope); rimossa da `cards_base.json` |
+| 14 | Mano Ferma | **Fatto** | Testata (INTERACT su oggetto scena LEVER) |
+| 15 | Riprendere Fiato | **Fatto** | F0.4 esteso a `play_card()` (nuovo effect `DISCARD_THEN_DRAW` + parametro `discard_ids`); testata (1 carta FRONTLINE, 2 se BACKLINE) |
 
 ---
 
@@ -92,6 +94,14 @@ Comportamento Mostri (§5-7) sono **esplicitamente fuori scope** per questo pian
 
 ### FASE 1 — Le 7 carte prioritarie
 
+> **COMPLETATA 2026-07-15.** Build pulita, 8 nuovi test dedicati aggiunti a
+> `test_eldhom_mission01.cpp` (`test_fase1_*`), tutti PASS. Zero regressioni
+> (stessi 10 fallimenti pre-esistenti, invariati). Estensione motore
+> aggiuntiva emersa durante l'implementazione: `enemy_faction_for_hero()`
+> ora ricade sulla prima fazione nemica della missione quando l'eroe non ha
+> nemici nella location di partenza (serviva per Passo e Lama MOVE+DAMAGE e
+> per `avoid_enemy_locations` su Passo Cauto/Scatto Breve).
+
 | # | Carta | Dipende da |
 |---|---|---|
 | 7 | Colpo d'Apertura | — (solo dati) |
@@ -104,6 +114,9 @@ Comportamento Mostri (§5-7) sono **esplicitamente fuori scope** per questo pian
 
 ### FASE 2 — Assestarsi + Pressione Continua
 
+> **COMPLETATA 2026-07-15.** 2 nuovi test dedicati (`test_fase2_*`), tutti
+> PASS. Zero regressioni.
+
 | # | Carta | Dipende da |
 |---|---|---|
 | 3 | Assestarsi | F0.5 |
@@ -114,7 +127,7 @@ Comportamento Mostri (§5-7) sono **esplicitamente fuori scope** per questo pian
 | # | Carta | Dipende da |
 |---|---|---|
 | 5 | Fendente Pesante | F0.1 |
-| 6 | Spinta di Corpo | F0.1 (Scompaginamento automatico) |
+| 6 | Spinta di Corpo | F0.1; `DISRUPT_ENEMY_FORMATION` è già completamente implementato e **interattivo** (`queue_enemy_disrupt` apre un dialogo di riformazione al giocatore) — corrisponde esattamente a "decidi come risolverlo" del documento, nessuna semplificazione automatica necessaria |
 
 ### FASE 4 — Range
 
@@ -133,6 +146,8 @@ Comportamento Mostri (§5-7) sono **esplicitamente fuori scope** per questo pian
 ## 6. Verifica
 
 Per ogni fase: build C++ (`cmake --build . --target eldhom_engine --config Debug`),
-esecuzione test esistenti (`test_eldhom_mission01.exe`, baseline 27 PASS / 10 FAIL
-preesistenti — vedi `/memories/repo/eldhom-zone-door-mechanic.md`), aggiunta di
-nuovi test mirati per ogni nuova meccanica introdotta.
+esecuzione test esistenti (`test_eldhom_mission01.exe`). Baseline dopo FASE 0:
+29 PASS / 10 FAIL preesistenti (vedi `/memories/repo/eldhom-zone-door-mechanic.md`).
+Baseline dopo FASE 1+2: **71 PASS / 10 FAIL** (stessi 10 preesistenti, invariati;
++42 nuovi test PASS su 8 funzioni `test_fase1_*`/`test_fase2_*`, una per ogni
+carta implementata). Stesso approccio previsto per le fasi successive.

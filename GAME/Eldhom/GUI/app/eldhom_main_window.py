@@ -98,9 +98,9 @@ _EFFECT_ICONS: dict[str, str] = {
 }
 
 _TARGET_IT: dict[str, str] = {
-    "NEAREST_ENEMY_FRONTLINE": "nemico frontline più vicino",
-    "ADJACENT_LOCATION":       "locazione adiacente",
-    "SELF":                    "sé stesso",
+    "ENEMY_FRONTLINE":   "nemico in Prima Linea",
+    "ADJACENT_LOCATION": "locazione adiacente",
+    "SELF":              "sé stesso",
 }
 
 
@@ -155,7 +155,13 @@ def _effect_summary_line(eff: dict) -> str:
     if etype in ("MOVE", "MOVE_TOWARD_PG"):
         return f"{icon} Muovi {amount}\u25fb\ufe0f" if amount else f"{icon} Muovi"
     if etype in ("DAMAGE", "DEAL_DAMAGE"):
-        return f"{icon} {amount}\u274c" if amount else f"{icon} Attacca"
+        if not amount:
+            return f"{icon} Attacca"
+        atk_type = str(eff.get("attack_type", "MELEE"))
+        atk_range = eff.get("range", 0)
+        if atk_type == "RANGED" and atk_range:
+            return f"{icon} {amount}\u274c a distanza (Range {atk_range})"
+        return f"{icon} {amount}\u274c in mischia"
     if etype == "HEAL":
         return f"{icon} +{amount} PV" if amount else f"{icon} Cura"
     if etype == "REDUCE_DAMAGE":
@@ -218,7 +224,8 @@ def _card_description(card: dict) -> str:
 
     # ── Condizioni ────────────────────────────────────────────────────────────
     conditions: list[str] = []
-    if card.get("can_target_backline") is False:
+    if any(e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE") and
+           e.get("target") == "ENEMY_FRONTLINE" for e in effects):
         conditions.append("\U0001f3af Solo bersagli in \U0001f9f1 Prima Linea")
     if conditions:
         lines.append("\u2500\u2500 CONDIZIONI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")

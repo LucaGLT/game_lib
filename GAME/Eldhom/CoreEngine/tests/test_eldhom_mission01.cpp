@@ -79,7 +79,7 @@ std::unordered_map<eldhom::CardId, eldhom::EldhomCard> build_card_catalog()
 		eldhom::EldhomEffect eff;
 		eff.effect_type = "DAMAGE";
 		eff.amount      = 1;
-		eff.target      = "NEAREST_ENEMY_FRONTLINE";
+		eff.target      = "ENEMY_FRONTLINE";
 		cat["base_colpo_secco"] =
 			make_card("base_colpo_secco", "Colpo Secco",
 			          gmAlea::CardType::SINGLE, 2, { eff });
@@ -800,8 +800,504 @@ void test_phase0_requires_frontline()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// main
+// Fase 1 / Fase 2 — Carte Base (see GAME/Eldhom/info/PLAN_carte_base_e_regole.md)
 // ─────────────────────────────────────────────────────────────────────────────
+
+namespace {
+
+/**
+ * @brief Same as build_mission_01() but with a populated mission_deck (and
+ * hand_limit=4) for both heroes, so hand-tracking (_hand_states) is active.
+ * Needed by any test that must observe discard/draw effects
+ * (DISCARD_THEN_DRAW, Colpo Secco's conditional bonus) or an eligible
+ * INSTANT card (Assestarsi), since eligible_instants() only scans
+ * _hand_states. Monster groups' start_timeline is pushed far into the
+ * future so they never interfere with next_actor() ordering in these
+ * targeted tests; call resolve_group_turn_for(group_id) explicitly when a
+ * monster action is actually needed.
+ *
+ * IMPORTANT: thael_deck/velyr_deck must have MORE entries than hand_limit
+ * (4), so the draw pile is never fully emptied by the initial deal. If the
+ * deck empties, end_hero_turn()'s automatic discard->deck reshuffle-and-draw
+ * silently pulls cards straight back out of the discard pile, making
+ * discard_count() unusable for verifying DISCARD_THEN_DRAW effects. Passing
+ * several repeated copies of a single card id also keeps the initial hand
+ * deterministic (no dependency on shuffle order).
+ */
+eldhom::MissionDefinition build_mission_01_with_decks(
+	const std::vector<eldhom::CardId>& thael_deck,
+	const std::vector<eldhom::CardId>& velyr_deck)
+{
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::PgEntry& pg : def.pg_roster)
+	{
+		if (pg.hero_id == "thael")      { pg.mission_deck = thael_deck; }
+		else if (pg.hero_id == "velyr") { pg.mission_deck = velyr_deck; }
+		pg.hand_limit = 4;
+	}
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	return def;
+}
+
+} // anonymous namespace
+
+void test_fase1_colpo_apertura()
+{
+	std::cout << "\n=== test_fase1_colpo_apertura ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	// base_colpo_d_apertura: SEQ_START, 2⌛, DAMAGE 1 nearest enemy
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_colpo_d_apertura"] =
+			make_card("base_colpo_d_apertura", "Colpo d'Apertura",
+			          gmAlea::CardType::SEQ_START, 2, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	check(engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio").ok(),
+	      "Thael moves to corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	eldhom::ActionResult r = engine.play_card("thael", "base_colpo_d_apertura");
+	check(r.ok(), "Thael plays base_colpo_d_apertura OK");
+	check(engine.has_pending_attack(), "DAMAGE effect opened a pending attack");
+
+	eldhom::ReactionResolution res;
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE, &res);
+	check(res.final_damage == 1, "Colpo d'Apertura deals 1 damage");
+
+	const gmAlea::SequenceState& seq = engine.sequence_state("thael");
+	check(seq.active, "Sequence is active after Colpo d'Apertura (SEQ_START)");
+}
+
+void test_fase1_passo_e_lama()
+{
+	std::cout << "\n=== test_fase1_passo_e_lama ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	// base_passo_e_lama: SEQ_START, 3⌛, MOVE 1 + DAMAGE 1
+	{
+		eldhom::EldhomEffect move_eff;
+		move_eff.effect_type = "MOVE";
+		move_eff.amount      = 1;
+		move_eff.target      = "PLAYER_CHOICE";
+
+		eldhom::EldhomEffect dmg_eff;
+		dmg_eff.effect_type = "DAMAGE";
+		dmg_eff.amount      = 1;
+		dmg_eff.target      = "ENEMY_FRONTLINE";
+
+		card_cat["base_passo_e_lama"] =
+			make_card("base_passo_e_lama", "Passo e Lama",
+			          gmAlea::CardType::SEQ_START, 3, { move_eff, dmg_eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Thael starts in "ingresso"; play the card with destination "corridoio"
+	// (1 hop, where brigante_A1 waits) — should move AND attack in one turn.
+	eldhom::ActionResult r = engine.play_card("thael", "base_passo_e_lama", "corridoio");
+	check(r.ok(), "Thael plays base_passo_e_lama OK");
+	check(engine.actor_store().hero("thael").common.area_id == "corridoio",
+	      "Passo e Lama moved Thael to corridoio");
+	check(engine.has_pending_attack(), "Passo e Lama's DAMAGE effect opened a pending attack");
+
+	eldhom::ReactionResolution res;
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE, &res);
+	check(res.final_damage == 1, "Passo e Lama deals 1 damage after moving");
+}
+
+void test_fase1_mano_ferma()
+{
+	std::cout << "\n=== test_fase1_mano_ferma ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+
+	eldhom::SpecialObject lever;
+	lever.object_id       = "leva_test";
+	lever.name            = "Leva di Prova";
+	lever.type            = "LEVER";
+	lever.location_id     = "sala";
+	def.special_objects   = { lever };
+
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	// base_mano_ferma: SINGLE, 2⌛, INTERACT
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "INTERACT";
+		card_cat["base_mano_ferma"] =
+			make_card("base_mano_ferma", "Mano Ferma",
+			          gmAlea::CardType::SINGLE, 2, { eff });
+	}
+
+	std::vector<std::string> events;
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat,
+		[&events](const eldhom::EventType& t, const std::string&, const std::string&) {
+			events.push_back(t);
+		});
+
+	// Move Thael to sala (ingresso -> corridoio -> sala); Velyr fills turns.
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "sala");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	events.clear();
+	eldhom::ActionResult r = engine.play_card("thael", "base_mano_ferma");
+	check(r.ok(), "Thael plays base_mano_ferma OK");
+
+	bool porta_aperta = false;
+	for (const std::string& ev : events)
+	{
+		if (ev == eldhom::EVT_PORTA_APERTA) { porta_aperta = true; break; }
+	}
+	check(porta_aperta, "Mano Ferma triggers the LEVER special object (INTERACT)");
+}
+
+void test_fase1_passo_cauto_scatto_breve_evita_nemici()
+{
+	std::cout << "\n=== test_fase1_passo_cauto_scatto_breve_evita_nemici ===\n";
+
+	auto make_engine = []() {
+		eldhom::MissionDefinition def = build_mission_01();
+		for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+		auto card_cat     = build_card_catalog();
+		auto behavior_cat = build_behavior_catalog();
+
+		eldhom::EldhomEffect passo_cauto_eff;
+		passo_cauto_eff.effect_type           = "MOVE";
+		passo_cauto_eff.amount                = 2;
+		passo_cauto_eff.target                = "PLAYER_CHOICE";
+		passo_cauto_eff.avoid_enemy_locations = true;
+		card_cat["base_passo_cauto"] =
+			make_card("base_passo_cauto", "Passo Cauto",
+			          gmAlea::CardType::SINGLE, 2, { passo_cauto_eff });
+
+		eldhom::EldhomEffect scatto_breve_eff;
+		scatto_breve_eff.effect_type           = "MOVE";
+		scatto_breve_eff.amount                = 3;
+		scatto_breve_eff.target                = "PLAYER_CHOICE";
+		scatto_breve_eff.avoid_enemy_locations = true;
+		card_cat["base_scatto_breve"] =
+			make_card("base_scatto_breve", "Scatto Breve",
+			          gmAlea::CardType::SINGLE, 2, { scatto_breve_eff });
+
+		return eldhom::EldhomEngine::from_definition(def, card_cat, behavior_cat, nullptr);
+	};
+
+	// "corridoio" holds brigante_A1 (FRONTLINE) and is the only path from
+	// "ingresso" to "sala" (linear graph).
+
+	{
+		eldhom::EldhomEngine engine = make_engine();
+		eldhom::ActionResult r = engine.play_card("thael", "base_passo_cauto", "sala");
+		check(r.ok(), "Passo Cauto to sala: playing the card itself does not error");
+		check(engine.actor_store().hero("thael").common.area_id == "ingresso",
+		      "Passo Cauto cannot cross corridoio (enemy-occupied intermediate step)");
+	}
+	{
+		eldhom::EldhomEngine engine = make_engine();
+		engine.play_card("thael", "base_passo_cauto", "corridoio");
+		check(engine.actor_store().hero("thael").common.area_id == "corridoio",
+		      "Passo Cauto CAN end in corridoio (enemy-occupied final destination)");
+	}
+	{
+		eldhom::EldhomEngine engine = make_engine();
+		engine.play_card("thael", "base_scatto_breve", "sala");
+		check(engine.actor_store().hero("thael").common.area_id == "ingresso",
+		      "Scatto Breve cannot cross corridoio (enemy-occupied intermediate step)");
+	}
+}
+
+void test_fase1_colpo_secco_bonus_condizionale()
+{
+	std::cout << "\n=== test_fase1_colpo_secco_bonus_condizionale ===\n";
+
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	eldhom::EldhomEffect dmg_eff;
+	dmg_eff.effect_type = "DAMAGE";
+	dmg_eff.amount      = 1;
+	dmg_eff.target      = "ENEMY_FRONTLINE";
+
+	eldhom::EldhomEffect bonus_eff;
+	bonus_eff.effect_type = "DISCARD_THEN_DRAW";
+	bonus_eff.amount      = 1;
+	bonus_eff.target      = "SELF";
+	bonus_eff.condition   = "IF_BOTH_FRONTLINE";
+
+	card_cat["base_colpo_secco"] =
+		make_card("base_colpo_secco", "Colpo Secco",
+		          gmAlea::CardType::SINGLE, 2, { dmg_eff, bonus_eff });
+
+	// Scenario A: attacker (FRONTLINE) and target (FRONTLINE) — bonus applies.
+	{
+		eldhom::MissionDefinition def = build_mission_01_with_decks(
+			std::vector<eldhom::CardId>(6, "base_colpo_secco"),
+			std::vector<eldhom::CardId>(4, "base_riprendere_fiato"));
+		eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+			def, card_cat, behavior_cat, nullptr);
+
+		engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+		const std::vector<eldhom::CardId>& hand = engine.hand_cards("thael");
+		check(!hand.empty(), "Thael has cards in hand before Colpo Secco");
+		const int discard_before = engine.discard_count("thael");
+
+		// DAMAGE is deferred (parks a pending attack and returns immediately,
+		// WITHOUT calling end_hero_turn), so discard_count() here reflects only
+		// the conditional bonus — not yet the end-of-turn played->discard flush.
+		eldhom::ActionResult r =
+			engine.play_card("thael", "base_colpo_secco", "", { hand.front() });
+		check(r.ok(), "Thael (FRONTLINE) plays base_colpo_secco OK vs FRONTLINE target");
+
+		check(engine.discard_count("thael") == discard_before + 1,
+		      "Bonus applied: 1 card discarded (attacker and target both FRONTLINE)");
+
+		engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE);
+	}
+
+	// Scenario B: attacker pushed to BACKLINE — bonus must NOT apply, even
+	// though the target is still FRONTLINE.
+	{
+		auto card_cat_b = card_cat;
+		eldhom::EldhomEffect push_eff;
+		push_eff.effect_type = "FORMATION_PUSH";
+		push_eff.value       = "BACKLINE";
+		card_cat_b["test_push_backline_cs"] =
+			make_card("test_push_backline_cs", "Test Push Backline",
+			          gmAlea::CardType::SINGLE, 1, { push_eff });
+
+		eldhom::MissionDefinition def = build_mission_01_with_decks(
+			std::vector<eldhom::CardId>(6, "base_colpo_secco"),
+			std::vector<eldhom::CardId>(4, "base_riprendere_fiato"));
+		for (eldhom::PgEntry& pg : def.pg_roster)
+		{
+			if (pg.hero_id != "thael") { continue; }
+			// Deliberately hand_limit == mission_deck.size() here (unlike the
+			// shared helper's default) so test_push_backline_cs is GUARANTEED
+			// to be in the initial hand regardless of shuffle order.
+			pg.mission_deck.push_back("test_push_backline_cs");
+			pg.hand_limit = static_cast<int>(pg.mission_deck.size());
+		}
+		eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+			def, card_cat_b, behavior_cat, nullptr);
+
+		engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+		eldhom::ActionResult rpush = engine.play_card("thael", "test_push_backline_cs");
+		check(rpush.ok(), "Thael plays test_push_backline_cs OK");
+		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+		check(engine.actor_store().hero("thael").common.area_position ==
+		      gmActor::AreaPosition::BACKLINE, "Thael pushed to BACKLINE for scenario B");
+
+		const std::vector<eldhom::CardId>& hand = engine.hand_cards("thael");
+		const int discard_before = engine.discard_count("thael");
+
+		eldhom::ActionResult r =
+			engine.play_card("thael", "base_colpo_secco", "", { hand.front() });
+		check(r.ok(), "Thael (BACKLINE) plays base_colpo_secco OK vs FRONTLINE target");
+
+		check(engine.discard_count("thael") == discard_before,
+		      "Bonus NOT applied when attacker is BACKLINE");
+
+		engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE);
+	}
+}
+
+void test_fase1_riprendere_fiato()
+{
+	std::cout << "\n=== test_fase1_riprendere_fiato ===\n";
+
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	eldhom::EldhomEffect heal_eff;
+	heal_eff.effect_type = "HEAL";
+	heal_eff.amount      = 1;
+	heal_eff.target      = "SELF";
+
+	eldhom::EldhomEffect discard_draw_eff;
+	discard_draw_eff.effect_type = "DISCARD_THEN_DRAW";
+	discard_draw_eff.amount      = 1;
+	discard_draw_eff.target      = "SELF";
+
+	card_cat["base_riprendere_fiato"] =
+		make_card("base_riprendere_fiato", "Riprendere Fiato",
+		          gmAlea::CardType::SINGLE, 3, { heal_eff, discard_draw_eff });
+
+	eldhom::MissionDefinition def = build_mission_01_with_decks(
+		std::vector<eldhom::CardId>(8, "base_riprendere_fiato"),
+		std::vector<eldhom::CardId>(8, "base_riprendere_fiato"));
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Move Thael (FRONTLINE) next to brigante_A1 and take a real hit so HEAL
+	// is observable (current_hp < max_hp).
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	const int hp_before_hit = engine.actor_store().hero("thael").common.current_hp;
+	engine.resolve_group_turn_for("briganti_A"); // brigante_assalto: deals damage directly
+	const int hp_after_hit = engine.actor_store().hero("thael").common.current_hp;
+	check(hp_after_hit < hp_before_hit, "Thael took real damage from briganti_A (setup)");
+
+	const std::vector<eldhom::CardId>& hand = engine.hand_cards("thael");
+	check(!hand.empty(), "Thael has cards in hand before Riprendere Fiato");
+	const int discard_before_thael = engine.discard_count("thael");
+
+	eldhom::ActionResult r =
+		engine.play_card("thael", "base_riprendere_fiato", "", { hand.front() });
+	check(r.ok(), "Thael (FRONTLINE) plays base_riprendere_fiato OK");
+	check(engine.actor_store().hero("thael").common.current_hp == hp_after_hit + 1,
+	      "Riprendere Fiato heals 1 HP");
+	// +1 for the discarded card, +1 for base_riprendere_fiato itself moving
+	// from played to discard when end_hero_turn runs.
+	check(engine.discard_count("thael") == discard_before_thael + 2,
+	      "Riprendere Fiato discards 1 card (FRONTLINE: base amount, not doubled)");
+
+	// Velyr (BACKLINE): discard/draw amount doubles to 2.
+	const std::vector<eldhom::CardId>& hand_v = engine.hand_cards("velyr");
+	check(hand_v.size() >= 2, "Velyr has at least 2 cards in hand");
+	const int discard_before_velyr = engine.discard_count("velyr");
+
+	eldhom::ActionResult rv = engine.play_card(
+		"velyr", "base_riprendere_fiato", "", { hand_v[0], hand_v[1] });
+	check(rv.ok(), "Velyr (BACKLINE) plays base_riprendere_fiato OK");
+	// +2 for the discarded cards (doubled, BACKLINE), +1 for the card itself.
+	check(engine.discard_count("velyr") == discard_before_velyr + 3,
+	      "Riprendere Fiato discards 2 cards for a BACKLINE caster (doubled)");
+}
+
+void test_fase2_assestarsi()
+{
+	std::cout << "\n=== test_fase2_assestarsi ===\n";
+
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	// base_assestarsi: INSTANT, 1⌛, reacts to EVT_ENEMY_APPROACH, pushes
+	// caster to FRONTLINE.
+	eldhom::EldhomEffect push_eff;
+	push_eff.effect_type = "FORMATION_PUSH";
+	push_eff.value       = "FRONTLINE";
+
+	eldhom::EldhomCard assestarsi =
+		make_card("base_assestarsi", "Assestarsi", gmAlea::CardType::INSTANT, 1, { push_eff });
+	assestarsi.reaction_trigger = eldhom::EVT_ENEMY_APPROACH;
+	card_cat["base_assestarsi"] = assestarsi;
+
+	eldhom::MissionDefinition def = build_mission_01_with_decks(
+		std::vector<eldhom::CardId>(4, "base_riprendere_fiato"),
+		std::vector<eldhom::CardId>(8, "base_assestarsi"));
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	check(!engine.has_pending_reactive_window(), "No reactive window open initially");
+	check(engine.actor_store().hero("velyr").common.area_position ==
+	      gmActor::AreaPosition::BACKLINE, "Velyr starts in BACKLINE");
+
+	// "ingresso" and "corridoio" are different zones (no shared numeric
+	// suffix): the zone-boundary door starts CLOSED and monsters cannot cross
+	// it until a PG has opened it by walking through. Open it first, then
+	// walk Thael back, so briganti_A is free to advance into "ingresso".
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "ingresso");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	// briganti_A starts in "corridoio", adjacent to "ingresso" where both
+	// heroes stand. Force its group turn explicitly (bypassing next_actor
+	// ordering, since build_mission_01_with_decks() pushed its timeline far
+	// out) so it moves into "ingresso" via its behavior deck (brigante_assalto
+	// starts with an optional MOVE_TOWARD_PG step).
+	engine.resolve_group_turn_for("briganti_A");
+
+	check(engine.has_pending_reactive_window(), "Enemy approach opened a reactive window");
+	check(engine.pending_reactive_window().trigger == eldhom::EVT_ENEMY_APPROACH,
+	      "Reactive window trigger is EVT_ENEMY_APPROACH");
+
+	eldhom::ActionResult r =
+		engine.play_reactive_instants({ { "velyr", "base_assestarsi" } });
+	check(r.ok(), "Velyr plays base_assestarsi as a reactive instant");
+	check(engine.actor_store().hero("velyr").common.area_position ==
+	      gmActor::AreaPosition::FRONTLINE, "Assestarsi pushed Velyr to FRONTLINE");
+	check(!engine.has_pending_reactive_window(), "Reactive window closed after playing Assestarsi");
+}
+
+void test_fase2_pressione_continua()
+{
+	std::cout << "\n=== test_fase2_pressione_continua ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_colpo_d_apertura"] =
+			make_card("base_colpo_d_apertura", "Colpo d'Apertura",
+			          gmAlea::CardType::SEQ_START, 2, { eff });
+	}
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 1;
+		eff.target      = "ENEMY_FRONTLINE";
+		card_cat["base_pressione_continua"] =
+			make_card("base_pressione_continua", "Pressione Continua",
+			          gmAlea::CardType::SEQ_CONTINUE, 2, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+
+	engine.play_card("thael", "base_colpo_d_apertura");
+	eldhom::ReactionResolution res1;
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE, &res1);
+	check(engine.sequence_state("thael").active, "Sequence active after Colpo d'Apertura");
+	check(res1.defender_hp_after == 2, "brigante_A1 HP is 2 after Colpo d'Apertura (3-1)");
+
+	check(engine.next_actor() == "thael", "Thael still next during sequence");
+
+	engine.play_card("thael", "base_pressione_continua");
+	eldhom::ReactionResolution res2;
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE, &res2);
+	check(res2.defender_hp_after == 1, "brigante_A1 HP is 1 after Pressione Continua (2-1)");
+	check(engine.sequence_state("thael").active,
+	      "Sequence still active after Pressione Continua (SEQ_CONTINUE keeps it open)");
+}
+
+
 
 int main()
 {
@@ -818,6 +1314,15 @@ int main()
 	test_defeat_time_limit();
 	test_zone_door_blocks_monster_until_pg_crosses();
 	test_phase0_requires_frontline();
+
+	test_fase1_colpo_apertura();
+	test_fase1_passo_e_lama();
+	test_fase1_mano_ferma();
+	test_fase1_passo_cauto_scatto_breve_evita_nemici();
+	test_fase1_colpo_secco_bonus_condizionale();
+	test_fase1_riprendere_fiato();
+	test_fase2_assestarsi();
+	test_fase2_pressione_continua();
 
 	std::cout << "\n================================================\n";
 	std::cout << "PASS: " << s_pass << "   FAIL: " << s_fail << "\n";

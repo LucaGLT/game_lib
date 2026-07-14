@@ -33,8 +33,16 @@ namespace eldhom {
 struct EldhomEffect {
 	EffectType  effect_type;       ///< "DAMAGE", "MOVE", "HEAL", "FORMATION_PUSH", …
 	int         amount    = 0;     ///< Numeric magnitude of the effect
-	std::string target;            ///< Target selector: "NEAREST_ENEMY_FRONTLINE", "SELF", …
-	std::string condition;         ///< Optional guard: "IF_SEQUENCE", "IF_FORMATION_FRONT", …
+	std::string target;            ///< Target selector: "ENEMY_FRONTLINE", "SELF", …
+	/// Attack medium for DAMAGE/DEAL_DAMAGE effects: "MELEE" (default) or
+	/// "RANGED". Declarative today (not yet enforced, e.g. no check that a
+	/// RANGED attacker must be in RETROGUARDIA); paired with `range` below.
+	std::string attack_type = "MELEE";
+	/// Optional guard. Only `"IF_BOTH_FRONTLINE"` is actually evaluated today
+	/// (by `EldhomEngine::play_card()`, for a `DISCARD_THEN_DRAW` effect on a
+	/// DAMAGE card — e.g. Colpo Secco: applies only if both attacker and
+	/// target are in FRONTLINE). Any other value is currently ignored.
+	std::string condition;
 	std::string value;             ///< Extra payload (e.g. status tag name)
 	/// Generic attack range in location-hops for DAMAGE/DEAL_DAMAGE effects:
 	/// 0 = mischia (same location), 1 = adjacent location, 2 = adjacent-of-
@@ -63,7 +71,6 @@ struct EldhomCard {
 	int                      timeline_cost = 2;
 	std::vector<EldhomEffect> effects;
 	std::string              reaction_trigger; ///< Empty means no instant reaction
-	bool                     can_target_backline = false;
 	/// True if the caster must be in FRONTLINE to play this card (e.g. Fendente
 	/// Pesante, Spinta di Corpo). Checked in EldhomEngine::play_card() before
 	/// any effect is applied.
