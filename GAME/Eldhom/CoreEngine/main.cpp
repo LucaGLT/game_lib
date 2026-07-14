@@ -245,7 +245,17 @@ private:
 		std::string card_id     = data.value("card_id",     std::string{});
 		std::string destination = data.value("destination", std::string{});
 
-		eldhom::ActionResult r = _engine->play_card(hero_id, card_id, destination);
+		std::vector<std::string> discard_ids;
+		if (data.contains("discard_ids") && data["discard_ids"].is_array())
+		{
+			for (const nlohmann::json& cid : data["discard_ids"])
+			{
+				discard_ids.push_back(cid.get<std::string>());
+			}
+		}
+
+		eldhom::ActionResult r =
+			_engine->play_card(hero_id, card_id, destination, discard_ids);
 		send_action_result(r);
 		if (!r.ok()) { return; }
 

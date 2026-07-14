@@ -565,9 +565,10 @@ ActionResult EldhomEngine::do_simple_action(
 // ─────────────────────────────────────────────────────────────────────────────
 
 ActionResult EldhomEngine::play_card(
-	const HeroId&     hero_id,
-	const CardId&     card_id,
-	const LocationId& destination)
+	const HeroId&               hero_id,
+	const CardId&               card_id,
+	const LocationId&           destination,
+	const std::vector<CardId>&  discard_ids)
 {
 	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
 
@@ -659,6 +660,23 @@ ActionResult EldhomEngine::play_card(
 		{
 			draw_n_cards(hero_id, eff.amount);
 			continue; // handled by engine directly
+		}
+		if (eff.effect_type == "DISCARD_THEN_DRAW")
+		{
+			// Scarta fino a `eff.amount` carte (raddoppiato se in RETROGUARDIA),
+			// poi ripesca altrettante (e.g. Riprendere Fiato).
+			const int base_amount = (eff.amount > 0) ? eff.amount : 1;
+			const int max_discard = (c.area_position == gmActor::AreaPosition::BACKLINE)
+			                        ? base_amount * 2 : base_amount;
+			int discarded = 0;
+			for (const CardId& cid : discard_ids)
+			{
+				if (discarded >= max_discard) { break; }
+				discard_card(hero_id, cid);
+				++discarded;
+			}
+			if (discarded > 0) { draw_n_cards(hero_id, discarded); }
+			continue;
 		}
 		if (eff.effect_type == "MOVE")
 		{

@@ -7,7 +7,8 @@
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      { "effect_type": "MOVE", "amount": 2, "target": "PLAYER_CHOICE", "value": "" }
+      { "effect_type": "MOVE", "amount": 2, "target": "PLAYER_CHOICE", "value": "",
+        "avoid_enemy_locations": true }
     ]
   },
   {
@@ -18,7 +19,8 @@
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "" }
+      { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "",
+        "avoid_enemy_locations": true }
     ]
   },
   {
@@ -28,7 +30,7 @@
     "card_type": "INSTANT",
     "timeline_cost": 1,
     "can_target_backline": false,
-    "reaction_trigger": "eldhom.pg.attacked",
+    "reaction_trigger": "eldhom.pg.enemy_approach",
     "effects": [
       { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
     ]
@@ -51,9 +53,9 @@
     "card_type": "SINGLE",
     "timeline_cost": 3,
     "can_target_backline": false,
+    "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE",
-        "condition": "IF_FORMATION_FRONT" }
+      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -63,9 +65,9 @@
     "card_type": "SINGLE",
     "timeline_cost": 3,
     "can_target_backline": false,
+    "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE",
-        "condition": "IF_FORMATION_FRONT" },
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" },
       { "effect_type": "DISRUPT_ENEMY_FORMATION", "amount": 0, "target": "NEAREST_ENEMY_FRONTLINE" }
     ]
   },
@@ -133,19 +135,7 @@
     "timeline_cost": 2,
     "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE" }
-    ]
-  },
-  {
-    "card_id": "base_uso_arco_balestra",
-    "name": "Uso Arco/Balestra",
-    "origin": "BASE",
-    "card_type": "SINGLE",
-    "timeline_cost": 2,
-    "can_target_backline": false,
-    "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE",
-        "condition": "IF_WEAPON_RANGED" }
+      { "effect_type": "DAMAGE", "amount": 1, "target": "NEAREST_ENEMY_FRONTLINE", "range": 1 }
     ]
   },
   {
@@ -167,8 +157,8 @@
     "timeline_cost": 3,
     "can_target_backline": false,
     "effects": [
-      { "effect_type": "HEAL",      "amount": 1, "target": "SELF" },
-      { "effect_type": "DRAW_CARD", "amount": 1, "target": "SELF" }
+      { "effect_type": "HEAL",              "amount": 1, "target": "SELF" },
+      { "effect_type": "DISCARD_THEN_DRAW", "amount": 1, "target": "SELF" }
     ]
   },
   {

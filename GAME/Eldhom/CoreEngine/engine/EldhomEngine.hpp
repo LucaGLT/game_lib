@@ -287,12 +287,15 @@ public:
 	 * @param hero_id     Hero actor ID.
 	 * @param card_id     Card to play.
 	 * @param destination Optional destination for MOVE effects requiring player choice.
+	 * @param discard_ids Card ids to discard-then-redraw (only for cards with a
+	 *                    `DISCARD_THEN_DRAW` effect, e.g. Riprendere Fiato).
 	 * @return `ActionResult`.
 	 */
 	ActionResult play_card(
-		const HeroId&      hero_id,
-		const CardId&      card_id,
-		const LocationId&  destination = {});
+		const HeroId&               hero_id,
+		const CardId&               card_id,
+		const LocationId&           destination = {},
+		const std::vector<CardId>&  discard_ids = {});
 
 	/**
 	 * @brief Voluntarily ends a hero's sequence turn (stop_sequence).
