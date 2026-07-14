@@ -64,12 +64,17 @@ public:
 		std::unique_lock<std::mutex> lock(_mtx);
 		if (!_engine) { return; }
 		if (_engine->is_over()) { return; }
+		if (_engine->has_pending_reactive_window()) { return; } // await GUI response
 
 		gmActor::ActorKind kind = _engine->next_actor_kind();
 		if (kind == gmActor::ActorKind::MONSTER_GROUP)
 		{
 			std::string group_id = _engine->next_actor();
 			_engine->resolve_group_turn_for(group_id);
+			if (_engine->has_pending_reactive_window())
+			{
+				emit_instant_window(_engine->pending_reactive_window().trigger);
+			}
 			emit_next_actor_event();
 			emit_full_state();
 		}
@@ -110,6 +115,20 @@ public:
 			return;
 		}
 
+		// While a reactive instant window (Assestarsi — enemy approach) is open,
+		// only the matching command and state requests are accepted.
+		if (_engine && _engine->has_pending_reactive_window()
+		    && type_id != eldhom::CMD_PLAY_REACTIVE_INSTANTS
+		    && type_id != eldhom::CMD_REQUEST_STATE)
+		{
+			nlohmann::json err;
+			err["ok"]      = false;
+			err["error"]   = "Finestra reattiva aperta: rispondi prima con eldhom.play_reactive_instants.";
+			err["command"] = type_id;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
 		if (type_id == eldhom::CMD_START_MISSION)
 		{
 			handle_start_mission(data);
@@ -133,6 +152,10 @@ public:
 		else if (type_id == eldhom::CMD_PLAY_INSTANTS)
 		{
 			handle_play_instants(data);
+		}
+		else if (type_id == eldhom::CMD_PLAY_REACTIVE_INSTANTS)
+		{
+			handle_play_reactive_instants(data);
 		}
 		else if (type_id == eldhom::CMD_RESOLVE_FORMATION)
 		{
@@ -258,12 +281,22 @@ private:
 		std::string action_str  = data.value("action_type", std::string{});
 		std::string destination = data.value("destination", std::string{});
 
+		std::vector<std::string> discard_ids;
+		if (data.contains("discard_ids") && data["discard_ids"].is_array())
+		{
+			for (const nlohmann::json& cid : data["discard_ids"])
+			{
+				discard_ids.push_back(cid.get<std::string>());
+			}
+		}
+
 		eldhom::SimpleActionType action = eldhom::SimpleActionType::RECOVER;
 		if      (action_str == "MOVE")     { action = eldhom::SimpleActionType::MOVE; }
 		else if (action_str == "ATTACK")   { action = eldhom::SimpleActionType::ATTACK; }
 		else if (action_str == "INTERACT") { action = eldhom::SimpleActionType::INTERACT; }
 
-		eldhom::ActionResult r = _engine->do_simple_action(hero_id, action, destination);
+		eldhom::ActionResult r =
+			_engine->do_simple_action(hero_id, action, destination, discard_ids);
 		send_action_result(r);
 		if (!r.ok()) { return; }
 
@@ -412,6 +445,36 @@ private:
 
 		emit_full_state();
 		emit_defense_window();
+	}
+
+	// Handles the GUI's response to a reactive instant window (Assestarsi —
+	// enemy approach). Unlike CMD_PLAY_INSTANTS this never opens a defense
+	// window afterwards: there is no attack to resolve, so the engine simply
+	// closes the window and lets auto-advance continue.
+	void handle_play_reactive_instants(const nlohmann::json& data)
+	{
+		if (!_engine) { return; }
+
+		std::vector<std::pair<std::string, std::string>> selected;
+		if (data.contains("selected") && data["selected"].is_array())
+		{
+			for (const nlohmann::json& s : data["selected"])
+			{
+				std::string aid = s.value("actor_id", std::string{});
+				std::string cid = s.value("card_id",  std::string{});
+				if (!aid.empty() && !cid.empty())
+				{
+					selected.emplace_back(aid, cid);
+				}
+			}
+		}
+
+		eldhom::ActionResult r = _engine->play_reactive_instants(selected);
+		send_action_result(r);
+		if (!r.ok()) { return; }
+
+		emit_next_actor_event();
+		emit_full_state();
 	}
 
 	void handle_react_defense(const nlohmann::json& data)

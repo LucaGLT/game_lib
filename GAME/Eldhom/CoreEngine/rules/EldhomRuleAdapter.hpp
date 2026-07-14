@@ -150,13 +150,21 @@ public:
 	 * @param dest_id    Target LocationId.
 	 * @param max_steps  Maximum BFS distance allowed (>= 1).
 	 * @param store      Actor store (modified in place).
+	 * @param avoid_enemy_locations  If true, intermediate path locations occupied
+	 *                   by `enemy_faction` are excluded from the search (the
+	 *                   final destination is exempt). Used by Passo Cauto /
+	 *                   Scatto Breve.
+	 * @param enemy_faction  Faction to avoid crossing through, when
+	 *                   `avoid_enemy_locations` is true.
 	 * @return EffectResult (resolved=false if dest_id is not reachable).
 	 */
 	EffectResult apply_card_move(
 		const HeroId&        hero_id,
 		const LocationId&    dest_id,
 		int                  max_steps,
-		gmActor::ActorStore& store);
+		gmActor::ActorStore& store,
+		bool                 avoid_enemy_locations = false,
+		const std::string&   enemy_faction = std::string{});
 
 	/**
 	 * @brief Applies an Attacco Semplice for a hero (1 damage, nearest target).
@@ -209,12 +217,16 @@ public:
 	 * @param store     Actor store to query (read-only).
 	 * @param from_loc  Location from which targeting is resolved.
 	 * @param faction   Faction being targeted.
+	 * @param range     Search radius in location-hops (0 = same location only,
+	 *                  the default). Searches the nearest location (fewest
+	 *                  hops) with at least one valid target, up to `range`.
 	 * @return Actor ID of the nearest valid target, or empty string if none.
 	 */
 	gmActor::ActorId find_nearest_target(
 		const gmActor::ActorStore& store,
 		const LocationId&          from_loc,
-		const std::string&         faction) const;
+		const std::string&         faction,
+		int                        range = 0) const;
 
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;

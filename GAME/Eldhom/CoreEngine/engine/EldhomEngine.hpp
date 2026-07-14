@@ -123,6 +123,22 @@ struct InstantOption
 };
 
 /**
+ * @struct PendingReactiveWindow
+ * @brief Engine-side state for a non-damage instant window (e.g. Assestarsi),
+ *        opened when an enemy moves into a PG's location or an adjacent one.
+ *
+ * Deliberately kept separate from `PendingAttack`: there is no attacker/
+ * defender pair and no damage to resolve, only an opportunity for any hero
+ * with an eligible INSTANT card to react before the game continues.
+ */
+struct PendingReactiveWindow
+{
+	bool        active = false;   ///< True while the window is open
+	std::string trigger;          ///< Event id eligible instants react to
+	LocationId  location_id;      ///< Location where the trigger occurred
+};
+
+/**
  * @struct ActorFormationEntry
  * @brief One actor listed in an interactive formation dialog.
  */
@@ -247,19 +263,23 @@ public:
 	 * timeline_position by the appropriate cost.
 	 *
 	 * MOVE requires `destination` to be non-empty.
-	 * Other action types ignore `destination`.
+	 * RECOVER: after healing 1 HP, discards up to 1 card from `discard_ids`
+	 * (2 if the hero is in BACKLINE) and draws the same number back.
+	 * Other action types ignore `destination`/`discard_ids`.
 	 *
 	 * After the action: runs formation check and emits EVT_PG_TURN_ENDED.
 	 *
 	 * @param hero_id     Hero actor ID.
 	 * @param action_type Action type.
 	 * @param destination Target LocationId (only for MOVE).
+	 * @param discard_ids Card ids to discard-then-redraw (only for RECOVER).
 	 * @return `ActionResult` with ok()==true on success.
 	 */
 	ActionResult do_simple_action(
-		const HeroId&       hero_id,
-		SimpleActionType    action_type,
-		const LocationId&   destination = {});
+		const HeroId&              hero_id,
+		SimpleActionType           action_type,
+		const LocationId&          destination = {},
+		const std::vector<CardId>& discard_ids = {});
 
 	/**
 	 * @brief Performs a Turno PG: gioca una Carta Azione.
@@ -341,6 +361,26 @@ public:
 	bool has_pending_instants() const;
 
 	ActionResult play_instants(
+		const std::vector<std::pair<HeroId, CardId>>& selected);
+
+	// ── Reactive instant window API (Assestarsi — enemy approach) ─────────────
+
+	/** @brief True while a reactive instant window (e.g. enemy approach) is open. */
+	bool has_pending_reactive_window() const;
+
+	/** @brief Read-only access to the current reactive window, if any. */
+	const PendingReactiveWindow& pending_reactive_window() const;
+
+	/**
+	 * @brief Plays the selected INSTANT cards in the open reactive window, then
+	 * closes it. Pass an empty `selected` to close the window without playing
+	 * anything.
+	 *
+	 * @param selected (hero_id, card_id) pairs to play; each must be eligible.
+	 * @return `ActionResult` (ERR_NO_PENDING_INSTANTS / ERR_INSTANT_NOT_ELIGIBLE
+	 *         on failure).
+	 */
+	ActionResult play_reactive_instants(
 		const std::vector<std::pair<HeroId, CardId>>& selected);
 
 	// ── Interactive formation dialog API (Scompaginamento / Schieramento) ─────
@@ -530,6 +570,7 @@ private:
 
 	// ── Interactive attack state ──────────────────────────────────────────────
 	PendingAttack          _pending; ///< Open reaction window (active==false if none)
+	PendingReactiveWindow  _reactive_window; ///< Open non-damage instant window (Assestarsi)
 
 	// ── Interactive formation dialog state ───────────────────────────────
 	std::deque<PendingFormation> _formation_queue; ///< Queued formation dialogs
@@ -544,6 +585,15 @@ private:
 
 	/** @brief Checks and queues interactive formation dialogs for all factions at a location. */
 	void check_formation(const LocationId& location_id);
+
+	/**
+	 * @brief Opens the reactive instant window (EVT_ENEMY_APPROACH) if a PG is
+	 * in `enemy_loc` or an adjacent location and holds an eligible INSTANT
+	 * card. No-op if a reactive window is already open or no PG is nearby.
+	 *
+	 * @param enemy_loc Location the enemy just moved into.
+	 */
+	void maybe_open_enemy_approach_window(const LocationId& enemy_loc);
 
 	/** @brief Queues a DISRUPT formation dialog for the enemy faction at the attacker's location. */
 	void queue_enemy_disrupt(const HeroId& attacker_id);

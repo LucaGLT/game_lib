@@ -757,6 +757,48 @@ void test_zone_door_blocks_monster_until_pg_crosses()
 	      "briganti_B crosses into corridoio once the zone door is open");
 }
 
+void test_phase0_requires_frontline()
+{
+	std::cout << "\n=== test_phase0_requires_frontline ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	// A card that requires the caster to be in FRONTLINE (Fendente Pesante style).
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "DAMAGE";
+		eff.amount      = 2;
+		eldhom::EldhomCard card =
+			make_card("test_requires_frontline", "Test Fendente",
+			          gmAlea::CardType::SINGLE, 3, { eff });
+		card.requires_frontline = true;
+		card_cat["test_requires_frontline"] = card;
+	}
+	// A card to force the caster into BACKLINE for the negative check.
+	{
+		eldhom::EldhomEffect eff;
+		eff.effect_type = "FORMATION_PUSH";
+		eff.value       = "BACKLINE";
+		card_cat["test_push_backline"] =
+			make_card("test_push_backline", "Test Push Backline",
+			          gmAlea::CardType::SINGLE, 1, { eff });
+	}
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Thael starts in FRONTLINE (Sim 01 fixture): the card must succeed.
+	eldhom::ActionResult r1 = engine.play_card("thael", "test_requires_frontline");
+	check(r1.ok(), "FRONTLINE caster can play a requires_frontline card");
+
+	// Move Velyr (starts BACKLINE) to try the same card: must fail.
+	eldhom::ActionResult r2 = engine.play_card("velyr", "test_requires_frontline");
+	check(r2.code == eldhom::ActionResultCode::ERR_POSITION_REQUIRED,
+	      "BACKLINE caster is rejected with ERR_POSITION_REQUIRED");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -775,6 +817,7 @@ int main()
 	test_victory_all_monsters_eliminated();
 	test_defeat_time_limit();
 	test_zone_door_blocks_monster_until_pg_crosses();
+	test_phase0_requires_frontline();
 
 	std::cout << "\n================================================\n";
 	std::cout << "PASS: " << s_pass << "   FAIL: " << s_fail << "\n";

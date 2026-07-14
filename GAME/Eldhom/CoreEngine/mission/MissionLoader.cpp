@@ -63,6 +63,7 @@ EldhomCard MissionLoader::parse_hero_card(const nlohmann::json& j)
 	c.timeline_cost     = j.value("timeline_cost", 2);
 	c.can_target_backline = j.value("can_target_backline", false);
 	c.reaction_trigger  = j.value("reaction_trigger", std::string{});
+	c.requires_frontline = j.value("requires_frontline", false);
 
 	if (j.contains("effects"))
 	{
@@ -74,6 +75,8 @@ EldhomCard MissionLoader::parse_hero_card(const nlohmann::json& j)
 			eff.target      = ej.value("target", std::string{});
 			eff.condition   = ej.value("condition", std::string{});
 			eff.value       = ej.value("value", std::string{});
+			eff.range       = ej.value("range", 0);
+			eff.avoid_enemy_locations = ej.value("avoid_enemy_locations", false);
 			c.effects.push_back(std::move(eff));
 		}
 	}

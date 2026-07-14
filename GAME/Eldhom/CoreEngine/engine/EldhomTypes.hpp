@@ -111,7 +111,8 @@ enum class ActionResultCode {
 	ERR_NO_PENDING_INSTANTS,      ///< play_instants called with no instant window open
 	ERR_INSTANT_NOT_ELIGIBLE,     ///< A selected instant is not in the eligible set
 	ERR_NO_PENDING_FORMATION,     ///< resolve_formation called without a pending dialog
-	ERR_INVALID_FORMATION_CHOICE  ///< Retroguardia count exceeds Prima Linea count
+	ERR_INVALID_FORMATION_CHOICE, ///< Retroguardia count exceeds Prima Linea count
+	ERR_POSITION_REQUIRED         ///< Card requires the caster to be in FRONTLINE
 };
 
 /** @brief Result returned by engine action methods. */
@@ -235,6 +236,11 @@ inline const EventType EVT_ALLARME_TESORO    = "eldhom.missione.allarme_tesoro";
 // Payload: JSON {"a": LocationId, "b": LocationId}.
 inline const EventType EVT_ZONE_DOOR_OPENED  = "eldhom.zone_door.opened";
 
+// Reaction trigger: an enemy entered a PG's location or an adjacent one
+// (used by the reactive instant window — e.g. Assestarsi). Payload: LocationId
+// where the enemy arrived.
+inline const EventType EVT_ENEMY_APPROACH    = "eldhom.pg.enemy_approach";
+
 // Full-state snapshot (sent on mission start / GUI reconnect)
 inline const EventType EVT_STATE_FULL        = "eldhom.state.full";
 
@@ -269,6 +275,9 @@ inline const std::string CMD_REQUEST_STATE   = "eldhom.request_state";
 inline const std::string CMD_DECLARE_ATTACK     = "eldhom.declare_attack";
 inline const std::string CMD_REACT_DEFENSE      = "eldhom.react_defense";
 inline const std::string CMD_PLAY_INSTANTS      = "eldhom.play_instants";
+
+// Reactive instant window command (Assestarsi — enemy approach; GUI → engine)
+inline const std::string CMD_PLAY_REACTIVE_INSTANTS = "eldhom.play_reactive_instants";
 
 // Interactive formation dialog command (GUI → engine)
 inline const std::string CMD_RESOLVE_FORMATION  = "eldhom.resolve_formation";

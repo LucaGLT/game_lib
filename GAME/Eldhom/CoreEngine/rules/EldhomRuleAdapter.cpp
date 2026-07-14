@@ -230,9 +230,42 @@ EffectResult EldhomRuleAdapter::apply_effect(
 gmActor::ActorId EldhomRuleAdapter::find_nearest_target(
 	const gmActor::ActorStore& store,
 	const LocationId&          from_loc,
-	const std::string&         faction) const
+	const std::string&         faction,
+	int                        range) const
 {
-	return _targeting.nearest_target(store, from_loc, faction);
+	// range == 0: mischia — same behaviour as before this feature existed.
+	gmActor::ActorId here = _targeting.nearest_target(store, from_loc, faction);
+	if (!here.empty() || range <= 0) { return here; }
+
+	// BFS outward, hop by hop, stopping at the first (nearest) hop that has
+	// at least one valid target. Locations at the same hop distance have no
+	// defined preference order beyond adjacency-map iteration order.
+	std::unordered_set<LocationId> visited;
+	visited.insert(from_loc);
+	std::vector<LocationId> frontier{from_loc};
+
+	for (int hop = 1; hop <= range; ++hop)
+	{
+		std::vector<LocationId> next_frontier;
+		for (const LocationId& loc : frontier)
+		{
+			auto it = _adjacency.find(loc);
+			if (it == _adjacency.end()) { continue; }
+			for (const LocationId& adj : it->second)
+			{
+				if (visited.count(adj)) { continue; }
+				visited.insert(adj);
+				next_frontier.push_back(adj);
+			}
+		}
+		for (const LocationId& loc : next_frontier)
+		{
+			gmActor::ActorId found = _targeting.nearest_target(store, loc, faction);
+			if (!found.empty()) { return found; }
+		}
+		frontier = std::move(next_frontier);
+	}
+	return {};
 }
 
 // ── apply_behavior_step (monster step) ───────────────────────────────────────
@@ -354,7 +387,9 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 	const HeroId&        hero_id,
 	const LocationId&    dest_id,
 	int                  max_steps,
-	gmActor::ActorStore& store)
+	gmActor::ActorStore& store,
+	bool                 avoid_enemy_locations,
+	const std::string&   enemy_faction)
 {
 	EffectResult res;
 	if (dest_id.empty() || max_steps <= 0) { return res; }
@@ -398,6 +433,14 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 				break;
 			}
 			if (visited.count(adj)) { continue; }
+			// Passo Cauto / Scatto Breve: cannot cross THROUGH an enemy-
+			// occupied location (the final destination is exempt, handled
+			// by the `adj == dest_id` branch above).
+			if (avoid_enemy_locations && !enemy_faction.empty() &&
+			    _targeting.has_valid_target(store, adj, enemy_faction))
+			{
+				continue;
+			}
 			predecessor[adj] = step_loc;
 			visited.insert(adj);
 			frontier.push({adj, depth + 1});

@@ -36,6 +36,15 @@ struct EldhomEffect {
 	std::string target;            ///< Target selector: "NEAREST_ENEMY_FRONTLINE", "SELF", …
 	std::string condition;         ///< Optional guard: "IF_SEQUENCE", "IF_FORMATION_FRONT", …
 	std::string value;             ///< Extra payload (e.g. status tag name)
+	/// Generic attack range in location-hops for DAMAGE/DEAL_DAMAGE effects:
+	/// 0 = mischia (same location), 1 = adjacent location, 2 = adjacent-of-
+	/// adjacent, etc. Resolved via BFS on the mission's adjacency graph.
+	int         range     = 0;
+	/// For MOVE effects: if true, the path may not cross through (as an
+	/// intermediate step) any location occupied by enemies of the caster's
+	/// faction. The final destination is exempt (Formazione is resolved there
+	/// normally). Used by Passo Cauto / Scatto Breve.
+	bool        avoid_enemy_locations = false;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,6 +64,10 @@ struct EldhomCard {
 	std::vector<EldhomEffect> effects;
 	std::string              reaction_trigger; ///< Empty means no instant reaction
 	bool                     can_target_backline = false;
+	/// True if the caster must be in FRONTLINE to play this card (e.g. Fendente
+	/// Pesante, Spinta di Corpo). Checked in EldhomEngine::play_card() before
+	/// any effect is applied.
+	bool                     requires_frontline = false;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
