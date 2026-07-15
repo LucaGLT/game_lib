@@ -6,9 +6,15 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "MOVE", "amount": 2, "target": "PLAYER_CHOICE", "value": "",
-        "avoid_enemy_locations": true }
-    ]
+      {
+        "effect_type": "MOVE",
+        "amount": 2,
+        "target": "PLAYER_CHOICE",
+        "value": "",
+        "avoid_enemy_locations": true
+      }
+    ],
+    "description": "Muovi fino a 2 Locazioni. Non puoi attraversare Locazioni occupate da Nemici lungo il percorso, ma puoi comunque terminare il movimento in una Locazione con Nemici."
   },
   {
     "card_id": "base_scatto_breve",
@@ -17,9 +23,15 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "",
-        "avoid_enemy_locations": true }
-    ]
+      {
+        "effect_type": "MOVE",
+        "amount": 3,
+        "target": "PLAYER_CHOICE",
+        "value": "",
+        "avoid_enemy_locations": true
+      }
+    ],
+    "description": "Muovi fino a 3 Locazioni. Non puoi attraversare Locazioni occupate da Nemici lungo il percorso; puoi entrarci solo come Locazione finale."
   },
   {
     "card_id": "base_assestarsi",
@@ -29,8 +41,14 @@
     "timeline_cost": 1,
     "reaction_trigger": "eldhom.pg.enemy_approach",
     "effects": [
-      { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
-    ]
+      {
+        "effect_type": "FORMATION_PUSH",
+        "amount": 0,
+        "target": "SELF",
+        "value": "FRONTLINE"
+      }
+    ],
+    "description": "Istantanea: quando un Nemico entra nella tua Locazione o in una Locazione adiacente, ti sposti in Prima Linea per riorganizzare la Formazione."
   },
   {
     "card_id": "base_colpo_secco",
@@ -39,10 +57,20 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" },
-      { "effect_type": "DISCARD_THEN_DRAW", "amount": 1, "target": "SELF",
-        "condition": "IF_BOTH_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      },
+      {
+        "effect_type": "DISCARD_THEN_DRAW",
+        "amount": 1,
+        "target": "SELF",
+        "condition": "IF_BOTH_FRONTLINE"
+      }
+    ],
+    "description": "Attacca un Nemico in mischia: infliggi 1❌. Se tu e il bersaglio siete entrambi in Prima Linea, pesca 1 carta e poi scartane 1."
   },
   {
     "card_id": "base_fendente_pesante",
@@ -52,8 +80,15 @@
     "timeline_cost": 3,
     "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 2, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 2,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Richiede Prima Linea. Attacca un Nemico in mischia infliggendo 2❌.",
+    "condition": "FRONTLINE"
   },
   {
     "card_id": "base_spinta_di_corpo",
@@ -63,9 +98,20 @@
     "timeline_cost": 3,
     "requires_frontline": true,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" },
-      { "effect_type": "DISRUPT_ENEMY_FORMATION", "amount": 0, "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      },
+      {
+        "effect_type": "DISRUPT_ENEMY_FORMATION",
+        "amount": 0,
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Richiede Prima Linea. Attacca un Nemico in mischia infliggendo 1❌, poi scompagina la formazione nemica nella Locazione.",
+    "condition": "FRONTLINE"
   },
   {
     "card_id": "base_colpo_d_apertura",
@@ -74,8 +120,14 @@
     "card_type": "SEQ_START",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Apre una Sequenza. Attacca un Nemico in mischia infliggendo 1❌; puoi continuare la Sequenza."
   },
   {
     "card_id": "base_passo_e_lama",
@@ -84,9 +136,20 @@
     "card_type": "SEQ_START",
     "timeline_cost": 3,
     "effects": [
-      { "effect_type": "MOVE", "amount": 1, "target": "PLAYER_CHOICE", "value": "" },
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "MOVE",
+        "amount": 1,
+        "target": "PLAYER_CHOICE",
+        "value": ""
+      },
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Apre una Sequenza. Muovi di 1 Locazione, poi attacca un Nemico in mischia infliggendo 1❌; puoi continuare la Sequenza."
   },
   {
     "card_id": "base_secondo_colpo",
@@ -95,8 +158,14 @@
     "card_type": "SEQ_CONTINUE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Continua una Sequenza. Attacca un Nemico in mischia infliggendo 1❌; puoi continuare la Sequenza."
   },
   {
     "card_id": "base_pressione_continua",
@@ -105,8 +174,14 @@
     "card_type": "SEQ_CONTINUE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Continua una Sequenza. Attacca un Nemico in mischia infliggendo 1❌; puoi continuare la Sequenza."
   },
   {
     "card_id": "base_colpo_di_chiusura",
@@ -115,8 +190,14 @@
     "card_type": "SEQ_END",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "MELEE",
+        "target": "ENEMY_FRONTLINE"
+      }
+    ],
+    "description": "Chiude una Sequenza. Attacca un Nemico in mischia infliggendo 1❌; dopo questa carta la Sequenza termina."
   },
   {
     "card_id": "base_lancio_di_fortuna",
@@ -125,8 +206,15 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 1, "attack_type": "RANGED", "target": "ENEMY_FRONTLINE", "range": 1 }
-    ]
+      {
+        "effect_type": "DAMAGE",
+        "amount": 1,
+        "attack_type": "RANGED",
+        "target": "ENEMY_FRONTLINE",
+        "range": 1
+      }
+    ],
+    "description": "Attacca un Nemico a distanza breve (1 Locazione adiacente) infliggendo 1❌. Puoi giocarla anche senza arma a distanza."
   },
   {
     "card_id": "base_mano_ferma",
@@ -135,8 +223,13 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "INTERACT", "amount": 0, "target": "SCENE" }
-    ]
+      {
+        "effect_type": "INTERACT",
+        "amount": 0,
+        "target": "SCENE"
+      }
+    ],
+    "description": "Esegui un Interazione semplice nella tua Locazione (leva, porta, forziere, oggetto a terra o meccanismo evidente)."
   },
   {
     "card_id": "base_riprendere_fiato",
@@ -145,9 +238,18 @@
     "card_type": "SINGLE",
     "timeline_cost": 3,
     "effects": [
-      { "effect_type": "HEAL",              "amount": 1, "target": "SELF" },
-      { "effect_type": "DISCARD_THEN_DRAW", "amount": 1, "target": "SELF" }
-    ]
+      {
+        "effect_type": "HEAL",
+        "amount": 1,
+        "target": "SELF"
+      },
+      {
+        "effect_type": "DISCARD_THEN_DRAW",
+        "amount": 1,
+        "target": "SELF"
+      }
+    ],
+    "description": "Recupera 1❤️. Poi scarta 1 carta e pescane 1 (fino a 2 se in Retroguardia)."
   },
   {
     "card_id": "velyr_cura_rapida",
@@ -156,8 +258,13 @@
     "card_type": "SINGLE",
     "timeline_cost": 2,
     "effects": [
-      { "effect_type": "HEAL", "amount": 2, "target": "SELF" }
-    ]
+      {
+        "effect_type": "HEAL",
+        "amount": 2,
+        "target": "SELF"
+      }
+    ],
+    "description": "Recupera 2❤️."
   },
   {
     "card_id": "velyr_supporto_tattico",
@@ -167,7 +274,12 @@
     "timeline_cost": 0,
     "reaction_trigger": "eldhom.monster.damaged",
     "effects": [
-      { "effect_type": "HEAL", "amount": 1, "target": "SELF" }
-    ]
+      {
+        "effect_type": "HEAL",
+        "amount": 1,
+        "target": "SELF"
+      }
+    ],
+    "description": "Istantanea: quando infliggi danno a un Nemico, recupera 1❤️."
   }
 ]
