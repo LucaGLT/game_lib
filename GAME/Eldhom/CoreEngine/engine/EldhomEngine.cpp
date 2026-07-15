@@ -783,6 +783,12 @@ ActionResult EldhomEngine::play_card(
 	// Advance sequence state
 	_seq_states[hero_id] = _sequence_adapter.advance(original_card_type, seq_before);
 
+	// Emit EVT_SEQUENCE_STARTED if sequence just activated (from inactive to active)
+	if (!seq_before.active && _seq_states[hero_id].active)
+	{
+		emit(EVT_SEQUENCE_STARTED, hero_id, card_id);
+	}
+
 	// Advance timeline
 	const int total_card_cost = card.timeline_cost + extra_move_cost;
 	_store.common(hero_id).timeline_position += total_card_cost;

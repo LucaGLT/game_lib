@@ -199,19 +199,6 @@ EffectResult EldhomRuleAdapter::apply_effect(
 		res.resolved = true;
 		res.note     = "Draw card (handled by end_hero_turn draw-up)";
 	}
-	else if (effect.effect_type == "PUSH_ENEMY_BACKLINE")
-	{
-		// Spinge il nemico in Prima Linea piu' vicino in Retroguardia.
-		gmActor::ActorId target =
-			_targeting.nearest_target(store, loc, target_faction);
-		if (!target.empty())
-		{
-			store.common(target).area_position = gmActor::AreaPosition::BACKLINE;
-			res.resolved  = true;
-			res.target_id = target;
-			res.note      = target + " pushed to backline";
-		}
-	}
 	else if (effect.effect_type == "REDUCE_DAMAGE")
 	{
 		// Handled upstream in EldhomEngine::play_instants before apply_effect is

@@ -93,14 +93,34 @@ _EFFECT_ICONS: dict[str, str] = {
     "HEAL":                     "\u2764\ufe0f",  # ❤️
     "FORMATION_PUSH":           "\U0001f91d",    # 🤝
     "DISRUPT_ENEMY_FORMATION":  "\U0001f91d",    # 🤝
-    "DRAW_CARD":                "\U0001f9e0",    # 🧠
+    "DRAW_CARD":                "\U0001f9e0",    # ⤵️​
     "WAIT":                     "\u23fa\ufe0f",  # ⏺️
+    "DISCARD_THEN_DRAW":        "\U0001f504",    # 🔄
 }
 
+# §5.3 — Tipo di attacco (attack_type → icona)
+_ATTACK_TYPE_ICONS: dict[str, str] = {
+    "MELEE":  "\u2694\ufe0f",   # ⚔️  mischia
+    "RANGED": "\U0001f3f9",      # 🏹  distanza
+}
+
+# §5.4 — Posizione in formazione
+_POSITION_ICONS: dict[str, str] = {
+    "FRONTLINE": "\U0001f464",   # 👤 Prima Linea
+    "BACKLINE":  "\U0001f465",   # 👥 Retroguardia
+}
+
+# §5.5 — Icone semantiche di uso frequente
+ICON_DISCARD        = "\u2935\ufe0f"   # ⤵️  Scarta
+ICON_ENEMY          = "\U0001f47f"     # 👿  Nemico
+ICON_ADJ_LOC        = "1\u25fb\ufe0f"  # 1◻️  Locazione Adiacente
+ICON_SAME_LOC       = "0\u25fb\ufe0f"  # 0◻️  Stessa Locazione
+
 _TARGET_IT: dict[str, str] = {
-    "ENEMY_FRONTLINE":   "nemico in Prima Linea",
-    "ADJACENT_LOCATION": "locazione adiacente",
-    "SELF":              "sé stesso",
+    "ENEMY_FRONTLINE":   f"{ICON_ENEMY}\U0001f464 Nemico in Prima Linea",
+    "ADJACENT_LOCATION": f"{ICON_ADJ_LOC} Locazione Adiacente",
+    "SAME_LOCATION":     f"{ICON_SAME_LOC} Stessa Locazione",
+    "SELF":              "Sé Stesso",
 }
 
 
@@ -147,93 +167,147 @@ def _card_tags(card: dict) -> list[str]:
     return tags
 
 
-def _effect_summary_line(eff: dict) -> str:
-    """Returns a compact icon+text line for one card effect."""
-    etype  = str(eff.get("effect_type", ""))
-    amount = eff.get("amount")
-    icon   = _EFFECT_ICONS.get(etype, "\u2022")
+def _effect_summary_line(eff: dict, cost: int = 0) -> str:
+    """Returns a compact icon+text line for one card effect (plain text).
+
+    Format examples:
+      MELEE:   ⏸️⚔️ 1❌ : 2⏳
+      RANGED:  ⏸️🏹1◻️ 1❌ : 2⏳
+      MOVE:    ▶️2◻️ : 2⏳
+      HEAL:    +1❤️ : 3⏳
+      DISCARD: 🔄1
+    """
+    etype     = str(eff.get("effect_type", ""))
+    amount    = eff.get("amount")
+    icon      = _EFFECT_ICONS.get(etype, "\u2022")
+    atk_type  = str(eff.get("attack_type", "MELEE"))
+    atk_range = eff.get("range", 0)
+    atk_icon  = _ATTACK_TYPE_ICONS.get(atk_type, "\u2694\ufe0f")
+    cost_sfx  = f" : {cost}\u23f3" if cost else ""
+
     if etype in ("MOVE", "MOVE_TOWARD_PG"):
-        return f"{icon} Muovi {amount}\u25fb\ufe0f" if amount else f"{icon} Muovi"
+        # compact: ▶️N◻️ : Ct
+        return f"{icon}{amount}\u25fb\ufe0f{cost_sfx}" if amount else f"{icon}{cost_sfx}"
     if etype in ("DAMAGE", "DEAL_DAMAGE"):
         if not amount:
-            return f"{icon} Attacca"
-        atk_type = str(eff.get("attack_type", "MELEE"))
-        atk_range = eff.get("range", 0)
+            return f"{icon} Attacca{cost_sfx}"
         if atk_type == "RANGED" and atk_range:
-            return f"{icon} {amount}\u274c a distanza (Range {atk_range})"
-        return f"{icon} {amount}\u274c in mischia"
+            return f"{icon}{atk_icon}{atk_range}\u25fb\ufe0f {amount}\u274c{cost_sfx}"
+        return f"{icon}{atk_icon} {amount}\u274c{cost_sfx}"
     if etype == "HEAL":
-        return f"{icon} +{amount} PV" if amount else f"{icon} Cura"
+        # compact: +N❤️ : Ct  (drop the leading ❤️ icon)
+        return f"+{amount}\u2764\ufe0f{cost_sfx}" if amount else f"\u2764\ufe0f{cost_sfx}"
     if etype == "REDUCE_DAMAGE":
-        return f"{icon} Riduci {amount}\u274c" if amount else f"{icon} Riduzione danno"
+        base = f"{icon} -{amount}\u274c" if amount else f"{icon} Riduzione danno"
+        return base + cost_sfx
     if etype == "FORMATION_PUSH":
-        val = str(eff.get("value", ""))
-        return f"{icon} Sposta in {val}" if val else f"{icon} Sposta formazione"
+        val  = str(eff.get("value", ""))
+        pos_icon = _POSITION_ICONS.get(val.upper(), icon)
+        return f"{icon}{pos_icon}{cost_sfx}"
     if etype == "DRAW_CARD":
-        return f"{icon} Pesca {amount} carta/e" if amount else f"{icon} Pesca"
+        return f"{icon}{amount}" if amount else icon
+    if etype == "DISCARD_THEN_DRAW":
+        # compact: ⤵️N  (no cost — purely a hand-management side effect)
+        return f"{ICON_DISCARD}{amount}" if amount else ICON_DISCARD
     if etype == "INTERACT":
-        return f"{icon} Effettua 1 Interazione nella tua Locazione"
-    return f"{icon} {etype.replace('_', ' ').title()}"
+        return f"{icon}{cost_sfx}"
+    if etype == "DISRUPT_ENEMY_FORMATION":
+        return f"{icon}{cost_sfx}"
+    return f"{icon} {etype.replace('_', ' ').title()}{cost_sfx}"
+
+
+def _html_esc(s: str) -> str:
+    """Minimal HTML escaping for text inserted into Qt rich text."""
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _card_description(card: dict) -> str:
-    """Builds the Vista Dettaglio block following UI-Standard-Carte-Missione.md §6."""
-    lines: list[str] = []
-    ctype    = str(card.get("card_type", ""))
+    """Builds the Vista Dettaglio block as Qt-compatible HTML.
+
+    Uses QLabel HTML subset: <b>, <span style="...">, <br>, <hr>.
+    The QLabel must have Qt.TextFormat.RichText or setTextFormat(RichText)
+    for this to render correctly (handled by _set_detail_html helper in
+    GmCompDeckModule or patched in EldhomMainWindow).
+    """
+    ctype     = str(card.get("card_type", ""))
     type_icon = _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4")
     type_name = _CARD_TYPE_IT.get(ctype, ctype or "\u2014")
-    cost     = card.get("timeline_cost", 0)
-    name     = str(card.get("name", ""))
-    effects  = card.get("effects", [])
+    cost      = card.get("timeline_cost", 0)
+    name      = _html_esc(str(card.get("name", "")))
+    effects   = card.get("effects", [])
+    origin    = _html_esc(str(card.get("origin", "Missione")))
 
-    # Main icon: derived from the first effect type.
     main_etype = effects[0].get("effect_type", "") if effects else ""
     main_icon  = _EFFECT_ICONS.get(main_etype, type_icon)
 
-    # ── Intestazione ──────────────────────────────────────────────────────────
-    lines.append(f"{main_icon} {name}   \u23f3 {cost}")
-    lines.append("")
+    parts: list[str] = []
 
-    # ── Tipo | Origine ────────────────────────────────────────────────────────
-    origin = str(card.get("origin", "Missione"))
-    lines.append(f"{type_icon} {type_name}   |   {origin}")
-    lines.append("")
+    # ── Intestazione: nome su riga propria, grande, poi costo + tipo sotto ──
+    parts.append(
+        f'<span style="font-size:14pt; font-weight:700; white-space:nowrap;">'
+        f'{name}'
+        f'</span><br>'
+    )
+    parts.append(
+        f'<span style="font-size:9pt; color:#aaa;">'
+        f'{main_icon}&nbsp;\u23f3{cost}'
+        f'&nbsp;&nbsp;{type_icon}&nbsp;{_html_esc(type_name)}'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp;{origin}'
+        f'</span>'
+    )
+    parts.append('<br><hr style="border:1px solid #444; margin:3px 0;">')
 
-    # ── Effetto rapido ────────────────────────────────────────────────────────
+    # ── Effetto (nessun header) ───────────────────────────────────────────────
     if effects:
-        lines.append("\u2500\u2500 EFFETTO RAPIDO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
         for eff in effects:
-            lines.append(f"  {_effect_summary_line(eff)}")
-        lines.append("")
+            line = _html_esc(_effect_summary_line(eff, cost))
+            parts.append(f'<span style="font-size:11pt;">{line}</span><br>')
+        parts.append('<br>')
 
-    # ── Testo completo ────────────────────────────────────────────────────────
-    text = str(card.get("text", card.get("description", "")))
+    # ── Testo (nessun header, solo cambio font/colore) ────────────────────────
+    text = str(card.get("text", card.get("description", ""))).strip()
     if not text and effects:
-        text = "  ".join(_effect_summary_line(e) for e in effects)
+        text = "  ".join(_effect_summary_line(e, cost) for e in effects)
     if text:
-        lines.append("\u2500\u2500 TESTO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        lines.append(text)
-        lines.append("")
+        parts.append(
+            f'<span style="font-size:9pt; color:#c8c8c8; font-style:italic;">'
+            f'{_html_esc(text)}'
+            f'</span>'
+        )
+        parts.append('<br><br>')
 
-    # ── Trigger ───────────────────────────────────────────────────────────────
-    trigger = str(card.get("reaction_trigger", ""))
+    # ── Trigger (nessun header, colore ambra) ─────────────────────────────────
+    trigger = str(card.get("reaction_trigger", "")).strip()
     if trigger:
-        lines.append("\u2500\u2500 TRIGGER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        lines.append(f"Quando: {trigger}")
-        lines.append("")
+        parts.append(
+            f'<span style="font-size:10pt; color:#e8c44a;">'
+            f'\u26a1&nbsp;{_html_esc(trigger)}'
+            f'</span>'
+        )
+        parts.append('<br><br>')
 
-    # ── Condizioni ────────────────────────────────────────────────────────────
+    # ── Condizioni (nessun header, rosso tenue) ───────────────────────────────
     conditions: list[str] = []
     if any(e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE") and
            e.get("target") == "ENEMY_FRONTLINE" for e in effects):
-        conditions.append("\U0001f3af Solo bersagli in \U0001f9f1 Prima Linea")
-    if conditions:
-        lines.append("\u2500\u2500 CONDIZIONI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        for cond in conditions:
-            lines.append(f"  {cond}")
-        lines.append("")
+        conditions.append(
+            f'{ICON_ENEMY}\U0001f464 Solo bersagli in Prima Linea'
+        )
+    if str(card.get("condition", "")).upper() == "FRONTLINE":
+        conditions.append(
+            f'\U0001f464 Devi essere in Prima Linea'
+        )
 
-    return "\n".join(lines)
+    if conditions:
+        for cond in conditions:
+            parts.append(
+                f'<span style="font-size:10pt; color:#e07070;">'
+                f'{_html_esc(cond)}'
+                f'</span><br>'
+            )
+        parts.append('<br>')
+
+    return "".join(parts)
 
 
 def _card_meta(card_id: str) -> dict:
@@ -645,6 +719,8 @@ class EldhomMainWindow(QMainWindow):
         reg("eldhom.turn.next_actor",         self._log_widget.on_next_actor)
         reg("eldhom.turn.next_actor",         self._board.on_next_actor)
         reg("eldhom.pg.turn_ended",           self._on_pg_turn_ended)
+        reg("eldhom.pg.sequence_started",     self._on_sequence_started)
+        reg("eldhom.pg.sequence_ended",       self._on_sequence_ended)
 
         # Interactive attack / reaction window
         reg("eldhom.attack.declared",         self._on_attack_declared)
@@ -884,6 +960,22 @@ class EldhomMainWindow(QMainWindow):
                     self._refresh_discard_zone(hero_id)
         if hero_id == self._active_hero_id:
             self._actions.set_enabled(False)
+
+    def _on_sequence_started(self, msg: dict) -> None:
+        """Handle sequence activation: disable simple actions and show stop button."""
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        if hero_id == self._active_hero_id:
+            # Show the stop-sequence button and disable simple action buttons.
+            self._actions.set_sequence_active(True)
+
+    def _on_sequence_ended(self, msg: dict) -> None:
+        """Handle sequence deactivation: re-enable simple actions and hide stop button."""
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        if hero_id == self._active_hero_id:
+            # Hide the stop-sequence button and re-enable simple action buttons.
+            self._actions.set_sequence_active(False)
 
 
     # ── Deck event translation (eldhom.* → GmCompDeckModule) ─────────────────

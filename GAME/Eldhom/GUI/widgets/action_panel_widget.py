@@ -157,12 +157,18 @@ class ActionPanelWidget(QFrame):
         self.set_enabled(True)
 
     def set_sequence_active(self, active: bool) -> None:
-        """Shows or hides the Stop Sequence button.
+        """Shows or hides the Stop Sequence button and disables simple action buttons.
+
+        When a sequence is active, the player can only play sequence cards
+        (CONTINUA or FINE), so simple actions are disabled.
 
         Args:
             active: True when a card sequence is currently open.
         """
         self._stop_btn.setVisible(active)
+        # Disable simple action buttons during sequence; re-enable when sequence ends.
+        for btn in self._all_action_buttons:
+            btn.setEnabled(not active)
 
     def set_enabled(self, enabled: bool) -> None:
         """Enables or disables all action buttons uniformly.

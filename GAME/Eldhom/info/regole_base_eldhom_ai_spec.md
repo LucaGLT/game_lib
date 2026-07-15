@@ -88,6 +88,91 @@ PV = punti vita
 
 Le icone indicano la natura dell'effetto, non quale Azione Semplice viene sostituita.
 
+### 0.2b Icone tipo di attacco
+
+```text
+⚔️  = Mischia (stessa Locazione, corpo a corpo)
+🏹  = Attacco a distanza (Locazione adiacente o più, da Retroguardia)
+```
+
+Usate nell'EFFETTO del pannello Dettaglio Carta per distinguere visivamente
+il tipo di attacco senza leggere il testo.
+
+### 0.2c Icone di posizione / formazione
+
+```text
+👤  = Prima Linea
+👥  = Retroguardia
+```
+
+### 0.2d Riepilogo completo icone — pannello Dettaglio Carta
+
+Il pannello **Dettaglio Carta** della GUI usa il seguente schema icone compatto:
+
+#### Tipo carta (angolo etichetta)
+
+```text
+📄  = Singola
+⚡  = Istantanea
+🟢  = Inizio Sequenza
+🟡  = Continuo Sequenza
+🔴  = Fine Sequenza
+```
+
+#### Effect_type (effetto principale)
+
+```text
+▶️  = MOVE / MOVE_TOWARD_PG       — Movimento
+⏸️  = DAMAGE / DEAL_DAMAGE        — Attacco/Danno
+⏺️  = INTERACT                    — Interazione
+❤️  = HEAL                        — Cura / Recupero PV
+🛡️  = REDUCE_DAMAGE               — Riduzione danno
+🤝  = FORMATION_PUSH / DISRUPT    — Formazione
+🧠  = DRAW_CARD                   — Pesca carta
+⤵️  = DISCARD_THEN_DRAW           — Scarta e pesca
+```
+
+#### Tipo di attacco (suffisso all'icona ⏸️)
+
+```text
+⚔️  = MELEE (mischia, stessa Locazione)
+🏹  = RANGED (a distanza, con portata N◻️)
+```
+
+#### Unità e misure (simboli)
+
+```text
+◻️  = Locazione / passo / portata (Range N◻️)
+0◻️ = Stessa Locazione (mischia / distanza corta)
+1◻️ = Locazione Adiacente (distanza breve)
+❌  = Danno (1❌, 2❌, …)
+❤️  = Punto Vita (PV)
+⏳  = Costo in tempo (N⏳)
+```
+
+#### Posizione in formazione e identità
+
+```text
+👤  = Prima Linea
+👥  = Retroguardia
+👿  = Nemico
+⤵️  = Scarta (usato anche come icona DISCARD_THEN_DRAW)
+```
+
+#### Formato riga effetto nel pannello Dettaglio Carta
+
+```text
+MISCHIA:    ⏸️⚔️ N❌ : C⏳
+DISTANZA:   ⏸️🏹R◻️ N❌ : C⏳        (R = portata in Locazioni)
+MOVIMENTO:  ▶️N◻️ : C⏳
+CURA:       +N❤️ : C⏳
+INTERAZ.:   ⏺️ : C⏳
+FORMAZ.:    🤝👤  /  🤝👥
+SCARTA:     🔄N
+```
+
+Dove `N` = valore numerico, `C` = costo in ⏳ della carta, `R` = portata.
+
 ### 0.3 Condizioni della Miniatura
 
 #### Condizioni Negative

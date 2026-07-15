@@ -87,7 +87,7 @@
         "target": "ENEMY_FRONTLINE"
       }
     ],
-    "description": "Richiede Prima Linea. Attacca un Nemico in mischia infliggendo 2❌.",
+    "description": "Devi essere in Prima Linea. Attacca un Nemico in mischia infliggendo 2❌.",
     "condition": "FRONTLINE"
   },
   {
@@ -110,7 +110,7 @@
         "target": "ENEMY_FRONTLINE"
       }
     ],
-    "description": "Richiede Prima Linea. Attacca un Nemico in mischia infliggendo 1❌, poi scompagina la formazione nemica nella Locazione.",
+    "description": "Devi essere in Prima Linea. Attacca un Nemico in mischia infliggendo 1❌, poi scompagina la formazione nemica nella Locazione.",
     "condition": "FRONTLINE"
   },
   {

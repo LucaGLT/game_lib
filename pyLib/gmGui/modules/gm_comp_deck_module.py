@@ -129,6 +129,7 @@ class GmCompDeckModule(BaseModule):
             "Seleziona una carta da una zona per vedere i dettagli."
         )
         self._detail_label.setWordWrap(True)
+        self._detail_label.setTextFormat(Qt.TextFormat.RichText)
         self._detail_label.setProperty("text_role", "body")
         detail_box = QGroupBox("Dettaglio Carta")
         detail_layout = QVBoxLayout(detail_box)
