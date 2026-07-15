@@ -420,17 +420,20 @@ void test_pg_turn_play_card_single()
 
 	// Thael moves to corridoio where enemies are
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
-	// Now Velyr is next — skip Velyr with a MOVE back
-	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "ingresso");
+	// Velyr stays in ingresso — use RECOVER (not a no-op MOVE to her own
+	// location, which would silently fail and leave her timeline at 0,
+	// making her — not Thael — the next actor).
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
 
-	// Now Thael has timeline=1, Velyr=1, monsters=4.
-	// Next is a hero (Thael or Velyr), Thael=1, Velyr=1 → same rank, Thael has actor_id thael
+	// Now Thael has timeline=COST_SIMPLE_MOVE+1 (crossing the still-closed
+	// ingresso<->corridoio zone door costs +1), Velyr=COST_SIMPLE_RECOVER — both 3.
+	// Next is a hero (Thael or Velyr), same rank → Thael wins the tie-break.
 	// Thael plays base_colpo_secco against Brigante_A1 (FRONTLINE in corridoio)
 	events.clear();
 	eldhom::ActionResult r = engine.play_card("thael", "base_colpo_secco");
 	check(r.ok(), "Thael plays base_colpo_secco OK");
-	// Start=0, +MOVE(1), +card_cost(2) = 3
-	check(engine.timeline_position("thael") == eldhom::COST_SIMPLE_MOVE + 2,
+	// Start=0, +MOVE(COST_SIMPLE_MOVE+1 zone door), +card_cost(2)
+	check(engine.timeline_position("thael") == eldhom::COST_SIMPLE_MOVE + 1 + 2,
 	      "Thael timeline advanced by card cost");
 
 	// Check that PG_PLAYED_CARD event was emitted
@@ -440,6 +443,12 @@ void test_pg_turn_play_card_single()
 		if (ev == eldhom::EVT_PG_PLAYED_CARD) { played_card_event = true; break; }
 	}
 	check(played_card_event, "EVT_PG_PLAYED_CARD was emitted");
+
+	// DAMAGE is deferred: base_colpo_secco parked a pending attack instead of
+	// applying the effect immediately. Resolve it (TAKE = no reduction) so
+	// the damage is actually applied before checking brigante_A1's HP.
+	check(engine.has_pending_attack(), "Colpo Secco opened a pending attack");
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE);
 
 	// brigante_A1 should have taken 1 damage (max_hp=3, now hp=2)
 	const gmActor::MonsterInstanceState& ba1 =
@@ -460,8 +469,9 @@ void test_pg_turn_sequence()
 
 	// Thael moves to corridoio
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
-	// Velyr moves to ingresso
-	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "ingresso");
+	// Velyr stays in ingresso — RECOVER, not a no-op MOVE to her own location
+	// (see test_pg_turn_play_card_single for why that silently fails).
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
 
 	// Thael plays SEQ_START — turn should NOT end
 	eldhom::ActionResult r1 = engine.play_card("thael", "base_attacco_inizio_seq");
@@ -611,6 +621,16 @@ void test_victory_all_monsters_eliminated()
 			if (has_enemy)
 			{
 				engine.play_card(next, "base_colpo_secco");
+				// DAMAGE is deferred: resolve the pending attack (TAKE, no
+				// reduction) so the damage is actually applied and the
+				// hero's turn completes (end_hero_turn only runs inside
+				// resolve_reaction for a deferred-damage card).
+				if (engine.has_pending_attack())
+				{
+					engine.resolve_reaction(
+						engine.pending_attack().defender_id,
+						eldhom::DefenseReaction::TAKE);
+				}
 			}
 			else
 			{
