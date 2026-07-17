@@ -16,6 +16,24 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Shared WebGUI_Lib (webLib/WebGUI_Lib) — generic, game-agnostic building
+       blocks, consumed as TS source (no build/publish step yet, single
+       consumer). Resolved relative to this file (no baseUrl — deprecated in
+       TS 6+). See vite.config.ts for the matching resolve.alias.
+       react/react-dom are ALSO mapped here, straight to their @types
+       declaration files: WebGUI_Lib's source has no node_modules of its own
+       above it on disk, so without this it cannot resolve React types at
+       all. Mapping to the same .d.ts files TS would already find on its own
+       for every other (in-tree) file keeps this a no-op for them. */
+    "paths": {
+      "@webgui/*": ["../../../../webLib/WebGUI_Lib/src/*"],
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["./node_modules/@types/react/jsx-dev-runtime.d.ts"],
+      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/client": ["./node_modules/@types/react-dom/client.d.ts"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,

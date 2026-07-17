@@ -22,6 +22,29 @@ export const CMD_NEW_GAME = 'gmTris.new_game'
 
 export const STATUS_ACTIVE_TURN = 'ACTIVE_TURN'
 
+/** Tris' two actors, in display order — feeds the generic `ActorStatusBadges` (webgui-lib). */
+export const PLAYER_ACTORS: ReadonlyArray<{ actorId: string; label: string }> = [
+  { actorId: 'Player_X', label: 'Player X' },
+  { actorId: 'Player_O', label: 'Player O' },
+]
+
+const BADGE_STATUS_LABEL: Record<string, string> = {
+  WINNER: 'Vincitore',
+  DRAW: 'Pareggio',
+  ACTIVE_TURN: 'Turno corrente',
+}
+const BADGE_STATUS_PRIORITY = ['WINNER', 'DRAW', 'ACTIVE_TURN']
+
+/** Tris-specific badge text/variant for one actor's current status set (Italian labels). */
+export function resolveTrisBadge(statuses: readonly string[]): { text: string; variant: string } {
+  for (const status of BADGE_STATUS_PRIORITY) {
+    if (statuses.includes(status)) {
+      return { text: BADGE_STATUS_LABEL[status], variant: status.toLowerCase() }
+    }
+  }
+  return { text: 'in attesa', variant: 'idle' }
+}
+
 export interface ActorSummary {
   actor_id: string
   display_name?: string

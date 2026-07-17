@@ -5,7 +5,7 @@
  * into one plain state object, since Phase 1's scope is a single local user
  * controlling both players — same as the desktop GUI today).
  */
-import type { EngineEnvelope } from '../api/wsClient'
+import type { EngineEnvelope } from '@webgui/session/types'
 import {
   type ActorSnapshotData,
   type ActorStatusData,
@@ -42,7 +42,6 @@ export interface GameState {
   activeMark: string | null
   gameOver: boolean
   header: HeaderStatus
-  playerStatuses: Record<string, string[]>
   winLine: string | null
   logEntries: string[]
   errorMessage: string | null
@@ -53,7 +52,6 @@ export const initialGameState: GameState = {
   activeMark: null,
   gameOver: false,
   header: { kind: 'waiting' },
-  playerStatuses: {},
   winLine: null,
   logEntries: [],
   errorMessage: null,
@@ -88,20 +86,18 @@ export function applyEnvelope(state: GameState, envelope: EngineEnvelope): GameS
 
   switch (envelope.typeId) {
     case EVT_ACTOR_SNAPSHOT: {
+      // Per-actor status history/display is owned by the generic
+      // `ActorStatusBadges` module (webgui-lib), subscribed independently on
+      // the same router. This reducer only cares who can currently move.
       const { actors } = data as unknown as ActorSnapshotData
-      const playerStatuses: Record<string, string[]> = {}
-      for (const actor of actors ?? []) {
-        playerStatuses[actor.actor_id] = actor.statuses ?? []
-      }
-      let next: GameState = { ...state, playerStatuses }
       const activeActor = (actors ?? []).find((actor) =>
         (actor.statuses ?? []).includes(STATUS_ACTIVE_TURN),
       )
       if (activeActor) {
         const mark = markOf(activeActor.actor_id)
-        next = { ...next, activeMark: mark, header: { kind: 'turn', mark } }
+        return { ...state, activeMark: mark, header: { kind: 'turn', mark } }
       }
-      return next
+      return state
     }
 
     case EVT_MAP_SNAPSHOT: {
@@ -125,30 +121,18 @@ export function applyEnvelope(state: GameState, envelope: EngineEnvelope): GameS
 
     case EVT_STATUS_ADDED: {
       const { actor_id: actorId, status } = data as unknown as ActorStatusData
-      const current = state.playerStatuses[actorId] ?? []
-      const statuses = current.includes(status) ? current : [...current, status]
-      let next: GameState = {
-        ...state,
-        playerStatuses: { ...state.playerStatuses, [actorId]: statuses },
-      }
       if (status === STATUS_ACTIVE_TURN) {
         const mark = markOf(actorId)
-        next = { ...next, activeMark: mark, header: { kind: 'turn', mark } }
+        return { ...state, activeMark: mark, header: { kind: 'turn', mark } }
       }
-      return next
+      return state
     }
 
-    case EVT_STATUS_REMOVED: {
-      const { actor_id: actorId, status } = data as unknown as ActorStatusData
-      const current = state.playerStatuses[actorId] ?? []
-      return {
-        ...state,
-        playerStatuses: {
-          ...state.playerStatuses,
-          [actorId]: current.filter((existing) => existing !== status),
-        },
-      }
-    }
+    case EVT_STATUS_REMOVED:
+      // No Tris-specific reaction needed: turn changes are driven by the
+      // ACTIVE_TURN *addition* on the next actor (EVT_STATUS_ADDED above).
+      // Per-actor status history now lives only in `ActorStatusBadges`.
+      return state
 
     case EVT_CELL_CHANGED: {
       const { row, col, mark } = data as unknown as CellChangedData

@@ -186,7 +186,11 @@
 /* --- Phase 3 "Frontend Functional Parity" — themed Tris board, ported from
    the PySide6 reference (pyLib/gmGui/theme_manager.py + GUI/widgets/*).
    Colors/radius come from CSS custom properties set on `.app` per theme
-   (see src/theme/themes.ts); components never hardcode theme colors. --- */
+   (see webLib/WebGUI_Lib/src/theme/themes.ts); components never hardcode
+   theme colors. Generic rules (labeled fields, event log, actor badges,
+   error bar) live in webLib/WebGUI_Lib/src/styles.css (`@webgui/styles.css`)
+   — only Tris-specific rules (page shell, toolbar shell, turn header, board)
+   stay in this file. --- */
 
 .app {
   max-width: 960px;
@@ -247,28 +251,6 @@
 
 .game-toolbar__primary:active {
   transform: translateY(1px);
-}
-
-.game-toolbar__field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.game-toolbar__field select {
-  background-color: var(--gm-background);
-  color: var(--gm-text);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-  padding: 4px 8px;
-  font-family: inherit;
-}
-
-.game-toolbar__field select:focus {
-  border-color: var(--gm-accent);
-  outline: none;
 }
 
 /* ── Turn header ─────────────────────────────────────────────────────────── */
@@ -339,75 +321,4 @@
   background-color: var(--gm-accent);
   border: 3px solid var(--gm-accent);
   color: var(--gm-background);
-}
-
-/* ── Match log ───────────────────────────────────────────────────────────── */
-
-.match-log {
-  flex: 1 1 240px;
-  min-width: 220px;
-  max-height: 306px;
-  overflow-y: auto;
-  background-color: var(--gm-panel);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-  padding: 8px 12px;
-  font-size: 12px;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
-}
-
-.match-log__line {
-  padding: 2px 0;
-  border-bottom: 1px solid var(--gm-border);
-  word-break: break-word;
-}
-
-.match-log__line:last-child {
-  border-bottom: none;
-}
-
-/* ── Player badges ───────────────────────────────────────────────────────── */
-
-.player-badges {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 12px;
-}
-
-.player-badge {
-  padding: 4px 12px;
-  background-color: var(--gm-panel);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-  font-size: 13px;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
-}
-
-.player-badge--active_turn {
-  border: 2px solid var(--gm-accent);
-}
-
-.player-badge--winner {
-  border: 2px solid var(--gm-accent);
-  font-weight: 700;
-}
-
-.player-badge--draw {
-  border: 2px solid var(--gm-border);
-}
-
-/* ── Error bar ───────────────────────────────────────────────────────────── */
-
-.error-bar {
-  text-align: left;
-  padding: 8px 4px;
-  margin: 0;
-  color: var(--gm-border);
-  font-size: 12px;
-}
-
-.error-bar--error {
-  color: var(--gm-danger);
-  font-weight: 700;
 }

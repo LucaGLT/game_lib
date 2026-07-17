@@ -82,47 +82,62 @@ sulle porte fisse 9100/9001 — coesistenza permanente, nessun impatto.
 
 ## File Structure
 
-Albero **effettivo** dopo le Fasi 1 e 3 (`routers/auth.py`, `routes/`, porte dinamiche restano
-scope della Phase 2, non ancora creati):
+Albero **effettivo** dopo le Fasi 1 e 3 + refactor "WebGUI_Lib" (`routers/auth.py`, `routes/`,
+porte dinamiche restano scope della Phase 2, non ancora creati):
 
 ```text
-GAME/Tic-Tac-Toe/WebApp/
-├── PLAN.md                         ← questo file (single source of truth)
-├── conftest.py                     ← rende eng_serve importabile per pytest
-├── eng_serve/                      ← facciata nativa HTTP/WS (FastAPI)
-│   ├── main.py                     ← FastAPI app factory + lifespan, mount router
-│   ├── session_manager.py          ← sessione singola "dev-session" (Phase 2: registro multi-sessione)
-│   ├── engine_process.py           ← spawn/kill di UN tris_engine.exe (porte fisse 9100/9001)
-│   ├── bridge_client.py            ← EngineEventListener (Qt-free) + EngineSender (riusati da pyLib/gmGui/engine_bridge)
-│   ├── routers/
-│   │   └── sessions.py             ← REST comandi/query + endpoint WebSocket eventi (auth.py: Phase 2)
-│   ├── settings.py                 ← config via pydantic-settings (.env)
-│   ├── requirements.txt
-│   └── tests/
-│       └── test_session_e2e.py     ← E2E con tris_engine.exe reale (new_game→snapshot→move→cell_changed)
-└── webapp_frontend/                ← React + Vite + TypeScript
-    ├── package.json
-    ├── vite.config.ts               ← dev proxy verso eng_serve (REST + WS) + config Vitest
-    ├── src/
-    │   ├── main.tsx
-    │   ├── App.tsx                  ← pagina unica (routing multi-sessione: Phase 2)
-    │   ├── App.test.tsx             ← Vitest + Testing Library
-    │   ├── engine/
-    │   │   ├── contract.ts          ← typeId/payload gmTris + mappa linee vincenti
-    │   │   └── gameState.ts         ← stato partita + reducer (porta 1:1 gli handler di tris_window.py)
-    │   ├── components/
-    │   │   ├── TrisBoard.tsx        ← griglia 3×3 cliccabile
-    │   │   ├── TurnHeader.tsx       ← banner turno/vittoria/pareggio
-    │   │   ├── PlayerBadges.tsx     ← badge stato per giocatore (turno footer)
-    │   │   ├── MatchLog.tsx         ← log partita timestampato
-    │   │   ├── ErrorBar.tsx         ← barra messaggi/errori
-    │   │   └── GameToolbar.tsx      ← Nuova Partita + modalità + selettore tema
-    │   ├── theme/
-    │   │   └── themes.ts            ← 5 temi (CSS custom properties, fedeli a theme_manager.py)
-    │   └── api/
-    │       ├── restClient.ts
-    │       └── wsClient.ts
-    └── (routes/, tests/ dedicati: da introdurre in Phase 2 con multi-sessione)
+game_lib/
+├── webLib/
+│   └── WebGUI_Lib/                  ← libreria condivisa generica (equivalente web di pyLib/gmGui)
+│       ├── package.json             ← identità/manifest (consumata come sorgente TS, no build/publish)
+│       └── src/
+│           ├── index.ts             ← barrel export (superficie pubblica documentata)
+│           ├── theme/
+│           │   └── themes.ts        ← 5 temi (CSS custom properties, fedeli a theme_manager.py)
+│           ├── session/
+│           │   ├── types.ts         ← EngineEnvelope/EnvelopeHandler/SessionInfo generici
+│           │   ├── restClient.ts    ← createSession(payload)/sendCommand generici (no starterMode Tris-specifico)
+│           │   ├── wsClient.ts      ← connectSessionEvents generico
+│           │   └── EnvelopeRouter.ts← pub/sub per typeId (+ wildcard '*') — dorsale dei "moduli"
+│           ├── modules/
+│           │   ├── GmGuiModule.ts   ← contratto GmGuiModuleDescriptor (equivalente IGmGuiModule)
+│           │   └── useGmGuiModule.ts← hook React di sottoscrizione al router
+│           ├── components/
+│           │   ├── ErrorBar.tsx     ← barra messaggi/errori generica
+│           │   ├── EventLog.tsx     ← log auto-scroll generico (ex MatchLog)
+│           │   ├── ActorStatusBadges.tsx ← badge stato attore auto-sottoscritti (ex PlayerBadges)
+│           │   └── ThemeSelect.tsx  ← selettore tema generico (estratto da GameToolbar)
+│           └── styles.css           ← CSS strutturale `gmgui-*`, guidato da variabili `--gm-*`
+└── GAME/Tic-Tac-Toe/WebApp/
+    ├── PLAN.md                         ← questo file (single source of truth)
+    ├── conftest.py                     ← rende eng_serve importabile per pytest
+    ├── eng_serve/                      ← facciata nativa HTTP/WS (FastAPI)
+    │   ├── main.py                     ← FastAPI app factory + lifespan, mount router
+    │   ├── session_manager.py          ← sessione singola "dev-session" (Phase 2: registro multi-sessione)
+    │   ├── engine_process.py           ← spawn/kill di UN tris_engine.exe (porte fisse 9100/9001)
+    │   ├── bridge_client.py            ← EngineEventListener (Qt-free) + EngineSender (riusati da pyLib/gmGui/engine_bridge)
+    │   ├── routers/
+    │   │   └── sessions.py             ← REST comandi/query + endpoint WebSocket eventi (auth.py: Phase 2)
+    │   ├── settings.py                 ← config via pydantic-settings (.env)
+    │   ├── requirements.txt
+    │   └── tests/
+    │       └── test_session_e2e.py     ← E2E con tris_engine.exe reale (new_game→snapshot→move→cell_changed)
+    └── webapp_frontend/                ← React + Vite + TypeScript — layer Tris-specifico
+        ├── package.json
+        ├── tsconfig.app.json            ← `paths`: alias `@webgui/*` + mapping react/react-dom → @types (vedi Notes)
+        ├── vite.config.ts               ← dev proxy verso eng_serve (REST + WS) + alias `@webgui` + config Vitest
+        ├── src/
+        │   ├── main.tsx
+        │   ├── App.tsx                  ← pagina unica (routing multi-sessione: Phase 2); consuma `@webgui/*`
+        │   ├── App.test.tsx             ← Vitest + Testing Library
+        │   ├── engine/
+        │   │   ├── contract.ts          ← typeId/payload gmTris + PLAYER_ACTORS/resolveTrisBadge + linee vincenti
+        │   │   └── gameState.ts         ← stato partita + reducer (porta 1:1 gli handler di tris_window.py)
+        │   └── components/
+        │       ├── TrisBoard.tsx        ← griglia 3×3 cliccabile (Tris-specifico)
+        │       ├── TurnHeader.tsx       ← banner turno/vittoria/pareggio (Tris-specifico)
+        │       └── GameToolbar.tsx      ← Nuova Partita + modalità (usa `ThemeSelect` da `@webgui/*`)
+        └── (routes/, tests/ dedicati: da introdurre in Phase 2 con multi-sessione)
 ```
 
 ---
@@ -205,6 +220,44 @@ GAME/Tic-Tac-Toe/WebApp/
   istantaneamente senza reload di pagina (funzionalità che la GUI desktop non espone nemmeno
   via UI oggi — miglioramento reale rispetto al pyQt).
 - `npm run build` e `npm run test` (Vitest+RTL, 3 test su App.tsx) verdi.
+
+**Addendum "WebGUI_Lib" (2026-07-17), successivo al completamento di questa fase:**
+richiesta esplicita dell'utente di estrarre SUBITO (non in futuro) le parti generiche/
+game-agnostic del frontend in una libreria condivisa `webLib/WebGUI_Lib`, equivalente web
+di `pyLib/gmGui`, con scope completo incluso un contratto "modulo" generico (mirror di
+`IGmGuiModule`/`BaseModule` desktop). Vedi `webLib/WebGUI_Lib/` in "File Structure" sopra.
+
+- Estratti in `webLib/WebGUI_Lib/src`: `theme/themes.ts`, `session/{types,restClient,wsClient}.ts`
+  (generalizzati: `createSession` ora accetta un `Record<string, unknown>` arbitrario invece di
+  un `starterMode: string` Tris-specifico), nuovo `session/EnvelopeRouter.ts` (pub/sub per typeId
+  con supporto wildcard `'*'`), nuovo `modules/{GmGuiModule.ts,useGmGuiModule.ts}` (contratto +
+  hook React), componenti generici `ErrorBar.tsx`/`EventLog.tsx` (ex `MatchLog.tsx`)/
+  `ActorStatusBadges.tsx` (ex `PlayerBadges.tsx`, ora auto-sottoscritta al router invece di
+  ricevere props)/`ThemeSelect.tsx` (estratto da `GameToolbar.tsx`), `styles.css` (classi
+  `gmgui-*`, guidate da variabili `--gm-*`).
+- Restano Tris-specifici in `webapp_frontend/src`: `App.tsx` (orchestratore), `engine/contract.ts`
+  (typeId/payload + `PLAYER_ACTORS`/`resolveTrisBadge`), `engine/gameState.ts` (reducer, ora senza
+  il campo `playerStatuses` — gestito autonomamente da `ActorStatusBadges`), `TrisBoard.tsx`,
+  `TurnHeader.tsx`, `GameToolbar.tsx`.
+- Import via alias `@webgui/*` (mappato sia in `tsconfig.app.json` `paths` sia in
+  `vite.config.ts` `resolve.alias`), consumato come **sorgente TS grezzo**, non come pacchetto
+  npm — nessun workspace/build/publish, scelta pragmatica per singolo consumatore.
+- **Insidia tecnica risolta**: `webLib/WebGUI_Lib/src` non ha un `node_modules` proprio come
+  antenato (vive fuori dall'albero di `webapp_frontend`), quindi `react`/`react-dom` non si
+  risolvono per i file lì fisicamente residenti. Fix: `tsconfig.app.json` mappa esplicitamente
+  `react`/`react/jsx-runtime`/`react-dom`/`react-dom/client` ai file `.d.ts` di
+  `node_modules/@types/react(-dom)/...` di `webapp_frontend` (NON alla cartella del pacchetto
+  runtime `node_modules/react` — quella non contiene tipi propri, causa altrimenti una
+  regressione `TS7016`/`TS7026` su TUTTO il progetto, non solo su WebGUI_Lib, perché i `paths`
+  di TypeScript sono globali alla compilazione). `vite.config.ts` mappa invece `react`/`react-dom`
+  al pacchetto runtime reale (i due sistemi di risoluzione — `tsc` e Vite/esbuild — sono
+  indipendenti: `paths` serve SOLO al type-checking, `resolve.alias` SOLO al bundling).
+- `npm run build`, `npm run test` (Vitest, 3/3) e `npm run lint` (oxlint) verdi dopo il refactor.
+  Verifica visiva nel browser condiviso: rendering corretto (temi, badge, log, error bar) tutti
+  serviti da `@webgui/*`; il round-trip WebSocket/`EnvelopeRouter` live non è stato ri-verificato
+  in questo turno perché il backend Phase 3 (porta 8000) era rimasto attivo dal turno precedente
+  con la sessione singola `"dev-session"` già occupata (409 su una nuova `createSession` dopo
+  reload pagina — limite noto del modello a sessione singola di Phase 1, non una regressione).
 
 ### Phase 4 — Hardening & Tests [⏳]
 

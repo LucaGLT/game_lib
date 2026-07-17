@@ -1,4 +1,5 @@
-import { THEMES, type ThemeId } from '../theme/themes'
+import { ThemeSelect } from '@webgui/components/ThemeSelect'
+import type { ThemeId } from '@webgui/theme/themes'
 
 interface GameToolbarProps {
   starterMode: string
@@ -13,7 +14,7 @@ const STARTER_MODES: Array<{ value: string; label: string }> = [
   { value: 'dice_1d2', label: 'Inizio: Dado 1d2' },
 ]
 
-/** Top toolbar — mirrors the desktop toolbar (Nuova partita + Modalità) plus a theme selector. */
+/** Top toolbar — mirrors the desktop toolbar (Nuova partita + Modalità) plus the shared theme selector. */
 function GameToolbar({
   starterMode,
   onStarterModeChange,
@@ -27,7 +28,7 @@ function GameToolbar({
         Nuova Partita
       </button>
 
-      <label className="game-toolbar__field">
+      <label className="gmgui-field">
         Modalità
         <select value={starterMode} onChange={(event) => onStarterModeChange(event.target.value)}>
           {STARTER_MODES.map((mode) => (
@@ -38,19 +39,7 @@ function GameToolbar({
         </select>
       </label>
 
-      <label className="game-toolbar__field">
-        Tema
-        <select
-          value={themeId}
-          onChange={(event) => onThemeChange(event.target.value as ThemeId)}
-        >
-          {THEMES.map((theme) => (
-            <option key={theme.id} value={theme.id}>
-              {theme.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ThemeSelect themeId={themeId} onThemeChange={onThemeChange} />
     </div>
   )
 }
