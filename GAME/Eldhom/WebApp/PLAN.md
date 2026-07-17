@@ -1,7 +1,7 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.3.0
-**Status:** Phase 3 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
+**Version:** 0.4.0
+**Status:** Phase 4 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -333,19 +333,102 @@ game_lib/
 
 ---
 
-### Phase 4 — Mano, Sequenze & Azioni [⏳]
+### Phase 4 — Mano, Sequenze & Azioni [✅ Completato]
 
-- [ ] `HandPanel.tsx`: carte in mano, evidenziazione giocabilità da stato sequenza
+- [x] `HandPanel.tsx`: carte in mano, evidenziazione giocabilità da stato sequenza
       (`SequenceEngine`/`eldhom.pg.sequence_started|ended|broken`), icone tipo/effetto
       (mirror `hand_widget.py` + logica icone di `eldhom_main_window.py`)
-- [ ] `ActionPanel.tsx`: 4 azioni semplici (Movimento/Attacco/Interazione/Recupero, costi ⌛
+- [x] `ActionPanel.tsx`: 4 azioni semplici (Movimento/Attacco/Interazione/Recupero, costi ⌛
       fissi da `EldhomTypes.hpp`), armamento mossa/attacco stile point-and-click (mirror
       `action_panel_widget.py`), **finestra di reazione TAKE/BLOCK/DODGE inline** (non è una
       dialog modale sul desktop — è già gestita dentro `ActionPanelWidget`, stesso trattamento qui)
-- [ ] Comandi: `eldhom.play_card`, `eldhom.simple_action`, `eldhom.stop_sequence`,
+- [x] Comandi: `eldhom.play_card`, `eldhom.simple_action`, `eldhom.stop_sequence`,
       `eldhom.declare_attack`, `eldhom.react_defense`
-- [ ] Smoke test: un turno PG completo (azione semplice + una carta in sequenza) end-to-end
+- [x] Smoke test: un turno PG completo (azione semplice + una carta in sequenza) end-to-end
       nel browser, incl. un attacco con scelta di reazione TAKE/BLOCK/DODGE
+
+**Esito Phase 4 (validato):**
+
+- NUOVO endpoint `GET /cards` (`eng_serve/cards.py`, mirror di `missions.py`): scansiona
+  `data/cards_*.json` lato server (sostituisce `_load_card_catalog()` locale della GUI
+  desktop) — pass-through puro, nessun `response_model` Pydantic rigido (la forma di
+  `effects[]` varia troppo per tipo, coerente con la Key Design Decision 6).
+- Campi/eventi confermati leggendo direttamente `GAME/Eldhom/CoreEngine/main.cpp`
+  (`handle_play_card`/`handle_declare_attack`/`handle_react_defense`/`handle_stop_sequence`/
+  `emit_defense_window`/`emit_instant_window`), non assunti dalla sola GUI desktop:
+  `eldhom.play_card` → `{hero_id, card_id, destination?, target_id?, discard_ids?}`;
+  `eldhom.stop_sequence` → `{hero_id}`; `eldhom.declare_attack` → `{hero_id, target_id}`;
+  `eldhom.react_defense` → `{defender_id, reaction}`. `eldhom.reaction.window_opened`/
+  `window_closed` e `eldhom.attack.resolved` sono inviati **alla radice del payload**
+  (`{attacker_id, defender_id, incoming_damage, reactions}`, ecc.), NON nello schema
+  generico `{actor_id, payload}` usato dalla maggior parte degli altri eventi —
+  differenza confermata leggendo `emit_defense_window()`/`handle_react_defense()`
+  direttamente (non deducibile dalla sola lista `EventType`).
+- `engine/cardIcons.ts` (NUOVO): porta 1:1 `_CARD_TYPE_ICONS`/`_EFFECT_ICONS`/
+  `_ATTACK_TYPE_ICONS`/`_POSITION_ICONS`/`_effect_summary_line()` da
+  `eldhom_main_window.py` (solo il riassunto compatto per riga, non l'intero blocco
+  HTML `_card_description()` — non necessario per lo scopo di Phase 4).
+- `engine/gameState.ts` esteso: `cards` (catalogo, caricato una volta con
+  `applyCardCatalog`, non guidato da envelope), `handByHero`, `sequenceActiveByHero`,
+  `pendingReaction`, `nextActorKind`. Regola di giocabilità mano (non nel desktop, che
+  usa un solo flag enabled/disabled per l'intera mano — qui è un'estensione UX
+  esplicitamente richiesta dal checklist Phase 4, non stretta validazione): nessuna
+  sequenza attiva → SINGLE/SEQ_START giocabili; sequenza attiva → solo SEQ_CONTINUE/
+  SEQ_END; INSTANT mai giocabile dalla mano (solo via finestre di reazione, Phase 6).
+  Il motore resta comunque l'autorità finale (una giocata illegale produce solo
+  `action.result:{ok:false}`).
+- `components/HandPanel.tsx` + `components/ActionPanel.tsx` (NUOVI): port di
+  `hand_widget.py`/`action_panel_widget.py`. Costi ⌛ duplicati come costanti fisse
+  lato frontend (`EldhomTypes.hpp::COST_SIMPLE_*`) perché `eng_serve` non espone
+  costanti motore sul wire (resta pass-through puro).
+- `components/EldhomMap.tsx` esteso con `onLocationClick`/`onTokenClick` opzionali
+  (targeting point-and-click riusato sia per azioni semplici sia per carte con
+  effetto MOVE/DAMAGE che richiedono destinazione/bersaglio — mirror di
+  `_pre_play_card_hook`/`_try_move`/`_try_play_card_with_target`, MA senza la
+  validazione BFS di raggiungibilità lato client per le mosse guidate da carta:
+  semplificazione deliberata, il motore valida comunque e rifiuta con
+  `action.result:{ok:false}` una mossa non valida).
+- `App.tsx`: nuovo stato `targeting` (unione discriminata simple-move/simple-attack/
+  card-move/card-attack, quest'ultimo con `destination` opzionale per il caso
+  "muovi-poi-attacca" di carte come *Passo e Lama*, mirror del chaining desktop),
+  reset automatico del targeting al cambio turno o apertura/chiusura finestra di
+  reazione. **Bug trovato e corretto durante il test nel browser**: il pulsante
+  "Annulla Attacco"/"Annulla Muovi" disarmava solo il targeting `simple-*`, non
+  quello `card-*` (cliccarlo mentre un targeting guidato da carta era armato lo
+  trasformava in un targeting semplice invece di annullarlo) — corretto verificando
+  entrambe le varianti. **Guardia aggiunta** (mirror `_actor_is_enemy` desktop):
+  cliccare il token di un alleato durante il targeting d'attacco mostra un errore
+  invece di inviare il comando (il motore ha comunque un fallback di
+  auto-selezione del bersaglio valido, documentato in `_pre_play_card_hook`, ma la
+  guardia lato client evita di affidarsi silenziosamente a quel fallback).
+- **Smoke test end-to-end validato nel browser reale** (missione `missione_01`):
+  Thael e Velyr spostati entrambi a "corridoio" (evitando un `eldhom.
+  formation.dialog_needed` imprevisto incontrato spostando un solo eroe alla volta
+  — vedi nota sotto); mano di Thael renderizzata con icone corrette e playability
+  toggle confermato (`Secondo Colpo`/`Colpo di Chiusura` disabilitati senza sequenza
+  attiva); giocata la carta `Colpo Secco` (SINGLE, effetto DAMAGE) → targeting
+  d'attacco armato correttamente ("⚔ Clicca il nemico...") → `eldhom.attack.declared`
+  → `eldhom.instant.window_opened` (finestra istantanea, bypassata con un comando
+  diretto `play_instants:{selected:[]}` per continuare il test senza costruire UI
+  Phase 6 in anticipo) → `eldhom.reaction.window_opened` → `ActionPanel` mostra
+  correttamente la vista DIFESA ("DIFESA: B1 — danno in arrivo 1❌", pulsanti
+  Subisci/Para/Schiva) → scelto BLOCK → `eldhom.attack.resolved`
+  (`base_damage:1, final_damage:0, reaction:BLOCK`) → `eldhom.reaction.window_closed`
+  → `eldhom.turn.next_actor`. Ciclo completo dichiarazione-attacco→reazione→risoluzione
+  confermato funzionante.
+- **Catena di sequenza completa (SEQ_START→CONTINUE→END) NON testata end-to-end in
+  questo turno**: la mano di Thael pescata in questa run non includeva una carta
+  SEQ_START (pesca casuale) — la REGOLA di playability (SEQ_CONTINUE/END disabilitati
+  senza sequenza attiva) è comunque stata confermata visivamente corretta in una
+  sessione precedente. Da riverificare opportunisticamente in Phase 5/7 se una mano
+  con SEQ_START ricorre naturalmente durante altri test.
+- **Dipendenza Phase 6 incontrata organicamente**: sia `eldhom.formation.
+  dialog_needed` sia `eldhom.instant.window_opened` sono emersi spontaneamente
+  durante il test (non forzati) — confermano che questi 2 dialog sono frequenti in
+  questo motore e Phase 6 (Modal generico + `FormationModal`/`InstantWindowModal`)
+  è necessaria per una sessione di gioco reale ininterrotta; per Phase 4 sono stati
+  aggirati con un comando diretto (`play_instants:{selected:[]}`) o evitati (doppio
+  movimento invece di interact) senza introdurre UI Phase 6 in anticipo.
 
 **Notes:**
 - Nessuna dialog qui: la finestra di reazione è deliberatamente inline (mirror esatto del

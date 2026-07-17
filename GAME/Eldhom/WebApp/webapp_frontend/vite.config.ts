@@ -31,6 +31,7 @@ export default defineConfig({
       },
       '/health': 'http://127.0.0.1:8100',
       '/missions': 'http://127.0.0.1:8100',
+      '/cards': 'http://127.0.0.1:8100',
     },
   },
 })

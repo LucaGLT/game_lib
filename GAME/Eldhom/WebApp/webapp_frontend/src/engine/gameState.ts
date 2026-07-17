@@ -1,25 +1,35 @@
 /**
- * gameState — Phase 3 reducer: turns raw `eldhom.*` envelopes into the
- * map/timeline state consumed by `EldhomMap`/`TimelineTrack`. Mirrors the
- * event handling already implemented (and validated over 94/94 engine
- * tests) by the desktop widgets `GAME/Eldhom/GUI/widgets/board_widget.py`
- * (`EldhomBoardWidget`) and `timeline_widget.py` (`TimelineWidget`) — see
- * those files for the reference behaviour this ports to TypeScript.
+ * gameState — reducer turning raw `eldhom.*` envelopes into the state
+ * consumed by the React components. Mirrors the event handling already
+ * implemented (and validated over 94/94 engine tests) by the desktop
+ * widgets `GAME/Eldhom/GUI/widgets/board_widget.py` (`EldhomBoardWidget`),
+ * `timeline_widget.py` (`TimelineWidget`) and the hand/sequence/reaction
+ * wiring in `GAME/Eldhom/GUI/app/eldhom_main_window.py` — see those files
+ * for the reference behaviour this ports to TypeScript.
  *
- * Deliberately narrow scope (Phase 3): only the fields needed for the map
- * and the activation timeline. Hand/sequence/formation/instant-window state
- * is Phase 4+'s responsibility (see GAME/Eldhom/WebApp/PLAN.md).
+ * Phase 4 adds: card catalog (loaded once via `applyCardCatalog`, not
+ * envelope-driven), per-hero hand contents, per-hero sequence-active flag,
+ * and the pending TAKE/BLOCK/DODGE reaction window. Formation/instant-window
+ * dialog state is Phase 6's responsibility (see GAME/Eldhom/WebApp/PLAN.md).
  */
 import type { EngineEnvelope } from '@webgui/session/types'
 import {
+  EVT_HAND_UPDATED,
   EVT_MISSION_TIME_ADVANCED,
   EVT_MONSTER_DEFEATED,
   EVT_MONSTER_MOVED,
   EVT_PG_MOVED,
+  EVT_REACTION_WINDOW_CLOSED,
+  EVT_REACTION_WINDOW_OPENED,
+  EVT_SEQUENCE_BROKEN,
+  EVT_SEQUENCE_ENDED,
+  EVT_SEQUENCE_STARTED,
   EVT_STATE_FULL,
   EVT_TURN_NEXT_ACTOR,
   EVT_ZONE_DOOR_OPENED,
+  type CardWire,
   type NextActorWire,
+  type ReactionWindowWire,
   type StateFullWire,
 } from './contract'
 
@@ -63,7 +73,7 @@ export interface TimelineActor {
   isHero: boolean
 }
 
-/** Phase 3 slice of Eldhôm's game state (map + timeline only). */
+/** Phase 3+4 slice of Eldhôm's game state (map, timeline, hand, sequence, reaction window). */
 export interface EldhomState {
   missionId: string
   title: string
@@ -74,6 +84,16 @@ export interface EldhomState {
   tokens: ActorToken[]
   timelineActors: TimelineActor[]
   nextActorId: string
+  /** "HERO" | "MONSTER_GROUP" | other — whether the action panel should be shown for nextActorId. */
+  nextActorKind: string
+  /** Card catalog keyed by card_id, loaded once via `applyCardCatalog` (not envelope-driven). */
+  cards: Record<string, CardWire>
+  /** Each hero's current hand, as a list of card_id (duplicates allowed). */
+  handByHero: Record<string, string[]>
+  /** Whether each hero currently has an open card sequence (SEQ_START played, no SEQ_END yet). */
+  sequenceActiveByHero: Record<string, boolean>
+  /** Set while the engine awaits a TAKE/BLOCK/DODGE choice; null otherwise. */
+  pendingReaction: ReactionWindowWire | null
 }
 
 export const initialEldhomState: EldhomState = {
@@ -86,6 +106,20 @@ export const initialEldhomState: EldhomState = {
   tokens: [],
   timelineActors: [],
   nextActorId: '',
+  nextActorKind: '',
+  cards: {},
+  handByHero: {},
+  sequenceActiveByHero: {},
+  pendingReaction: null,
+}
+
+/** Loads the card catalog into state (call once after `listCards()` resolves — not envelope-driven). */
+export function applyCardCatalog(previous: EldhomState, cards: CardWire[]): EldhomState {
+  const byId: Record<string, CardWire> = {}
+  for (const card of cards) {
+    byId[card.card_id] = card
+  }
+  return { ...previous, cards: byId }
 }
 
 /** Applies one engine envelope to the previous state, returning the next state. */
@@ -104,6 +138,17 @@ export function applyEnvelope(previous: EldhomState, envelope: EngineEnvelope): 
       return applyNextActor(previous, envelope)
     case EVT_MISSION_TIME_ADVANCED:
       return applyTimeAdvanced(previous, envelope)
+    case EVT_HAND_UPDATED:
+      return applyHandUpdated(previous, envelope)
+    case EVT_SEQUENCE_STARTED:
+      return applySequenceActive(previous, envelope, true)
+    case EVT_SEQUENCE_ENDED:
+    case EVT_SEQUENCE_BROKEN:
+      return applySequenceActive(previous, envelope, false)
+    case EVT_REACTION_WINDOW_OPENED:
+      return { ...previous, pendingReaction: envelope.data as unknown as ReactionWindowWire }
+    case EVT_REACTION_WINDOW_CLOSED:
+      return { ...previous, pendingReaction: null }
     default:
       return previous
   }
@@ -273,6 +318,10 @@ function buildTimelineActors(wire: StateFullWire): TimelineActor[] {
 
 function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState {
   const locations = buildLocations(wire)
+  const handByHero: Record<string, string[]> = {}
+  for (const hero of wire.heroes) {
+    handByHero[hero.id] = hero.hand
+  }
   return {
     ...previous,
     missionId: wire.mission_id,
@@ -284,6 +333,8 @@ function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState
     tokens: buildTokens(wire),
     timelineActors: buildTimelineActors(wire),
     nextActorId: wire.next_actor?.actor_id ?? '',
+    nextActorKind: wire.next_actor?.kind ?? '',
+    handByHero,
   }
 }
 
@@ -333,6 +384,7 @@ function applyNextActor(previous: EldhomState, envelope: EngineEnvelope): Eldhom
   return {
     ...previous,
     nextActorId: data.actor_id,
+    nextActorKind: data.kind,
     timelineActors: previous.timelineActors.map((actor) =>
       actor.actorId === data.actor_id ? { ...actor, timeline: data.actor_timeline } : actor,
     ),
@@ -350,5 +402,34 @@ function applyTimeAdvanced(previous: EldhomState, envelope: EngineEnvelope): Eld
     timelineActors: previous.timelineActors.map((actor) =>
       actor.actorId === actorId ? { ...actor, timeline: newTimeline } : actor,
     ),
+  }
+}
+
+/** `eldhom.deck.hand_updated`'s `payload` is the hero's FULL current hand (list of card_id). */
+function applyHandUpdated(previous: EldhomState, envelope: EngineEnvelope): EldhomState {
+  const actorId = String(envelope.data.actor_id ?? '')
+  const payload = envelope.data.payload
+  if (actorId === '' || !Array.isArray(payload)) {
+    return previous
+  }
+  return {
+    ...previous,
+    handByHero: { ...previous.handByHero, [actorId]: payload.map((cardId) => String(cardId)) },
+  }
+}
+
+/** Shared handler for sequence_started (active=true) / ended|broken (active=false). */
+function applySequenceActive(
+  previous: EldhomState,
+  envelope: EngineEnvelope,
+  active: boolean,
+): EldhomState {
+  const actorId = String(envelope.data.actor_id ?? '')
+  if (actorId === '') {
+    return previous
+  }
+  return {
+    ...previous,
+    sequenceActiveByHero: { ...previous.sequenceActiveByHero, [actorId]: active },
   }
 }

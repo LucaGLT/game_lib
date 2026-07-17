@@ -217,3 +217,135 @@
   outline: 2px solid #e03030;
   outline-offset: 1px;
 }
+
+.eldhom-map__node--clickable {
+  cursor: crosshair;
+}
+
+.eldhom-map__token--clickable {
+  cursor: crosshair;
+}
+
+/* ── Action panel (4 simple actions + inline reaction window) ───────────── */
+
+.eldhom-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-actions--defense {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-actions__title {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.eldhom-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eldhom-actions__buttons button {
+  background-color: var(--gm-accent);
+  color: var(--gm-background);
+  border: 2px solid var(--gm-accent);
+  border-radius: var(--gm-radius);
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.eldhom-actions__buttons button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.eldhom-actions__buttons button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eldhom-actions__stop {
+  background-color: var(--gm-danger) !important;
+  border-color: var(--gm-danger) !important;
+}
+
+.eldhom-actions__hint {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* ── Hand panel ──────────────────────────────────────────────────────────── */
+
+.eldhom-hand {
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-hand__title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.eldhom-hand__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eldhom-hand__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 120px;
+  max-width: 180px;
+  padding: 6px 10px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, filter 0.15s ease;
+}
+
+.eldhom-hand__card:hover:not(:disabled) {
+  border-color: var(--gm-accent);
+  filter: brightness(1.05);
+}
+
+.eldhom-hand__card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.eldhom-hand__card-name {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.eldhom-hand__card-summary {
+  font-size: 11px;
+  opacity: 0.85;
+}

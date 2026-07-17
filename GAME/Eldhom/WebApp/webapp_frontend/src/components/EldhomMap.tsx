@@ -29,6 +29,10 @@ export interface EldhomMapProps {
   edges: MapEdge[]
   tokens: ActorToken[]
   activeActorId: string
+  /** Called with a location id when the map is clicked (Phase 4: move targeting). */
+  onLocationClick?: (locationId: string) => void
+  /** Called with an actor id when a token is clicked (Phase 4: attack targeting). */
+  onTokenClick?: (actorId: string) => void
 }
 
 interface LayoutNode {
@@ -126,7 +130,14 @@ function computeLayout(locations: MapLocation[], edges: MapEdge[]): MapLayout {
   return { nodes, nodeById: new Map(nodes.map((node) => [node.id, node])), width, height }
 }
 
-export function EldhomMap({ locations, edges, tokens, activeActorId }: EldhomMapProps) {
+export function EldhomMap({
+  locations,
+  edges,
+  tokens,
+  activeActorId,
+  onLocationClick,
+  onTokenClick,
+}: EldhomMapProps) {
   const layout = useMemo(() => computeLayout(locations, edges), [locations, edges])
 
   const tokensByLocation = useMemo(() => {
@@ -171,7 +182,10 @@ export function EldhomMap({ locations, edges, tokens, activeActorId }: EldhomMap
         const locationTokens = tokensByLocation.get(node.id) ?? []
         return (
           <foreignObject key={node.id} x={node.x} y={node.y} width={NODE_WIDTH} height={NODE_HEIGHT}>
-            <div className="eldhom-map__node">
+            <div
+              className={`eldhom-map__node${onLocationClick ? ' eldhom-map__node--clickable' : ''}`}
+              onClick={onLocationClick ? () => onLocationClick(node.id) : undefined}
+            >
               <div className="eldhom-map__node-name">{node.name}</div>
               <div className="eldhom-map__node-tokens">
                 {locationTokens.map((token) => (
@@ -179,6 +193,7 @@ export function EldhomMap({ locations, edges, tokens, activeActorId }: EldhomMap
                     key={token.actorId}
                     className={[
                       'eldhom-map__token',
+                      onTokenClick ? 'eldhom-map__token--clickable' : '',
                       token.alive ? '' : 'eldhom-map__token--dead',
                       token.actorId === activeActorId || token.groupId === activeActorId
                         ? 'eldhom-map__token--active'
@@ -187,6 +202,14 @@ export function EldhomMap({ locations, edges, tokens, activeActorId }: EldhomMap
                       .filter(Boolean)
                       .join(' ')}
                     title={`${token.label} — ${token.hp}/${token.maxHp} PV`}
+                    onClick={
+                      onTokenClick
+                        ? (event) => {
+                            event.stopPropagation()
+                            onTokenClick(token.actorId)
+                          }
+                        : undefined
+                    }
                   >
                     {token.label}
                   </span>

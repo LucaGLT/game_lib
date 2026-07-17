@@ -15,6 +15,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from ..cards import scan_cards
 from ..missions import scan_missions
 from ..session_manager import SessionAlreadyRunningError, SessionNotFoundError
 
@@ -54,6 +55,18 @@ def list_missions(request: Request) -> list[dict]:
     """Scans the data directory for available missions."""
     settings = request.app.state.settings
     return scan_missions(settings.data_dir)
+
+
+@router.get("/cards")
+def list_cards(request: Request) -> list[dict]:
+    """Scans the data directory for the card catalog.
+
+    No ``response_model``: card shape varies a lot by effect type and
+    eng_serve deliberately does not interpret/reshape payloads (pure
+    pass-through, see GAME/Eldhom/WebApp/PLAN.md, Key Design Decision 6).
+    """
+    settings = request.app.state.settings
+    return scan_cards(settings.data_dir)
 
 
 @router.post("/sessions", response_model=SessionInfo, status_code=201)
