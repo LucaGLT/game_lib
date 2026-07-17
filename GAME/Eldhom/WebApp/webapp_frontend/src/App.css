@@ -26,8 +26,8 @@
 .eldhom-actions__title,
 .eldhom-deck-table__title,
 .eldhom-deck-table__zone-title,
-.eldhom-deck-table__detail-name,
 .eldhom-deck-table__card-name,
+.eldhom-deck-table__preview-card-name,
 .eldhom-hero-panel__name,
 .eldhom-area-info__title,
 .eldhom-map__node-name {
@@ -434,36 +434,9 @@
   white-space: nowrap;
 }
 
-.eldhom-deck-table__detail {
-  flex: 1 1 auto;
-  min-width: 200px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 12px;
-  padding: 4px 8px;
-  background-color: var(--gm-background);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-}
-
-.eldhom-deck-table__detail-name {
-  font-weight: 700;
-}
-
-.eldhom-deck-table__detail-desc {
-  opacity: 0.85;
-}
-
-.eldhom-deck-table__detail-hint {
-  opacity: 0.6;
-  font-style: italic;
-}
-
 .eldhom-deck-table__zones {
   display: grid;
-  grid-template-columns: repeat(6, minmax(140px, 1fr));
+  grid-template-columns: repeat(8, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -633,9 +606,127 @@
 .eldhom-deck-table__card-back:nth-child(3) { transform: translate(2px, 1px) rotate(2deg); }
 .eldhom-deck-table__card-back:nth-child(4) { transform: translate(6px, 3px) rotate(4deg); }
 
-.eldhom-deck-table__zone--memory,
-.eldhom-deck-table__zone--banish {
+.eldhom-deck-table__zone--memory {
   opacity: 0.75;
+}
+
+.eldhom-deck-table__zone--preview {
+  grid-column: span 2;
+}
+
+.eldhom-deck-table__zone--banish {
+  align-items: center;
+  justify-content: center;
+  border-style: solid;
+}
+
+.eldhom-deck-table__preview-card-hint {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.eldhom-deck-table__preview-card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background-color: var(--gm-panel);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%);
+  border: 1px solid var(--gm-border);
+  border-top: 4px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.eldhom-deck-table__preview-card--instant {
+  border-top-color: var(--gm-warning);
+}
+
+.eldhom-deck-table__preview-card--seq_start {
+  border-top-color: var(--gm-success);
+}
+
+.eldhom-deck-table__preview-card--seq_continue {
+  border-top-color: var(--gm-accent);
+}
+
+.eldhom-deck-table__preview-card--seq_end {
+  border-top-color: var(--gm-danger);
+}
+
+.eldhom-deck-table__preview-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.eldhom-deck-table__preview-card-icon {
+  font-size: 16px;
+}
+
+.eldhom-deck-table__preview-card-name {
+  flex: 1 1 auto;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.eldhom-deck-table__preview-card-cost {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: 999px;
+}
+
+.eldhom-deck-table__preview-card-origin {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.eldhom-deck-table__preview-card-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--gm-border);
+  border-bottom: 1px solid var(--gm-border);
+}
+
+.eldhom-deck-table__preview-card-effect {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eldhom-deck-table__preview-card-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+  overflow-y: auto;
+}
+
+.eldhom-deck-table__preview-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.eldhom-deck-table__preview-card-tag {
+  padding: 1px 6px;
+  font-size: 10px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  opacity: 0.85;
 }
 
 /* ── Debug log (raw JSON) — collapsed by default, secondary/dev-only ────── */

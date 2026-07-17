@@ -1,6 +1,8 @@
 /**
- * DeckTable — the active hero's full 6-zone card table (Mazzo/Mano/Giocate/
- * Memoria/Scarti/Bandite), replacing Phase 4's single-zone `HandPanel`.
+ * DeckTable — the active hero's full card table, laid out left-to-right as
+ * Scarti/Mazzo/Mano/Carta Selezionata/Giocate/Memoria/Bandite (Scarti sits
+ * immediately left of Mazzo since they are the same physical pile viewed
+ * from its two ends), replacing Phase 4's single-zone `HandPanel`.
  * Port of `GAME/Eldhom/GUI/modules/gm_comp_deck_module.py`'s
  * `GmCompDeckModule` (6-zone drag&drop card table) crossed with
  * `GAME/Eldhom/GUI/app/eldhom_main_window.py`'s `_DeckProxy`, which is the
@@ -13,8 +15,8 @@
  *   MainDeck → CardHand         : `eldhom.deck.draw`         (GM override)
  *   DiscardPile → CardHand      : `eldhom.deck.take_discard` (GM override)
  *   (reshuffle button)          : `eldhom.deck.reshuffle`    (GM override)
- *   Everything else (Memory/PlayArea/BanishZone as a move SOURCE, or as a
- *   destination other than the two above) is a no-op on the real engine —
+ *   Everything else (Memory/PlayArea as a move SOURCE, or as a destination
+ *   other than the two above) is a no-op on the real engine —
  *   `_DeckProxy.send_command()`'s final comment: "All other zone moves are
  *   ignored: the engine drives zone changes." This component therefore:
  *     - renders MainDeck as a COUNT-ONLY stack (the engine never reveals
@@ -26,9 +28,11 @@
  *       inference like the desktop's `_hero_deck_state` is needed here),
  *     - renders Memory as an always-empty alternate "play" drop target
  *       (no distinct wire data exists for it in this game), and
- *     - renders BanishZone as always-empty, present only for 1:1 visual
- *       layout parity with the desktop (nothing in Eldhôm's command/event
- *       set ever populates it).
+ *     - renders BanishZone (Bandite) as a plain button, NOT a drop zone:
+ *       nothing in Eldhôm's command/event set ever populates it, and a
+ *       proper banned-cards management UI is a separate, not-yet-built
+ *       page — the button (`onOpenBanish`) is just a placeholder hook for
+ *       that future page.
  *
  * Interaction: both native HTML5 drag&drop (`draggable`, `onDragStart`,
  * `onDragOver`, `onDrop`) AND plain click/button alternatives are wired for
@@ -36,6 +40,12 @@
  * for the tactile hand→zone moves, small buttons for the GM-override
  * actions (discard/draw/take/reshuffle) that don't have an obvious card to
  * grab (e.g. "draw" starts from a hidden, identity-less deck).
+ *
+ * "Carta Selezionata" (between Mano and Giocate) is not a real deck zone —
+ * it is a full "face up" preview of whichever card was last hovered/focused
+ * anywhere in the table (hand/played/discard), rendered like a physical
+ * game card (icon, name, timeline cost, effect icons, extended description,
+ * tags) rather than the one-line header hint it replaces.
  */
 import { useState } from 'react'
 import { CARD_TYPE_ICONS, effectSummaryLine } from '../engine/cardIcons'
@@ -53,6 +63,7 @@ export interface DeckTableProps {
   onDrawCard: () => void
   onTakeDiscard: () => void
   onReshuffle: () => void
+  onOpenBanish: () => void
 }
 
 /** Drag payload mime type carrying `{cardId, from}` as JSON — namespaced to avoid clashing with other drag sources. */
@@ -105,8 +116,9 @@ export function DeckTable({
   onDrawCard,
   onTakeDiscard,
   onReshuffle,
+  onOpenBanish,
 }: DeckTableProps) {
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [dragOverZone, setDragOverZone] = useState<string | null>(null)
 
   const deckCount = hero?.deck_count ?? 0
@@ -115,7 +127,7 @@ export function DeckTable({
   const playedIds = hero?.played_ids ?? []
   const topDiscardId = discardIds.length > 0 ? discardIds[discardIds.length - 1] : null
 
-  const detailCard = hoveredCardId ? cards[hoveredCardId] : undefined
+  const selectedCard = selectedCardId ? cards[selectedCardId] : undefined
 
   function handlePlayZoneDrop(event: React.DragEvent): void {
     event.preventDefault()
@@ -167,24 +179,52 @@ export function DeckTable({
           Tavolo carte — {heroName}
           {sequenceActive ? ' (sequenza in corso)' : ''}
         </p>
-        <div className="eldhom-deck-table__detail">
-          {detailCard ? (
-            <>
-              <span className="eldhom-deck-table__detail-name">
-                {CARD_TYPE_ICONS[detailCard.card_type]} {detailCard.name}
-              </span>
-              <span className="eldhom-deck-table__detail-desc">{detailCard.description}</span>
-            </>
-          ) : (
-            <span className="eldhom-deck-table__detail-hint">
-              Passa il mouse su una carta per vedere i dettagli. Trascina le carte tra le zone, oppure
-              usa i pulsanti.
-            </span>
-          )}
-        </div>
       </div>
 
       <div className="eldhom-deck-table__zones">
+        {/* ── Scarti (DiscardPile) — kept immediately left of Mazzo: same physical pile ── */}
+        <div
+          className={zoneClass('DiscardPile', 'eldhom-deck-table__zone--discard')}
+          onDragOver={allowDrop('DiscardPile')}
+          onDragLeave={() => setDragOverZone(null)}
+          onDrop={handleDiscardZoneDrop}
+        >
+          <p className="eldhom-deck-table__zone-title">🗑 Scarti ({discardCount})</p>
+          <div className="eldhom-deck-table__cards">
+            {discardIds.length === 0 && <span className="eldhom-deck-table__zone-empty">vuoti</span>}
+            {discardIds.map((cardId, index) => {
+              const card = cards[cardId]
+              const isTop = cardId === topDiscardId && index === discardIds.length - 1
+              return (
+                <div
+                  key={`${cardId}-${index}`}
+                  className={`eldhom-deck-table__card eldhom-deck-table__card--discard${isTop ? ' eldhom-deck-table__card--top' : ''}`}
+                  draggable={enabled && isTop}
+                  onDragStart={
+                    isTop ? (event) => setDragPayload(event, { cardId, from: 'DiscardPile' }) : undefined
+                  }
+                  onMouseEnter={() => setSelectedCardId(cardId)}
+                  title={
+                    (card?.description ?? cardId) + (isTop ? ' (cima — trascina sulla Mano per riprenderla)' : '')
+                  }
+                >
+                  <span className="eldhom-deck-table__card-name">
+                    {card ? CARD_TYPE_ICONS[card.card_type] : '📄'} {card?.name ?? cardId}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="eldhom-deck-table__zone-actions">
+            <button type="button" className="eldhom-deck-table__btn" disabled={!enabled || discardIds.length === 0} onClick={onTakeDiscard}>
+              Riprendi
+            </button>
+            <button type="button" className="eldhom-deck-table__btn" disabled={!enabled || discardCount === 0} onClick={onReshuffle}>
+              Rimescola
+            </button>
+          </div>
+        </div>
+
         {/* ── Mazzo (MainDeck) — count-only, drag-source for "Pesca" ─────── */}
         <div className={zoneClass('MainDeck', 'eldhom-deck-table__zone--deck')}>
           <p className="eldhom-deck-table__zone-title">🂠 Mazzo ({deckCount})</p>
@@ -232,8 +272,8 @@ export function DeckTable({
                   className="eldhom-deck-table__card eldhom-deck-table__card--hand"
                   draggable={enabled}
                   onDragStart={(event) => setDragPayload(event, { cardId, from: 'CardHand' })}
-                  onMouseEnter={() => setHoveredCardId(cardId)}
-                  onFocus={() => setHoveredCardId(cardId)}
+                  onMouseEnter={() => setSelectedCardId(cardId)}
+                  onFocus={() => setSelectedCardId(cardId)}
                   title={card?.description ?? cardId}
                 >
                   <button
@@ -262,6 +302,57 @@ export function DeckTable({
           </div>
         </div>
 
+        {/* ── Carta Selezionata — full "face up" preview of the last hovered/focused card,
+             rendered like a real game card (icon, title, cost, effects, extended description) ── */}
+        <div className="eldhom-deck-table__zone eldhom-deck-table__zone--preview">
+          <p className="eldhom-deck-table__zone-title">🔍 Carta Selezionata</p>
+          {selectedCard ? (
+            <div
+              className={`eldhom-deck-table__preview-card eldhom-deck-table__preview-card--${selectedCard.card_type.toLowerCase()}`}
+            >
+              <div className="eldhom-deck-table__preview-card-header">
+                <span className="eldhom-deck-table__preview-card-icon">
+                  {CARD_TYPE_ICONS[selectedCard.card_type]}
+                </span>
+                <span className="eldhom-deck-table__preview-card-name">{selectedCard.name}</span>
+                <span className="eldhom-deck-table__preview-card-cost">⏳{selectedCard.timeline_cost}</span>
+              </div>
+              {selectedCard.origin && (
+                <p className="eldhom-deck-table__preview-card-origin">{selectedCard.origin}</p>
+              )}
+              <div className="eldhom-deck-table__preview-card-effects">
+                {selectedCard.effects.map((effect, index) => (
+                  <span key={index} className="eldhom-deck-table__preview-card-effect">
+                    {effectSummaryLine(effect, selectedCard.timeline_cost)}
+                  </span>
+                ))}
+              </div>
+              {selectedCard.description && (
+                <p className="eldhom-deck-table__preview-card-desc">{selectedCard.description}</p>
+              )}
+              {(selectedCard.requires_frontline || selectedCard.reaction_trigger || selectedCard.condition) && (
+                <div className="eldhom-deck-table__preview-card-tags">
+                  {selectedCard.requires_frontline && (
+                    <span className="eldhom-deck-table__preview-card-tag">👤 Prima Linea</span>
+                  )}
+                  {selectedCard.reaction_trigger && (
+                    <span className="eldhom-deck-table__preview-card-tag">
+                      ↩ Reazione: {selectedCard.reaction_trigger}
+                    </span>
+                  )}
+                  {selectedCard.condition && (
+                    <span className="eldhom-deck-table__preview-card-tag">⚑ {selectedCard.condition}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="eldhom-deck-table__zone-empty eldhom-deck-table__preview-card-hint">
+              Passa il mouse su una carta per vederla qui come una vera carta da gioco.
+            </span>
+          )}
+        </div>
+
         {/* ── Giocate (PlayArea) — read-only, this-turn plays ─────────────── */}
         <div
           className={zoneClass('PlayArea', 'eldhom-deck-table__zone--played')}
@@ -278,7 +369,7 @@ export function DeckTable({
                 <div
                   key={`${cardId}-${index}`}
                   className="eldhom-deck-table__card eldhom-deck-table__card--played"
-                  onMouseEnter={() => setHoveredCardId(cardId)}
+                  onMouseEnter={() => setSelectedCardId(cardId)}
                   title={card?.description ?? cardId}
                 >
                   <span className="eldhom-deck-table__card-name">
@@ -302,56 +393,17 @@ export function DeckTable({
           <span className="eldhom-deck-table__zone-empty">nessuna carta</span>
         </div>
 
-        {/* ── Scarti (DiscardPile) ─────────────────────────────────────────── */}
-        <div
-          className={zoneClass('DiscardPile', 'eldhom-deck-table__zone--discard')}
-          onDragOver={allowDrop('DiscardPile')}
-          onDragLeave={() => setDragOverZone(null)}
-          onDrop={handleDiscardZoneDrop}
-        >
-          <p className="eldhom-deck-table__zone-title">🗑 Scarti ({discardCount})</p>
-          <div className="eldhom-deck-table__cards">
-            {discardIds.length === 0 && <span className="eldhom-deck-table__zone-empty">vuoti</span>}
-            {discardIds.map((cardId, index) => {
-              const card = cards[cardId]
-              const isTop = cardId === topDiscardId && index === discardIds.length - 1
-              return (
-                <div
-                  key={`${cardId}-${index}`}
-                  className={`eldhom-deck-table__card eldhom-deck-table__card--discard${isTop ? ' eldhom-deck-table__card--top' : ''}`}
-                  draggable={enabled && isTop}
-                  onDragStart={
-                    isTop ? (event) => setDragPayload(event, { cardId, from: 'DiscardPile' }) : undefined
-                  }
-                  onMouseEnter={() => setHoveredCardId(cardId)}
-                  title={
-                    (card?.description ?? cardId) + (isTop ? ' (cima — trascina sulla Mano per riprenderla)' : '')
-                  }
-                >
-                  <span className="eldhom-deck-table__card-name">
-                    {card ? CARD_TYPE_ICONS[card.card_type] : '📄'} {card?.name ?? cardId}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="eldhom-deck-table__zone-actions">
-            <button type="button" className="eldhom-deck-table__btn" disabled={!enabled || discardIds.length === 0} onClick={onTakeDiscard}>
-              Riprendi
-            </button>
-            <button type="button" className="eldhom-deck-table__btn" disabled={!enabled || discardCount === 0} onClick={onReshuffle}>
-              Rimescola
-            </button>
-          </div>
-        </div>
-
-        {/* ── Bandite (BanishZone) — always empty for Eldhôm, layout parity only ── */}
-        <div
-          className={zoneClass('BanishZone', 'eldhom-deck-table__zone--banish')}
-          title="Nessuna carta di Eldhôm viene attualmente bandita: zona presente solo per coerenza di layout"
-        >
-          <p className="eldhom-deck-table__zone-title">🚫 Bandite (0)</p>
-          <span className="eldhom-deck-table__zone-empty">non usata</span>
+        {/* ── Bandite (BanishZone) — for now just a shortcut button opening a future
+             dedicated management page (not yet implemented) ── */}
+        <div className="eldhom-deck-table__zone eldhom-deck-table__zone--banish">
+          <button
+            type="button"
+            className="eldhom-deck-table__btn"
+            onClick={onOpenBanish}
+            title="Apre la gestione delle carte bandite (pagina dedicata, in arrivo)"
+          >
+            🚫 Bandite
+          </button>
         </div>
       </div>
     </div>

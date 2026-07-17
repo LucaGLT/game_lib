@@ -237,6 +237,11 @@ function App() {
     await sendEldhomCommand(CMD_DECK_RESHUFFLE, { hero_id: activeHeroId })
   }
 
+  /** Bandite is a placeholder button for now: the dedicated banned-cards management page doesn't exist yet. */
+  function handleOpenBanish(): void {
+    setErrorMessage('🚫 Gestione carte bandite: pagina dedicata non ancora disponibile.')
+  }
+
   async function handleReactionChosen(reaction: string): Promise<void> {
     if (pendingReaction === null) {
       return
@@ -472,6 +477,7 @@ function App() {
         onDrawCard={() => void handleDrawCard()}
         onTakeDiscard={() => void handleTakeDiscard()}
         onReshuffle={() => void handleReshuffleDiscard()}
+        onOpenBanish={handleOpenBanish}
       />
 
       <EventLog entries={narrativeLog} ariaLabel="Log narrativo" />

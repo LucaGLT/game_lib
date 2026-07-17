@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.10.0
-**Status:** Phase 10 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-10 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.11.0
+**Status:** Phase 11 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-11 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -784,6 +784,62 @@ con un font più tematico in base al nome di ciascuno dei 5 temi condivisi (`the
   di sistema: garantisce lo stesso identico rendering su qualunque OS (a differenza di font
   Windows-only come Chiller/Copperplate Gothic), a costo di richiedere rete al primo
   caricamento — fallback serif/monospace di sistema se offline, nessuna rottura funzionale.
+
+---
+
+### Phase 11 — Riordino Tavolo Carte e Anteprima "Carta Selezionata" (richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: Scarti deve stare subito a sinistra di Mazzo; a destra di Mano va
+aggiunto uno spazio "Carta Selezionata" con la descrizione estesa (titolo, icone, ecc.) come
+se fosse una vera carta da gioco vista di fronte; Bandite per ora può essere solo un pulsante
+che in futuro aprirà una pagina dedicata di gestione.
+
+- [x] `DeckTable.tsx`: riordino zone in `Scarti, Mazzo, Mano, Carta Selezionata, Giocate,
+      Memoria, Bandite` (Scarti e Mazzo adiacenti, stesso mazzo fisico visto dai due lati)
+- [x] Nuovo pannello "Carta Selezionata": promuove il vecchio hint testuale in intestazione
+      (`hoveredCardId`/dettaglio a una riga) a un riquadro dedicato che rende la carta come
+      una vera carta da gioco — icona tipo, nome, badge costo (⏳), origine, riga effetti,
+      descrizione estesa, tag (Prima Linea/Reazione/Condizione); alimentato dallo stesso stato
+      (rinominato `selectedCardId`/`selectedCard`) già aggiornato da hover/focus su carte in
+      Mano/Giocate/Scarti — nessun nuovo meccanismo di selezione, solo nuova presentazione
+- [x] `Bandite` non è più una drop-zone (rimossi `onDragOver`/`onDrop`/dashed border): è ora
+      un singolo pulsante `🚫 Bandite` in una cella centrata; il click invoca `onOpenBanish`
+      (nuova prop) che per ora mostra solo un avviso placeholder tramite l'`ErrorBar`
+      condiviso ("pagina dedicata non ancora disponibile") — nessuna nuova pagina/route creata
+      in questa fase, come esplicitamente richiesto ("per ora")
+- [x] CSS: griglia zone estesa da 6 a 8 colonne (`Carta Selezionata` occupa 2 colonne per
+      leggibilità della descrizione estesa); rimosse le regole CSS morte `.eldhom-deck-table__
+      detail*`; nuova famiglia di stili `.eldhom-deck-table__preview-card*` con bordo
+      superiore colorato per `card_type` (`--gm-warning` INSTANT, `--gm-success` SEQ_START,
+      `--gm-accent` SEQ_CONTINUE, `--gm-danger` SEQ_END) riusando i token tema esistenti
+- [x] Smoke test nel browser reale: ordine zone verificato, hover reale (via
+      `page.mouse.move`/`locator.hover`, NON `dispatchEvent` sintetico — vedi Notes) su una
+      carta in mano mostra correttamente la carta nel pannello con tutti i dettagli; click su
+      Bandite mostra l'avviso placeholder nell'ErrorBar
+
+**Esito Phase 11 (validato):**
+
+- Layout finale confermato via screenshot: Scarti e Mazzo adiacenti; "Carta Selezionata"
+  renderizza un riquadro con bordo superiore colorato (verde per Colpo d'Apertura, SEQ_START),
+  icona, nome, badge costo arrotondato, etichetta origine ("BASE"), riga effetti tra due
+  separatori, descrizione estesa leggibile; Bandite è un singolo pulsante che mostra
+  "🚫 Gestione carte bandite: pagina dedicata non ancora disponibile." nell'ErrorBar al click.
+- Nessuna modifica al wire-contract o ai comandi GM override esistenti: la selezione carta
+  resta puramente un effetto di presentazione client-side (stesso stato hover/focus di prima,
+  solo rinominato per chiarezza semantica e promosso a riquadro dedicato).
+- `npm run build` pulito (`tsc -b && vite build`).
+
+**Notes:**
+- Scoperta di automazione: simulare hover con `element.dispatchEvent(new MouseEvent
+  ('mouseenter', {bubbles:true}))` non è affidabile con la delega eventi di React 19 (può
+  risultare in nessun aggiornamento, o in un target diverso da quello atteso) — il modo
+  affidabile per simulare hover in test/automazione è un movimento mouse reale:
+  `page.mouse.move(x, y)` calcolato da `getBoundingClientRect()`, oppure `locator.hover()`
+  (che però può attraversare/hover-are elementi intermedi lungo il tragitto, quindi preferire
+  `page.mouse.move` diretto quando la precisione sull'elemento esatto conta).
+- Bandite resta volutamente senza una vera pagina di gestione in questa fase (richiesta
+  esplicita "per ora"): `onOpenBanish` è già il punto di aggancio pronto per una futura Phase
+  dedicata (nuova route/pagina + comandi engine, se/quando il gioco userà mai bandire carte).
 
 ---
 
