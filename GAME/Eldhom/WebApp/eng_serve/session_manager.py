@@ -1,9 +1,10 @@
 """session_manager — Phase 1: a single, process-wide game session (no auth).
 
-Deliberately hardcodes ONE session so Phase 1 can validate the full engine
-<-> eng_serve <-> browser round trip end-to-end. Phase 2 replaces this with
-a real per-user registry (session_id -> SessionState), authentication, and
-idle-session cleanup — see GAME/Tic-Tac-Toe/WebApp/PLAN.md, Phase 2.
+MONO_USER_MANAGES_ALL_PLAYER: one local user controls every PG in the
+mission, exactly like the desktop GUI today. Deliberately hardcodes ONE
+session so Phase 1 can validate the full engine <-> eng_serve <-> browser
+round trip end-to-end. A real per-user registry is Phase 2's responsibility
+and is deliberately deferred — see GAME/Eldhom/WebApp/PLAN.md, Phase 2.
 """
 from __future__ import annotations
 
@@ -12,9 +13,10 @@ import sys
 from pathlib import Path
 from threading import Lock
 
-# ── Make the shared gmWebServe toolkit importable (pyLib is the common parent
-#    of gmWebServe and gmGui) — see GAME/Eldhom/WebApp/PLAN.md, Phase 1, for
-#    the extraction rationale (shared 1:1 with the Eldhom eng_serve).
+# ── Make the shared gmWebServe toolkit importable (pyLib is the common
+#    parent of gmWebServe and gmGui). Same package already used by
+#    GAME/Tic-Tac-Toe/WebApp/eng_serve — see GAME/Eldhom/WebApp/PLAN.md,
+#    Phase 1, for the extraction rationale.
 _PYLIB_DIR = Path(__file__).resolve().parents[4] / "pyLib"
 if str(_PYLIB_DIR) not in sys.path:
     sys.path.insert(0, str(_PYLIB_DIR))
@@ -86,12 +88,12 @@ class SessionManager:
         """The id of the currently running session, or None if none is active."""
         return self._session.session_id if self._session is not None else None
 
-    def create_session(self, starter_mode: str) -> SessionState:
-        """Boots the engine subprocess and the bridge, then starts a match.
+    def create_session(self, mission_id: str) -> SessionState:
+        """Boots the engine subprocess and the bridge, then starts a mission.
 
-        Sending the bootstrap ``gmTris.new_game`` command is what triggers
-        the engine to lazily connect back on the event port — the same
-        sequence used by ``GAME/Tic-Tac-Toe/GUI/tests/e2e_test.py``.
+        Sending the bootstrap ``eldhom.start_mission`` command is what
+        triggers the engine to lazily connect back on the event port — same
+        sequence used by the desktop GUI's own startup handshake.
 
         Raises:
             SessionAlreadyRunningError: If a session is already active.
@@ -115,6 +117,7 @@ class SessionManager:
                 self._settings.command_host,
                 self._settings.command_port,
                 self._settings.connect_timeout_s,
+                extra_args=[str(self._settings.data_dir)],
             )
             try:
                 engine.start()
@@ -134,7 +137,7 @@ class SessionManager:
 
         # Outside the lock: triggers the engine's lazy connect-back to the
         # event listener started above.
-        sender.send_command("gmTris.new_game", {"starter_mode": starter_mode})
+        sender.send_command("eldhom.start_mission", {"mission_id": mission_id})
         return session
 
     def get_session(self, session_id: str) -> SessionState:
