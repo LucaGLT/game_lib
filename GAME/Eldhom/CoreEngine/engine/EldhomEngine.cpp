@@ -10,6 +10,7 @@
 #include "gmActor/core/Enums.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <stdexcept>
@@ -786,6 +787,7 @@ ActionResult EldhomEngine::play_card(
 	// Emit EVT_SEQUENCE_STARTED if sequence just activated (from inactive to active)
 	if (!seq_before.active && _seq_states[hero_id].active)
 	{
+		std::cout << "[DEBUG] Emitting EVT_SEQUENCE_STARTED for " << hero_id << " with card " << card_id << "\n" << std::flush;
 		emit(EVT_SEQUENCE_STARTED, hero_id, card_id);
 	}
 

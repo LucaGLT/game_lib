@@ -965,7 +965,9 @@ class EldhomMainWindow(QMainWindow):
         """Handle sequence activation: disable simple actions and show stop button."""
         data    = _extract_data(msg)
         hero_id = data.get("actor_id", "")
+        print(f"[DEBUG] _on_sequence_started: hero_id={hero_id}, active_hero={self._active_hero_id}", flush=True)
         if hero_id == self._active_hero_id:
+            print(f"[DEBUG] Disabling simple actions for hero {hero_id}", flush=True)
             # Show the stop-sequence button and disable simple action buttons.
             self._actions.set_sequence_active(True)
 
@@ -973,7 +975,9 @@ class EldhomMainWindow(QMainWindow):
         """Handle sequence deactivation: re-enable simple actions and hide stop button."""
         data    = _extract_data(msg)
         hero_id = data.get("actor_id", "")
+        print(f"[DEBUG] _on_sequence_ended: hero_id={hero_id}, active_hero={self._active_hero_id}", flush=True)
         if hero_id == self._active_hero_id:
+            print(f"[DEBUG] Re-enabling simple actions for hero {hero_id}", flush=True)
             # Hide the stop-sequence button and re-enable simple action buttons.
             self._actions.set_sequence_active(False)
 
