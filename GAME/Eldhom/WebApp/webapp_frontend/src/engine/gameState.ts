@@ -28,6 +28,7 @@ import {
   EVT_TURN_NEXT_ACTOR,
   EVT_ZONE_DOOR_OPENED,
   type CardWire,
+  type HeroWire,
   type NextActorWire,
   type ReactionWindowWire,
   type StateFullWire,
@@ -42,6 +43,8 @@ export interface MapLocation {
   name: string
   /** Trailing-digit-stripped id prefix (e.g. "S1" -> "S") — same-zone passages are always FREE. */
   zone: string
+  /** Ids of directly-adjacent locations (regular adjacency only, not locked/secret passages). */
+  adjacent: string[]
 }
 
 /** One rendered passage between two locations. */
@@ -60,6 +63,7 @@ export interface ActorToken {
   /** For monster instances, the owning group's id (a `turn.next_actor` for the group highlights all its instances). */
   groupId: string | null
   location: string
+  position: 'FRONTLINE' | 'BACKLINE'
   hp: number
   maxHp: number
   alive: boolean
@@ -94,6 +98,8 @@ export interface EldhomState {
   sequenceActiveByHero: Record<string, boolean>
   /** Set while the engine awaits a TAKE/BLOCK/DODGE choice; null otherwise. */
   pendingReaction: ReactionWindowWire | null
+  /** Raw hero wire data keyed by id (HP/resources/hand-count for HeroPanel, Phase 5). */
+  heroesById: Record<string, HeroWire>
 }
 
 export const initialEldhomState: EldhomState = {
@@ -111,6 +117,7 @@ export const initialEldhomState: EldhomState = {
   handByHero: {},
   sequenceActiveByHero: {},
   pendingReaction: null,
+  heroesById: {},
 }
 
 /** Loads the card catalog into state (call once after `listCards()` resolves — not envelope-driven). */
@@ -203,6 +210,7 @@ function buildLocations(wire: StateFullWire): MapLocation[] {
     id: loc.id,
     name: loc.name,
     zone: zoneFromLocationId(loc.id),
+    adjacent: loc.adjacent,
   }))
 }
 
@@ -265,6 +273,7 @@ function buildTokens(wire: StateFullWire): ActorToken[] {
     isHero: true,
     groupId: null,
     location: hero.location,
+    position: hero.position,
     hp: hero.hp,
     maxHp: hero.max_hp,
     alive: true,
@@ -289,6 +298,7 @@ function buildTokens(wire: StateFullWire): ActorToken[] {
         isHero: false,
         groupId: group.id,
         location: instance.location,
+        position: instance.position,
         hp: instance.hp,
         maxHp: instance.max_hp,
         alive: instance.alive,
@@ -319,8 +329,10 @@ function buildTimelineActors(wire: StateFullWire): TimelineActor[] {
 function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState {
   const locations = buildLocations(wire)
   const handByHero: Record<string, string[]> = {}
+  const heroesById: Record<string, HeroWire> = {}
   for (const hero of wire.heroes) {
     handByHero[hero.id] = hero.hand
+    heroesById[hero.id] = hero
   }
   return {
     ...previous,
@@ -331,6 +343,7 @@ function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState
     locations,
     edges: buildEdges(wire, locations),
     tokens: buildTokens(wire),
+    heroesById,
     timelineActors: buildTimelineActors(wire),
     nextActorId: wire.next_actor?.actor_id ?? '',
     nextActorKind: wire.next_actor?.kind ?? '',

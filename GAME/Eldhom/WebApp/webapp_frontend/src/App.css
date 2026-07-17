@@ -219,11 +219,11 @@
 }
 
 .eldhom-map__node--clickable {
-  cursor: crosshair;
+  cursor: pointer;
 }
 
 .eldhom-map__token--clickable {
-  cursor: crosshair;
+  cursor: pointer;
 }
 
 /* ── Action panel (4 simple actions + inline reaction window) ───────────── */
@@ -348,4 +348,139 @@
 .eldhom-hand__card-summary {
   font-size: 11px;
   opacity: 0.85;
+}
+
+/* ── Hero panel row ──────────────────────────────────────────────────────── */
+
+.eldhom-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.eldhom-hero-panel {
+  width: 170px;
+  padding: 6px 10px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.eldhom-hero-panel--active {
+  border-width: 2px;
+  border-color: var(--gm-accent);
+}
+
+.eldhom-hero-panel__name {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.eldhom-hero-panel__hp-track {
+  position: relative;
+  height: 16px;
+  margin-bottom: 4px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  overflow: hidden;
+}
+
+.eldhom-hero-panel__hp-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background-color: var(--gm-success);
+  transition: width 0.25s ease;
+}
+
+.eldhom-hero-panel__hp-text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.eldhom-hero-panel__status,
+.eldhom-hero-panel__timeline,
+.eldhom-hero-panel__location {
+  margin: 2px 0 0;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* ── Board row (map + area info side by side) ───────────────────────────── */
+
+.eldhom-board-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.eldhom-board-row .eldhom-map {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+}
+
+/* ── Area info panel ─────────────────────────────────────────────────────── */
+
+.eldhom-area-info {
+  flex: 0 0 220px;
+  padding: 8px 12px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-area-info__title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.eldhom-area-info__adjacent,
+.eldhom-area-info__actors-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.eldhom-area-info__actors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-area-info__actor {
+  width: 100%;
+  text-align: left;
+  padding: 4px 6px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.eldhom-area-info__actor:hover {
+  border-color: var(--gm-accent);
+}
+
+.eldhom-area-info__empty {
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
 }

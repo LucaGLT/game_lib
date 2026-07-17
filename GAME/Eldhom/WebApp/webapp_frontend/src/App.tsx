@@ -20,9 +20,12 @@ import {
 } from './engine/contract'
 import { hasEffect } from './engine/cardIcons'
 import { applyCardCatalog, applyEnvelope, initialEldhomState } from './engine/gameState'
+import { formatEvent, resetLogTimeTracking } from './engine/logFormat'
 import { ActionPanel, type TargetingMode } from './components/ActionPanel'
+import { AreaInfoPanel } from './components/AreaInfoPanel'
 import { EldhomMap } from './components/EldhomMap'
 import { HandPanel } from './components/HandPanel'
+import { HeroPanel } from './components/HeroPanel'
 import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
 
@@ -66,8 +69,10 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
+  const [narrativeLog, setNarrativeLog] = useState<string[]>([])
   const [eldhomState, setEldhomState] = useState(initialEldhomState)
   const [targeting, setTargeting] = useState<Targeting>(null)
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
   const disconnectRef = useRef<(() => void) | null>(null)
@@ -97,12 +102,14 @@ function App() {
       .catch((caught) => setErrorMessage(String(caught)))
   }, [])
 
-  // Wildcard subscription: every envelope both feeds the raw-JSON debug log
-  // (Phase 1) and updates the structured game state (Phase 3+4) — the two
-  // are independent consumers of the same `EnvelopeRouter`, same pattern as
-  // Tris' reducer + ActorStatusBadges module.
+  // Wildcard subscription: every envelope feeds the raw-JSON debug log
+  // (Phase 1), the Eldhôm-specific narrative log (Phase 5, `logFormat.ts`),
+  // and the structured game state (Phase 3+4) — three independent consumers
+  // of the same `EnvelopeRouter`, same pattern as Tris' reducer +
+  // ActorStatusBadges module.
   useGmGuiModule(router, { subscribedTypeIds: ['*'] }, (envelope) => {
     setLogEntries((previous) => [...previous, JSON.stringify(envelope)])
+    setNarrativeLog((previous) => [...previous, ...formatEvent(envelope)])
     setEldhomState((previous) => applyEnvelope(previous, envelope))
   })
 
@@ -143,8 +150,11 @@ function App() {
       setRouter(nextRouter)
       setSessionId(session.session_id)
       setLogEntries([])
+      setNarrativeLog([])
+      resetLogTimeTracking()
       setEldhomState((previous) => applyCardCatalog(initialEldhomState, Object.values(previous.cards)))
       setTargeting(null)
+      setSelectedLocationId(null)
       setErrorMessage(null)
       disconnectRef.current = connectSessionEvents(session.session_id, (envelope) => {
         nextRouter.dispatch(envelope)
@@ -223,6 +233,7 @@ function App() {
 
   async function handleLocationClick(locationId: string): Promise<void> {
     if (targeting === null) {
+      setSelectedLocationId(locationId)
       return
     }
     if (targeting.kind === 'simple-move') {
@@ -255,6 +266,10 @@ function App() {
 
   async function handleTokenClick(actorId: string): Promise<void> {
     if (targeting === null) {
+      const token = eldhomState.tokens.find((candidate) => candidate.actorId === actorId)
+      if (token) {
+        setSelectedLocationId(token.location)
+      }
       return
     }
     // Mirrors the desktop's _actor_is_enemy() guard: reject a self/ally click
@@ -288,6 +303,28 @@ function App() {
       : targeting?.kind === 'simple-attack' || targeting?.kind === 'card-attack'
         ? 'attack'
         : null
+
+  const selectedLocation =
+    selectedLocationId === null
+      ? null
+      : (eldhomState.locations.find((location) => location.id === selectedLocationId) ?? null)
+  const selectedLocationAdjacentNames =
+    selectedLocation?.adjacent.map(
+      (id) => eldhomState.locations.find((location) => location.id === id)?.name ?? id,
+    ) ?? []
+  const selectedLocationActors =
+    selectedLocationId === null
+      ? []
+      : eldhomState.tokens
+          .filter((token) => token.location === selectedLocationId)
+          .map((token) => ({
+            actorId: token.actorId,
+            label: token.label,
+            isHero: token.isHero,
+            hp: token.hp,
+            maxHp: token.maxHp,
+            position: token.position,
+          }))
 
   return (
     <div className="app" style={themeToCssVars(theme) as CSSProperties}>
@@ -335,14 +372,29 @@ function App() {
 
       <TimelineTrack actors={eldhomState.timelineActors} activeActorId={eldhomState.nextActorId} />
 
-      <EldhomMap
-        locations={eldhomState.locations}
-        edges={eldhomState.edges}
-        tokens={eldhomState.tokens}
-        activeActorId={eldhomState.nextActorId}
-        onLocationClick={targetingMode === 'move' ? (id) => void handleLocationClick(id) : undefined}
-        onTokenClick={targetingMode === 'attack' ? (id) => void handleTokenClick(id) : undefined}
-      />
+      <div className="eldhom-hero-row">
+        {Object.values(eldhomState.heroesById).map((hero) => (
+          <HeroPanel key={hero.id} hero={hero} isActive={hero.id === eldhomState.nextActorId} />
+        ))}
+      </div>
+
+      <div className="eldhom-board-row">
+        <EldhomMap
+          locations={eldhomState.locations}
+          edges={eldhomState.edges}
+          tokens={eldhomState.tokens}
+          activeActorId={eldhomState.nextActorId}
+          onLocationClick={(id) => void handleLocationClick(id)}
+          onTokenClick={(id) => void handleTokenClick(id)}
+        />
+
+        <AreaInfoPanel
+          locationName={selectedLocation?.name ?? null}
+          adjacentNames={selectedLocationAdjacentNames}
+          actors={selectedLocationActors}
+          onActorClick={(id) => void handleTokenClick(id)}
+        />
+      </div>
 
       <HandPanel
         heroName={activeHeroName}
@@ -353,6 +405,7 @@ function App() {
         onPlayCard={handlePlayCard}
       />
 
+      <EventLog entries={narrativeLog} ariaLabel="Log narrativo" />
       <EventLog entries={logEntries} ariaLabel="Log eventi grezzi (JSON)" />
       <ErrorBar message={errorMessage} />
     </div>

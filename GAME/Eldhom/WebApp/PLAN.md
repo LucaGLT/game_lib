@@ -1,7 +1,7 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.4.0
-**Status:** Phase 4 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
+**Version:** 0.5.0
+**Status:** Phase 5 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -437,18 +437,64 @@ game_lib/
 
 ---
 
-### Phase 5 — Eroi, Info Area & Log [⏳]
+### Phase 5 — Eroi, Info Area & Log [✅ Completato]
 
-- [ ] `HeroPanel.tsx` × N (2-5 istanze): HP/risorse/conteggio mano/stato per eroe (mirror
+- [x] `HeroPanel.tsx` × N (2-5 istanze): HP/risorse/conteggio mano/stato per eroe (mirror
       `hero_panel_widget.py`); valutare riuso di `ActorStatusBadges` (`@webgui/*`) per la sola
       striscia stati, con `HeroPanel` per il resto (HP/risorse) — split generico/specifico
       analogo a Tris
-- [ ] `AreaInfoPanel.tsx`: dettaglio locazione selezionata (mirror `area_info_widget.py`)
-- [ ] Formattazione log Eldhôm-specifica (icone/testo, mirror `log_widget.py::_format_event`)
+- [x] `AreaInfoPanel.tsx`: dettaglio locazione selezionata (mirror `area_info_widget.py`)
+- [x] Formattazione log Eldhôm-specifica (icone/testo, mirror `log_widget.py::_format_event`)
       che alimenta il componente **già generico** `EventLog` da `@webgui/*` (nessuna nuova
       componente di rendering: solo la funzione di formattazione è nuova/specifica)
-- [ ] Smoke test: danno/cura/KO riflessi nei pannelli eroe corretti; selezione locazione
+- [x] Smoke test: danno/cura/KO riflessi nei pannelli eroe corretti; selezione locazione
       sulla mappa aggiorna `AreaInfoPanel`; log coerente con i testi del riferimento desktop
+
+**Esito Phase 5 (validato):**
+
+- `components/HeroPanel.tsx` (NUOVO): port di `hero_panel_widget.py`. **`ActorStatusBadges`
+  valutato e SCARTATO** (checklist chiedeva esplicitamente di valutarne il riuso): si
+  sottoscrive a eventi generici `gmActor.*` (`gmActor.snapshot`/`status_added`/
+  `status_removed`) che il wire contract `eldhom.*` non produce affatto (quella traduzione
+  esiste solo lato Python nell'`EldhomActorAdapter` desktop, non in `eng_serve`, che resta
+  pass-through); inoltre l'informazione "di chi è il turno" che mostrerebbe è già coperta da
+  `ActionPanel` ("TURNO: X"), dal bordo attivo di `HeroPanel` stesso e dall'evidenziazione
+  del token attivo in `EldhomMap` — riusarlo sarebbe stato ridondante, non funzionalità
+  mancante. Nessuna modifica a `webLib/WebGUI_Lib` per Phase 5.
+- `components/AreaInfoPanel.tsx` (NUOVO): port di `area_info_widget.py`, puramente
+  presentazionale (nessun networking proprio, dati derivati da `eldhomState` nel genitore).
+- `engine/logFormat.ts` (NUOVO): porta 1:1 `_EVENT_TEMPLATES`/`_format_event`/`on_any_event`/
+  `on_action_result`/`on_mission_victory`/`on_mission_defeat`/`on_next_actor` da
+  `log_widget.py` — solo icone/testo, i colori per riga sono stati deliberatamente omessi
+  (coerente con la nota Phase 5 originale: `EventLog` resta il componente generico esistente
+  con `entries: string[]` semplici, nessuna nuova prop di colore aggiunta). Lo stato privato
+  `lastDisplayedTime` (per il riempimento "Tempo N: Nessun Attore" tra un attore e l'altro)
+  è tenuto come variabile di modulo, non nel reducer `gameState.ts` — è bookkeeping di
+  presentazione del log, non stato di dominio (stessa separazione già stabilita per la mappa
+  in Phase 3).
+- `engine/gameState.ts` esteso: `heroesById: Record<string, HeroWire>` (popolato da
+  `wire.heroes` su ogni `state.full`), `MapLocation.adjacent` (necessario per
+  `AreaInfoPanel`), `ActorToken.position` (necessario per mostrare Prima Linea/Retroguardia
+  nella lista attori dell'area).
+- `App.tsx`: nuovo stato `selectedLocationId`; `handleLocationClick`/`handleTokenClick` ora
+  gestiti in DOPPIO percorso — se un targeting è armato, risolvono l'azione (come in Phase 4);
+  altrimenti impostano semplicemente `selectedLocationId` per popolare `AreaInfoPanel` (mirror
+  di `_on_area_selected`/`_on_actor_selected` del desktop, che fanno la stessa distinzione).
+  `EldhomMap` ora riceve SEMPRE gli handler di click (non più condizionati da
+  `targetingMode`), dato che servono comunque per la sola selezione informativa; il cursore
+  CSS è stato cambiato da `crosshair` a `pointer` di conseguenza (uso ora duale, non solo
+  targeting). Aggiunto un secondo `<EventLog>` per il log narrativo, accanto a quello JSON
+  grezzo di Phase 1 (mantenuto per debug).
+- **Smoke test end-to-end validato nel browser reale** (missione `missione_01`): avviata la
+  missione, confermati 2 `HeroPanel` con dati corretti (Thael ❤6/6, Attivo, mazzo:5/5, ⌛0,
+  ingresso/Primo piano; Velyr ❤5/5, ingresso/Retro); log narrativo confermato con le righe
+  attese ("thael: mazzo rimescolato", "velyr: mazzo rimescolato",
+  "⌛ Tempo 0: ▶ Gioca Thael"); click sul nodo Corridoio → `AreaInfoPanel` mostra
+  correttamente "Area: Corridoio", "Adiacenti: Ingresso, Sala" (nomi risolti, non id grezzi),
+  e i 2 mostri presenti con HP/posizione corretti; dopo un'azione MOVE di Thael verso
+  corridoio, `HeroPanel` di Thael si è aggiornato correttamente (⌛3, 📍 corridoio/Primo
+  piano) confermando che la stessa fonte dati (`state.full` → `heroesById`) alimenta
+  correttamente sia i token mappa (già validati in Phase 3) sia i pannelli eroe.
 
 **Notes:**
 - Stesso principio Tris: `EventLog` resta puro rendering (props `entries`), tutta la logica di
