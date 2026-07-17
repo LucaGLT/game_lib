@@ -125,7 +125,12 @@ export function DeckTable({
   const discardIds = hero?.discard_ids ?? []
   const discardCount = hero?.discard_count ?? discardIds.length
   const playedIds = hero?.played_ids ?? []
-  const topDiscardId = discardIds.length > 0 ? discardIds[discardIds.length - 1] : null
+  // Wire order is oldest-first/newest-last (index 0 = first discarded). The
+  // pile is rendered as a real LIFO stack: reversed so the most recently
+  // discarded card (the pile's actual top) is the first DOM child, which
+  // `flex-direction: column` then places visually at the TOP of the zone —
+  // the oldest discarded card ends up last, at the bottom.
+  const discardIdsTopFirst = [...discardIds].reverse()
 
   const selectedCard = selectedCardId ? cards[selectedCardId] : undefined
 
@@ -191,10 +196,10 @@ export function DeckTable({
         >
           <p className="eldhom-deck-table__zone-title">🗑 Scarti ({discardCount})</p>
           <div className="eldhom-deck-table__cards">
-            {discardIds.length === 0 && <span className="eldhom-deck-table__zone-empty">vuoti</span>}
-            {discardIds.map((cardId, index) => {
+            {discardIdsTopFirst.length === 0 && <span className="eldhom-deck-table__zone-empty">vuoti</span>}
+            {discardIdsTopFirst.map((cardId, index) => {
               const card = cards[cardId]
-              const isTop = cardId === topDiscardId && index === discardIds.length - 1
+              const isTop = index === 0
               return (
                 <div
                   key={`${cardId}-${index}`}

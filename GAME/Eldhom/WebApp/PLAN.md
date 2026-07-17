@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.11.0
-**Status:** Phase 11 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-11 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.12.0
+**Status:** Phase 12 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-12 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -840,6 +840,51 @@ che in futuro aprirà una pagina dedicata di gestione.
 - Bandite resta volutamente senza una vera pagina di gestione in questa fase (richiesta
   esplicita "per ora"): `onOpenBanish` è già il punto di aggancio pronto per una futura Phase
   dedicata (nuova route/pagina + comandi engine, se/quando il gioco userà mai bandire carte).
+
+---
+
+### Phase 12 — Ordine LIFO nella pila Scarti (richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: in Scarti le carte devono essere impilate in senso opposto —
+gestite come una Pila LIFO ma con l'ultimo entrato in cima e il primo entrato in fondo
+(come una vera pila fisica di carte scartate).
+
+- [x] `DeckTable.tsx`: il campo wire `hero.discard_ids` resta oldest-first/newest-last
+      (invariato, nessuna modifica al contratto), ma il rendering ora inverte l'array
+      (`discardIdsTopFirst = [...discardIds].reverse()`) prima di mapparlo, così l'ultima
+      carta scartata (la vera cima della pila) diventa il primo figlio nel DOM — e siccome
+      `.eldhom-deck-table__cards` è `flex-direction: column`, il primo figlio appare in alto:
+      risultato visivo = ultimo entrato in cima, primo entrato in fondo
+- [x] Semplificato il calcolo di "cima pila" (`isTop`): con l'array già invertito
+      basta `index === 0` (era `cardId === topDiscardId && index === discardIds.length - 1`
+      sull'array non invertito) — stessa carta risultante, logica più diretta
+- [x] Invariati: drag-source (`draggable`/`onDragStart`) e pulsante "Riprendi" restano
+      agganciati alla stessa carta (la vera cima logica), solo ora coerente anche visivamente
+      con la posizione in alto nella colonna
+- [x] Smoke test funzionale nel browser reale (non solo visivo): scartate in sequenza nota
+      3 carte (Spinta di Corpo, poi Fendente Pesante, poi Passo e Lama) e letto l'ordine DOM
+      via `page.evaluate` — risultato `["Passo e Lama", "Fendente Pesante", "Spinta di
+      Corpo"]` (ultimo scartato per primo, come richiesto); poi cliccato "Riprendi" e
+      verificato che riprende esattamente "Passo e Lama" (l'ultima scartata), lasciando le
+      altre due nello stesso ordine relativo
+
+**Esito Phase 12 (validato):**
+
+- Ordine visivo della pila Scarti confermato come vera Pila LIFO: l'ultima carta scartata
+  appare sempre in cima alla colonna, la più vecchia in fondo — comportamento verificato sia
+  da screenshot sia da lettura diretta del DOM dopo scarti multipli in ordine noto.
+  "Riprendi"/drag-to-hand continuano a operare sulla carta logicamente in cima (`discard_ids`
+  invariato lato wire), ora anche visivamente coerente.
+- Nessuna modifica al wire-contract, a `eldhom.deck.discard`/`take_discard`/`reshuffle`, o allo
+  stato `selectedCardId`/hover: puramente un riordino della vista, stesso pattern già usato in
+  Phase 11 per non introdurre complessità non necessaria.
+- `npm run build` pulito (`tsc -b && vite build`); nessun nuovo errore TypeScript/lint.
+
+**Notes:**
+- Riconfermata la lezione Phase 11 sull'hover in Playwright: il click reale di Playwright
+  (`page.click`) sposta prima il mouse sull'elemento e poi clicca, quindi attiva naturalmente
+  `onMouseEnter` prima del click — non serve un `page.mouse.move` separato quando si sta già
+  cliccando (solo per hover-only, senza click, serve muovere il mouse esplicitamente).
 
 ---
 
