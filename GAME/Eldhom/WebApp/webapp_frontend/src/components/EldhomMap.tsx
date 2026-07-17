@@ -32,6 +32,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ActorToken, MapEdge, MapLocation } from '../engine/gameState'
+import { readDragPayload } from '../engine/dragPayload'
 
 export interface EldhomMapProps {
   locations: MapLocation[]
@@ -42,6 +43,10 @@ export interface EldhomMapProps {
   onLocationClick?: (locationId: string) => void
   /** Called with an actor id when a token is clicked (Phase 4: attack targeting). */
   onTokenClick?: (actorId: string) => void
+  /** Called with a hand card id and a location id when that card is dropped on this location (MOVE-effect cards). */
+  onCardDropOnLocation?: (cardId: string, locationId: string) => void
+  /** Called with a hand card id and an actor id when that card is dropped on this token (DAMAGE-effect cards). */
+  onCardDropOnToken?: (cardId: string, actorId: string) => void
 }
 
 interface LayoutNode {
@@ -160,10 +165,13 @@ export function EldhomMap({
   activeActorId,
   onLocationClick,
   onTokenClick,
+  onCardDropOnLocation,
+  onCardDropOnToken,
 }: EldhomMapProps) {
   const layout = useMemo(() => computeLayout(locations, edges), [locations, edges])
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [viewBox, setViewBox] = useState<ViewBox>(() => fitViewBox(layout))
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
   const panState = useRef<{ pointerId: number; startClientX: number; startClientY: number; startViewBox: ViewBox } | null>(null)
 
   // Resets the view whenever the underlying map changes (new mission, or a
@@ -325,8 +333,35 @@ export function EldhomMap({
         return (
           <foreignObject key={node.id} x={node.x} y={node.y} width={NODE_WIDTH} height={NODE_HEIGHT}>
             <div
-              className={`eldhom-map__node${onLocationClick ? ' eldhom-map__node--clickable' : ''}`}
+              className={[
+                'eldhom-map__node',
+                onLocationClick ? 'eldhom-map__node--clickable' : '',
+                onCardDropOnLocation && dragOverId === node.id ? 'eldhom-map__node--drag-over' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               onClick={onLocationClick ? () => onLocationClick(node.id) : undefined}
+              onDragOver={
+                onCardDropOnLocation
+                  ? (event) => {
+                      event.preventDefault()
+                      setDragOverId(node.id)
+                    }
+                  : undefined
+              }
+              onDragLeave={onCardDropOnLocation ? () => setDragOverId(null) : undefined}
+              onDrop={
+                onCardDropOnLocation
+                  ? (event) => {
+                      event.preventDefault()
+                      setDragOverId(null)
+                      const payload = readDragPayload(event)
+                      if (payload && payload.from === 'CardHand') {
+                        onCardDropOnLocation(payload.cardId, node.id)
+                      }
+                    }
+                  : undefined
+              }
             >
               <div className="eldhom-map__node-name">{node.name}</div>
               <div className="eldhom-map__node-tokens">
@@ -340,6 +375,7 @@ export function EldhomMap({
                       token.actorId === activeActorId || token.groupId === activeActorId
                         ? 'eldhom-map__token--active'
                         : '',
+                      onCardDropOnToken && dragOverId === token.actorId ? 'eldhom-map__token--drag-over' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -349,6 +385,36 @@ export function EldhomMap({
                         ? (event) => {
                             event.stopPropagation()
                             onTokenClick(token.actorId)
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      onCardDropOnToken
+                        ? (event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setDragOverId(token.actorId)
+                          }
+                        : undefined
+                    }
+                    onDragLeave={
+                      onCardDropOnToken
+                        ? (event) => {
+                            event.stopPropagation()
+                            setDragOverId(null)
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      onCardDropOnToken
+                        ? (event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setDragOverId(null)
+                            const payload = readDragPayload(event)
+                            if (payload && payload.from === 'CardHand') {
+                              onCardDropOnToken(payload.cardId, token.actorId)
+                            }
                           }
                         : undefined
                     }

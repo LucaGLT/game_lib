@@ -48,8 +48,9 @@
  * tags) rather than the one-line header hint it replaces.
  */
 import { useState } from 'react'
-import { CARD_TYPE_ICONS, effectSummaryLine } from '../engine/cardIcons'
+import { CARD_TYPE_ICONS, effectSummaryLine, hasEffect } from '../engine/cardIcons'
 import type { CardWire, HeroWire } from '../engine/contract'
+import { readDragPayload, setDragPayload } from '../engine/dragPayload'
 
 export interface DeckTableProps {
   heroName: string
@@ -66,14 +67,6 @@ export interface DeckTableProps {
   onOpenBanish: () => void
 }
 
-/** Drag payload mime type carrying `{cardId, from}` as JSON — namespaced to avoid clashing with other drag sources. */
-const DRAG_MIME = 'application/x-eldhom-card'
-
-interface DragPayload {
-  cardId: string
-  from: 'CardHand' | 'MainDeck' | 'DiscardPile'
-}
-
 function isPlayable(card: CardWire | undefined, sequenceActive: boolean): boolean {
   if (!card) {
     return false
@@ -87,21 +80,12 @@ function isPlayable(card: CardWire | undefined, sequenceActive: boolean): boolea
   return card.card_type === 'SINGLE' || card.card_type === 'SEQ_START'
 }
 
-function setDragPayload(event: React.DragEvent, payload: DragPayload): void {
-  event.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload))
-  event.dataTransfer.effectAllowed = 'move'
-}
-
-function readDragPayload(event: React.DragEvent): DragPayload | null {
-  const raw = event.dataTransfer.getData(DRAG_MIME)
-  if (!raw) {
-    return null
+/** True if the card needs a destination/target and must therefore be dropped on the Map, not on Giocate/Memoria. */
+function needsMapDrop(card: CardWire | undefined): boolean {
+  if (!card) {
+    return false
   }
-  try {
-    return JSON.parse(raw) as DragPayload
-  } catch {
-    return null
-  }
+  return hasEffect(card, 'MOVE', 'MOVE_TOWARD_PG') || hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')
 }
 
 export function DeckTable({
@@ -134,13 +118,22 @@ export function DeckTable({
 
   const selectedCard = selectedCardId ? cards[selectedCardId] : undefined
 
+  // Giocate/Memoria only accept cards playable RIGHT NOW that need no destination/target
+  // (cards needing one — MOVE/DAMAGE effects — must be dropped on the Map instead, see
+  // EldhomMap's onCardDropOnLocation/onCardDropOnToken). Click alone never plays a card
+  // any more — see the hand card render below, which has no onClick on its play face.
   function handlePlayZoneDrop(event: React.DragEvent): void {
     event.preventDefault()
     setDragOverZone(null)
     const payload = readDragPayload(event)
-    if (payload && payload.from === 'CardHand' && enabled) {
-      onPlayCard(payload.cardId)
+    if (!payload || payload.from !== 'CardHand' || !enabled) {
+      return
     }
+    const card = cards[payload.cardId]
+    if (!isPlayable(card, sequenceActive) || needsMapDrop(card)) {
+      return
+    }
+    onPlayCard(payload.cardId)
   }
 
   function handleDiscardZoneDrop(event: React.DragEvent): void {
@@ -271,22 +264,24 @@ export function DeckTable({
               const summary = card
                 ? card.effects.map((effect) => effectSummaryLine(effect, card.timeline_cost)).join('  ')
                 : ''
+              const dropHint = !playable
+                ? ''
+                : needsMapDrop(card)
+                  ? ' — trascina sulla Mappa per giocarla'
+                  : ' — trascina su Giocate per giocarla'
               return (
                 <div
                   key={`${cardId}-${index}`}
                   className="eldhom-deck-table__card eldhom-deck-table__card--hand"
-                  draggable={enabled}
+                  draggable={playable}
                   onDragStart={(event) => setDragPayload(event, { cardId, from: 'CardHand' })}
                   onMouseEnter={() => setSelectedCardId(cardId)}
                   onFocus={() => setSelectedCardId(cardId)}
-                  title={card?.description ?? cardId}
+                  title={(card?.description ?? cardId) + dropHint}
                 >
-                  <button
-                    type="button"
-                    className="eldhom-deck-table__card-play"
-                    disabled={!playable}
-                    onClick={() => onPlayCard(cardId)}
-                  >
+                  {/* Playing a card is drag&drop-only (Map for MOVE/DAMAGE cards, Giocate/
+                      Memoria for the rest) — this face is a static preview, not a button. */}
+                  <button type="button" className="eldhom-deck-table__card-play" disabled={!playable} tabIndex={-1}>
                     <span className="eldhom-deck-table__card-name">
                       {typeIcon} {card?.name ?? cardId}
                     </span>

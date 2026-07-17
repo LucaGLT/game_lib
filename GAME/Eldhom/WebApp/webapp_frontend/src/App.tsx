@@ -47,11 +47,10 @@ function loadStoredTheme(): ThemeId {
   return THEMES.find((theme) => theme.id === stored)?.id ?? DEFAULT_THEME_ID
 }
 
-/** What a location/token click on the map currently resolves to (or null if nothing is armed). */
+/** What a location/token click (or card drop) on the map currently resolves to (or null if nothing is armed). */
 type Targeting =
   | { kind: 'simple-move' }
   | { kind: 'simple-attack' }
-  | { kind: 'card-move'; cardId: string }
   | { kind: 'card-attack'; cardId: string; destination?: string }
   | null
 
@@ -65,11 +64,23 @@ type Targeting =
  * `logFormat.ts`) plus a collapsed raw-JSON debug log, and the Phase 6
  * modals (mission select / formation / instant window).
  *
- * Point-and-click targeting (move destination / attack target) is armed by
- * `ActionPanel`/`DeckTable` and resolved by this component's
- * `handleLocationClick`/`handleTokenClick`, which own the shared
- * `targeting` state consumed by `EldhomMap` — same split as the desktop's
- * `move_armed`/`attack_armed` signals resolved by `EldhomMainWindow`.
+ * Point-and-click targeting for the 4 SIMPLE actions (move destination /
+ * attack target) is armed by `ActionPanel` and resolved by this
+ * component's `handleLocationClick`/`handleTokenClick`, which own the
+ * shared `targeting` state consumed by `EldhomMap` — same split as the
+ * desktop's `move_armed`/`attack_armed` signals resolved by
+ * `EldhomMainWindow`.
+ *
+ * Playing a HAND CARD, however, is drag&drop-only (clicking never plays a
+ * card — see `DeckTable`'s hand card render, which has no `onClick` on its
+ * play face): dropping a card onto `EldhomMap` resolves it directly via
+ * `handleCardDropOnLocation` (MOVE-effect cards, dropped on a location) /
+ * `handleCardDropOnToken` (DAMAGE-effect cards, dropped on a token);
+ * dropping onto `DeckTable`'s Giocate/Memoria zones plays cards that need
+ * neither. The two paths share `targeting`'s `'card-attack'` state only for
+ * the rare move-then-attack chained card (e.g. "Passo e Lama"): the
+ * location drop arms it with a destination already set, completed by a
+ * following token click/drop.
  *
  * Generic building blocks (theme, session REST/WS client, EnvelopeRouter,
  * ErrorBar/EventLog/ThemeSelect) come from `webLib/WebGUI_Lib` (`@webgui/*`)
@@ -190,11 +201,7 @@ function App() {
   }
 
   function handleArmMove(): void {
-    setTargeting((previous) =>
-      previous?.kind === 'simple-move' || previous?.kind === 'card-move'
-        ? null
-        : { kind: 'simple-move' },
-    )
+    setTargeting((previous) => (previous?.kind === 'simple-move' ? null : { kind: 'simple-move' }))
   }
 
   function handleArmAttack(): void {
@@ -278,20 +285,62 @@ function App() {
     await sendEldhomCommand(isReactive ? CMD_PLAY_REACTIVE_INSTANTS : CMD_PLAY_INSTANTS, payload)
   }
 
+  // Only reachable for cards needing NEITHER a destination nor a target —
+  // `DeckTable`'s Giocate/Memoria drop zones already filter those out before
+  // calling this, so the guard below is defensive. Cards needing one are
+  // only playable via `handleCardDropOnLocation`/`handleCardDropOnToken`.
   function handlePlayCard(cardId: string): void {
     const card = eldhomState.cards[cardId]
-    if (!card) {
-      return
-    }
-    if (hasEffect(card, 'MOVE', 'MOVE_TOWARD_PG')) {
-      setTargeting({ kind: 'card-move', cardId })
-      return
-    }
-    if (hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')) {
-      setTargeting({ kind: 'card-attack', cardId })
+    if (!card || hasEffect(card, 'MOVE', 'MOVE_TOWARD_PG') || hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')) {
       return
     }
     void sendEldhomCommand(CMD_PLAY_CARD, { hero_id: activeHeroId, card_id: cardId })
+  }
+
+  /** Drop of a hand card onto a Map location — only MOVE-effect cards resolve here. */
+  async function handleCardDropOnLocation(cardId: string, locationId: string): Promise<void> {
+    const card = eldhomState.cards[cardId]
+    if (!card || !hasEffect(card, 'MOVE', 'MOVE_TOWARD_PG')) {
+      return
+    }
+    // Some sequence cards (e.g. "Passo e Lama") move THEN attack — arm
+    // attack targeting with the destination already set instead of sending
+    // immediately, completed by dropping/clicking the same card on a token
+    // (mirrors the desktop's _try_move()/"has_damage" branch).
+    if (hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')) {
+      setTargeting({ kind: 'card-attack', cardId, destination: locationId })
+      return
+    }
+    await sendEldhomCommand(CMD_PLAY_CARD, {
+      hero_id: activeHeroId,
+      card_id: cardId,
+      destination: locationId,
+    })
+  }
+
+  /** Drop of a hand card onto a Map token (actor) — only DAMAGE-effect cards resolve here. */
+  async function handleCardDropOnToken(cardId: string, actorId: string): Promise<void> {
+    const card = eldhomState.cards[cardId]
+    if (!card || !hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')) {
+      return
+    }
+    // A card that also moves must be dropped on a location FIRST (arms
+    // 'card-attack' with a destination above) — dropping it straight on a
+    // token without that step is not a valid shortcut.
+    const pending = targeting?.kind === 'card-attack' && targeting.cardId === cardId ? targeting : null
+    if (hasEffect(card, 'MOVE', 'MOVE_TOWARD_PG') && !pending) {
+      return
+    }
+    if (eldhomState.tokens.find((token) => token.actorId === actorId)?.isHero) {
+      setErrorMessage('⚠ Seleziona un nemico valido da attaccare')
+      return
+    }
+    setTargeting(null)
+    const data: Record<string, unknown> = { hero_id: activeHeroId, card_id: cardId, target_id: actorId }
+    if (pending?.destination !== undefined) {
+      data.destination = pending.destination
+    }
+    await sendEldhomCommand(CMD_PLAY_CARD, data)
   }
 
   async function handleLocationClick(locationId: string): Promise<void> {
@@ -304,24 +353,6 @@ function App() {
       await sendEldhomCommand(CMD_SIMPLE_ACTION, {
         hero_id: activeHeroId,
         action_type: 'MOVE',
-        destination: locationId,
-      })
-      return
-    }
-    if (targeting.kind === 'card-move') {
-      const { cardId } = targeting
-      const card = eldhomState.cards[cardId]
-      // Some sequence cards (e.g. "Passo e Lama") move THEN attack — chain
-      // into attack targeting instead of sending immediately, mirroring
-      // the desktop's _try_move()/"has_damage" branch.
-      if (card && hasEffect(card, 'DAMAGE', 'DEAL_DAMAGE')) {
-        setTargeting({ kind: 'card-attack', cardId, destination: locationId })
-        return
-      }
-      setTargeting(null)
-      await sendEldhomCommand(CMD_PLAY_CARD, {
-        hero_id: activeHeroId,
-        card_id: cardId,
         destination: locationId,
       })
     }
@@ -361,7 +392,7 @@ function App() {
 
   const theme = getTheme(themeId)
   const targetingMode: TargetingMode =
-    targeting?.kind === 'simple-move' || targeting?.kind === 'card-move'
+    targeting?.kind === 'simple-move'
       ? 'move'
       : targeting?.kind === 'simple-attack' || targeting?.kind === 'card-attack'
         ? 'attack'
@@ -425,20 +456,6 @@ function App() {
         </p>
       )}
 
-      <ActionPanel
-        heroName={activeHeroName}
-        enabled={activeHeroId !== ''}
-        sequenceActive={activeHeroSequenceActive}
-        targetingMode={targetingMode}
-        pendingReaction={pendingReactionView}
-        onArmMove={handleArmMove}
-        onArmAttack={handleArmAttack}
-        onInteract={() => void handleInteract()}
-        onRecover={() => void handleRecover()}
-        onStopSequence={() => void handleStopSequence()}
-        onReactionChosen={(reaction) => void handleReactionChosen(reaction)}
-      />
-
       <TimelineTrack actors={eldhomState.timelineActors} activeActorId={eldhomState.nextActorId} />
 
       <div className="eldhom-hero-row">
@@ -455,6 +472,8 @@ function App() {
           activeActorId={eldhomState.nextActorId}
           onLocationClick={(id) => void handleLocationClick(id)}
           onTokenClick={(id) => void handleTokenClick(id)}
+          onCardDropOnLocation={(cardId, id) => void handleCardDropOnLocation(cardId, id)}
+          onCardDropOnToken={(cardId, id) => void handleCardDropOnToken(cardId, id)}
         />
 
         <AreaInfoPanel
@@ -464,6 +483,20 @@ function App() {
           onActorClick={(id) => void handleTokenClick(id)}
         />
       </div>
+
+      <ActionPanel
+        heroName={activeHeroName}
+        enabled={activeHeroId !== ''}
+        sequenceActive={activeHeroSequenceActive}
+        targetingMode={targetingMode}
+        pendingReaction={pendingReactionView}
+        onArmMove={handleArmMove}
+        onArmAttack={handleArmAttack}
+        onInteract={() => void handleInteract()}
+        onRecover={() => void handleRecover()}
+        onStopSequence={() => void handleStopSequence()}
+        onReactionChosen={(reaction) => void handleReactionChosen(reaction)}
+      />
 
       <DeckTable
         heroName={activeHeroName}

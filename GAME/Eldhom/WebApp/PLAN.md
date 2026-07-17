@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.15.0
-**Status:** Phase 15 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-15 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.16.0
+**Status:** Phase 16 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-16 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1094,6 +1094,110 @@ c'è Bandite"*.
   (`top` minore) e `Bandite` sotto (`top` maggiore), separate dal gap di 10px.
 - `npm run build` pulito (`tsc -b && vite build`, ~460ms); nessun nuovo errore
   TypeScript/lint.
+
+---
+
+### Phase 16 — Trascinamento obbligatorio per giocare carte e riordino Azioni/Mappa/Carte
+(richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente, in un unico messaggio con due parti indipendenti:
+
+1. *"PEr giocare una Carta NON basta il CLick ma serve Drag&Drop sulla MAppa oppure sulla
+   Sezione '🂡 Giocate (0)'"* — cliccare una carta in mano non deve più giocarla: serve
+   trascinarla (drag&drop) sulla Mappa (per le carte con effetto MOVE/DAMAGE, che richiedono
+   una destinazione/bersaglio) oppure sulla zona Giocate/Memoria (per le altre carte).
+2. *"La sezione delel Azioni (immagine) deve stare subito sopra quella delle Carte e sotto la
+   Mappa"* — la sezione `ActionPanel` (Turno + 4 pulsanti azione semplice) va riposizionata
+   subito sopra il Tavolo Carte e subito sotto l'area Mappa (in precedenza stava sopra la
+   Mappa, subito dopo il titolo missione).
+
+- [x] Nuovo modulo condiviso `src/engine/dragPayload.ts`: formato payload HTML5 drag&drop
+      comune (`DRAG_MIME = 'application/x-eldhom-card'`, `DragPayload { cardId, from }`,
+      `setDragPayload`/`readDragPayload`), estratto dalle definizioni locali preesistenti in
+      `DeckTable.tsx` così che anche `EldhomMap.tsx` possa consumarlo senza duplicazione
+- [x] `DeckTable.tsx`: nuovo helper `needsMapDrop(card)` (vero se la carta ha un effetto
+      MOVE/MOVE_TOWARD_PG o DAMAGE/DEAL_DAMAGE, via `hasEffect`); il drop sulle zone
+      Giocate/Memoria ora **rifiuta** (no-op) sia le carte non giocabili sia le carte che
+      richiedono un bersaglio sulla Mappa; il pulsante "gioca" in ogni carta di mano ha
+      **perso** il proprio `onClick` (resta solo `disabled` per lo stile e `tabIndex={-1}`,
+      con commento esplicativo che è ora una preview statica, non un bottone) e `draggable`
+      è passato da `{enabled}` a `{playable}`; aggiunto un suggerimento testuale nel
+      `title`/tooltip che distingue "— trascina sulla Mappa per giocarla" (carte
+      MOVE/DAMAGE) da "— trascina su Giocate per giocarla" (le altre)
+- [x] `EldhomMap.tsx`: nuove prop opzionali `onCardDropOnLocation`/`onCardDropOnToken`; sia i
+      nodi-locazione sia i token-attore ora accettano `onDragOver`/`onDragLeave`/`onDrop`
+      (il token usa `stopPropagation()` per non far ricadere il drop anche sulla locazione
+      sottostante, sullo stesso modello già usato per il click) più uno stato
+      `dragOverId` che pilota una classe CSS `--drag-over` per il feedback visivo durante il
+      trascinamento
+- [x] `App.tsx`: rimosso lo stato `'card-move'` (ormai impossibile) dal tipo `Targeting`;
+      `handlePlayCard` semplificata a semplice guardia difensiva + invio immediato (il
+      filtro principale ora vive nel drop-handler di `DeckTable`); nuove funzioni
+      `handleCardDropOnLocation`/`handleCardDropOnToken` che instradano le carte
+      MOVE/DAMAGE rilasciate sulla Mappa, riusando la stessa logica di concatenamento
+      "muovi+attacca" (es. "Passo e Lama") e lo stesso guard "nemico valido" già presenti nel
+      percorso a click preesistente (`handleTokenClick`, invariato); riordino JSX:
+      `<ActionPanel>` spostato subito dopo `eldhom-board-row` (Mappa+AreaInfo) e subito prima
+      di `<DeckTable>`
+- [x] `App.css`: nuove regole `.eldhom-map__node--drag-over` (via `outline`, proprietà non
+      toccata da nessuna regola tematica per-tema) e `.eldhom-map__token--drag-over` (via
+      `box-shadow`, per non entrare in conflitto con l'`outline` fisso del marcatore di turno
+      attivo) — scelte deliberatamente su proprietà CSS "libere" per evitare conflitti di
+      specificità con i selettori `[data-theme='...'] .eldhom-map__node` (specificità
+      superiore a un singolo selettore di classe)
+- [x] `get_errors` pulito su tutti i file toccati (unico residuo il warning preesistente
+      `color-mix()` Chrome<111, non introdotto da questo lavoro); `npm run build` pulito
+      (`tsc -b && vite build`); `npm run lint` (oxlint) pulito
+- [x] Validazione funzionale reale nel browser (missione "L'Ombra sul Corridoio", tramite
+      simulazione di eventi `dragstart`/`dragover`/`drop`/`dragend` con un vero
+      `DataTransfer`, poiché il drag reale del mouse non è affidabile in questo ambiente di
+      test):
+  - click sul pulsante "gioca" di una carta in mano → **nessun effetto** (nessun comando
+    inviato, turno/mano invariati)
+  - trascinamento di una carta MOVE ("Passo Cauto") sulla zona Giocate → **rifiutato**
+    (no-op, mano invariata)
+  - trascinamento della stessa carta MOVE su un nodo-locazione della Mappa ("Corridoio") →
+    **giocata correttamente**, l'eroe si sposta e il log narrativo conferma
+    `"thael si sposta → corridoio"` / `"thael gioca base_passo_cauto"`
+  - trascinamento di una carta senza bersaglio ("Cura Rapida") sulla zona Giocate →
+    **giocata correttamente** (`"velyr gioca velyr_cura_rapida"`)
+  - trascinamento di una carta DAMAGE ("Fendente Pesante") su un token **alleato** → guard
+    attivato correttamente, messaggio `"⚠ Seleziona un nemico valido da attaccare"`, nessun
+    comando inviato
+  - trascinamento della stessa carta DAMAGE su un token **nemico** → **giocata
+    correttamente**, log `"thael gioca base_fendente_pesante"`, apertura corretta della
+    finestra di difesa del bersaglio (`"DIFESA: B1 — danno in arrivo 2❌"`, invariata,
+    conferma che l'intera pipeline di gioco a valle non è stata alterata)
+  - riordino sezioni confermato sia via snapshot di accessibilità sia via screenshot a piena
+    pagina: ordine finale Linea Temporale → riga Eroi → Mappa+AreaInfo → **Azioni** →
+    Tavolo Carte
+
+**Esito Phase 16 (validato):**
+
+- Il modello di interazione "tavolo fisico" richiesto è ora pienamente in vigore: nessuna
+  carta è più giocabile con il solo click, e il drag&drop instrada correttamente le carte
+  con bersaglio (MOVE/DAMAGE) verso la Mappa e le altre verso Giocate/Memoria, rifiutando
+  esplicitamente le combinazioni sbagliate invece di ignorarle silenziosamente in modo
+  ambiguo.
+- Il caso limite delle carte concatenate muovi+attacca (es. "Passo e Lama") resta gestito
+  dallo stato `targeting` preesistente (`'card-attack'` con `destination` opzionale),
+  completabile sia via click su un token (percorso invariato) sia via drop su un token
+  (nuovo percorso) — nessuna perdita di funzionalità rispetto al comportamento a click
+  precedente.
+- La sezione Azioni è ora collocata, come richiesto, subito sotto la Mappa e subito sopra il
+  Tavolo Carte, confermato sia strutturalmente (snapshot di accessibilità) sia visivamente
+  (screenshot a piena pagina).
+- `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
+  CoreEngine C++ (nessuna modifica al wire-contract).
+
+**Notes:**
+- Tecnica di test per drag&drop HTML5 in Playwright: il drag reale del mouse
+  (`mouse.down`/`move`/`up` o `dragTo()`) non è affidabile per elementi che si basano
+  sull'API `DragEvent`/`DataTransfer`. La tecnica robusta, già usata in questa fase e da
+  riusare in futuro, è costruire un vero oggetto `DataTransfer` via `page.evaluate()` e
+  disparare manualmente in sequenza `dragstart` (sull'elemento sorgente) →
+  `dragover`/`drop` (sull'elemento target) → `dragend` (sulla sorgente), tutti con
+  `bubbles: true, cancelable: true` e lo stesso `dataTransfer`.
 
 ---
 

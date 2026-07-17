@@ -417,6 +417,22 @@
   cursor: pointer;
 }
 
+/* Drag&drop of a hand card over a valid Map target (location = MOVE-effect
+   cards, token = DAMAGE-effect cards). Uses `outline`/`box-shadow` rather
+   than `border`/`background-color` deliberately: the per-theme
+   `.eldhom-map__node` rules below already set those two properties (higher
+   specificity via the `[data-theme]` attribute selector), so this stays
+   visible unchanged across every theme without a specificity fight; on
+   tokens it also avoids clashing with the fixed-red `--active` outline. */
+.eldhom-map__node--drag-over {
+  outline: 3px solid var(--gm-accent);
+  outline-offset: 2px;
+}
+
+.eldhom-map__token--drag-over {
+  box-shadow: 0 0 0 2px var(--gm-accent);
+}
+
 /* ── Map area — per-theme "in-fiction artifact" skin (richiesta esplicita
    utente: l'area mappa deve sembrare DAVVERO una mappa nello stile del tema
    attivo, non solo colori/font generici). Selezionata via `[data-theme]`
