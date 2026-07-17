@@ -386,29 +386,31 @@ export function DeckTable({
           </div>
         </div>
 
-        {/* ── Memoria (Memory) — alternate play target, no distinct engine data ── */}
-        <div
-          className={zoneClass('Memory', 'eldhom-deck-table__zone--memory')}
-          onDragOver={allowDrop('Memory')}
-          onDragLeave={() => setDragOverZone(null)}
-          onDrop={handlePlayZoneDrop}
-          title="Equivalente a Giocate per Eldhôm: rilasciare qui una carta di Mano la gioca comunque"
-        >
-          <p className="eldhom-deck-table__zone-title">🧠 Memoria (0)</p>
-          <span className="eldhom-deck-table__zone-empty">nessuna carta</span>
-        </div>
-
-        {/* ── Bandite (BanishZone) — for now just a shortcut button opening a future
-             dedicated management page (not yet implemented) ── */}
-        <div className="eldhom-deck-table__zone eldhom-deck-table__zone--banish">
-          <button
-            type="button"
-            className="eldhom-deck-table__btn"
-            onClick={onOpenBanish}
-            title="Apre la gestione delle carte bandite (pagina dedicata, in arrivo)"
+        {/* ── Memoria (Memory) + Bandite (BanishZone) — share one grid column, split
+             top/bottom: Memoria stays an alternate play drop target on top; Bandite
+             (shortcut button to a future dedicated management page, not yet implemented)
+             sits below it — frees the column Bandite used to occupy on its own ── */}
+        <div className="eldhom-deck-table__zone-pair">
+          <div
+            className={zoneClass('Memory', 'eldhom-deck-table__zone--memory')}
+            onDragOver={allowDrop('Memory')}
+            onDragLeave={() => setDragOverZone(null)}
+            onDrop={handlePlayZoneDrop}
+            title="Equivalente a Giocate per Eldhôm: rilasciare qui una carta di Mano la gioca comunque"
           >
-            🚫 Bandite
-          </button>
+            <p className="eldhom-deck-table__zone-title">🧠 Memoria (0)</p>
+            <span className="eldhom-deck-table__zone-empty">nessuna carta</span>
+          </div>
+          <div className="eldhom-deck-table__zone eldhom-deck-table__zone--banish">
+            <button
+              type="button"
+              className="eldhom-deck-table__btn"
+              onClick={onOpenBanish}
+              title="Apre la gestione delle carte bandite (pagina dedicata, in arrivo)"
+            >
+              🚫 Bandite
+            </button>
+          </div>
         </div>
       </div>
     </div>

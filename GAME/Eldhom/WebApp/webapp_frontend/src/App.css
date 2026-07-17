@@ -732,7 +732,7 @@
 
 .eldhom-deck-table__zones {
   display: grid;
-  grid-template-columns: repeat(8, minmax(120px, 1fr));
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -901,6 +901,17 @@
 .eldhom-deck-table__card-back:nth-child(2) { transform: translate(-2px, -1px) rotate(-1deg); }
 .eldhom-deck-table__card-back:nth-child(3) { transform: translate(2px, 1px) rotate(2deg); }
 .eldhom-deck-table__card-back:nth-child(4) { transform: translate(6px, 3px) rotate(4deg); }
+
+.eldhom-deck-table__zone-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eldhom-deck-table__zone-pair > .eldhom-deck-table__zone {
+  flex: 1 1 0;
+  min-height: 60px;
+}
 
 .eldhom-deck-table__zone--memory {
   opacity: 0.75;

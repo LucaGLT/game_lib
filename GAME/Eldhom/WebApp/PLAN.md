@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.14.0
-**Status:** Phase 14 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-14 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.15.0
+**Status:** Phase 15 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-15 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1052,6 +1052,48 @@ corrette perché `.eldhom-map` è un vero discendente di `.app` nel DOM.
   `getComputedStyle(el)` nel browser con il CSS atteso: se la regola è presente nel foglio di
   stile iniettato ma non appare nel computed style, è quasi sempre un problema di selettore
   che non fa match, non un problema di build/cache.
+
+---
+
+### Phase 15 — Riordino Tavolo Carte: Memoria+Bandite condividono una colonna
+[✅ Completato]
+
+Richiesta esplicita utente: *"Dividi lo spazio dove sta '🧠 Memoria (0)' in 2 parti: Sopra
+metti '🧠 Memoria (0)' / Sotto metti 'Bandite' / Così togli lo spazio a destra dove adesso
+c'è Bandite"*.
+
+- [x] `DeckTable.tsx`: le due zone `Memoria` e `Bandite` (in precedenza due celle separate
+      della griglia, 7ª e 8ª colonna) sono ora racchiuse in un unico contenitore
+      `.eldhom-deck-table__zone-pair` che occupa **una sola** colonna di griglia, con
+      `Memoria` come figlio superiore (invariata: stessa `zoneClass`/drag&drop/testo) e
+      `Bandite` come figlio inferiore (invariato: stesso pulsante/handler `onOpenBanish`)
+- [x] `App.css`: `.eldhom-deck-table__zones` passato da `repeat(8, ...)` a
+      `repeat(7, minmax(120px, 1fr))` (una colonna in meno, liberando lo spazio a destra);
+      nuova regola `.eldhom-deck-table__zone-pair` (flex column, gap 10px) e
+      `.eldhom-deck-table__zone-pair > .eldhom-deck-table__zone` (`flex: 1 1 0`,
+      `min-height: 60px`, sostituendo il `min-height: 150px` di base) così le due metà
+      riempiono in modo uniforme l'altezza della riga della griglia
+- [x] Nessuna modifica alla logica/wire-contract: entrambe le zone mantengono
+      esattamente lo stesso comportamento (Memoria resta un alternate play-drop-target
+      senza dati motore distinti, Bandite resta il pulsante segnaposto verso una futura
+      pagina dedicata)
+- [x] `get_errors` pulito (unico residuo il warning preesistente `color-mix()`
+      Chrome<111) e `npm run build` pulito
+- [x] Validazione visiva nel browser: screenshot a pagina intera che conferma Memoria sopra
+      e Bandite sotto nella stessa colonna, più verifica geometrica diretta
+      (`getBoundingClientRect()`) che confermano identici `x`/`width` per le due sotto-zone
+      e che il contenitore `.eldhom-deck-table__zone-pair` le racchiude esattamente
+
+**Esito Phase 15 (validato):**
+
+- Lo spazio a destra precedentemente occupato dalla sola colonna `Bandite` è stato
+  eliminato: la griglia del Tavolo Carte ora ha 6 zone/colonne visibili (Scarti, Mazzo,
+  Mano, Carta Selezionata [span 2], Giocate, Memoria+Bandite) invece di 7.
+- Confermato via `getBoundingClientRect()` che `Memoria` e `Bandite` condividono
+  esattamente la stessa colonna (stessi `x`/`right`/`width`), con `Memoria` sopra
+  (`top` minore) e `Bandite` sotto (`top` maggiore), separate dal gap di 10px.
+- `npm run build` pulito (`tsc -b && vite build`, ~460ms); nessun nuovo errore
+  TypeScript/lint.
 
 ---
 
