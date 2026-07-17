@@ -10,11 +10,23 @@
 #include "gmActor/core/Enums.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <stdexcept>
 
 namespace eldhom {
+
+namespace {
+
+// Builds the compact JSON payload for EVT_ZONE_DOOR_OPENED (location IDs are
+// plain ASCII, so no escaping is needed here).
+std::string zone_door_payload(const std::pair<LocationId, LocationId>& door)
+{
+	return std::string("{\"a\":\"") + door.first + "\",\"b\":\"" + door.second + "\"}";
+}
+
+} // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor
@@ -418,9 +430,10 @@ gmActor::ActorKind EldhomEngine::next_actor_kind() const
 // ─────────────────────────────────────────────────────────────────────────────
 
 ActionResult EldhomEngine::do_simple_action(
-	const HeroId&     hero_id,
-	SimpleActionType  action_type,
-	const LocationId& destination)
+	const HeroId&              hero_id,
+	SimpleActionType           action_type,
+	const LocationId&          destination,
+	const std::vector<CardId>& discard_ids)
 {
 	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
 
@@ -455,6 +468,13 @@ ActionResult EldhomEngine::do_simple_action(
 		{
 			return { ActionResultCode::ERR_NO_VALID_TARGET,
 			         "MOVE failed: " + eff.note };
+		}
+		// Crossing a still-closed zone-boundary door costs +1 extra timeline cost and opens
+		// it permanently (PGs and monsters can freely cross it from now on).
+		cost += eff.extra_timeline_cost;
+		for (const std::pair<LocationId, LocationId>& door : eff.opened_doors)
+		{
+			emit(EVT_ZONE_DOOR_OPENED, hero_id, zone_door_payload(door));
 		}
 		emit(EVT_PG_MOVED, hero_id, destination);
 		check_pg_at_location(hero_id, destination);
@@ -500,6 +520,20 @@ ActionResult EldhomEngine::do_simple_action(
 		cost = COST_SIMPLE_RECOVER;
 		eff  = _rule_adapter.apply_simple_recover(hero_id, _store);
 		emit(EVT_PG_HEALED, hero_id, std::to_string(eff.hp_restored));
+		{
+			// Scarta fino a N carte e pescane altrettante: N=1 normale, N=2 se
+			// l'eroe è in Retroguardia (Riprendere Fiato).
+			const int max_discard =
+				(c.area_position == gmActor::AreaPosition::BACKLINE) ? 2 : 1;
+			int discarded = 0;
+			for (const CardId& cid : discard_ids)
+			{
+				if (discarded >= max_discard) { break; }
+				discard_card(hero_id, cid);
+				++discarded;
+			}
+			if (discarded > 0) { draw_n_cards(hero_id, discarded); }
+		}
 		break;
 	}
 
@@ -532,9 +566,11 @@ ActionResult EldhomEngine::do_simple_action(
 // ─────────────────────────────────────────────────────────────────────────────
 
 ActionResult EldhomEngine::play_card(
-	const HeroId&     hero_id,
-	const CardId&     card_id,
-	const LocationId& destination)
+	const HeroId&               hero_id,
+	const CardId&               card_id,
+	const LocationId&           destination,
+	const std::vector<CardId>&  discard_ids,
+	const gmActor::ActorId&     target_id)
 {
 	if (_mission_events.is_over()) { return { ActionResultCode::OK, "Mission over" }; }
 
@@ -564,6 +600,15 @@ ActionResult EldhomEngine::play_card(
 	}
 	const EldhomCard& card = card_it->second;
 
+	// Positional requirement (e.g. Fendente Pesante, Spinta di Corpo): the
+	// caster must be in FRONTLINE before any effect is applied.
+	if (card.requires_frontline &&
+	    c.area_position != gmActor::AreaPosition::FRONTLINE)
+	{
+		return { ActionResultCode::ERR_POSITION_REQUIRED,
+		         hero_id + " must be in FRONTLINE to play " + card_id };
+	}
+
 	// Validate card is in the hero's hand (if hand tracking is active)
 	auto hand_it = _hand_states.find(hero_id);
 	if (hand_it != _hand_states.end())
@@ -588,6 +633,50 @@ ActionResult EldhomEngine::play_card(
 	// Determine enemy faction for targeting
 	const std::string& enemy_faction = enemy_faction_for_hero(hero_id);
 
+	// Explicit player-chosen target (e.g. the enemy clicked in the GUI,
+	// mirroring declare_attack() for Attacco Semplice): validate it BEFORE
+	// applying any effect, so the action stays atomic (either everything
+	// below succeeds, or nothing is mutated — no charged cost / discarded
+	// card left behind on a rejected target). Pre-scan the card's own
+	// effects to find the DAMAGE range and, if a MOVE effect precedes it
+	// (e.g. Passo e Lama), the location the caster will be in once the
+	// DAMAGE effect resolves — validation must use THAT location, not the
+	// caster's current one.
+	if (!target_id.empty())
+	{
+		LocationId effective_loc = c.area_id;
+		int        pre_range     = 0;
+		bool       pre_has_damage = false;
+		for (const EldhomEffect& eff : card.effects)
+		{
+			if (eff.effect_type == "MOVE")
+			{
+				const LocationId move_to = (!destination.empty() &&
+				                            (eff.value.empty() ||
+				                             eff.target == "ADJACENT_LOCATION" ||
+				                             eff.target == "PLAYER_CHOICE"))
+				                           ? destination
+				                           : (!eff.value.empty() ? eff.value : eff.target);
+				if (!move_to.empty()) { effective_loc = move_to; }
+				continue;
+			}
+			if (eff.effect_type == "DAMAGE" || eff.effect_type == "DEAL_DAMAGE")
+			{
+				pre_has_damage = true;
+				pre_range      = eff.range;
+				break;
+			}
+		}
+		if (pre_has_damage &&
+		    (!_store.has_actor(target_id) ||
+		     !_rule_adapter.is_valid_target_in_range(
+		         _store, effective_loc, target_id, enemy_faction, pre_range)))
+		{
+			return { ActionResultCode::ERR_NO_VALID_TARGET,
+			         "Invalid target: " + target_id };
+		}
+	}
+
 	// ── Apply effects ──────────────────────────────────────────────────────────
 	// DAMAGE effects are deferred: they park a PendingAttack so the defender
 	// can react interactively (instant window + defense window).  All other
@@ -595,7 +684,15 @@ ActionResult EldhomEngine::play_card(
 
 	bool        has_damage    = false;
 	int         damage_amount = 0;
+	int         damage_range  = 0;  ///< Attack range declared by the DAMAGE effect (0 = mischia)
 	bool        has_disrupt   = false;
+	int         extra_move_cost = 0;  ///< +1 per still-closed zone door crossed by MOVE effects
+	// Colpo Secco "parte A": pesca/scarta solo se attaccante E bersaglio sono
+	// entrambi in FRONTLINE. Il bersaglio non è ancora noto in questo loop
+	// (risolto più sotto insieme al DAMAGE deferred), quindi la valutazione è
+	// rimandata a dopo find_nearest_target.
+	bool        has_conditional_discard_draw   = false;
+	int         conditional_discard_amount    = 0;
 
 	for (const EldhomEffect& eff : card.effects)
 	{
@@ -603,6 +700,7 @@ ActionResult EldhomEngine::play_card(
 		{
 			has_damage    = true;
 			damage_amount = eff.amount;
+			damage_range  = eff.range;
 			continue; // deferred — applied via reaction chain
 		}
 		if (eff.effect_type == "DISRUPT_ENEMY_FORMATION")
@@ -615,6 +713,30 @@ ActionResult EldhomEngine::play_card(
 			draw_n_cards(hero_id, eff.amount);
 			continue; // handled by engine directly
 		}
+		if (eff.effect_type == "DISCARD_THEN_DRAW")
+		{
+			if (eff.condition == "IF_BOTH_FRONTLINE")
+			{
+				has_conditional_discard_draw = true;
+				conditional_discard_amount   = (eff.amount > 0) ? eff.amount : 1;
+				continue; // evaluated after the DAMAGE target is resolved below
+			}
+			// Unconditional case (e.g. Riprendere Fiato): scarta fino a
+			// `eff.amount` carte (raddoppiato se in RETROGUARDIA), poi ripesca
+			// altrettante.
+			const int base_amount = (eff.amount > 0) ? eff.amount : 1;
+			const int max_discard = (c.area_position == gmActor::AreaPosition::BACKLINE)
+			                        ? base_amount * 2 : base_amount;
+			int discarded = 0;
+			for (const CardId& cid : discard_ids)
+			{
+				if (discarded >= max_discard) { break; }
+				discard_card(hero_id, cid);
+				++discarded;
+			}
+			if (discarded > 0) { draw_n_cards(hero_id, discarded); }
+			continue;
+		}
 		if (eff.effect_type == "MOVE")
 		{
 			// Use player-provided destination when the effect requires player choice.
@@ -626,10 +748,16 @@ ActionResult EldhomEngine::play_card(
 			                           : (!eff.value.empty() ? eff.value : eff.target);
 			// Cards with amount > 1 allow multi-step BFS movement.
 			EffectResult mres = (eff.amount > 1)
-				? _rule_adapter.apply_card_move(hero_id, move_to, eff.amount, _store)
+				? _rule_adapter.apply_card_move(hero_id, move_to, eff.amount, _store,
+				                                 eff.avoid_enemy_locations, enemy_faction)
 				: _rule_adapter.apply_simple_move(hero_id, move_to, _store);
 			if (mres.resolved)
 			{
+				extra_move_cost += mres.extra_timeline_cost;
+				for (const std::pair<LocationId, LocationId>& door : mres.opened_doors)
+				{
+					emit(EVT_ZONE_DOOR_OPENED, hero_id, zone_door_payload(door));
+				}
 				emit(EVT_PG_MOVED, hero_id, move_to);
 				check_pg_at_location(hero_id, move_to);
 			}
@@ -656,9 +784,17 @@ ActionResult EldhomEngine::play_card(
 	// Advance sequence state
 	_seq_states[hero_id] = _sequence_adapter.advance(original_card_type, seq_before);
 
+	// Emit EVT_SEQUENCE_STARTED if sequence just activated (from inactive to active)
+	if (!seq_before.active && _seq_states[hero_id].active)
+	{
+		std::cout << "[DEBUG] Emitting EVT_SEQUENCE_STARTED for " << hero_id << " with card " << card_id << "\n" << std::flush;
+		emit(EVT_SEQUENCE_STARTED, hero_id, card_id);
+	}
+
 	// Advance timeline
-	_store.common(hero_id).timeline_position += card.timeline_cost;
-	_mission_events.advance_time(card.timeline_cost);
+	const int total_card_cost = card.timeline_cost + extra_move_cost;
+	_store.common(hero_id).timeline_position += total_card_cost;
+	_mission_events.advance_time(total_card_cost);
 	emit(EVT_MISSION_TIME, hero_id,
 	     std::to_string(_store.common(hero_id).timeline_position));
 
@@ -686,11 +822,31 @@ ActionResult EldhomEngine::play_card(
 	if (has_damage)
 	{
 		const LocationId& loc = _store.common(hero_id).area_id;
-		gmActor::ActorId target =
-			_rule_adapter.find_nearest_target(_store, loc, enemy_faction);
+		// Prefer the player-chosen target (already validated above, before
+		// any effect was applied); fall back to automatic nearest-target
+		// selection when the caller didn't specify one.
+		gmActor::ActorId target = !target_id.empty()
+			? target_id
+			: _rule_adapter.find_nearest_target(_store, loc, enemy_faction, damage_range);
 
 		if (!target.empty())
 		{
+			// Colpo Secco "parte A": applica pesca/scarta solo se l'attaccante
+			// e il bersaglio sono entrambi in FRONTLINE al momento dell'attacco.
+			if (has_conditional_discard_draw &&
+			    c.area_position == gmActor::AreaPosition::FRONTLINE &&
+			    _store.common(target).area_position == gmActor::AreaPosition::FRONTLINE)
+			{
+				int discarded = 0;
+				for (const CardId& cid : discard_ids)
+				{
+					if (discarded >= conditional_discard_amount) { break; }
+					discard_card(hero_id, cid);
+					++discarded;
+				}
+				if (discarded > 0) { draw_n_cards(hero_id, discarded); }
+			}
+
 			// Timeline was already charged above; set attack_cost = 0 so that
 			// resolve_reaction does not double-charge.
 			_pending.active           = true;
@@ -948,6 +1104,119 @@ ActionResult EldhomEngine::play_instants(
 	return {};
 }
 
+// ── Reactive instant window (Assestarsi — enemy approach) ─────────────────────
+
+bool EldhomEngine::has_pending_reactive_window() const
+{
+	return _reactive_window.active;
+}
+
+const PendingReactiveWindow& EldhomEngine::pending_reactive_window() const
+{
+	return _reactive_window;
+}
+
+void EldhomEngine::maybe_open_enemy_approach_window(const LocationId& enemy_loc)
+{
+	// Do not overwrite an already-open window (e.g. two monsters moving in
+	// the same group turn); the first trigger wins for this simplified pass.
+	if (_reactive_window.active) { return; }
+
+	std::vector<LocationId> check_locs{enemy_loc};
+	auto adj_it = _adjacency.find(enemy_loc);
+	if (adj_it != _adjacency.end())
+	{
+		check_locs.insert(check_locs.end(), adj_it->second.begin(), adj_it->second.end());
+	}
+
+	bool pg_nearby = false;
+	for (const LocationId& loc : check_locs)
+	{
+		for (const auto& kv : _store.heroes())
+		{
+			if (kv.second.common.area_id == loc &&
+			    kv.second.common.life_state == gmActor::ActorLifeState::ACTIVE)
+			{
+				pg_nearby = true;
+				break;
+			}
+		}
+		if (pg_nearby) { break; }
+	}
+	if (!pg_nearby) { return; }
+
+	if (eligible_instants(EVT_ENEMY_APPROACH).empty()) { return; }
+
+	_reactive_window.active      = true;
+	_reactive_window.trigger     = EVT_ENEMY_APPROACH;
+	_reactive_window.location_id = enemy_loc;
+	emit(EVT_INSTANT_WINDOW_OPEN, {}, enemy_loc);
+}
+
+ActionResult EldhomEngine::play_reactive_instants(
+	const std::vector<std::pair<HeroId, CardId>>& selected)
+{
+	if (!_reactive_window.active)
+	{
+		return { ActionResultCode::ERR_NO_PENDING_INSTANTS, "No reactive window open" };
+	}
+
+	const std::vector<InstantOption> eligible =
+		eligible_instants(_reactive_window.trigger);
+
+	for (const std::pair<HeroId, CardId>& sel : selected)
+	{
+		bool ok = false;
+		for (const InstantOption& o : eligible)
+		{
+			if (o.actor_id == sel.first && o.card_id == sel.second) { ok = true; break; }
+		}
+		if (!ok)
+		{
+			return { ActionResultCode::ERR_INSTANT_NOT_ELIGIBLE,
+			         "Instant not eligible: " + sel.second };
+		}
+	}
+
+	for (const std::pair<HeroId, CardId>& sel : selected)
+	{
+		const HeroId& holder = sel.first;
+		const CardId& cid    = sel.second;
+
+		std::unordered_map<CardId, EldhomCard>::const_iterator it =
+			_card_catalog.find(cid);
+		if (it == _card_catalog.end()) { continue; }
+		const EldhomCard& card = it->second;
+
+		// Reactive-window cards today only need FORMATION_PUSH/WAIT-style
+		// effects (e.g. Assestarsi); no target faction is needed since there
+		// is no attack to resolve.
+		for (const EldhomEffect& eff : card.effects)
+		{
+			_rule_adapter.apply_effect(eff, holder, _store, std::string{});
+		}
+
+		if (_store.has_actor(holder))
+		{
+			_store.common(holder).timeline_position += card.timeline_cost;
+			check_formation(_store.common(holder).area_id);
+		}
+		_mission_events.advance_time(card.timeline_cost);
+		if (_store.has_actor(holder))
+		{
+			emit(EVT_MISSION_TIME, holder,
+			     std::to_string(_store.common(holder).timeline_position));
+		}
+
+		discard_card(holder, cid);
+		emit(EVT_PG_PLAYED_CARD, holder, cid);
+	}
+
+	_reactive_window = PendingReactiveWindow{};
+	emit(EVT_INSTANT_WINDOW_CLOSED, {}, {});
+	return {};
+}
+
 std::vector<DefenseReaction> EldhomEngine::allowed_reactions() const
 {
 	std::vector<DefenseReaction> out;
@@ -1182,8 +1451,11 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 			{
 				// res.target_id == member_id when the monster actually moved
 				// (empty when already in contact). New location is already stored.
-				engine->emit(EVT_MONSTER_MOVED, member_id,
-				             st.common(member_id).area_id);
+				const LocationId& new_loc = st.common(member_id).area_id;
+				engine->emit(EVT_MONSTER_MOVED, member_id, new_loc);
+				// Assestarsi-style reactive window: give nearby PGs a chance
+				// to react before the group's turn is considered finished.
+				engine->maybe_open_enemy_approach_window(new_loc);
 			}
 
 			// Log monster attacks on PG heroes.
@@ -1591,6 +1863,13 @@ std::string EldhomEngine::enemy_faction_for_hero(const HeroId& hero_id) const
 	{
 		if (_targeting.has_valid_target(_store, loc, faction)) { return faction; }
 	}
+	// Fallback: no enemy of any monster faction stands in the hero's CURRENT
+	// location (e.g. before a MOVE effect relocates them). Cards that combine
+	// MOVE + DAMAGE (Passo e Lama) or MOVE with avoid_enemy_locations (Passo
+	// Cauto, Scatto Breve) still need to know which faction to target/avoid
+	// along the way, so default to the mission's (first) monster faction
+	// rather than an empty string.
+	if (!_monster_factions.empty()) { return _monster_factions.front(); }
 	return {};
 }
 

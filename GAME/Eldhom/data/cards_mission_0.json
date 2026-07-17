@@ -5,7 +5,6 @@
     "origin": "MISSION_0",
     "card_type": "SINGLE",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "MOVE", "amount": 3, "target": "PLAYER_CHOICE", "value": "" }
     ]
@@ -16,9 +15,8 @@
     "origin": "MISSION_0",
     "card_type": "SINGLE",
     "timeline_cost": 3,
-    "can_target_backline": false,
     "effects": [
-      { "effect_type": "DAMAGE", "amount": 2, "target": "NEAREST_ENEMY_FRONTLINE" }
+      { "effect_type": "DAMAGE", "amount": 2, "attack_type": "MELEE", "target": "ENEMY_FRONTLINE" }
     ]
   },
   {
@@ -27,7 +25,6 @@
     "origin": "MISSION_0",
     "card_type": "SINGLE",
     "timeline_cost": 2,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "INTERACT", "amount": 0, "target": "SELF", "value": "" }
     ]
@@ -38,7 +35,6 @@
     "origin": "MISSION_0",
     "card_type": "INSTANT",
     "timeline_cost": 1,
-    "can_target_backline": false,
     "reaction_trigger": "eldhom.pg.attacked",
     "effects": [
       { "effect_type": "REDUCE_DAMAGE", "amount": 1, "target": "SELF", "value": "" }
@@ -50,7 +46,6 @@
     "origin": "MISSION_0",
     "card_type": "INSTANT",
     "timeline_cost": 1,
-    "can_target_backline": false,
     "reaction_trigger": "eldhom.pg.attacked",
     "effects": [
       { "effect_type": "FORMATION_PUSH", "amount": 0, "target": "SELF", "value": "FRONTLINE" }
@@ -62,7 +57,6 @@
     "origin": "MISSION_0",
     "card_type": "SINGLE",
     "timeline_cost": 1,
-    "can_target_backline": false,
     "effects": [
       { "effect_type": "HEAL", "amount": 3, "target": "SELF", "value": "" }
     ]

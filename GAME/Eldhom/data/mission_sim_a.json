@@ -107,12 +107,20 @@
       "level": 1,
       "start_timeline": 0,
       "mission_deck": [
-        "m0_passo_sicuro",
-        "m0_colpo_deciso",
-        "m0_mano_sicura",
-        "m0_parata_istintiva",
-        "m0_protezione_istintiva",
-        "m0_pozione_di_cura"
+        "base_passo_cauto",
+        "base_scatto_breve",
+        "base_assestarsi",
+        "base_colpo_secco",
+        "base_fendente_pesante",
+        "base_spinta_di_corpo",
+        "base_colpo_d_apertura",
+        "base_passo_e_lama",
+        "base_secondo_colpo",
+        "base_pressione_continua",
+        "base_colpo_di_chiusura",
+        "base_lancio_di_fortuna",
+        "base_mano_ferma",
+        "base_riprendere_fiato"
       ]
     },
     {
@@ -127,12 +135,22 @@
       "level": 1,
       "start_timeline": 0,
       "mission_deck": [
-        "m0_passo_sicuro",
-        "m0_colpo_deciso",
-        "m0_mano_sicura",
-        "m0_parata_istintiva",
-        "m0_protezione_istintiva",
-        "m0_pozione_di_cura"
+        "base_passo_cauto",
+        "base_scatto_breve",
+        "base_assestarsi",
+        "base_colpo_secco",
+        "base_fendente_pesante",
+        "base_spinta_di_corpo",
+        "base_colpo_d_apertura",
+        "base_passo_e_lama",
+        "base_secondo_colpo",
+        "base_pressione_continua",
+        "base_colpo_di_chiusura",
+        "base_lancio_di_fortuna",
+        "base_mano_ferma",
+        "base_riprendere_fiato",
+        "velyr_cura_rapida",
+        "velyr_supporto_tattico"
       ]
     }
   ],
