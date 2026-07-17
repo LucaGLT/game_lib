@@ -20,8 +20,17 @@
  * the active-turn token border is a separate fixed red (#e03030). Only
  * FREE edges and the map panel/border chrome follow the active theme
  * (`--gm-*` vars), same as `border`'s semantic token being theme-dependent.
+ *
+ * Zoom/pan: mouse-wheel zoom (centred on the cursor) and click-drag pan are
+ * implemented by adjusting an SVG `viewBox` rectangle over the fixed-size
+ * "world" produced by `computeLayout` — the layout itself never changes,
+ * only which portion of it is visible. The wheel listener is attached
+ * natively (not via React's `onWheel`) because React 17+ registers
+ * `onWheel` as a passive listener, which would silently ignore
+ * `preventDefault()` and let the whole page scroll instead of zooming the
+ * map.
  */
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ActorToken, MapEdge, MapLocation } from '../engine/gameState'
 
 export interface EldhomMapProps {
@@ -49,12 +58,22 @@ interface MapLayout {
   height: number
 }
 
-const NODE_WIDTH = 120
-const NODE_HEIGHT = 56
-const LAYER_SPACING = 160
-const ROW_SPACING = 84
-const MARGIN_X = 70
-const MARGIN_Y = 40
+interface ViewBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+const NODE_WIDTH = 130
+const NODE_HEIGHT = 62
+const LAYER_SPACING = 190
+const ROW_SPACING = 100
+const MARGIN_X = 90
+const MARGIN_Y = 60
+const MIN_ZOOM = 0.4
+const MAX_ZOOM = 3.5
+const ZOOM_STEP = 1.15
 
 /** BFS-layers every location (by distance from the mission's first location), one pass per connected component. */
 function computeLayout(locations: MapLocation[], edges: MapEdge[]): MapLayout {
@@ -130,6 +149,10 @@ function computeLayout(locations: MapLocation[], edges: MapEdge[]): MapLayout {
   return { nodes, nodeById: new Map(nodes.map((node) => [node.id, node])), width, height }
 }
 
+function fitViewBox(layout: MapLayout): ViewBox {
+  return { x: 0, y: 0, w: layout.width, h: layout.height }
+}
+
 export function EldhomMap({
   locations,
   edges,
@@ -139,6 +162,93 @@ export function EldhomMap({
   onTokenClick,
 }: EldhomMapProps) {
   const layout = useMemo(() => computeLayout(locations, edges), [locations, edges])
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const [viewBox, setViewBox] = useState<ViewBox>(() => fitViewBox(layout))
+  const panState = useRef<{ pointerId: number; startClientX: number; startClientY: number; startViewBox: ViewBox } | null>(null)
+
+  // Resets the view whenever the underlying map changes (new mission, or a
+  // rebuild triggered by a newly-unlocked passage) so zoom/pan never leaves
+  // the player stuck looking at an empty area of a now-different map.
+  useEffect(() => {
+    setViewBox(fitViewBox(layout))
+  }, [layout])
+
+  // Native (non-passive) wheel listener — see module docstring for why this
+  // cannot be a React onWheel handler.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) {
+      return undefined
+    }
+    function handleWheel(event: WheelEvent): void {
+      event.preventDefault()
+      const svgEl = svgRef.current
+      if (!svgEl) {
+        return
+      }
+      const rect = svgEl.getBoundingClientRect()
+      setViewBox((previous) => {
+        const zoomFactor = event.deltaY < 0 ? 1 / ZOOM_STEP : ZOOM_STEP
+        const currentZoom = layout.width / previous.w
+        const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom / zoomFactor))
+        const newW = layout.width / nextZoom
+        const newH = layout.height / nextZoom
+        // Cursor position in SVG user-space, kept fixed under the pointer while zooming.
+        const cursorX = previous.x + ((event.clientX - rect.left) / rect.width) * previous.w
+        const cursorY = previous.y + ((event.clientY - rect.top) / rect.height) * previous.h
+        const newX = cursorX - ((cursorX - previous.x) / previous.w) * newW
+        const newY = cursorY - ((cursorY - previous.y) / previous.h) * newH
+        return { x: newX, y: newY, w: newW, h: newH }
+      })
+    }
+    svg.addEventListener('wheel', handleWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', handleWheel)
+  }, [layout])
+
+  function handlePointerDown(event: React.PointerEvent<SVGSVGElement>): void {
+    // Only pan when the drag starts on the empty map background, not on a
+    // node/token (those have their own click handlers and must not also
+    // trigger a pan).
+    if (event.target !== event.currentTarget) {
+      return
+    }
+    panState.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startViewBox: viewBox,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handlePointerMove(event: React.PointerEvent<SVGSVGElement>): void {
+    const pan = panState.current
+    if (!pan || pan.pointerId !== event.pointerId) {
+      return
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const dxSvg = ((event.clientX - pan.startClientX) / rect.width) * pan.startViewBox.w
+    const dySvg = ((event.clientY - pan.startClientY) / rect.height) * pan.startViewBox.h
+    setViewBox({ ...pan.startViewBox, x: pan.startViewBox.x - dxSvg, y: pan.startViewBox.y - dySvg })
+  }
+
+  function handlePointerUp(event: React.PointerEvent<SVGSVGElement>): void {
+    if (panState.current?.pointerId === event.pointerId) {
+      panState.current = null
+    }
+  }
+
+  function zoomBy(factor: number): void {
+    setViewBox((previous) => {
+      const currentZoom = layout.width / previous.w
+      const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * factor))
+      const newW = layout.width / nextZoom
+      const newH = layout.height / nextZoom
+      const cx = previous.x + previous.w / 2
+      const cy = previous.y + previous.h / 2
+      return { x: cx - newW / 2, y: cy - newH / 2, w: newW, h: newH }
+    })
+  }
 
   const tokensByLocation = useMemo(() => {
     const map = new Map<string, ActorToken[]>()
@@ -154,13 +264,45 @@ export function EldhomMap({
     return <p className="eldhom-map__empty">Nessuna missione in corso: nessuna mappa da mostrare.</p>
   }
 
+  // Adapts the map box's proportions to the actual layout instead of a fixed
+  // height — a simple single-row mission (very wide, short layout) no longer
+  // wastes a huge blank area below the content, while a tall/branching
+  // layout still gets a generously tall box (clamped so neither extreme
+  // becomes unusable).
+  const mapAspectRatio = Math.min(3, Math.max(0.9, layout.width / layout.height))
+
   return (
-    <svg
-      className="eldhom-map"
-      viewBox={`0 0 ${layout.width} ${layout.height}`}
-      role="img"
-      aria-label="Mappa della missione"
-    >
+    <div className="eldhom-map-container">
+      <div className="eldhom-map__toolbar">
+        <button type="button" onClick={() => zoomBy(ZOOM_STEP)} title="Zoom avanti" aria-label="Zoom avanti">
+          ＋
+        </button>
+        <button type="button" onClick={() => zoomBy(1 / ZOOM_STEP)} title="Zoom indietro" aria-label="Zoom indietro">
+          －
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewBox(fitViewBox(layout))}
+          title="Adatta alla vista"
+          aria-label="Adatta alla vista"
+        >
+          ⤢
+        </button>
+      </div>
+      <svg
+        ref={svgRef}
+        className="eldhom-map"
+        style={{ aspectRatio: mapAspectRatio }}
+        viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+        preserveAspectRatio="xMidYMin meet"
+        role="img"
+        aria-label="Mappa della missione (rotellina per zoom, trascina per spostare la visuale)"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+
       {edges.map((edge) => {
         const from = layout.nodeById.get(edge.a)
         const to = layout.nodeById.get(edge.b)
@@ -219,6 +361,7 @@ export function EldhomMap({
           </foreignObject>
         )
       })}
-    </svg>
+      </svg>
+    </div>
   )
 }

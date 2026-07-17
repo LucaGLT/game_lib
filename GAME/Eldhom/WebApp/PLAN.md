@@ -1,7 +1,9 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.6.0
-**Status:** Phase 6 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
+**Version:** 0.9.0
+**Status:** Phase 9 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9 inserita fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -618,6 +620,114 @@ game_lib/
 
 - [ ] Stessa valutazione già annotata per Tris — opzionale, non richiesta dalla coesistenza
       permanente desktop/web
+
+---
+
+### Phase 9 — Correzioni Estetiche e UX critiche (richiesta esplicita utente) [✅ Completato]
+
+Fase inserita fuori sequenza (dopo Phase 6, prima di Phase 7/8) su richiesta esplicita
+dell'utente dopo aver valutato Phase 1-6 come regressione rispetto alla GUI desktop
+PySide6 su 4 punti concreti: estetica poco accattivante, mappa troppo piccola/senza
+zoom-pan, zone carte mancanti/senza drag&drop, log in JSON grezzo illeggibile.
+
+- [x] Mappa: zoom (rotellina, non-passive listener) + pan (drag pointer) + pulsante
+      "Adatta alla vista", dimensioni adattive invece di un riquadro fisso piccolo
+- [x] Log narrativo: colore per tipo di evento (porting 1:1 della palette esadecimale di
+      `log_widget.py`), invece del solo JSON grezzo; JSON grezzo conservato ma relegato a
+      un `<details>` collassato "solo debug"
+- [x] Tavolo carte: 6 zone (Mazzo/Mano/Giocate/Memoria/Scarti/Bandite) con drag&drop HTML5
+      nativo TRA le zone realmente supportate dal motore Eldhôm, più pulsanti alternativi
+      (Pesca/Riprendi/Rimescola/🗑 Scarta) per ogni azione — sostituisce il precedente
+      `HandPanel` a lista semplice
+- [x] Overhaul estetico generale (CSS): direzione "tavolo fantasy/pergamena potenziato"
+      (non un pivot completo a stile "modern card game") — profondità via ombre/gradienti,
+      layout più ampio, stessa identità a 5 temi esistente, zero nuove dipendenze/asset
+- [x] Smoke test end-to-end nel browser reale con entrambe le missioni di test
+
+**Esito Phase 9 (validato):**
+
+- `components/EldhomMap.tsx` **riscritto**: stato `ViewBox {x,y,w,h}` con
+  `fitViewBox(layout)` ricalcolato ad ogni cambio di `layout` (nuova missione o
+  sblocco di un passaggio non lascia la visuale bloccata su un'area ormai diversa).
+  Zoom via listener `wheel` nativo non-passivo montato con `useEffect` (l'`onWheel` di
+  React è passivo da React 17+ e ignorerebbe silenziosamente `preventDefault()`), centrato
+  sul cursore, clampato `MIN_ZOOM=0.4`/`MAX_ZOOM=3.5`. Pan via `onPointerDown/Move/Up/Leave`
+  con `setPointerCapture` (attivo solo su drag iniziato sullo sfondo vuoto, non su
+  nodi/token, verificando `event.target === event.currentTarget`). Toolbar `+`/`−`/`⤢`
+  sovrapposta alla mappa.
+- **Bug scoperto e corretto durante il test nel browser**: con `preserveAspectRatio`
+  di default (`xMidYMid meet`), un layout molto largo e poco alto (es. una missione a
+  3 stanze in fila, viewBox ~690×182) veniva centrato **verticalmente** in un riquadro
+  alto — spingendo il contenuto reale fuori dallo schermo iniziale (serviva scroll per
+  vederlo), pur essendo tecnicamente presente nel DOM. Corretto con
+  `preserveAspectRatio="xMidYMin meet"` (allineamento in alto, non al centro) — il
+  contenuto è ora sempre visibile immediatamente sotto la toolbar, indipendentemente
+  dal rapporto d'aspetto del layout.
+- **Raffinamento successivo**: altezza del riquadro mappa resa adattiva
+  (`aspect-ratio` inline calcolato da `layout.width/layout.height`, clampato tra 0.9 e 3,
+  con `min-height: 320px`/`max-height: 620px` come guardrail CSS) invece di un'altezza
+  fissa — evita grandi aree vuote sotto contenuti "larghi e bassi" (missioni lineari)
+  mantenendo comunque un riquadro ampio per layout complessi/ramificati. Verificato
+  visivamente con entrambe le missioni di test (`missione_01`: 3 nodi in fila;
+  `mission_sim_a`: 13 nodi multi-riga) — nessuna delle due produce più spazio morto
+  eccessivo né nodi illeggibili a schermo intero.
+- `engine/logFormat.ts` **riscritto**: `EVENT_TEMPLATES` ora
+  `Record<string, {template, color}>`; `formatEvent()` ritorna `EventLogEntry[]`
+  (`{text, color}`) invece di `string[]`. Tutti i colori esadecimali portati 1:1 da
+  `log_widget.py::_EVENT_TEMPLATES` e dai rami speciali (attacco arricchito,
+  `zone_door.opened`, `action.result`, `mission.victory/defeat`, `formatNextActor`).
+  Verificato via introspezione DOM diretta (`el.style.color`) nel browser reale che
+  ogni riga di log produce esattamente il colore RGB atteso (es.
+  `eldhom.deck.reshuffled` → `rgb(112,144,160)` = `#7090a0`).
+- `webLib/WebGUI_Lib/src/components/EventLog.tsx`: nuovo tipo esportato
+  `EventLogEntry = string | {text; color?}`; retrocompatibile — Tris continua a passare
+  `string[]` senza modifiche (riverificato `npm run build` sul suo frontend).
+- `components/DeckTable.tsx` (**NUOVO**, sostituisce `HandPanel.tsx` rimosso): 6 zone
+  con drag&drop nativo (`draggable` + `onDragStart`/`onDragOver`/`onDrop`,
+  `DataTransfer` con payload `{cardId, from}`) SOLO per i movimenti realmente
+  supportati dal motore (mirror di `_DeckProxy` desktop): Mano→Giocate/Memoria
+  (entrambe giocano la carta), Mano→Scarti (scarto GM), Mazzo→Mano (pesca),
+  Scarti→Mano (riprendi, sempre la carta in cima). Ogni azione ha anche un'alternativa
+  a pulsante (Pesca/Riprendi/Rimescola/🗑 per-carta) per chi non usa drag&drop.
+  Memoria/Bandite mostrate ma etichettate come non-funzionali/aliasate (onestà
+  funzionale, non finte zone).
+- `App.tsx`: 4 nuovi handler (`handleDrawCard`/`handleDiscardCard`/`handleTakeDiscard`/
+  `handleReshuffleDiscard`) che inviano i comandi GM-override
+  (`eldhom.deck.draw/discard/take_discard/reshuffle`, tutti con solo `{hero_id}` tranne
+  discard che aggiunge `{card_id}`); `<HandPanel>` sostituito da `<DeckTable>`; log JSON
+  grezzo spostato dentro un `<details><summary>🛠 Log eventi grezzi (JSON) — solo
+  debug</summary>` collassato di default.
+- **Smoke test end-to-end validato nel browser reale** con entrambe le missioni:
+  drag&drop di una carta MOVIMENTO da Mano a Giocate (simulato via `DragEvent`
+  sintetico con `DataTransfer` reale, dato che le API Playwright ad alto livello
+  `dragTo`/`click` restano bloccate in questo ambiente — vedi nota sotto) → targeting
+  di movimento armato correttamente → click su nodo mappa adiacente → comando
+  `eldhom.play_card` inviato → stato aggiornato (eroe spostato, turno passato,
+  log narrativo colorato popolato correttamente); pulsanti Scarta/Riprendi/Pesca
+  testati singolarmente con effetto corretto su conteggi Mano/Mazzo/Scarti; zoom
+  (rotellina sintetica), pan (drag pointer sintetico) e "Adatta alla vista" testati
+  con verifica diretta del `viewBox` SVG.
+- **Gotcha riconfermato**: sia `click_element` sia `locator.dragTo()` di Playwright
+  restano bloccati/in timeout in questo ambiente anche su elementi semplici — stessa
+  causa già nota (vedi memoria utente tooling-lessons.md). Per il drag&drop HTML5
+  nativo, il fallback che funziona è costruire un `DataTransfer` reale via
+  `page.evaluate()` e disparare manualmente `dragstart`/`dragover`/`drop` con
+  `bubbles:true` sugli elementi sorgente/destinazione — bypassa interamente la
+  simulazione mouse di Playwright.
+- **Gotcha operativo backend**: `eng_serve` usa un `session_id` fisso `"dev-session"`
+  — un `POST /sessions` mentre una sessione precedente è ancora viva (anche solo da un
+  precedente ciclo di test, sopravvive a un semplice reload di pagina) fallisce con
+  `409 Conflict`. `Stop-Process`/`taskkill` sul processo uvicorn hanno fallito con
+  "Accesso negato"; la tecnica WMI/CIM (`Get-CimInstance ... | Invoke-CimMethod
+  -MethodName Terminate`) ha funzionato in modo affidabile. Vedi memoria repo
+  `eldhom-webapp-plan.md` per la procedura completa.
+
+**Notes:**
+- Nessuna modifica al wire-contract C++/motore in questa fase — puramente
+  frontend (React/CSS) + un piccolo ampliamento del tipo `EventLogEntry` condiviso.
+- Fase inserita fuori sequenza numerica pianificata (tra Phase 6 e Phase 7) perché la
+  richiesta utente era esplicitamente prioritaria rispetto a hardening/test formali —
+  Phase 7 e 8 restano pianificate e non ancora iniziate.
 
 ---
 

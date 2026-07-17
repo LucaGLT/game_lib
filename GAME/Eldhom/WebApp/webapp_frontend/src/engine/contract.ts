@@ -42,6 +42,18 @@ export const CMD_PLAY_INSTANTS = 'eldhom.play_instants'
 /** Answers a reactive instant-card window (Assestarsi — an enemy approached). */
 export const CMD_PLAY_REACTIVE_INSTANTS = 'eldhom.play_reactive_instants'
 
+/** GM override: draws 1 card for hero_id from MainDeck into CardHand. */
+export const CMD_DECK_DRAW = 'eldhom.deck.draw'
+
+/** GM override: discards card_id from hero_id's CardHand directly (no play). */
+export const CMD_DECK_DISCARD = 'eldhom.deck.discard'
+
+/** GM override: takes the top card of hero_id's DiscardPile back into CardHand. */
+export const CMD_DECK_TAKE_DISCARD = 'eldhom.deck.take_discard'
+
+/** GM override: reshuffles hero_id's DiscardPile back into MainDeck. */
+export const CMD_DECK_RESHUFFLE = 'eldhom.deck.reshuffle'
+
 /** Full state snapshot, sent on mission start / reconnect (see StateFullWire). */
 export const EVT_STATE_FULL = 'eldhom.state.full'
 

@@ -1,11 +1,16 @@
 .app {
-  max-width: 960px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 24px 20px 32px;
+  padding: 28px 32px 40px;
   text-align: left;
   background-color: var(--gm-background);
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.05), transparent 55%);
   color: var(--gm-text);
-  border-radius: var(--gm-radius);
+  border-radius: calc(var(--gm-radius) * 1.5);
+  border: 1px solid var(--gm-border);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 0 0 6px rgba(0, 0, 0, 0.12) inset;
   font-family: Georgia, 'DejaVu Serif', 'Noto Serif', 'Times New Roman', serif;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -16,12 +21,38 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--gm-border);
+  background-image: linear-gradient(90deg, var(--gm-accent) 0%, transparent 40%);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 2px;
 }
 
 .app-header h1 {
-  font-size: 20px;
+  font-size: 26px;
   margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gm-accent);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Shared "panel" depth treatment: every Eldhôm panel/card box gets a
+   subtle top-light gradient + drop shadow so the table reads as a set of
+   raised game pieces rather than flat form fields. ─────────────────────── */
+
+.controls,
+.eldhom-timeline,
+.eldhom-actions,
+.eldhom-hand,
+.eldhom-hero-panel,
+.eldhom-area-info,
+.eldhom-deck-table,
+.gmgui-event-log {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 45%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .controls {
@@ -29,8 +60,8 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  margin-bottom: 16px;
+  padding: 10px 16px;
+  margin-bottom: 18px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
@@ -47,8 +78,12 @@
   width: 8em;
 }
 
-.controls button {
+.controls button,
+.eldhom-actions__buttons button,
+.eldhom-modal__actions button,
+.eldhom-deck-table__btn {
   background-color: var(--gm-accent);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 55%);
   color: var(--gm-background);
   border: 2px solid var(--gm-accent);
   border-radius: var(--gm-radius);
@@ -57,11 +92,17 @@
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
-.controls button:hover {
-  filter: brightness(1.08);
+.controls button:hover,
+.eldhom-actions__buttons button:hover:not(:disabled),
+.eldhom-modal__actions button:hover:not(:disabled),
+.eldhom-deck-table__btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
 .controls button:active {
@@ -73,7 +114,10 @@
 .eldhom-mission-title {
   text-align: center;
   font-weight: 700;
-  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  margin: 0 0 14px;
+  color: var(--gm-accent);
 }
 
 /* ── Timeline — theme-reactive, mirrors TimelineWidget's QSS
@@ -84,8 +128,8 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 8px 12px;
-  margin-bottom: 16px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
@@ -102,7 +146,7 @@
   border: 1px solid var(--gm-border);
   background-color: var(--gm-background);
   font-size: 12px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
 }
 
 .eldhom-timeline__chip--enemy {
@@ -113,6 +157,8 @@
   border-width: 2px;
   border-color: var(--gm-accent);
   background-color: var(--gm-panel);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gm-accent) 55%, transparent);
+  transform: translateY(-2px);
 }
 
 .eldhom-timeline__chip-name {
@@ -131,14 +177,64 @@
    as "fixed gameplay-state semantics, not theme-dependent". Only the map
    panel/node chrome follows the active theme (--gm-* vars). ──────────── */
 
-.eldhom-map {
-  width: 100%;
-  max-height: 420px;
-  background-color: var(--gm-panel);
+.eldhom-map-container {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.eldhom-map__toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-map__toolbar button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--gm-panel) 0%, var(--gm-background) 100%);
+  color: var(--gm-text);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
-  margin-bottom: 16px;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.eldhom-map__toolbar button:hover {
+  filter: brightness(1.15);
+}
+
+.eldhom-map__toolbar button:active {
+  transform: translateY(1px);
+}
+
+.eldhom-map {
+  display: block;
+  width: 100%;
+  max-height: 620px;
+  min-height: 320px;
+  background-color: var(--gm-panel);
+  background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 60%);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  touch-action: none;
   transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-map:active {
+  cursor: grabbing;
 }
 
 .eldhom-map__empty {
@@ -171,15 +267,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px;
+  gap: 3px;
+  padding: 5px;
   background-color: var(--gm-background);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 40%);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
   overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
 .eldhom-map__node-name {
@@ -222,6 +321,12 @@
   cursor: pointer;
 }
 
+.eldhom-map__node--clickable:hover {
+  border-color: var(--gm-accent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
 .eldhom-map__token--clickable {
   cursor: pointer;
 }
@@ -232,8 +337,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 16px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
@@ -247,6 +352,9 @@
 .eldhom-actions__title {
   font-weight: 700;
   font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }
 
 .eldhom-actions__buttons {
@@ -256,25 +364,14 @@
 }
 
 .eldhom-actions__buttons button {
-  background-color: var(--gm-accent);
-  color: var(--gm-background);
-  border: 2px solid var(--gm-accent);
-  border-radius: var(--gm-radius);
   padding: 6px 12px;
-  font-weight: 700;
   font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: filter 0.15s ease, transform 0.1s ease;
-}
-
-.eldhom-actions__buttons button:hover:not(:disabled) {
-  filter: brightness(1.08);
 }
 
 .eldhom-actions__buttons button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
 }
 
 .eldhom-actions__stop {
@@ -289,65 +386,263 @@
   opacity: 0.85;
 }
 
-/* ── Hand panel ──────────────────────────────────────────────────────────── */
+/* ── Deck table (6 zones: Mazzo/Mano/Giocate/Memoria/Scarti/Bandite) ─────── */
 
-.eldhom-hand {
-  padding: 8px 12px;
-  margin-bottom: 16px;
+.eldhom-deck-table {
+  padding: 10px 14px 14px;
+  margin-bottom: 18px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
-.eldhom-hand__title {
-  margin: 0 0 8px;
+.eldhom-deck-table__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.eldhom-deck-table__title {
+  margin: 0;
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.eldhom-deck-table__detail {
+  flex: 1 1 auto;
+  min-width: 200px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.eldhom-deck-table__detail-name {
+  font-weight: 700;
+}
+
+.eldhom-deck-table__detail-desc {
+  opacity: 0.85;
+}
+
+.eldhom-deck-table__detail-hint {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.eldhom-deck-table__zones {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.eldhom-deck-table__zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 150px;
+  padding: 8px;
+  background-color: var(--gm-background);
+  border: 1px dashed var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.eldhom-deck-table__zone--drag-over {
+  border-style: solid;
+  border-color: var(--gm-accent);
+  background-color: color-mix(in srgb, var(--gm-accent) 12%, var(--gm-background));
+}
+
+.eldhom-deck-table__zone-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   opacity: 0.8;
 }
 
-.eldhom-hand__cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.eldhom-deck-table__zone-empty {
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.55;
 }
 
-.eldhom-hand__card {
+.eldhom-deck-table__zone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.eldhom-deck-table__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+.eldhom-deck-table__card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-radius: var(--gm-radius);
+  overflow: hidden;
+}
+
+.eldhom-deck-table__card-play {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  min-width: 120px;
-  max-width: 180px;
-  padding: 6px 10px;
-  background-color: var(--gm-background);
+  padding: 5px 8px;
+  background-color: var(--gm-panel);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%);
   color: var(--gm-text);
   border: 1px solid var(--gm-border);
+  border-left: 3px solid var(--gm-accent);
   border-radius: var(--gm-radius);
   font-family: inherit;
-  cursor: pointer;
+  cursor: grab;
   text-align: left;
-  transition: border-color 0.2s ease, filter 0.15s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, filter 0.15s ease, transform 0.1s ease;
 }
 
-.eldhom-hand__card:hover:not(:disabled) {
+.eldhom-deck-table__card--hand {
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-play:hover:not(:disabled) {
   border-color: var(--gm-accent);
-  filter: brightness(1.05);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
-.eldhom-hand__card:disabled {
+.eldhom-deck-table__card-play:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.eldhom-hand__card-name {
+.eldhom-deck-table__card-discard {
+  flex: 0 0 auto;
+  width: 22px;
+  background-color: var(--gm-panel);
+  color: var(--gm-danger);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  cursor: pointer;
+  font-size: 11px;
+  transition: filter 0.15s ease;
+}
+
+.eldhom-deck-table__card-discard:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.eldhom-deck-table__card-discard:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.eldhom-deck-table__card--played,
+.eldhom-deck-table__card--discard {
+  padding: 5px 8px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-left: 3px solid var(--gm-border);
+  font-size: 12px;
+}
+
+.eldhom-deck-table__card--top {
+  border-left-color: var(--gm-accent);
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-name {
   font-weight: 700;
   font-size: 12px;
 }
 
-.eldhom-hand__card-summary {
+.eldhom-deck-table__card-summary {
   font-size: 11px;
   opacity: 0.85;
+}
+
+.eldhom-deck-table__deck-stack {
+  position: relative;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-back {
+  position: absolute;
+  width: 40px;
+  height: 56px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--gm-accent) 0px,
+    var(--gm-accent) 6px,
+    var(--gm-panel) 6px,
+    var(--gm-panel) 12px
+  );
+  border: 1px solid var(--gm-border);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.eldhom-deck-table__card-back:nth-child(1) { transform: translate(-6px, -3px) rotate(-4deg); }
+.eldhom-deck-table__card-back:nth-child(2) { transform: translate(-2px, -1px) rotate(-1deg); }
+.eldhom-deck-table__card-back:nth-child(3) { transform: translate(2px, 1px) rotate(2deg); }
+.eldhom-deck-table__card-back:nth-child(4) { transform: translate(6px, 3px) rotate(4deg); }
+
+.eldhom-deck-table__zone--memory,
+.eldhom-deck-table__zone--banish {
+  opacity: 0.75;
+}
+
+/* ── Debug log (raw JSON) — collapsed by default, secondary/dev-only ────── */
+
+.eldhom-debug-log {
+  margin-bottom: 16px;
+}
+
+.eldhom-debug-log summary {
+  cursor: pointer;
+  font-size: 11px;
+  opacity: 0.6;
+  padding: 4px 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.eldhom-debug-log summary:hover {
+  opacity: 0.9;
+}
+
+.eldhom-debug-log .gmgui-event-log {
+  margin-top: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  max-height: 200px;
 }
 
 /* ── Hero panel row ──────────────────────────────────────────────────────── */
@@ -355,22 +650,24 @@
 .eldhom-hero-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .eldhom-hero-panel {
-  width: 170px;
-  padding: 6px 10px;
+  width: 175px;
+  padding: 8px 12px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
 }
 
 .eldhom-hero-panel--active {
   border-width: 2px;
   border-color: var(--gm-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gm-accent) 45%, transparent);
+  transform: translateY(-2px);
 }
 
 .eldhom-hero-panel__name {
@@ -424,16 +721,11 @@
   margin-bottom: 16px;
 }
 
-.eldhom-board-row .eldhom-map {
-  flex: 1 1 auto;
-  margin-bottom: 0;
-}
-
 /* ── Area info panel ─────────────────────────────────────────────────────── */
 
 .eldhom-area-info {
-  flex: 0 0 220px;
-  padding: 8px 12px;
+  flex: 0 0 240px;
+  padding: 10px 14px;
   background-color: var(--gm-panel);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius);
@@ -444,6 +736,9 @@
   margin: 0 0 6px;
   font-weight: 700;
   font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--gm-accent);
 }
 
 .eldhom-area-info__adjacent,

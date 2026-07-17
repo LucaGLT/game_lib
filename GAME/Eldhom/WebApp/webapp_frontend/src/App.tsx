@@ -5,10 +5,14 @@ import { EnvelopeRouter } from '@webgui/session/EnvelopeRouter'
 import { useGmGuiModule } from '@webgui/modules/useGmGuiModule'
 import { DEFAULT_THEME_ID, THEMES, getTheme, themeToCssVars, type ThemeId } from '@webgui/theme/themes'
 import { ErrorBar } from '@webgui/components/ErrorBar'
-import { EventLog } from '@webgui/components/EventLog'
+import { EventLog, type EventLogEntry } from '@webgui/components/EventLog'
 import { ThemeSelect } from '@webgui/components/ThemeSelect'
 import '@webgui/styles.css'
 import {
+  CMD_DECK_DISCARD,
+  CMD_DECK_DRAW,
+  CMD_DECK_RESHUFFLE,
+  CMD_DECK_TAKE_DISCARD,
   CMD_DECLARE_ATTACK,
   CMD_PLAY_CARD,
   CMD_PLAY_INSTANTS,
@@ -27,9 +31,9 @@ import { applyCardCatalog, applyEnvelope, initialEldhomState } from './engine/ga
 import { formatEvent, resetLogTimeTracking } from './engine/logFormat'
 import { ActionPanel, type TargetingMode } from './components/ActionPanel'
 import { AreaInfoPanel } from './components/AreaInfoPanel'
+import { DeckTable } from './components/DeckTable'
 import { EldhomMap } from './components/EldhomMap'
 import { FormationModal } from './components/FormationModal'
-import { HandPanel } from './components/HandPanel'
 import { HeroPanel } from './components/HeroPanel'
 import { InstantWindowModal } from './components/InstantWindowModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
@@ -52,14 +56,17 @@ type Targeting =
   | null
 
 /**
- * Phase 4 "Mano, Sequenze & Azioni" page: adds the real `HandPanel`
- * (playable cards, type/effect icons) and `ActionPanel` (4 simple actions +
- * inline TAKE/BLOCK/DODGE reaction window) on top of Phase 3's
- * `EldhomMap`/`TimelineTrack`, plus the Phase 1 raw-JSON event log (kept
- * for debugging). Formation/instant-window dialogs are Phase 6's scope.
+ * Main Eldhôm WebApp page. Ties together mission selection, session
+ * lifecycle, and all game-state-driven panels: `ActionPanel` (4 simple
+ * actions + inline TAKE/BLOCK/DODGE reaction window), `EldhomMap`/
+ * `TimelineTrack`, `HeroPanel`s, `DeckTable` (the full 6-zone card table —
+ * see that component's docstring for exactly which zone-to-zone moves are
+ * real for Eldhôm vs display-only), the narrative event log (coloured, see
+ * `logFormat.ts`) plus a collapsed raw-JSON debug log, and the Phase 6
+ * modals (mission select / formation / instant window).
  *
  * Point-and-click targeting (move destination / attack target) is armed by
- * `ActionPanel`/`HandPanel` and resolved by this component's
+ * `ActionPanel`/`DeckTable` and resolved by this component's
  * `handleLocationClick`/`handleTokenClick`, which own the shared
  * `targeting` state consumed by `EldhomMap` — same split as the desktop's
  * `move_armed`/`attack_armed` signals resolved by `EldhomMainWindow`.
@@ -75,7 +82,7 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
-  const [narrativeLog, setNarrativeLog] = useState<string[]>([])
+  const [narrativeLog, setNarrativeLog] = useState<EventLogEntry[]>([])
   const [eldhomState, setEldhomState] = useState(initialEldhomState)
   const [targeting, setTargeting] = useState<Targeting>(null)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
@@ -212,6 +219,22 @@ function App() {
 
   async function handleStopSequence(): Promise<void> {
     await sendEldhomCommand(CMD_STOP_SEQUENCE, { hero_id: activeHeroId })
+  }
+
+  async function handleDrawCard(): Promise<void> {
+    await sendEldhomCommand(CMD_DECK_DRAW, { hero_id: activeHeroId })
+  }
+
+  async function handleDiscardCard(cardId: string): Promise<void> {
+    await sendEldhomCommand(CMD_DECK_DISCARD, { hero_id: activeHeroId, card_id: cardId })
+  }
+
+  async function handleTakeDiscard(): Promise<void> {
+    await sendEldhomCommand(CMD_DECK_TAKE_DISCARD, { hero_id: activeHeroId })
+  }
+
+  async function handleReshuffleDiscard(): Promise<void> {
+    await sendEldhomCommand(CMD_DECK_RESHUFFLE, { hero_id: activeHeroId })
   }
 
   async function handleReactionChosen(reaction: string): Promise<void> {
@@ -437,17 +460,25 @@ function App() {
         />
       </div>
 
-      <HandPanel
+      <DeckTable
         heroName={activeHeroName}
-        cardIds={activeHeroHand}
+        hand={activeHeroHand}
+        hero={eldhomState.heroesById[activeHeroId]}
         cards={eldhomState.cards}
         sequenceActive={activeHeroSequenceActive}
         enabled={activeHeroId !== '' && pendingReactionView === null}
         onPlayCard={handlePlayCard}
+        onDiscardCard={(cardId) => void handleDiscardCard(cardId)}
+        onDrawCard={() => void handleDrawCard()}
+        onTakeDiscard={() => void handleTakeDiscard()}
+        onReshuffle={() => void handleReshuffleDiscard()}
       />
 
       <EventLog entries={narrativeLog} ariaLabel="Log narrativo" />
-      <EventLog entries={logEntries} ariaLabel="Log eventi grezzi (JSON)" />
+      <details className="eldhom-debug-log">
+        <summary>🛠 Log eventi grezzi (JSON) — solo debug</summary>
+        <EventLog entries={logEntries} ariaLabel="Log eventi grezzi (JSON)" />
+      </details>
       <ErrorBar message={errorMessage} />
     </div>
   )

@@ -9,4 +9,6 @@
 
 body {
   margin: 0;
+  background: radial-gradient(ellipse at 50% -10%, #3a3226 0%, #1c1712 55%, #100d09 100%);
+  min-height: 100vh;
 }
