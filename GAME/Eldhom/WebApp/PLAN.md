@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.9.0
-**Status:** Phase 9 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9 inserita fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.10.0
+**Status:** Phase 10 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-10 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -728,6 +728,62 @@ zoom-pan, zone carte mancanti/senza drag&drop, log in JSON grezzo illeggibile.
 - Fase inserita fuori sequenza numerica pianificata (tra Phase 6 e Phase 7) perché la
   richiesta utente era esplicitamente prioritaria rispetto a hardening/test formali —
   Phase 7 e 8 restano pianificate e non ancora iniziate.
+
+---
+
+### Phase 10 — Tipografia Tematica per Tema (richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: il cambio TEMA deve cambiare anche i FONT, non solo i colori,
+con un font più tematico in base al nome di ciascuno dei 5 temi condivisi (`themes.ts`).
+
+- [x] `ThemeTokens` (`webLib/WebGUI_Lib/src/theme/themes.ts`) esteso con `displayFont`/
+      `bodyFont` per ciascuno dei 5 temi; `themeToCssVars()` emette
+      `--gm-font-display`/`--gm-font-body`
+- [x] Coppia di font Google Fonts scelta per ogni tema in base al nome/atmosfera:
+      Scroll → scrittura su pergamena/manoscritto; Stone → iscrizione romana/rune scolpite;
+      Dark Moon → fantasy noir gotico (lupi/pipistrelli); Blood → gotico-vampiresco/
+      draculiano; Techno → sci-fi/HUD/monitor
+- [x] Import Google Fonts centralizzato in `webLib/WebGUI_Lib/src/styles.css` (un solo
+      `@import`, tutte le famiglie/pesi necessari, con fallback serif/monospace di sistema
+      se il font web non si carica)
+- [x] `App.css` (Eldhôm): font di base (`.app`) collegato a `--gm-font-body`; font di ogni
+      elemento titolo/nome (h1, titoli pannello/zona, nomi eroi/carte/nodi mappa) collegato
+      a `--gm-font-display` — pulsanti e testo denso restano sul font body per leggibilità
+- [x] Smoke test nel browser reale: tutti e 5 i temi verificati visivamente
+
+**Esito Phase 10 (validato):**
+
+- Coppie font finali (tutte da Google Fonts, con fallback serif/monospace di sistema):
+  - **Scroll**: `IM Fell English` (titoli) + `EB Garamond` (corpo) — stampa/manoscritto antico
+  - **Stone**: `Cinzel` (titoli) + `Crimson Text` (corpo) — iscrizione romana su pietra
+  - **Dark Moon**: `Pirata One` (titoli) + `Spectral` (corpo) — fantasy noir gotico
+  - **Blood**: `Metamorphous` (titoli) + `Cormorant` (corpo) — gotico/vampiresco leggibile
+    (preferito a font "horror drip" come Nosifer, illeggibili sotto i ~16px usati per i
+    titoli di pannello/zona in questa UI)
+  - **Techno**: `Orbitron` (titoli) + `Share Tech Mono` (corpo) — sci-fi/HUD/terminale
+- Font applicato SOLO a elementi titolo/nome (h1 app, titoli pannello/zona, nomi eroi,
+  nomi carte, nomi nodi mappa, nome chip timeline) — pulsanti, input e testo denso
+  (descrizioni carte, log) restano sul font body per non sacrificare la leggibilità a
+  dimensioni piccole (11-13px), mirror del concetto di ruoli tipografici title/body/
+  secondary già presente in `.github/specs/gui-theme.yml` per il desktop.
+- **Nessuna modifica al desktop PySide6** in questa fase: `theme_manager.py` usa un solo
+  font QSS fisso per tutti i temi (righe ~210-211) — fuori scope, la richiesta utente e
+  tutto il contesto recente riguardavano esclusivamente la WebApp.
+- **Retrocompatibile con Tris**: `themeToCssVars()` aggiunge solo 2 chiavi in più
+  all'oggetto CSS-in-JS già esistente; Tris non referenzia le nuove variabili nel proprio
+  CSS quindi resta visivamente invariato (nessuna regressione, `npm run build` riverificato).
+- **Smoke test end-to-end validato nel browser reale**: tutti e 5 i temi selezionati dal
+  dropdown "Tema" e verificati visivamente (screenshot) — h1, titoli pannello, nomi eroi
+  (Thael/Velyr), nomi carte (Passo Cauto/Fendente Pesante/Colpo Secco), nomi nodi mappa
+  (Ingresso/Corridoio/Sala) e titolo pannello Area Info cambiano font coerentemente ad
+  ogni cambio tema; letto anche `getComputedStyle(...).getPropertyValue('--gm-font-*')`
+  per confermare il valore CSS esatto dietro ogni rendering visivo.
+
+**Notes:**
+- Scelta di usare Google Fonts (via `@import` unico, non un pacchetto npm) invece di font
+  di sistema: garantisce lo stesso identico rendering su qualunque OS (a differenza di font
+  Windows-only come Chiller/Copperplate Gothic), a costo di richiedere rete al primo
+  caricamento — fallback serif/monospace di sistema se offline, nessuna rottura funzionale.
 
 ---
 

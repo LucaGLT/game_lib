@@ -11,8 +11,27 @@
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.55),
     0 0 0 6px rgba(0, 0, 0, 0.12) inset;
-  font-family: Georgia, 'DejaVu Serif', 'Noto Serif', 'Times New Roman', serif;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  font-family: var(--gm-font-body);
+  transition: background-color 0.25s ease, color 0.25s ease, font-family 0.15s ease;
+}
+
+/* ── Thematic display font: every title/name/heading-class element switches
+   face along with the rest of the theme (see theme/themes.ts displayFont) —
+   e.g. Scroll reads like manuscript writing, Blood like a gothic-horror
+   novel title, Techno like a sci-fi HUD label. Left off small interactive
+   controls (buttons, inputs) and dense body copy for readability. ───────── */
+.app-header h1,
+.eldhom-mission-title,
+.eldhom-timeline__chip-name,
+.eldhom-actions__title,
+.eldhom-deck-table__title,
+.eldhom-deck-table__zone-title,
+.eldhom-deck-table__detail-name,
+.eldhom-deck-table__card-name,
+.eldhom-hero-panel__name,
+.eldhom-area-info__title,
+.eldhom-map__node-name {
+  font-family: var(--gm-font-display);
 }
 
 .app-header {

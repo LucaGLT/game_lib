@@ -1,3 +1,9 @@
+/* Thematic fonts for all 5 gmGui themes (see theme/themes.ts displayFont/
+   bodyFont) — one shared import so switching themes never triggers a new
+   network request. Falls back gracefully to the serif/monospace stacks in
+   themes.ts if this fails to load (e.g. no network). */
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Pirata+One&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Metamorphous&family=Cormorant:ital,wght@0,400;0,600;1,400&family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
 /**
  * WebGUI_Lib generic component styles — game-agnostic, driven entirely by
  * the `--gm-*` CSS custom properties an app sets from `theme/themes.ts`
