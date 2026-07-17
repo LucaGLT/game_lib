@@ -1,0 +1,101 @@
+/**
+ * WebGUI_Lib generic component styles — game-agnostic, driven entirely by
+ * the `--gm-*` CSS custom properties an app sets from `theme/themes.ts`
+ * (`themeToCssVars`). Never hardcodes colors here; only structural/layout
+ * rules belong in this file.
+ */
+
+/* ── Field (labeled select), used by ThemeSelect and any similar toolbar field ── */
+
+.gmgui-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gmgui-field select {
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 4px 8px;
+  font-family: inherit;
+}
+
+.gmgui-field select:focus {
+  border-color: var(--gm-accent);
+  outline: none;
+}
+
+/* ── Event log ───────────────────────────────────────────────────────────── */
+
+.gmgui-event-log {
+  flex: 1 1 240px;
+  min-width: 220px;
+  max-height: 306px;
+  overflow-y: auto;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 8px 12px;
+  font-size: 12px;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.gmgui-event-log__line {
+  padding: 2px 0;
+  border-bottom: 1px solid var(--gm-border);
+  word-break: break-word;
+}
+
+.gmgui-event-log__line:last-child {
+  border-bottom: none;
+}
+
+/* ── Actor status badges ─────────────────────────────────────────────────── */
+
+.gmgui-actor-badges {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.gmgui-actor-badge {
+  padding: 4px 12px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-size: 13px;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.gmgui-actor-badge--active_turn {
+  border: 2px solid var(--gm-accent);
+}
+
+.gmgui-actor-badge--winner {
+  border: 2px solid var(--gm-accent);
+  font-weight: 700;
+}
+
+.gmgui-actor-badge--draw {
+  border: 2px solid var(--gm-border);
+}
+
+/* ── Error bar ───────────────────────────────────────────────────────────── */
+
+.gmgui-error-bar {
+  text-align: left;
+  padding: 8px 4px;
+  margin: 0;
+  color: var(--gm-border);
+  font-size: 12px;
+}
+
+.gmgui-error-bar--error {
+  color: var(--gm-danger);
+  font-weight: 700;
+}
