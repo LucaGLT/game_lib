@@ -1,7 +1,7 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.2.0
-**Status:** Phase 1 – Completato ✅ (scaffold + smoke test validati, vedi Esito sotto)
+**Version:** 0.3.0
+**Status:** Phase 3 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -245,7 +245,7 @@ game_lib/
 
 ---
 
-### Phase 2 — Multi-Session & Auth [⏸️ Deliberatamente rimandata]
+### Phase 2 — Multi-Session & Auth [⏸️ Deliberatamente rimandata / saltata]
 
 - [ ] (invariato rispetto a Tris — vedi `GAME/Tic-Tac-Toe/WebApp/PLAN.md` Phase 2 per la checklist)
 
@@ -254,21 +254,76 @@ game_lib/
   `MONO_USER_MANAGES_ALL_PLAYER` — un solo utente locale controlla tutti i 2-5 PG della
   missione, esattamente come la GUI desktop oggi. Questa fase riparte da qui solo quando/se
   si formerà l'esigenza multi-utente (stessa logica già applicata a Tris).
+- **Confermato di nuovo (stesso turno di Phase 3):** l'utente ha esplicitamente chiesto di
+  saltare la Phase 2 e procedere direttamente con la Phase 3 — nessun lavoro svolto qui,
+  scelta deliberata confermata due volte.
 
 ---
 
-### Phase 3 — Mappa & Linea Temporale [⏳]
+### Phase 3 — Mappa & Linea Temporale [✅ Completato]
 
-- [ ] `EldhomMap.tsx`: locazioni + adiacenze da `eldhom.state.full`, token attori per locazione
+- [x] `EldhomMap.tsx`: locazioni + adiacenze da `eldhom.state.full`, token attori per locazione
       (PG/PNG/Gruppo/Boss), stile edge FREE/CLOSED_DOOR/LOCKED_DOOR (solido vs tratteggiato,
       colore rosso condiviso — mirror 1:1 di `map_scene.py`), aggiornamento su `eldhom.pg.moved`,
       `eldhom.monster.moved`, `eldhom.zone_door.opened`
-- [ ] `TimelineTrack.tsx`: tracciato ordine attivazione da sinistra (più indietro) a destra,
+- [x] `TimelineTrack.tsx`: tracciato ordine attivazione da sinistra (più indietro) a destra,
       colore per tipo attore, soglie eventi missione come marcatori — aggiornamento su
       `eldhom.turn.next_actor` (mirror di `timeline_widget.py`/gmGui `TimelineWidget`)
-- [ ] `engine/contract.ts` + `engine/gameState.ts`: sezioni mappa/timeline del reducer
-- [ ] Smoke test: `eldhom.state.full` popola mappa e timeline correttamente; una mossa PG
+- [x] `engine/contract.ts` + `engine/gameState.ts`: sezioni mappa/timeline del reducer
+- [x] Smoke test: `eldhom.state.full` popola mappa e timeline correttamente; una mossa PG
       sposta il token e avanza la timeline nel browser
+
+**Esito Phase 3 (validato):**
+
+- Campi/eventi confermati leggendo direttamente `GAME/Eldhom/CoreEngine/main.cpp`
+  (`emit_full_state()`/`forward_engine_event()`), non assunti dal solo elenco `EventType` in
+  `EldhomTypes.hpp`: `eldhom.state.full` → shape completa (`locations[].{id,name,adjacent}`,
+  `heroes[].{id,name,location,position,hp,max_hp,timeline,...}`,
+  `groups[].{id,name,timeline,location,monster_type,instances[].{id,location,position,hp,
+  max_hp,alive}}`, `special_objects[].{object_id,type,location_id,locked_adjacency}`,
+  `opened_zone_doors`, `next_actor.{actor_id,kind}`); `eldhom.pg.moved`/`eldhom.monster.moved`
+  → `{actor_id, payload: <destinationLocationId>}` (stesso schema generico
+  `forward_engine_event(type, actor_id, payload)`); `eldhom.zone_door.opened` →
+  `{actor_id, payload: {a, b}}`; `eldhom.turn.next_actor` →
+  `{actor_id, actor_name, actor_timeline, kind, mission_time}`;
+  `eldhom.mission.time_advanced` → `{actor_id, payload: <nuovo timeline dell'attore>}`
+  (usato per aggiornare live il chip timeline dell'attore che ha appena agito, mirror esatto
+  di `eldhom_main_window.py::_on_time_advanced`).
+- Layout mappa: BFS a livelli dalla prima locazione della missione (non il layout
+  force-directed del desktop `GmMapModule`/`MapScene` — scelta deliberata per evitare una
+  dipendenza di layout/fisica per un deliverable di Phase 3; risultato visivamente diverso
+  ma funzionalmente equivalente). Colori edge/token **fissi, non theme-reattivi** (mirror
+  esatto di `map_scene.py::_edge_pen()`/`theme_manager.py`, che li documenta esplicitamente
+  come "fixed gameplay-state semantics, not theme-dependent"): FREE = `--gm-border` (theme),
+  CLOSED_DOOR = `#c03030` solido, LOCKED_DOOR = `#c03030` tratteggiato, token = `#1a237e`/
+  bordo turno-attivo `#e03030`. `TimelineTrack` invece resta theme-reattivo (`--gm-*`), perché
+  il riferimento desktop (`timeline_widget.py`) è esso stesso QSS/tema-dipendente.
+- Zona/porta: `zoneFromLocationId` (strip suffisso numerico finale) replica `_zone_from_loc_id`
+  1:1 — con id senza suffisso numerico (es. `"ingresso"`/`"corridoio"` di `missione_01`) ogni
+  locazione è la propria zona, quindi ogni arco parte CLOSED_DOOR finché non attraversato
+  (comportamento confermato nel browser: `eldhom.zone_door.opened` per ingresso↔corridoio ha
+  correttamente commutato quell'arco a FREE, lasciando corridoio↔sala CLOSED_DOOR).
+- Etichette token: stessa euristica del desktop (`_monster_label_prefix_from_payload`) —
+  prefisso da `monster_type` (prima lettera, +E se elite/boss), suffisso numerico preservato
+  se presente nell'id istanza altrimenti contatore progressivo per prefisso. **Collisione di
+  etichetta identica al desktop, non un bug**: `brigante_B1` (gruppo "Briganti B") e
+  `brigante_A1` (gruppo "Briganti A") generano entrambi il label "B1" (stesso `monster_type`
+  "brigante_comune" → prefisso "B", stesso suffisso numerico "1") — verificato che il desktop
+  fa esattamente lo stesso, quindi non è stato "corretto" oltre la fedeltà richiesta.
+- **Smoke test end-to-end validato nel browser reale** con introspezione DOM diretta (non solo
+  screenshot): dopo l'avvio missione, `TimelineTrack` mostra Thael/Velyr ⏳0 e i 2 gruppi
+  mostro ⏳4 (ordine corretto); `EldhomMap` mostra 3 nodi in linea (Ingresso/Corridoio/Sala)
+  con i token corretti per locazione. Dopo un'azione MOVE (thael→corridoio): il tempo missione
+  passa a ⏳3, il chip di Thael in `TimelineTrack` si aggiorna a ⏳3, il token PG1 si sposta sul
+  nodo Corridoio, l'arco ingresso↔corridoio passa da classe CSS
+  `eldhom-map__edge--closed_door` a `eldhom-map__edge--free` (verificato leggendo
+  `getAttribute('class')` sugli elementi `<line>` via `run_playwright_code`), e il token PG2
+  (Velyr, prossimo attore) mostra la classe `eldhom-map__token--active` mentre PG1 non la mostra
+  più — tutte le transizioni di stato incrementali (senza attendere il successivo
+  `eldhom.state.full`) confermate corrette.
+- `TimelineTrack` **non** generalizzato in `WebGUI_Lib` in questo turno (nessun secondo
+  consumatore concreto ancora) — resta locale a `GAME/Eldhom/WebApp/webapp_frontend`, come da
+  nota Phase 3 originale.
 
 **Notes:**
 - Valutare in fase di implementazione se `TimelineTrack` sia generalizzabile in `WebGUI_Lib`

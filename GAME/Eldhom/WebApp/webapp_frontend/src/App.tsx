@@ -9,6 +9,9 @@ import { EventLog } from '@webgui/components/EventLog'
 import { ThemeSelect } from '@webgui/components/ThemeSelect'
 import '@webgui/styles.css'
 import { CMD_SIMPLE_ACTION, listMissions, type MissionSummary } from './engine/contract'
+import { applyEnvelope, initialEldhomState } from './engine/gameState'
+import { EldhomMap } from './components/EldhomMap'
+import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
 
 const THEME_STORAGE_KEY = 'eldhom-webapp-theme'
@@ -19,17 +22,18 @@ function loadStoredTheme(): ThemeId {
 }
 
 /**
- * Phase 1 "Interfaces & Stubs" page: shows the raw JSON of every event
- * received via WS, plus a minimal form to start a mission and send one
- * eldhom.simple_action — enough to validate the full browser <-> eng_serve
- * <-> eldhom_engine.exe round trip. Real map/hand/timeline components come
- * in Phase 3 ("Frontend Functional Parity"), mirroring the same phased
- * approach already used for Tic-Tac-Toe.
+ * Phase 3 "Mappa & Linea Temporale" page: real `EldhomMap`/`TimelineTrack`
+ * components driven by a proper reducer (`engine/gameState.ts`), plus the
+ * Phase 1 raw-JSON event log (kept for debugging) and the minimal
+ * mission-start/simple-action form. Hand/actions/formation/instant-window
+ * components come in Phase 4+ ("Frontend Functional Parity"), mirroring
+ * the same phased approach already used for Tic-Tac-Toe.
  *
  * Generic building blocks (theme, session REST/WS client, EnvelopeRouter,
  * ErrorBar/EventLog/ThemeSelect) come from `webLib/WebGUI_Lib` (`@webgui/*`)
  * — consumed from day one here (unlike Tris, which only adopted it in a
- * later refactor). Everything imported from `./engine` stays Eldhôm-specific.
+ * later refactor). Everything imported from `./engine`/`./components` stays
+ * Eldhôm-specific.
  */
 function App() {
   const [missions, setMissions] = useState<MissionSummary[]>([])
@@ -37,6 +41,7 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
+  const [eldhomState, setEldhomState] = useState(initialEldhomState)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [heroId, setHeroId] = useState('thael')
   const [actionType, setActionType] = useState('MOVE')
@@ -63,10 +68,13 @@ function App() {
       .catch((caught) => setErrorMessage(String(caught)))
   }, [])
 
-  // Wildcard subscription: Phase 1 just dumps every envelope as raw JSON, it
-  // does not interpret typeIds yet (that reducer work is Phase 3's job).
+  // Wildcard subscription: every envelope both feeds the raw-JSON debug log
+  // (Phase 1) and updates the structured map/timeline state (Phase 3) — the
+  // two are independent consumers of the same `EnvelopeRouter`, same
+  // pattern as Tris' reducer + ActorStatusBadges module.
   useGmGuiModule(router, { subscribedTypeIds: ['*'] }, (envelope) => {
     setLogEntries((previous) => [...previous, JSON.stringify(envelope)])
+    setEldhomState((previous) => applyEnvelope(previous, envelope))
   })
 
   async function handleStartMission(): Promise<void> {
@@ -81,6 +89,7 @@ function App() {
       setRouter(nextRouter)
       setSessionId(session.session_id)
       setLogEntries([])
+      setEldhomState(initialEldhomState)
       setErrorMessage(null)
       disconnectRef.current = connectSessionEvents(session.session_id, (envelope) => {
         nextRouter.dispatch(envelope)
@@ -111,7 +120,7 @@ function App() {
   return (
     <div className="app" style={themeToCssVars(theme) as CSSProperties}>
       <header className="app-header">
-        <h1>Eldhôm — WebApp (Phase 1 stub)</h1>
+        <h1>Eldhôm — WebApp</h1>
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />
       </header>
 
@@ -153,6 +162,22 @@ function App() {
           Invia azione semplice
         </button>
       </section>
+
+      {eldhomState.title !== '' && (
+        <p className="eldhom-mission-title">
+          {eldhomState.title} — ⏳ {eldhomState.missionTime}
+          {eldhomState.isOver ? ' — Missione conclusa' : ''}
+        </p>
+      )}
+
+      <TimelineTrack actors={eldhomState.timelineActors} activeActorId={eldhomState.nextActorId} />
+
+      <EldhomMap
+        locations={eldhomState.locations}
+        edges={eldhomState.edges}
+        tokens={eldhomState.tokens}
+        activeActorId={eldhomState.nextActorId}
+      />
 
       <EventLog entries={logEntries} ariaLabel="Log eventi grezzi (JSON)" />
       <ErrorBar message={errorMessage} />
