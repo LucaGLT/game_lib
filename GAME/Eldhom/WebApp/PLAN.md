@@ -1,7 +1,7 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.5.0
-**Status:** Phase 5 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
+**Version:** 0.6.0
+**Status:** Phase 6 – Completato ✅ (Phase 2 saltata/rimandata su richiesta esplicita utente; vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -502,25 +502,92 @@ game_lib/
 
 ---
 
-### Phase 6 — Dialog Interattive → Modali Web [⏳]
+### Phase 6 — Dialog Interattive → Modali Web [✅ Completato]
 
-- [ ] `webLib/WebGUI_Lib/src/components/Modal.tsx` (**NUOVO, generico**): backdrop, focus,
+- [x] `webLib/WebGUI_Lib/src/components/Modal.tsx` (**NUOVO, generico**): backdrop, focus,
       chiusura Esc/click-esterno — nessun contenuto di dominio, nessuna riga Eldhôm-specifica
-- [ ] `FormationModal.tsx` (ex `FormationDialog`): checkbox per attore, vincolo
+- [x] `FormationModal.tsx` (ex `FormationDialog`): checkbox per attore, vincolo
       Retroguardia ≤ Prima Linea (OK disabilitato se violato) — mostrata su
       `eldhom.formation.dialog_needed`, risolta con `eldhom.resolve_formation`
       (`{backline_actor_ids}`)
-- [ ] `InstantWindowModal.tsx` (ex `InstantWindowDialog`): checkbox per istantanea giocabile,
+- [x] `InstantWindowModal.tsx` (ex `InstantWindowDialog`): checkbox per istantanea giocabile,
       pulsanti "Nessuna"/"Gioca selezionate" — due varianti dello stesso contenuto:
       - proattiva: mostrata su `eldhom.instant.window_opened`, risolta con `eldhom.play_instants`
       - reattiva (Assestarsi/avvicinamento nemico): mostrata su `eldhom.pg.enemy_approach`,
         risolta con `eldhom.play_reactive_instants`
-- [ ] `MissionSelectModal.tsx` (ex `MissionSelectDialog`): lista missioni da **`GET /missions`**
+- [x] `MissionSelectModal.tsx` (ex `MissionSelectDialog`): lista missioni da **`GET /missions`**
       (nuovo endpoint `eng_serve`, non più scansione locale del filesystem) invece di scandire
       `data/mission_*.json` lato browser; selezione avvia `POST /sessions` con `mission_id`
-- [ ] Smoke test: risoluzione completa di uno Scompaginamento via modale, di una Finestra
+- [x] Smoke test: risoluzione completa di uno Scompaginamento via modale, di una Finestra
       Istantanee (entrambe le varianti) e selezione/avvio missione dalla lista — tutto senza
       alcuna modifica al wire-contract engine
+
+**Esito Phase 6 (validato):**
+
+- `webLib/WebGUI_Lib/src/components/Modal.tsx` (NUOVO): backdrop `position:fixed` +
+  chrome (titolo, chiusura opzionale), Esc gestito via `useEffect`+listener, click-esterno
+  gestito via `onClick` sul backdrop con `stopPropagation()` sul contenuto. Nessuna riga
+  Eldhôm-specifica. Esportato dal barrel `index.ts`. **Nessuna regressione in Tris**
+  confermata rieseguendo `npm run build`/`npm run lint` sul suo frontend dopo la modifica
+  alla libreria condivisa.
+- Scoperta chiave leggendo `GAME/Eldhom/CoreEngine/main.cpp` direttamente: la variante
+  REATTIVA della finestra istantanee (Assestarsi/`eldhom.pg.enemy_approach`) NON ha un
+  evento/contenuto separato — il motore chiama la STESSA `emit_instant_window()` usata per
+  la variante proattiva (confermato al rigo dove `advance_auto()` rileva
+  `has_pending_reactive_window()` e richiama `emit_instant_window(pending_reactive_window
+  ().trigger)`). Questo significa che **un solo `InstantWindowModal` serve entrambe le
+  varianti**: il chiamante distingue solo leggendo `InstantWindowWire.trigger`
+  (`"eldhom.pg.enemy_approach"` → reattiva → `eldhom.play_reactive_instants`; altrimenti
+  proattiva → `eldhom.play_instants`) — nessuna duplicazione di componente necessaria.
+- Campi comando confermati da `main.cpp`: `eldhom.resolve_formation` →
+  `{faction_id, location_id, backline: string[]}` (NON `{backline_actor_ids}` come una
+  lettura superficiale del solo `EldhomTypes.hpp` avrebbe potuto suggerire — il nome campo
+  esatto va sempre confermato in `handle_resolve_formation()`); `eldhom.play_instants`/
+  `eldhom.play_reactive_instants` → `{selected: [{actor_id, card_id}]}`.
+  `eldhom.formation.dialog_needed`/`eldhom.instant.window_opened` sono inviati **alla radice
+  del payload** (come già osservato in Phase 4 per la finestra di reazione), non nello schema
+  generico `{actor_id, payload}`.
+- Stato "modale pendente" nel reducer: DUE campi separati (`pendingFormation`,
+  `pendingInstantWindow`), non un singolo campo unione come ipotizzato nella nota Phase 6
+  originale — più semplice da gestire dato che i due tipi di finestra hanno forme diverse e
+  non si escludono a vicenda nel tempo (anche se il motore ne apre una alla volta). Pulizia
+  ottimistica lato client (`pendingFormation`/`pendingInstantWindow` azzerati subito
+  all'invio del comando di risoluzione): se il motore ha ANCORA una formazione/finestra
+  pendente dopo la risoluzione, invia immediatamente un NUOVO evento `dialog_needed`/
+  `window_opened` che sovrascrive lo stato locale — nessuna logica di concatenamento lato
+  client necessaria (confermato nel test: una DODGE ha scompaginato la formazione nemica,
+  facendo apparire correttamente una SECONDA `FormationModal` per la fazione `BRIGANTI`
+  subito dopo aver risolto la prima per `HEROES`).
+- **Bug trovato e corretto durante il test nel browser**: `MissionSelectModal` calcolava la
+  selezione di default con l'inizializzatore di `useState(() => missions[0]?.mission_id ??
+  '')`, che si esegue UNA SOLA VOLTA al primo render — dato che `missions` arriva sempre in
+  modo asincrono (`GET /missions`) DOPO il primo render, la selezione restava bloccata a
+  stringa vuota per sempre (pulsante OK permanentemente disabilitato). Corretto con un
+  `useEffect` che sincronizza `selectedId` al primo elenco valido ricevuto. **Lezione
+  generale**: un valore iniziale derivato da una prop che arriva in modo asincrono va sempre
+  sincronizzato con un `useEffect`, mai calcolato solo nell'inizializzatore di `useState`.
+- Sezione mission-select inline (Phase 1–5, `<select>`+pulsante "Avvia missione" dentro
+  `.controls`) rimossa da `App.tsx` e sostituita interamente da `MissionSelectModal`, mostrata
+  automaticamente quando `sessionId === null` — come da checklist ("ex MissionSelectDialog").
+- **Smoke test end-to-end validato nel browser reale** (missione `missione_01`): avviata la
+  missione dalla nuova `MissionSelectModal`; scatenato uno Scompaginamento (`HEROES @
+  ingresso`, Velyr rimasto solo) — `FormationModal` mostrata correttamente con validazione
+  (OK disabilitato con Retroguardia > Prima Linea, riabilitato deselezionando), risolta con
+  successo; scatenata una Finestra Istantanee proattiva giocando `Colpo Secco` contro un
+  nemico (`eldhom.instant.window_opened`, trigger `eldhom.monster.damaged`) —
+  `InstantWindowModal` mostrata con "Velyr — Supporto Tattico" (nome eroe risolto
+  correttamente, non l'id grezzo), istantanea selezionata e giocata con successo (mano di
+  Velyr passata da 5 a 4 carte), flusso proseguito correttamente alla finestra di reazione
+  (DIFESA, già Phase 4); scelto DODGE → ha scompaginato la formazione nemica → SECONDA
+  `FormationModal` apparsa automaticamente per `BRIGANTI @ corridoio`, risolta con successo.
+  Tutti i comandi verificati anche lato server (log `eng_serve`): `resolve_formation` ×2 con
+  payload corretti, `play_instants` con payload corretto.
+- **Variante REATTIVA (`eldhom.pg.enemy_approach`) non osservata/innescata naturalmente in
+  questo turno di test** (richiede una risoluzione di comportamento mostro molto specifica) —
+  ma essendo condivisa al 100% con la variante proattiva già validata (stesso componente,
+  stesso evento motore, unica differenza il comando di risposta scelto in base al campo
+  `trigger`), la fiducia nella sua correttezza è alta by construction. Da confermare
+  opportunisticamente in Phase 7 se si ripresenta durante altri test.
 
 **Notes:**
 - **Nessuna modifica engine necessaria**: le 3 dialog sono già scambi evento→comando asincroni

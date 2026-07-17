@@ -14,7 +14,11 @@
  */
 import type { EngineEnvelope } from '@webgui/session/types'
 import {
+  EVT_FORMATION_DIALOG_NEEDED,
+  EVT_FORMATION_DONE,
   EVT_HAND_UPDATED,
+  EVT_INSTANT_WINDOW_CLOSED,
+  EVT_INSTANT_WINDOW_OPENED,
   EVT_MISSION_TIME_ADVANCED,
   EVT_MONSTER_DEFEATED,
   EVT_MONSTER_MOVED,
@@ -28,7 +32,9 @@ import {
   EVT_TURN_NEXT_ACTOR,
   EVT_ZONE_DOOR_OPENED,
   type CardWire,
+  type FormationDialogWire,
   type HeroWire,
+  type InstantWindowWire,
   type NextActorWire,
   type ReactionWindowWire,
   type StateFullWire,
@@ -100,6 +106,10 @@ export interface EldhomState {
   pendingReaction: ReactionWindowWire | null
   /** Raw hero wire data keyed by id (HP/resources/hand-count for HeroPanel, Phase 5). */
   heroesById: Record<string, HeroWire>
+  /** Set while the engine awaits a mandatory Prima Linea/Retroguardia choice; null otherwise. */
+  pendingFormation: FormationDialogWire | null
+  /** Set while the engine awaits an instant-card choice (proactive or reactive); null otherwise. */
+  pendingInstantWindow: InstantWindowWire | null
 }
 
 export const initialEldhomState: EldhomState = {
@@ -118,6 +128,8 @@ export const initialEldhomState: EldhomState = {
   sequenceActiveByHero: {},
   pendingReaction: null,
   heroesById: {},
+  pendingFormation: null,
+  pendingInstantWindow: null,
 }
 
 /** Loads the card catalog into state (call once after `listCards()` resolves — not envelope-driven). */
@@ -156,6 +168,14 @@ export function applyEnvelope(previous: EldhomState, envelope: EngineEnvelope): 
       return { ...previous, pendingReaction: envelope.data as unknown as ReactionWindowWire }
     case EVT_REACTION_WINDOW_CLOSED:
       return { ...previous, pendingReaction: null }
+    case EVT_FORMATION_DIALOG_NEEDED:
+      return { ...previous, pendingFormation: envelope.data as unknown as FormationDialogWire }
+    case EVT_FORMATION_DONE:
+      return { ...previous, pendingFormation: null }
+    case EVT_INSTANT_WINDOW_OPENED:
+      return { ...previous, pendingInstantWindow: envelope.data as unknown as InstantWindowWire }
+    case EVT_INSTANT_WINDOW_CLOSED:
+      return { ...previous, pendingInstantWindow: null }
     default:
       return previous
   }

@@ -33,6 +33,15 @@ export const CMD_DECLARE_ATTACK = 'eldhom.declare_attack'
 /** Sends the defender's chosen reaction ("TAKE"/"BLOCK"/"DODGE") for a pending attack. */
 export const CMD_REACT_DEFENSE = 'eldhom.react_defense'
 
+/** Resolves a pending formation dialog with the chosen Retroguardia actor ids. */
+export const CMD_RESOLVE_FORMATION = 'eldhom.resolve_formation'
+
+/** Answers a proactive instant-card window (opened after an attack is declared). */
+export const CMD_PLAY_INSTANTS = 'eldhom.play_instants'
+
+/** Answers a reactive instant-card window (Assestarsi — an enemy approached). */
+export const CMD_PLAY_REACTIVE_INSTANTS = 'eldhom.play_reactive_instants'
+
 /** Full state snapshot, sent on mission start / reconnect (see StateFullWire). */
 export const EVT_STATE_FULL = 'eldhom.state.full'
 
@@ -71,6 +80,18 @@ export const EVT_REACTION_WINDOW_OPENED = 'eldhom.reaction.window_opened'
 
 /** The engine closed the reaction window after resolving it. */
 export const EVT_REACTION_WINDOW_CLOSED = 'eldhom.reaction.window_closed'
+
+/** The engine needs a mandatory formation (Prima Linea/Retroguardia) choice (see FormationDialogWire). */
+export const EVT_FORMATION_DIALOG_NEEDED = 'eldhom.formation.dialog_needed'
+
+/** The engine finished applying a resolved formation choice. */
+export const EVT_FORMATION_DONE = 'eldhom.formation.done'
+
+/** The engine opened a proactive or reactive instant-card window (see InstantWindowWire). */
+export const EVT_INSTANT_WINDOW_OPENED = 'eldhom.instant.window_opened'
+
+/** The engine closed the instant-card window after resolving it. */
+export const EVT_INSTANT_WINDOW_CLOSED = 'eldhom.instant.window_closed'
 
 /** One entry of `eldhom.state.full`'s `locations` array. */
 export interface LocationWire {
@@ -183,6 +204,38 @@ export interface ReactionWindowWire {
   group_id?: string
   incoming_damage: number
   reactions: string[]
+}
+
+/** One entry of a formation dialog's `actors` array. */
+export interface FormationActorWire {
+  actor_id: string
+  name: string
+  in_backline: boolean
+}
+
+/** Full payload (`data`) of an `eldhom.formation.dialog_needed` envelope (sent at the data root). */
+export interface FormationDialogWire {
+  location_id: string
+  faction_id: string
+  /** "scompaginamento" | "overflow" | "disrupt" — see FormationModal's SOURCE_LABELS. */
+  source: string
+  actors: FormationActorWire[]
+}
+
+/** One playable instant option (`eldhom.instant.window_opened`'s `options` array). */
+export interface InstantOptionWire {
+  actor_id: string
+  card_id: string
+  card_name: string
+}
+
+/** Full payload (`data`) of an `eldhom.instant.window_opened` envelope (sent at the data root). */
+export interface InstantWindowWire {
+  /** The triggering typeId — "eldhom.pg.enemy_approach" means this is the REACTIVE variant
+   *  (resolve with CMD_PLAY_REACTIVE_INSTANTS), anything else is the proactive variant
+   *  (resolve with CMD_PLAY_INSTANTS). Both variants reuse the same event/modal. */
+  trigger: string
+  options: InstantOptionWire[]
 }
 
 /** One entry of GET /missions. */

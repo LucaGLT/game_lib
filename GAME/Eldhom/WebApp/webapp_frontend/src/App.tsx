@@ -11,11 +11,15 @@ import '@webgui/styles.css'
 import {
   CMD_DECLARE_ATTACK,
   CMD_PLAY_CARD,
+  CMD_PLAY_INSTANTS,
+  CMD_PLAY_REACTIVE_INSTANTS,
   CMD_REACT_DEFENSE,
+  CMD_RESOLVE_FORMATION,
   CMD_SIMPLE_ACTION,
   CMD_STOP_SEQUENCE,
   listCards,
   listMissions,
+  type InstantOptionWire,
   type MissionSummary,
 } from './engine/contract'
 import { hasEffect } from './engine/cardIcons'
@@ -24,8 +28,11 @@ import { formatEvent, resetLogTimeTracking } from './engine/logFormat'
 import { ActionPanel, type TargetingMode } from './components/ActionPanel'
 import { AreaInfoPanel } from './components/AreaInfoPanel'
 import { EldhomMap } from './components/EldhomMap'
+import { FormationModal } from './components/FormationModal'
 import { HandPanel } from './components/HandPanel'
 import { HeroPanel } from './components/HeroPanel'
+import { InstantWindowModal } from './components/InstantWindowModal'
+import { MissionSelectModal } from './components/MissionSelectModal'
 import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
 
@@ -65,7 +72,6 @@ type Targeting =
  */
 function App() {
   const [missions, setMissions] = useState<MissionSummary[]>([])
-  const [missionId, setMissionId] = useState<string>('')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
@@ -87,12 +93,7 @@ function App() {
 
   useEffect(() => {
     listMissions()
-      .then((found) => {
-        setMissions(found)
-        if (found.length > 0) {
-          setMissionId(found[0].mission_id)
-        }
-      })
+      .then((found) => setMissions(found))
       .catch((caught) => setErrorMessage(String(caught)))
   }, [])
 
@@ -130,6 +131,15 @@ function App() {
           reactions: pendingReaction.reactions,
         }
 
+  // actor_id -> display name/label, used by InstantWindowModal (heroes get
+  // their full name, monster instances get their short map-token label).
+  const actorNames: Record<string, string> = {}
+  for (const token of eldhomState.tokens) {
+    actorNames[token.actorId] = token.isHero
+      ? (eldhomState.heroesById[token.actorId]?.name ?? token.label)
+      : token.label
+  }
+
   // Clears any armed targeting when the turn changes or a reaction window
   // opens/closes, so a stale "move armed" state never survives past the
   // hero it was armed for.
@@ -138,11 +148,7 @@ function App() {
     setTargeting(null)
   }, [activeHeroId, hasPendingReaction])
 
-  async function handleStartMission(): Promise<void> {
-    if (missionId === '') {
-      setErrorMessage('Seleziona una missione.')
-      return
-    }
+  async function handleStartMission(missionId: string): Promise<void> {
     try {
       const session = await createSession({ mission_id: missionId })
       disconnectRef.current?.()
@@ -213,6 +219,35 @@ function App() {
       return
     }
     await sendEldhomCommand(CMD_REACT_DEFENSE, { defender_id: pendingReaction.defender_id, reaction })
+  }
+
+  async function handleResolveFormation(backlineActorIds: string[]): Promise<void> {
+    const pendingFormation = eldhomState.pendingFormation
+    if (pendingFormation === null) {
+      return
+    }
+    // Optimistic clear: the engine immediately re-sends a fresh
+    // eldhom.formation.dialog_needed if another formation is still pending
+    // after this one resolves (see handle_resolve_formation in main.cpp).
+    setEldhomState((previous) => ({ ...previous, pendingFormation: null }))
+    await sendEldhomCommand(CMD_RESOLVE_FORMATION, {
+      faction_id: pendingFormation.faction_id,
+      location_id: pendingFormation.location_id,
+      backline: backlineActorIds,
+    })
+  }
+
+  async function handlePlayInstants(selected: InstantOptionWire[]): Promise<void> {
+    const pendingInstantWindow = eldhomState.pendingInstantWindow
+    if (pendingInstantWindow === null) {
+      return
+    }
+    setEldhomState((previous) => ({ ...previous, pendingInstantWindow: null }))
+    const payload = {
+      selected: selected.map((option) => ({ actor_id: option.actor_id, card_id: option.card_id })),
+    }
+    const isReactive = pendingInstantWindow.trigger === 'eldhom.pg.enemy_approach'
+    await sendEldhomCommand(isReactive ? CMD_PLAY_REACTIVE_INSTANTS : CMD_PLAY_INSTANTS, payload)
   }
 
   function handlePlayCard(cardId: string): void {
@@ -333,21 +368,27 @@ function App() {
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />
       </header>
 
-      <section className="controls">
-        <label className="gmgui-field">
-          Missione
-          <select value={missionId} onChange={(event) => setMissionId(event.target.value)}>
-            {missions.map((mission) => (
-              <option key={mission.mission_id} value={mission.mission_id}>
-                {mission.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" onClick={() => void handleStartMission()}>
-          Avvia missione
-        </button>
-      </section>
+      {sessionId === null && (
+        <MissionSelectModal missions={missions} onSelect={(id) => void handleStartMission(id)} />
+      )}
+
+      {eldhomState.pendingFormation && (
+        <FormationModal
+          locationId={eldhomState.pendingFormation.location_id}
+          factionId={eldhomState.pendingFormation.faction_id}
+          source={eldhomState.pendingFormation.source}
+          actors={eldhomState.pendingFormation.actors}
+          onConfirm={(backlineIds) => void handleResolveFormation(backlineIds)}
+        />
+      )}
+
+      {eldhomState.pendingInstantWindow && (
+        <InstantWindowModal
+          options={eldhomState.pendingInstantWindow.options}
+          actorNames={actorNames}
+          onConfirm={(selected) => void handlePlayInstants(selected)}
+        />
+      )}
 
       {eldhomState.title !== '' && (
         <p className="eldhom-mission-title">

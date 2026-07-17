@@ -99,3 +99,55 @@
   color: var(--gm-danger);
   font-weight: 700;
 }
+
+/* ── Modal (generic backdrop/chrome) ─────────────────────────────────────── */
+
+.gmgui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.gmgui-modal {
+  min-width: 320px;
+  max-width: min(560px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.gmgui-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--gm-border);
+}
+
+.gmgui-modal__title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.gmgui-modal__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.gmgui-modal__body {
+  padding: 14px;
+}
+
