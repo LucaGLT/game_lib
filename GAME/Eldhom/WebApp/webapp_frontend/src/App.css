@@ -125,6 +125,31 @@
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
+/* ── Stone theme (richiesta esplicita utente): al posto dell'ombra "sospesa"
+   sopra usata dagli altri temi, ogni titolo/nome legge come inciso a scalpello
+   nella pietra — stessa lista di selettori del blocco `--gm-font-display` qui
+   sopra, così l'effetto copre TUTTI i titoli (non solo l'h1 di pagina),
+   coerente con "Roman-inscription / carved-rune feel" già documentato per
+   `displayFont` di Stone in `themes.ts`. Tecnica: un'ombra scura spostata
+   verso l'alto (il lato della scanalatura in ombra, luce da sopra) più un
+   riflesso chiaro spostato verso il basso (il bordo inferiore della
+   scanalatura che cattura luce riflessa) — nessun drop-shadow "fluttuante". */
+.app[data-theme='stone'] .app-header h1,
+.app[data-theme='stone'] .eldhom-mission-title,
+.app[data-theme='stone'] .eldhom-timeline__chip-name,
+.app[data-theme='stone'] .eldhom-actions__title,
+.app[data-theme='stone'] .eldhom-deck-table__title,
+.app[data-theme='stone'] .eldhom-deck-table__zone-title,
+.app[data-theme='stone'] .eldhom-deck-table__card-name,
+.app[data-theme='stone'] .eldhom-deck-table__preview-card-name,
+.app[data-theme='stone'] .eldhom-hero-panel__name,
+.app[data-theme='stone'] .eldhom-area-info__title,
+.app[data-theme='stone'] .eldhom-map__node-name {
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
 /* ── Shared "panel" depth treatment: every Eldhôm panel/card box gets a
    subtle top-light gradient + drop shadow so the table reads as a set of
    raised game pieces rather than flat form fields. ─────────────────────── */

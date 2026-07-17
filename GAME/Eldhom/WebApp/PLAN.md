@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.16.0
-**Status:** Phase 16 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-16 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.17.0
+**Status:** Phase 17 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-17 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1198,6 +1198,48 @@ Richiesta esplicita utente, in un unico messaggio con due parti indipendenti:
   disparare manualmente in sequenza `dragstart` (sull'elemento sorgente) →
   `dragover`/`drop` (sull'elemento target) → `dragend` (sulla sorgente), tutti con
   `bubbles: true, cancelable: true` e lo stesso `dataTransfer`.
+
+---
+
+### Phase 17 — Titoli "incisi nella pietra" per il Tema Stone (richiesta esplicita utente)
+[✅ Completato]
+
+Richiesta esplicita utente: *"Nello Stile STONE invece di usare Font con Obre usa Font
+Embossed come se fosse inciso sulla Roccia"* — nel tema Stone, l'ombra "sospesa" usata finora
+per i titoli (uguale per tutti i temi) va sostituita con un effetto a rilievo/incisione
+coerente con l'identità già dichiarata per questo tema (`themes.ts`, commento
+`displayFont` Stone: *"Roman-inscription / carved-rune feel"*).
+
+- [x] `App.css`: nuova regola `.app[data-theme='stone'] ...` che riusa la STESSA lista di
+      selettori del blocco `font-family: var(--gm-font-display)` (h1 di pagina, titolo
+      missione, nome chip timeline, titolo Azioni, titolo/titoli-zona/nomi-carta del Tavolo
+      Carte, nome pannello eroe, titolo Area Info, nome nodo Mappa) così l'effetto copre
+      TUTTI i titoli del tema, non solo l'header di pagina
+- [x] Sostituito il drop-shadow generico (`0 2px 6px rgba(0,0,0,0.4)`, ancora invariato per
+      gli altri 4 temi) con un doppio `text-shadow` "inciso": ombra scura spostata verso
+      l'alto (`0 -1px 1px rgba(0,0,0,0.55)`, il lato della scanalatura in ombra) + riflesso
+      chiaro spostato verso il basso (`0 1px 0 rgba(255,255,255,0.55)`, il bordo inferiore
+      della scanalatura che cattura luce riflessa) — nessun offset orizzontale, per un
+      rilievo che legge come verticale/dall'alto, coerente con l'illuminazione implicita
+      già usata altrove nel foglio di stile (`box-shadow` "top-light" dei pannelli)
+- [x] Verificato via `getComputedStyle(...).textShadow` che: (a) il tema Stone applica il
+      nuovo effetto a tutti gli elementi della lista; (b) gli altri 4 temi (Scroll verificato
+      esplicitamente) mantengono l'ombra generica invariata — nessuna regressione
+- [x] `get_errors` pulito (unico residuo il warning preesistente `color-mix()` Chrome<111,
+      non introdotto da questo lavoro); `npm run build`/`npm run lint` puliti
+- [x] Validazione visiva nel browser: screenshot ravvicinato dell'header con font
+      ingrandito temporaneamente per ispezione, che conferma l'ombra scura sopra e il
+      riflesso chiaro sotto ogni lettera (effetto "scavato"), ripristinato subito dopo
+
+**Esito Phase 17 (validato):**
+
+- Il tema Stone ora presenta un'identità tipografica coerente end-to-end: font Cinzel
+  (Phase 10, "carved-rune feel") **e** rilievo a incisione (questa fase) su ogni titolo,
+  invece della sola ombra sospesa condivisa con gli altri temi.
+- Gli altri 4 temi (Scroll, Dark Moon, Blood, Techno) restano **invariati** — la nuova
+  regola è scoped esclusivamente a `.app[data-theme='stone']`.
+- `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
+  CoreEngine C++ (nessuna modifica al wire-contract, solo CSS).
 
 ---
 
