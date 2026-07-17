@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.13.0
-**Status:** Phase 13 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-13 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.14.0
+**Status:** Phase 14 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-14 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -954,6 +954,104 @@ sangue su pergamena per Blood, blueprint per Techno.
   DOM sono già corretti. Fallback affidabile: screenshot a pagina intera (senza `selector`)
   oppure verifica preventiva via `page.evaluate(() => getComputedStyle(...))` prima di fidarsi
   di uno screenshot ravvicinato a un cambio di stato.
+
+---
+
+### Phase 14 — Sfondi tematici "materici" per Mappa e Pagina (richiesta esplicita utente)
+[✅ Completato]
+
+Richiesta esplicita utente, in due passi successivi sullo stesso filone:
+
+1. *"Usa sfondi diversi per i vari stili [...] vedi immagini per Scroll / vedi per Moon / vedi
+   per Blood / per Techno"* — l'utente ha allegato ~13 immagini stock di riferimento (con
+   watermark visibile, es. Alamy/123RF) come mood-board per arricchire lo sfondo della MAPPA
+   (Scroll, Dark Moon, Blood, Techno; Stone non referenziato).
+2. *"Quando parlo di sfondi tematici parlo dell[o] sfondo di tutta la pagina e non solo della
+   mappa / Mappa e [P]agina possono avere 2 sfondi diversi"* — chiarimento: lo sfondo tematico
+   deve coprire **l'intera pagina** (`.app`), distinto dallo sfondo della mappa (`.eldhom-map`).
+
+**Nota su copyright:** le immagini di riferimento fornite dall'utente sono foto stock
+watermarked, non riusabili. Nessuna delle immagini è stata scaricata, referenziata o incorporata:
+l'effetto visivo è stato **reinterpretato integralmente con tecniche CSS pure**
+(`radial-gradient`, `linear-gradient`, `repeating-linear-gradient` sovrapposti), senza alcun
+asset esterno (né file immagine né SVG data-URI).
+
+- [x] **Arricchimento sfondo Mappa** (`.eldhom-map`, dentro i blocchi `[data-theme='...']`
+      già esistenti da Phase 13) per i 4 temi referenziati dalle immagini:
+  - **Scroll** — aggiunti 4 ornamenti "doppio anello" concentrico agli angoli (un singolo
+    `radial-gradient` con 8 color-stop per angolo) + vignettatura bruciata, mantenendo le
+    macchie/trama pergamena preesistenti
+  - **Dark Moon** — aggiunti un disco lunare con 3 crateri + alone di bagliore + 2 banchi di
+    nubi, sovrapposti (prima, nell'ordine dei layer) al campo stellato a 8 layer preesistente
+  - **Blood** — sostituite le 5 ellissi morbide con 6 gocce dai bordi netti (color-stop
+    ravvicinati, senza sfumatura morbida) + 1 colatura ellittica + 4 pozze dai bordi più
+    marcati
+  - **Techno** — aggiunte 8 staffe HUD ad angolo (2 per angolo: barra orizzontale + verticale,
+    `linear-gradient` a tinta piatta) + 1 bagliore radiale "scanner", sovrapposti alla griglia
+    blueprint preesistente
+  - Stone **non modificato** (non referenziato dalle immagini utente)
+- [x] **Sfondo Pagina distinto** (`.app`, tutti e 5 i temi, **nuovo** secondo layer
+      indipendente dallo sfondo mappa): aggiunto un blocco di 5 regole
+      `.app[data-theme='...'] { background-color/-image/-size }` subito dopo la regola base
+      `.app { ... }`, con un commento esplicativo del principio pagina-vs-mappa:
+  - **Scroll** — tavolo di legno scuro (`repeating-linear-gradient` verticale, marroni
+    `#2c1a0c`→`#4a3018`)
+  - **Stone** — muro di sotterraneo scuro (macchie "blocco" radiali + linee di malta
+    orizzontali/verticali via `repeating-linear-gradient`, grigi `#211f1c`→`#171614`)
+  - **Dark Moon** — cielo notturno quasi nero con campo stellato **più rado** (tile 340px
+    contro i 220px della mappa)
+  - **Blood** — sfondo insanguinato quasi nero (`#150808`→`#0c0404`), deliberatamente molto
+    più scuro della pergamena chiara della mappa — risolve la tensione "mappa chiara su tema
+    Blood scuro" già documentata in Phase 13 usando esplicitamente 2 sfondi diversi
+  - **Techno** — gradiente verticale scuro con un solo layer griglia più rado/opaco (tile
+    160px contro i 100px/20px doppi della mappa)
+- [x] Verifica di sicurezza pre-implementazione (`grep_search` su
+      `background-color: var(--gm-panel)`): confermato che tutti i 12 elementi-pannello in
+      `App.css` hanno un proprio sfondo opaco `var(--gm-panel)`, quindi il testo non è mai a
+      contatto diretto con lo sfondo di `.app` (eccetto l'header `<h1>`, che usa
+      `--gm-accent` + `text-shadow` pensato per leggibilità su sfondi variabili) — sicuro
+      scurire/ritematizzare lo sfondo pagina per tema senza compromettere la leggibilità
+- [x] `get_errors` pulito (unico residuo il warning preesistente `color-mix()` Chrome<111,
+      non introdotto da questo lavoro) e `npm run build` pulito per entrambi i round di
+      modifiche
+- [x] Validazione visiva reale nel browser per tutti e 5 i temi con missione attiva (mappa
+      renderizzata), confrontando side-by-side sfondo pagina e sfondo mappa nella stessa
+      schermata
+
+**Bug scoperto e corretto durante la validazione:** le 5 nuove regole per `.app` erano state
+scritte inizialmente come selettore discendente `[data-theme='scroll'] .app` (spazio) —
+sintatticamente valido ma semanticamente errato, perché `data-theme` è impostato **sullo
+stesso elemento** che porta anche `class="app"` (non su un antenato). Il selettore
+discendente non trova quindi mai una corrispondenza e la regola non viene mai applicata
+(confermato: `getComputedStyle(.app).backgroundColor` restituiva ancora il valore piatto
+`var(--gm-background)` nonostante la nuova regola fosse presente nel CSS iniettato). Corretto
+sostituendo con il selettore composto (senza spazio) `.app[data-theme='scroll']` per tutti e
+5 i temi. Le regole preesistenti `[data-theme='...'] .eldhom-map` di Phase 13 erano invece
+corrette perché `.eldhom-map` è un vero discendente di `.app` nel DOM.
+
+**Esito Phase 14 (validato):**
+
+- Tutti e 5 i temi confermati via screenshot reale nel browser, con missione attiva
+  ("L'Ombra sul Corridoio"), a mostrare **due sfondi visivamente distinti** nella stessa
+  schermata: sfondo pagina (dietro/attorno ai pannelli opachi) e sfondo mappa (dentro
+  `.eldhom-map`) — Scroll (tavolo di legno vs pergamena con ornamenti d'angolo), Stone (muro
+  scuro vs granito più chiaro), Dark Moon (cielo rado vs starfield denso + luna), Blood
+  (sfondo quasi nero vs pergamena chiara insanguinata), Techno (griglia rada/scura vs griglia
+  densa/luminosa + staffe HUD).
+- Il colore degli archi CLOSED_DOOR/LOCKED_DOOR e dei token attore (regola "stato di gioco
+  fisso" di Phase 3) resta invariato — nessuna delle modifiche ha toccato quelle regole.
+- `webLib/WebGUI_Lib/src/theme/themes.ts` **non modificato** — nessun impatto su Tris.
+- `npm run build` pulito (`tsc -b && vite build`); nessun nuovo errore TypeScript/lint.
+
+**Notes:**
+- Lezione da ricordare: quando un attributo come `data-theme` è impostato sullo **stesso**
+  elemento che si vuole stilizzare (non su un antenato), il selettore CSS corretto è il
+  **selettore composto** senza spazio (`.app[data-theme='x']`), non il selettore discendente
+  (`[data-theme='x'] .app`). Quest'ultimo richiede che l'attributo sia su un antenato
+  dell'elemento bersaglio. Il modo più rapido per diagnosticare questo errore è confrontare
+  `getComputedStyle(el)` nel browser con il CSS atteso: se la regola è presente nel foglio di
+  stile iniettato ma non appare nel computed style, è quasi sempre un problema di selettore
+  che non fa match, non un problema di build/cache.
 
 ---
 

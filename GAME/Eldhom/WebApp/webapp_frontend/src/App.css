@@ -15,6 +15,73 @@
   transition: background-color 0.25s ease, color 0.25s ease, font-family 0.15s ease;
 }
 
+/* ── Page backdrop — per-theme skin (richiesta esplicita utente: lo sfondo
+   TEMATICO riguarda l'intera pagina, non solo la mappa — Mappa e Pagina
+   hanno DUE sfondi distinti). Questo blocco ridisegna SOLO lo sfondo di
+   `.app` (l'ambiente/scenario attorno ai pannelli opachi: tavolo di legno,
+   parete di pietra, cielo notturno, ecc.) — resta deliberatamente DIVERSO
+   dallo sfondo di `.eldhom-map` più sotto (l'oggetto di finzione "mappa"
+   stessa). Tutti i testi vivono dentro pannelli opachi (`var(--gm-panel)`,
+   12 regole nel file) tranne il titolo header (usa `--gm-accent` +
+   text-shadow, pensato per restare leggibile su qualunque sfondo) — quindi
+   scurire/tematizzare questo sfondo non compromette la leggibilità. ────── */
+
+.app[data-theme='scroll'] {
+  background-color: #2c1a0c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 15px),
+    repeating-linear-gradient(90deg, rgba(255, 195, 130, 0.05) 0px, rgba(255, 195, 130, 0.05) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #4a3018 0%, #2c1a0c 100%);
+}
+
+.app[data-theme='stone'] {
+  background-color: #211f1c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(0, 0, 0, 0.32), transparent 8%),
+    radial-gradient(circle at 42% 55%, rgba(0, 0, 0, 0.28), transparent 7%),
+    radial-gradient(circle at 76% 22%, rgba(0, 0, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(0, 0, 0, 0.26), transparent 7%),
+    radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.24), transparent 6%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 2px, transparent 2px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 96px),
+    linear-gradient(180deg, #292723 0%, #171614 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
+}
+
+.app[data-theme='dark_moon'] {
+  background-color: #06060a;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(1.2px 1.2px at 20% 30%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 60% 70%, #cfd0ff 100%, transparent),
+    radial-gradient(1.4px 1.4px at 80% 15%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 35% 85%, #cfd0ff 100%, transparent),
+    linear-gradient(180deg, #14141e 0%, #08080c 60%, #030305 100%);
+  background-size: auto, 340px 340px, 340px 340px, 340px 340px, 340px 340px, auto;
+}
+
+.app[data-theme='blood'] {
+  background-color: #150808;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(ellipse at 15% 20%, rgba(107, 21, 21, 0.24), transparent 30%),
+    radial-gradient(ellipse at 85% 75%, rgba(80, 10, 10, 0.22), transparent 32%),
+    radial-gradient(ellipse at 60% 40%, rgba(60, 5, 5, 0.2), transparent 28%),
+    linear-gradient(180deg, #1c0a0a 0%, #0c0404 100%);
+}
+
+.app[data-theme='techno'] {
+  background-color: #050d14;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 229, 255, 0.06), transparent 55%),
+    linear-gradient(rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #0a1720 0%, #050d14 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
+}
+
 /* ── Thematic display font: every title/name/heading-class element switches
    face along with the rest of the theme (see theme/themes.ts displayFont) —
    e.g. Scroll reads like manuscript writing, Blood like a gothic-horror
@@ -363,12 +430,23 @@
 
 [data-theme='scroll'] .eldhom-map {
   background-color: #efe0bb;
+  /* Angoli ornamentali (doppio arco, stile filigrana su pergamena) + vignette
+     bruciata ai bordi, ispirati a riferimenti di pergamena antica/mappa del
+     tesoro — realizzati SOLO con radial-gradient, nessun asset esterno. */
   background-image:
+    radial-gradient(circle at 0% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 100% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 0% 100%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 100% 100%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(64, 38, 14, 0.3) 90%, rgba(40, 20, 5, 0.55) 100%),
     radial-gradient(ellipse at 15% 20%, rgba(139, 105, 20, 0.16), transparent 45%),
     radial-gradient(ellipse at 85% 30%, rgba(139, 105, 20, 0.12), transparent 42%),
     radial-gradient(ellipse at 60% 88%, rgba(101, 67, 33, 0.14), transparent 45%),
     radial-gradient(ellipse at 8% 90%, rgba(101, 67, 33, 0.1), transparent 35%),
     repeating-linear-gradient(115deg, rgba(101, 67, 33, 0.04) 0px, rgba(101, 67, 33, 0.04) 1px, transparent 1px, transparent 6px);
+  background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto, auto;
+  background-repeat: no-repeat;
   border: 2px solid var(--gm-border);
   box-shadow: inset 0 0 60px rgba(101, 67, 33, 0.35), inset 0 0 0 6px rgba(255, 250, 230, 0.3);
 }
@@ -426,7 +504,17 @@
 
 [data-theme='dark_moon'] .eldhom-map {
   background-color: #101018;
+  /* Disco lunare (con crateri) + nubi sottili in un angolo del cielo
+     stellato, ispirati a riferimenti fotografici di luna/cielo notturno —
+     realizzati SOLO con radial-gradient, nessun asset esterno. */
   background-image:
+    radial-gradient(circle at 84% 12%, rgba(140, 140, 160, 0.55) 0%, rgba(140, 140, 160, 0.55) 1%, transparent 1.4%),
+    radial-gradient(circle at 88% 16%, rgba(140, 140, 160, 0.5) 0%, rgba(140, 140, 160, 0.5) 0.7%, transparent 1.1%),
+    radial-gradient(circle at 87% 11%, rgba(150, 150, 168, 0.45) 0%, rgba(150, 150, 168, 0.45) 0.5%, transparent 0.9%),
+    radial-gradient(circle at 86% 14%, #dcdce6 0%, #dcdce6 8%, transparent 8.6%),
+    radial-gradient(circle at 86% 14%, rgba(220, 220, 235, 0.25), transparent 16%),
+    radial-gradient(ellipse 40% 10% at 30% 60%, rgba(60, 60, 80, 0.22), transparent 70%),
+    radial-gradient(ellipse 55% 8% at 65% 78%, rgba(50, 50, 70, 0.18), transparent 70%),
     radial-gradient(1.6px 1.6px at 12% 20%, #ffffff 100%, transparent),
     radial-gradient(1.2px 1.2px at 32% 65%, #cfd0ff 100%, transparent),
     radial-gradient(1.4px 1.4px at 55% 15%, #ffffff 100%, transparent),
@@ -436,8 +524,8 @@
     radial-gradient(1.3px 1.3px at 6% 82%, #ffffff 100%, transparent),
     radial-gradient(1px 1px at 45% 92%, #cfd0ff 100%, transparent),
     radial-gradient(ellipse at 50% 0%, rgba(168, 156, 200, 0.12), transparent 60%);
-  background-size: 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px,
-    220px 220px, auto;
+  background-size: auto, auto, auto, auto, auto, auto, auto, 220px 220px, 220px 220px, 220px 220px, 220px 220px,
+    220px 220px, 220px 220px, 220px 220px, 220px 220px, auto;
   border: 1px solid var(--gm-border);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
 }
@@ -461,12 +549,21 @@
 
 [data-theme='blood'] .eldhom-map {
   background-color: #d8c6a0;
+  /* Schizzi/gocce a bordo netto + macchie/pozze più ampie a bordo morbido,
+     ispirati a riferimenti di schizzi di sangue su pergamena/superficie —
+     realizzati SOLO con radial-gradient, nessun asset esterno. */
   background-image:
-    radial-gradient(ellipse at 20% 25%, rgba(107, 21, 21, 0.38), transparent 40%),
-    radial-gradient(ellipse at 75% 18%, rgba(107, 21, 21, 0.3), transparent 35%),
-    radial-gradient(ellipse at 55% 70%, rgba(80, 10, 10, 0.32), transparent 45%),
-    radial-gradient(ellipse at 12% 85%, rgba(107, 21, 21, 0.24), transparent 35%),
-    radial-gradient(ellipse at 92% 82%, rgba(60, 5, 5, 0.26), transparent 32%),
+    radial-gradient(circle at 24% 34%, rgba(90, 12, 12, 0.85) 0%, rgba(90, 12, 12, 0.85) 1.4%, transparent 1.9%),
+    radial-gradient(circle at 68% 22%, rgba(107, 21, 21, 0.85) 0%, rgba(107, 21, 21, 0.85) 1.8%, transparent 2.3%),
+    radial-gradient(circle at 44% 62%, rgba(80, 10, 10, 0.8) 0%, rgba(80, 10, 10, 0.8) 1.2%, transparent 1.7%),
+    radial-gradient(circle at 82% 68%, rgba(90, 12, 12, 0.8) 0%, rgba(90, 12, 12, 0.8) 1.5%, transparent 2%),
+    radial-gradient(circle at 15% 78%, rgba(107, 21, 21, 0.7) 0%, rgba(107, 21, 21, 0.7) 1%, transparent 1.5%),
+    radial-gradient(circle at 58% 10%, rgba(90, 12, 12, 0.6) 0%, rgba(90, 12, 12, 0.6) 0.6%, transparent 1%),
+    radial-gradient(ellipse 2.5% 16% at 26% 50%, rgba(90, 12, 12, 0.4), transparent 75%),
+    radial-gradient(ellipse at 20% 25%, rgba(107, 21, 21, 0.5) 0%, rgba(107, 21, 21, 0.42) 20%, transparent 42%),
+    radial-gradient(ellipse at 75% 18%, rgba(107, 21, 21, 0.42) 0%, rgba(107, 21, 21, 0.34) 16%, transparent 37%),
+    radial-gradient(ellipse at 55% 70%, rgba(80, 10, 10, 0.45) 0%, rgba(80, 10, 10, 0.36) 20%, transparent 45%),
+    radial-gradient(ellipse at 12% 85%, rgba(107, 21, 21, 0.34) 0%, rgba(107, 21, 21, 0.26) 15%, transparent 35%),
     repeating-linear-gradient(112deg, rgba(80, 50, 20, 0.05) 0px, rgba(80, 50, 20, 0.05) 1px, transparent 1px, transparent 6px);
   border: 2px solid var(--gm-border);
   box-shadow: inset 0 0 70px rgba(60, 5, 5, 0.45);
@@ -492,12 +589,29 @@
 
 [data-theme='techno'] .eldhom-map {
   background-color: #08131e;
+  /* Cornice HUD ad angoli (bracket) + griglia blueprint + bagliore scanner,
+     ispirati a riferimenti di interfacce sci-fi/HUD — realizzati SOLO con
+     linear-gradient/radial-gradient, nessun asset esterno. */
   background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(0, 229, 255, 0.14), transparent 30%),
     linear-gradient(rgba(0, 200, 255, 0.16) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 200, 255, 0.16) 1px, transparent 1px),
     linear-gradient(rgba(0, 200, 255, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 200, 255, 0.06) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
   border: 1px solid var(--gm-border);
   box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.12);
 }
