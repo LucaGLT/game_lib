@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.12.0
-**Status:** Phase 12 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-12 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.13.0
+**Status:** Phase 13 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-13 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -885,6 +885,75 @@ gestite come una Pila LIFO ma con l'ultimo entrato in cima e il primo entrato in
   (`page.click`) sposta prima il mouse sull'elemento e poi clicca, quindi attiva naturalmente
   `onMouseEnter` prima del click — non serve un `page.mouse.move` separato quando si sta già
   cliccando (solo per hover-only, senza click, serve muovere il mouse esplicitamente).
+
+---
+
+### Phase 13 — Skin tematico dell'area Mappa (richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: l'area della MAPPA deve sembrare davvero una mappa, con uno stile
+visivo di "materiale" distinto per ciascun tema attivo — inchiostri colorati su pergamena per
+Scroll, segni rustici su pietra per Stone, mappa stellare per Dark Moon, mappa disegnata col
+sangue su pergamena per Blood, blueprint per Techno.
+
+- [x] Aggiunto l'attributo `data-theme={theme.id}` al `<div className="app">` radice in
+      `App.tsx` (accanto al preesistente `style={themeToCssVars(theme)}`), per abilitare
+      selettori CSS locali a Eldhôm (`[data-theme='scroll'] .eldhom-map {...}`) **senza**
+      toccare `webLib/WebGUI_Lib/src/theme/themes.ts` (condiviso e game-agnostic anche con
+      Tris) — stessa separazione delle responsabilità già in uso per token generici vs.
+      presentazione specifica del gioco
+- [x] Implementato in `App.css` un blocco CSS per ciascuno dei 5 temi, che stilizza **solo**:
+      sfondo di `.eldhom-map`, chrome di `.eldhom-map__node`, tratto di
+      `.eldhom-map__edge--free` (l'unico tipo di arco già theme-reattivo tramite
+      `var(--gm-border)`), più un watermark decorativo `::after` nell'angolo di
+      `.eldhom-map-container`
+- [x] **Scroll** — pergamena: sfondo `radial-gradient`+`repeating-linear-gradient` per
+      macchie e trama, font `IM Fell English` sui titoli nodo, watermark 🧭 (bussola)
+- [x] **Stone** — pietra: sfondo screziato granito (`radial-gradient` multipli), nodi con
+      `border-radius: 2px` (spigoli netti, contrasto voluto col radius più arrotondato del
+      tema altrove), font `Cinzel` (iscrizione scolpita), watermark 🗿 (moai)
+- [x] **Dark Moon** — mappa stellare: più layer di piccoli `radial-gradient` "a puntino"
+      ripetuti via `background-size` per un campo stellato, bordo nodo con `filter:
+      drop-shadow(...)` (bagliore), font `Pirata One`, watermark 🌙
+- [x] **Blood** — pergamena insanguinata: sfondo pergamena chiaro dedicato
+      (`#D8C6A0` con macchie rosso sangue `#6B1515`/`#501414`) — scelta deliberata: la MAPPA
+      è un oggetto di finzione a sé (pergamena), indipendente dalla palette scura ambientale
+      del tema Blood usata nel resto della UI; font `Metamorphous`, watermark 🗡️
+- [x] **Techno** — blueprint: griglia tecnica via 4 `linear-gradient` (major 100px + minor
+      20px, entrambi gli assi), nodi con `border-radius: 2px` e `stroke-dasharray: 5 3`
+      sull'arco libero (look schematico), font monospace/`Orbitron`, watermark 📡
+- [x] Preservata **invariata** in tutti e 5 i temi la regola "colore di stato di gioco fisso,
+      non theme-reattivo" già documentata da Phase 3: colori arco CLOSED_DOOR/LOCKED_DOOR
+      (`#c03030` solido/tratteggiato) e token attore (sfondo `#1a237e`, bordo turno attivo
+      `#e03030`) **non modificati** da questo lavoro — mirror di
+      `map_scene.py::_edge_pen()`/`theme_manager.py::resolve_semantic_color` lato desktop
+- [x] Validazione visiva reale nel browser per tutti e 5 i temi (screenshot pagina intera,
+      non solo `get_errors`/build): confermato l'aspetto materico distinto per ciascun tema e
+      confermato che gli archi CLOSED_DOOR (rossi) e i token attore (blu navy/bordo rosso su
+      turno attivo) restano visivamente identici cambiando tema
+
+**Esito Phase 13 (validato):**
+
+- Tutti e 5 gli stili tematici della mappa (`Ingresso`/`Corridoio`/`Sala` della missione
+  "L'Ombra sul Corridoio") confermati via screenshot reale nel browser: pergamena+inchiostro
+  (Scroll), pietra scolpita (Stone), campo stellato (Dark Moon), pergamena insanguinata
+  (Blood), blueprint ciano (Techno) — ciascuno visivamente distinto e coerente con la
+  richiesta.
+- Confermato che il colore degli archi CLOSED_DOOR/LOCKED_DOOR e dei token attore (incluso il
+  bordo rosso di turno attivo) resta invariato in tutti i 5 temi: la regola "stato di gioco
+  fisso" di Phase 3 non è stata compromessa.
+- `webLib/WebGUI_Lib/src/theme/themes.ts` **non modificato** — nessun impatto su Tris o su
+  altri consumatori del pacchetto tema condiviso.
+- `npm run build` pulito (`tsc -b && vite build`, ~376ms); nessun nuovo errore
+  TypeScript/lint (unico warning residuo: `color-mix()` compat Chrome<111, preesistente e
+  non correlato).
+
+**Notes:**
+- Scoperto un quirk del tool di screenshot: uno screenshot con `selector` mirato su
+  `.eldhom-map-container` può occasionalmente restituire un frame stale/cache subito dopo un
+  cambio tema (`page.selectOption`), anche quando `getComputedStyle`/attributo `data-theme` nel
+  DOM sono già corretti. Fallback affidabile: screenshot a pagina intera (senza `selector`)
+  oppure verifica preventiva via `page.evaluate(() => getComputedStyle(...))` prima di fidarsi
+  di uno screenshot ravvicinato a un cambio di stato.
 
 ---
 

@@ -390,7 +390,7 @@ function App() {
           }))
 
   return (
-    <div className="app" style={themeToCssVars(theme) as CSSProperties}>
+    <div className="app" data-theme={theme.id} style={themeToCssVars(theme) as CSSProperties}>
       <header className="app-header">
         <h1>Eldhôm — WebApp</h1>
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />

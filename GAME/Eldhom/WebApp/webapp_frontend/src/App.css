@@ -350,6 +350,188 @@
   cursor: pointer;
 }
 
+/* ── Map area — per-theme "in-fiction artifact" skin (richiesta esplicita
+   utente: l'area mappa deve sembrare DAVVERO una mappa nello stile del tema
+   attivo, non solo colori/font generici). Selezionata via `[data-theme]`
+   sulla radice `.app` (impostato da App.tsx da `theme.id`) — NON tramite
+   webLib/WebGUI_Lib/theme (che resta game-agnostic, questo è un concetto
+   puramente narrativo/Eldhôm). Tocca SOLO fondo mappa, riquadro nodi e vie
+   FREE: le vie CLOSED_DOOR/LOCKED_DOOR e i token attore restano
+   DELIBERATAMENTE fissi in ogni tema, vedi commento sopra
+   `.eldhom-map-container` — qui si ridisegna solo il "materiale" della
+   mappa, non lo stato di gioco. ─────────────────────────────────────────── */
+
+[data-theme='scroll'] .eldhom-map {
+  background-color: #efe0bb;
+  background-image:
+    radial-gradient(ellipse at 15% 20%, rgba(139, 105, 20, 0.16), transparent 45%),
+    radial-gradient(ellipse at 85% 30%, rgba(139, 105, 20, 0.12), transparent 42%),
+    radial-gradient(ellipse at 60% 88%, rgba(101, 67, 33, 0.14), transparent 45%),
+    radial-gradient(ellipse at 8% 90%, rgba(101, 67, 33, 0.1), transparent 35%),
+    repeating-linear-gradient(115deg, rgba(101, 67, 33, 0.04) 0px, rgba(101, 67, 33, 0.04) 1px, transparent 1px, transparent 6px);
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 60px rgba(101, 67, 33, 0.35), inset 0 0 0 6px rgba(255, 250, 230, 0.3);
+}
+
+[data-theme='scroll'] .eldhom-map__node {
+  background-color: rgba(255, 250, 230, 0.55);
+  background-image: none;
+  border: 3px double #8a6a3f;
+  box-shadow: 1px 1px 3px rgba(101, 67, 33, 0.4);
+}
+
+[data-theme='scroll'] .eldhom-map__edge--free {
+  stroke: #6b4a23;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+[data-theme='scroll'] .eldhom-map-container::after {
+  content: '🧭';
+}
+
+[data-theme='stone'] .eldhom-map {
+  background-color: #ada89e;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.09), transparent 6%),
+    radial-gradient(circle at 55% 60%, rgba(0, 0, 0, 0.12), transparent 7%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08), transparent 5%),
+    radial-gradient(circle at 30% 80%, rgba(0, 0, 0, 0.1), transparent 6%),
+    radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.07), transparent 5%),
+    repeating-linear-gradient(38deg, rgba(0, 0, 0, 0.05) 0px, rgba(0, 0, 0, 0.05) 1px, transparent 1px, transparent 16px);
+  background-size: 140px 140px, 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
+  border: 3px solid var(--gm-border);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='stone'] .eldhom-map__node {
+  background-color: #c8c3b9;
+  border: 2px solid #4a463f;
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.25), inset -1px -1px 3px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='stone'] .eldhom-map__edge--free {
+  stroke: #4a463f;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+[data-theme='stone'] .eldhom-map-container::after {
+  content: '🗿';
+}
+
+[data-theme='dark_moon'] .eldhom-map {
+  background-color: #101018;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 20%, #ffffff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 32% 65%, #cfd0ff 100%, transparent),
+    radial-gradient(1.4px 1.4px at 55% 15%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 70% 55%, #cfd0ff 100%, transparent),
+    radial-gradient(1.6px 1.6px at 85% 80%, #ffffff 100%, transparent),
+    radial-gradient(1.1px 1.1px at 92% 25%, #cfd0ff 100%, transparent),
+    radial-gradient(1.3px 1.3px at 6% 82%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 45% 92%, #cfd0ff 100%, transparent),
+    radial-gradient(ellipse at 50% 0%, rgba(168, 156, 200, 0.12), transparent 60%);
+  background-size: 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px, 220px 220px,
+    220px 220px, auto;
+  border: 1px solid var(--gm-border);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='dark_moon'] .eldhom-map__node {
+  background-color: rgba(38, 38, 45, 0.85);
+  border: 1px solid var(--gm-accent);
+  box-shadow: 0 0 8px rgba(168, 156, 200, 0.35), inset 0 0 10px rgba(168, 156, 200, 0.08);
+}
+
+[data-theme='dark_moon'] .eldhom-map__edge--free {
+  stroke: var(--gm-accent);
+  stroke-width: 1;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 2px var(--gm-accent));
+}
+
+[data-theme='dark_moon'] .eldhom-map-container::after {
+  content: '🌙';
+}
+
+[data-theme='blood'] .eldhom-map {
+  background-color: #d8c6a0;
+  background-image:
+    radial-gradient(ellipse at 20% 25%, rgba(107, 21, 21, 0.38), transparent 40%),
+    radial-gradient(ellipse at 75% 18%, rgba(107, 21, 21, 0.3), transparent 35%),
+    radial-gradient(ellipse at 55% 70%, rgba(80, 10, 10, 0.32), transparent 45%),
+    radial-gradient(ellipse at 12% 85%, rgba(107, 21, 21, 0.24), transparent 35%),
+    radial-gradient(ellipse at 92% 82%, rgba(60, 5, 5, 0.26), transparent 32%),
+    repeating-linear-gradient(112deg, rgba(80, 50, 20, 0.05) 0px, rgba(80, 50, 20, 0.05) 1px, transparent 1px, transparent 6px);
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 70px rgba(60, 5, 5, 0.45);
+}
+
+[data-theme='blood'] .eldhom-map__node {
+  background-color: rgba(216, 198, 160, 0.55);
+  border: 2px solid #6b1515;
+  box-shadow: 1px 1px 4px rgba(80, 10, 10, 0.5);
+}
+
+[data-theme='blood'] .eldhom-map__edge--free {
+  stroke: #6b1515;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 1.5px rgba(80, 10, 10, 0.6));
+}
+
+[data-theme='blood'] .eldhom-map-container::after {
+  content: '🗡️';
+}
+
+[data-theme='techno'] .eldhom-map {
+  background-color: #08131e;
+  background-image:
+    linear-gradient(rgba(0, 200, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(0, 200, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.06) 1px, transparent 1px);
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  border: 1px solid var(--gm-border);
+  box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.12);
+}
+
+[data-theme='techno'] .eldhom-map__node {
+  background-color: rgba(16, 32, 45, 0.85);
+  border: 1px solid var(--gm-border);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 200, 255, 0.1);
+}
+
+[data-theme='techno'] .eldhom-map__edge--free {
+  stroke: var(--gm-border);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 3;
+  opacity: 0.9;
+}
+
+[data-theme='techno'] .eldhom-map-container::after {
+  content: '📡';
+}
+
+/* Shared placement/behaviour for every theme's corner watermark above (only
+   `content` differs per theme, set in each `[data-theme=...]` rule above). */
+.eldhom-map-container::after {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 20px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* ── Action panel (4 simple actions + inline reaction window) ───────────── */
 
 .eldhom-actions {
