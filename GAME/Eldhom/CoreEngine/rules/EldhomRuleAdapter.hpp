@@ -39,7 +39,9 @@
 #include "GAME/Eldhom/CoreEngine/targeting/TargetingFilter.hpp"
 
 #include <functional>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace eldhom {
@@ -55,6 +57,13 @@ struct EffectResult {
 	int                hp_restored  = 0;   ///< HP restored (positive)
 	bool               target_ko    = false; ///< True if the target reached 0 HP
 	std::string        note;               ///< Debug / narrative description
+
+	/// Extra timeline cost from crossing closed zone-boundary doors during a MOVE
+	/// (added on top of the action/card's base timeline cost).
+	int extra_timeline_cost = 0;
+	/// Zone-boundary doors newly opened by this MOVE (normalized pairs), so the
+	/// caller can emit a GUI notification for each one.
+	std::vector<std::pair<LocationId, LocationId>> opened_doors;
 };
 
 /**
@@ -91,7 +100,7 @@ public:
 		const EldhomEffect& effect,
 		const HeroId&       actor_id,
 		gmActor::ActorStore& store,
-		const std::string&  target_faction) const;
+		const std::string&  target_faction);
 
 	// ── Monster behavior step effects ─────────────────────────────────────────
 
@@ -128,7 +137,7 @@ public:
 	EffectResult apply_simple_move(
 		const HeroId&        hero_id,
 		const LocationId&    dest_id,
-		gmActor::ActorStore& store) const;
+		gmActor::ActorStore& store);
 
 	/**
 	 * @brief Moves a hero to dest_id if reachable within max_steps BFS steps.
@@ -141,13 +150,21 @@ public:
 	 * @param dest_id    Target LocationId.
 	 * @param max_steps  Maximum BFS distance allowed (>= 1).
 	 * @param store      Actor store (modified in place).
+	 * @param avoid_enemy_locations  If true, intermediate path locations occupied
+	 *                   by `enemy_faction` are excluded from the search (the
+	 *                   final destination is exempt). Used by Passo Cauto /
+	 *                   Scatto Breve.
+	 * @param enemy_faction  Faction to avoid crossing through, when
+	 *                   `avoid_enemy_locations` is true.
 	 * @return EffectResult (resolved=false if dest_id is not reachable).
 	 */
 	EffectResult apply_card_move(
 		const HeroId&        hero_id,
 		const LocationId&    dest_id,
 		int                  max_steps,
-		gmActor::ActorStore& store) const;
+		gmActor::ActorStore& store,
+		bool                 avoid_enemy_locations = false,
+		const std::string&   enemy_faction = std::string{});
 
 	/**
 	 * @brief Applies an Attacco Semplice for a hero (1 damage, nearest target).
@@ -200,15 +217,49 @@ public:
 	 * @param store     Actor store to query (read-only).
 	 * @param from_loc  Location from which targeting is resolved.
 	 * @param faction   Faction being targeted.
+	 * @param range     Search radius in location-hops (0 = same location only,
+	 *                  the default). Searches the nearest location (fewest
+	 *                  hops) with at least one valid target, up to `range`.
 	 * @return Actor ID of the nearest valid target, or empty string if none.
 	 */
 	gmActor::ActorId find_nearest_target(
 		const gmActor::ActorStore& store,
 		const LocationId&          from_loc,
-		const std::string&         faction) const;
+		const std::string&         faction,
+		int                        range = 0) const;
+
+	/**
+	 * @brief Checks whether an explicit, player-chosen target is reachable
+	 * and targetable within a card's declared range.
+	 *
+	 * Used by EldhomEngine::play_card when the caller (GUI) supplies a
+	 * specific `target_id` (e.g. the monster the player clicked) instead of
+	 * letting the engine auto-select via find_nearest_target. Performs the
+	 * same hop-by-hop BFS as find_nearest_target, but checks membership of
+	 * `target_id` in each hop's valid-target set (respecting §15 Proiezione)
+	 * instead of returning the first hit.
+	 *
+	 * @param store     Actor store to query (read-only).
+	 * @param from_loc  Location from which targeting is resolved.
+	 * @param target_id Actor the player chose.
+	 * @param faction   Faction being targeted.
+	 * @param range     Search radius in location-hops (0 = same location only).
+	 * @return True if `target_id` is a valid target within `range` hops.
+	 */
+	bool is_valid_target_in_range(
+		const gmActor::ActorStore& store,
+		const LocationId&          from_loc,
+		const gmActor::ActorId&    target_id,
+		const std::string&         faction,
+		int                        range = 0) const;
 
 	TargetingFilter                                                _targeting;
 	std::unordered_map<LocationId, std::vector<LocationId>>        _adjacency;
+	/// Zone-boundary doors (LocationId pairs, always stored with `first < second`)
+	/// that a PG has already crossed. Until a pair is in this set, it is a
+	/// CLOSED_DOOR: PGs pay +1 extra timeline cost to cross it and monsters cannot cross it
+	/// at all. Once opened it behaves exactly like a free passage for everyone.
+	std::set<std::pair<LocationId, LocationId>>                    _opened_zone_doors;
 
 	EffectResult apply_damage(
 		const gmActor::ActorId& target_id,
@@ -216,6 +267,52 @@ public:
 		gmActor::ActorStore&    store) const;
 
 	bool is_adjacent(const LocationId& from, const LocationId& to) const;
+
+	/**
+	 * @brief Returns the zone prefix of a LocationId (trailing digits stripped).
+	 *
+	 * Examples: "S1"->"S", "C2"->"C", "IN"->"IN". Mirrors the GUI's own
+	 * heuristic (board_widget.py `_zone_from_loc_id`) so both sides always
+	 * agree on which passages are zone-boundary doors.
+	 *
+	 * @param loc_id LocationId to classify.
+	 * @return Zone prefix string.
+	 */
+	static std::string zone_of(const LocationId& loc_id);
+
+	/**
+	 * @brief True if *a* and *b* belong to different zones (a CLOSED_DOOR
+	 * candidate), regardless of whether it has already been opened.
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	bool is_zone_boundary(const LocationId& a, const LocationId& b) const;
+
+	/**
+	 * @brief True if the zone-boundary door between *a* and *b* has already
+	 * been opened by a PG (or if a and b are in the same zone, i.e. there was
+	 * never a door to open).
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	bool is_zone_door_open(const LocationId& a, const LocationId& b) const;
+
+	/**
+	 * @brief Marks the zone-boundary door between *a* and *b* as open.
+	 *
+	 * Idempotent: calling it again on an already-open pair has no effect.
+	 *
+	 * @param a First LocationId.
+	 * @param b Second LocationId.
+	 */
+	void open_zone_door(const LocationId& a, const LocationId& b);
+
+	/**
+	 * @brief Returns all zone-boundary doors opened so far (for GUI/state export).
+	 */
+	const std::set<std::pair<LocationId, LocationId>>& opened_zone_doors() const;
 
 	/**
 	 * @brief Adds a new adjacency edge at runtime (e.g. when a door is opened).

@@ -73,6 +73,7 @@ class EldhomActorAdapter(QWidget):
     # ── Internal translators ──────────────────────────────────────────────────
 
     def _on_state_full(self, data: dict) -> None:
+        old_ids = set(self._cache.keys())
         actors: list[dict] = []
         self._cache.clear()
         for hero in data.get("heroes", []):
@@ -86,6 +87,14 @@ class EldhomActorAdapter(QWidget):
                 if entry is not None:
                     self._cache[entry["actor_id"]] = entry
                     actors.append(entry)
+        # Remove actors that existed before but are absent from this snapshot
+        # (e.g. a brand-new mission was loaded) so stale rows from a previous
+        # mission never linger in the tree.
+        for stale_id in old_ids - set(self._cache.keys()):
+            self._module.on_envelope({
+                "typeId": "gmActor.actor.removed",
+                "data":   {"actor_id": stale_id},
+            })
         self._module.on_envelope(
             {"typeId": "gmActor.snapshot", "data": {"actors": actors}}
         )

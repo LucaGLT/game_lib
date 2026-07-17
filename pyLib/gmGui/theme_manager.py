@@ -763,6 +763,14 @@ def resolve_semantic_color(name: str, app: QApplication | None = None) -> QColor
         return QColor("#1a237e")
     if name == "map_sat_actor_fg":
         return QColor("#ffffff")
+    # Edge (adjacency) colours — fixed gameplay-state semantics, not theme-dependent.
+    # Used for both CLOSED_DOOR (solid line, PG can pay +1 timeline to cross)
+    # and LOCKED_DOOR (dashed line, needs a specific interaction to open).
+    if name == "map_edge_locked_door":
+        return QColor("#c03030")   # red — door/passage not freely walkable
+    # Actor satellite highlight border — fixed gameplay-state semantic (turn indicator).
+    if name == "map_actor_turn_border":
+        return QColor("#e03030")   # red — actor's turn
     # Zone / Region palette (10 slots: map_zone_0 … map_zone_9).
     # Named explicit zone tokens must be checked first.
     if name == "map_zone_dark_green":

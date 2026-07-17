@@ -8,7 +8,10 @@ Public API
 ----------
 on_state_full(msg)      Build / rebuild the entire map from a full state snapshot.
 on_pg_moved(msg)        Move a hero token to its new location.
-on_monster_defeated(msg) Grey-out a defeated monster token on the map.
+on_monster_defeated(msg) Remove a defeated monster instance's token from the map.
+on_next_actor(msg)      Highlight the acting actor's token(s) with a red border.
+set_selected_actor(id)  Highlight the given actor's token with an accent border.
+refresh_theme()         Re-apply the active theme's colours to the map.
 
 Signal
 ------
@@ -164,6 +167,10 @@ class EldhomBoardWidget(QWidget):
         self._loc_index: dict[str, int] = {}      # loc_id  → integer index
         self._actor_locs: dict[str, str] = {}     # actor_id → loc_id
         self._map_built: bool = False             # map structure built once
+        self._group_instances: dict[str, list[str]] = {}  # group_id → instance ids
+        self._locked_pairs_sig: frozenset = frozenset()    # for rebuild-on-unlock
+        self._opened_zone_doors_sig: frozenset = frozenset()  # for rebuild-on-door-open
+        self._current_mission_id: str = ""        # detects new-mission resets
 
         self._module: GmMapModule = GmMapModule()
         self._module_widget: QWidget = self._module.widget()
@@ -189,16 +196,54 @@ class EldhomBoardWidget(QWidget):
         """
         data = _extract_data(msg)
 
+        # A different mission_id means every previous actor/location is stale:
+        # force a full rebuild so no monster/hero token from the old mission
+        # can linger, even when the new mission happens to reuse the same
+        # location ids (which would otherwise skip the rebuild below).
+        mission_id = str(data.get("mission_id", ""))
+        if mission_id != self._current_mission_id:
+            self._current_mission_id = mission_id
+            self._map_built = False
+            self._actor_locs.clear()
+            self._group_instances.clear()
+
         incoming_locs = {
             str(loc.get("id", ""))
             for loc in data.get("locations", [])
             if loc.get("id", "")
         }
-        # Rebuild the structure only when the map actually changes (first load
-        # or a new mission), to avoid resetting the force-directed layout.
-        if not self._map_built or incoming_locs != set(self._loc_index.keys()):
+
+        # Collect locked-adjacency pairs from runtime payload; fallback to
+        # mission file for older engines that do not expose special_objects.
+        locked_pairs = _extract_locked_pairs_from_special_objects(
+            list(data.get("special_objects", [])))
+        if not locked_pairs:
+            locked_pairs = _load_locked_pairs_from_mission_file(
+                str(data.get("mission_id", "")))
+        locked_sig = frozenset(locked_pairs)
+
+        # Zone-boundary doors (CLOSED_DOOR) already crossed by a PG: rendered
+        # as free passages from then on, for PGs and monsters alike.
+        opened_zone_doors: set[tuple[str, str]] = set()
+        for pair in data.get("opened_zone_doors", []):
+            if isinstance(pair, list) and len(pair) == 2:
+                a, b = str(pair[0]), str(pair[1])
+                opened_zone_doors.add((a, b))
+                opened_zone_doors.add((b, a))
+        opened_doors_sig = frozenset(opened_zone_doors)
+
+        # Rebuild the structure only when the map actually changes (first load,
+        # a new mission, a locked passage becomes unlocked/re-locked, or a
+        # zone-boundary door is newly opened), to avoid resetting the
+        # force-directed layout on every snapshot.
+        if (not self._map_built
+                or incoming_locs != set(self._loc_index.keys())
+                or locked_sig != self._locked_pairs_sig
+                or opened_doors_sig != self._opened_zone_doors_sig):
             self._loc_index.clear()
             self._map_built = False
+        self._locked_pairs_sig = locked_sig
+        self._opened_zone_doors_sig = opened_doors_sig
 
         if not self._map_built:
 
@@ -214,14 +259,6 @@ class EldhomBoardWidget(QWidget):
                 if loc.get("id", "")
             }
 
-            # Collect locked-adjacency pairs from runtime payload; fallback to
-            # mission file for older engines that do not expose special_objects.
-            locked_pairs = _extract_locked_pairs_from_special_objects(
-                list(data.get("special_objects", [])))
-            if not locked_pairs:
-                locked_pairs = _load_locked_pairs_from_mission_file(
-                    str(data.get("mission_id", "")))
-
             for loc in data.get("locations", []):
                 lid  = str(loc.get("id", ""))
                 if not lid:
@@ -235,8 +272,13 @@ class EldhomBoardWidget(QWidget):
                     edge  = tuple(sorted((idx, a_idx)))
                     if edge not in seen_edges:
                         seen_edges.add(edge)
-                        adj_zone  = loc_zones.get(a_lid, "")
-                        edge_type = "FREE" if zone == adj_zone else "CLOSED_DOOR"
+                        if (lid, a_lid) in locked_pairs or (a_lid, lid) in locked_pairs:
+                            edge_type = "LOCKED_DOOR"
+                        elif (lid, a_lid) in opened_zone_doors:
+                            edge_type = "FREE"
+                        else:
+                            adj_zone  = loc_zones.get(a_lid, "")
+                            edge_type = "FREE" if zone == adj_zone else "CLOSED_DOOR"
                         edges_out.append([edge[0], edge[1], edge_type])
                 locations_out.append({
                     "location_id": idx,
@@ -247,7 +289,8 @@ class EldhomBoardWidget(QWidget):
                     "metadata":    {"terrain": "stone", "items": []},
                 })
 
-            # Add LOCKED_DOOR edges from special_objects (not in regular adjacency)
+            # Add LOCKED_DOOR edges from special_objects not present in the
+            # regular adjacency lists (e.g. secret passages not yet adjacent).
             for la, lb in locked_pairs:
                 if la > lb:   # process each undirected pair once
                     continue
@@ -274,10 +317,14 @@ class EldhomBoardWidget(QWidget):
             label_map[str(hero["id"])] = f"PG{pg_counter}"
             pg_counter += 1
         monster_prefix_counters: dict[str, int] = {}
+        self._group_instances = {}
         for grp in data.get("groups", []):
+            grp_id = str(grp.get("id", ""))
             prefix = _monster_label_prefix_from_payload(grp, "")
+            inst_ids: list[str] = []
             for inst in grp.get("instances", []):
                 inst_id = str(inst.get("id", ""))
+                inst_ids.append(inst_id)
                 inst_prefix = _monster_label_prefix_from_payload(grp, inst_id)
 
                 # Preserve explicit numeric suffix when present in instance id.
@@ -290,6 +337,8 @@ class EldhomBoardWidget(QWidget):
                     monster_prefix_counters.get(inst_prefix, 0) + 1)
                 label_map[inst_id] = (
                     f"{inst_prefix}{monster_prefix_counters[inst_prefix]}")
+            if grp_id:
+                self._group_instances[grp_id] = inst_ids
         if label_map:
             self._module._map_scene.register_actor_labels(label_map)
 
@@ -316,8 +365,48 @@ class EldhomBoardWidget(QWidget):
                 self._move_on_map(actor_id, destination)
 
     def on_monster_defeated(self, msg: dict) -> None:
-        """No visual removal (GmMapModule has no remove API); token stays in place."""
-        pass
+        """Removes the defeated monster instance's token from the map.
+
+        The engine emits ``eldhom.monster.defeated`` with the instance's
+        ``actor_id``; the token satellite is removed from its current
+        location node so it no longer lingers on the map.
+        """
+        data     = _extract_data(msg)
+        actor_id = str(data.get("actor_id", ""))
+        if actor_id:
+            self._actor_locs.pop(actor_id, None)
+            self._module.on_envelope({
+                "typeId":  "gmActor.actor.removed",
+                "headers": {"data": _json.dumps({"actor_id": actor_id})},
+                "data":    {"actor_id": actor_id},
+            })
+
+    def on_next_actor(self, msg: dict) -> None:
+        """Highlights the current turn's actor token(s) with a red border.
+
+        When the acting actor is a monster group, all of its live instance
+        tokens are highlighted (the group itself has no token on the map).
+        """
+        data      = _extract_data(msg)
+        actor_id  = str(data.get("actor_id", ""))
+        actor_ids = self._group_instances.get(actor_id, [actor_id]) if actor_id else []
+        self._module.on_envelope({
+            "typeId":  "gmActor.actor.turn_active",
+            "headers": {"data": _json.dumps({"actor_ids": actor_ids})},
+            "data":    {"actor_ids": actor_ids},
+        })
+
+    def set_selected_actor(self, actor_id: str) -> None:
+        """Highlights the given actor's token with an accent-coloured border."""
+        self._module.on_envelope({
+            "typeId":  "gmActor.actor.selected",
+            "headers": {"data": _json.dumps({"actor_id": actor_id})},
+            "data":    {"actor_id": actor_id},
+        })
+
+    def refresh_theme(self) -> None:
+        """Re-applies the active theme's colours to the underlying map scene."""
+        self._module.refresh_theme()
 
     # ── Internal helpers ───────────────────────────────────────────────────────
 

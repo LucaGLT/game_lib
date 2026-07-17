@@ -93,14 +93,34 @@ _EFFECT_ICONS: dict[str, str] = {
     "HEAL":                     "\u2764\ufe0f",  # ❤️
     "FORMATION_PUSH":           "\U0001f91d",    # 🤝
     "DISRUPT_ENEMY_FORMATION":  "\U0001f91d",    # 🤝
-    "DRAW_CARD":                "\U0001f9e0",    # 🧠
+    "DRAW_CARD":                "\U0001f9e0",    # ⤵️​
     "WAIT":                     "\u23fa\ufe0f",  # ⏺️
+    "DISCARD_THEN_DRAW":        "\U0001f504",    # 🔄
 }
 
+# §5.3 — Tipo di attacco (attack_type → icona)
+_ATTACK_TYPE_ICONS: dict[str, str] = {
+    "MELEE":  "\u2694\ufe0f",   # ⚔️  mischia
+    "RANGED": "\U0001f3f9",      # 🏹  distanza
+}
+
+# §5.4 — Posizione in formazione
+_POSITION_ICONS: dict[str, str] = {
+    "FRONTLINE": "\U0001f464",   # 👤 Prima Linea
+    "BACKLINE":  "\U0001f465",   # 👥 Retroguardia
+}
+
+# §5.5 — Icone semantiche di uso frequente
+ICON_DISCARD        = "\u2935\ufe0f"   # ⤵️  Scarta
+ICON_ENEMY          = "\U0001f47f"     # 👿  Nemico
+ICON_ADJ_LOC        = "1\u25fb\ufe0f"  # 1◻️  Locazione Adiacente
+ICON_SAME_LOC       = "0\u25fb\ufe0f"  # 0◻️  Stessa Locazione
+
 _TARGET_IT: dict[str, str] = {
-    "NEAREST_ENEMY_FRONTLINE": "nemico frontline più vicino",
-    "ADJACENT_LOCATION":       "locazione adiacente",
-    "SELF":                    "sé stesso",
+    "ENEMY_FRONTLINE":   f"{ICON_ENEMY}\U0001f464 Nemico in Prima Linea",
+    "ADJACENT_LOCATION": f"{ICON_ADJ_LOC} Locazione Adiacente",
+    "SAME_LOCATION":     f"{ICON_SAME_LOC} Stessa Locazione",
+    "SELF":              "Sé Stesso",
 }
 
 
@@ -147,86 +167,147 @@ def _card_tags(card: dict) -> list[str]:
     return tags
 
 
-def _effect_summary_line(eff: dict) -> str:
-    """Returns a compact icon+text line for one card effect."""
-    etype  = str(eff.get("effect_type", ""))
-    amount = eff.get("amount")
-    icon   = _EFFECT_ICONS.get(etype, "\u2022")
+def _effect_summary_line(eff: dict, cost: int = 0) -> str:
+    """Returns a compact icon+text line for one card effect (plain text).
+
+    Format examples:
+      MELEE:   ⏸️⚔️ 1❌ : 2⏳
+      RANGED:  ⏸️🏹1◻️ 1❌ : 2⏳
+      MOVE:    ▶️2◻️ : 2⏳
+      HEAL:    +1❤️ : 3⏳
+      DISCARD: 🔄1
+    """
+    etype     = str(eff.get("effect_type", ""))
+    amount    = eff.get("amount")
+    icon      = _EFFECT_ICONS.get(etype, "\u2022")
+    atk_type  = str(eff.get("attack_type", "MELEE"))
+    atk_range = eff.get("range", 0)
+    atk_icon  = _ATTACK_TYPE_ICONS.get(atk_type, "\u2694\ufe0f")
+    cost_sfx  = f" : {cost}\u23f3" if cost else ""
+
     if etype in ("MOVE", "MOVE_TOWARD_PG"):
-        return f"{icon} Muovi {amount}\u25fb\ufe0f" if amount else f"{icon} Muovi"
+        # compact: ▶️N◻️ : Ct
+        return f"{icon}{amount}\u25fb\ufe0f{cost_sfx}" if amount else f"{icon}{cost_sfx}"
     if etype in ("DAMAGE", "DEAL_DAMAGE"):
-        return f"{icon} {amount}\u274c" if amount else f"{icon} Attacca"
+        if not amount:
+            return f"{icon} Attacca{cost_sfx}"
+        if atk_type == "RANGED" and atk_range:
+            return f"{icon}{atk_icon}{atk_range}\u25fb\ufe0f {amount}\u274c{cost_sfx}"
+        return f"{icon}{atk_icon} {amount}\u274c{cost_sfx}"
     if etype == "HEAL":
-        return f"{icon} +{amount} PV" if amount else f"{icon} Cura"
+        # compact: +N❤️ : Ct  (drop the leading ❤️ icon)
+        return f"+{amount}\u2764\ufe0f{cost_sfx}" if amount else f"\u2764\ufe0f{cost_sfx}"
     if etype == "REDUCE_DAMAGE":
-        return f"{icon} Riduci {amount}\u274c" if amount else f"{icon} Riduzione danno"
+        base = f"{icon} -{amount}\u274c" if amount else f"{icon} Riduzione danno"
+        return base + cost_sfx
     if etype == "FORMATION_PUSH":
-        val = str(eff.get("value", ""))
-        return f"{icon} Sposta in {val}" if val else f"{icon} Sposta formazione"
+        val  = str(eff.get("value", ""))
+        pos_icon = _POSITION_ICONS.get(val.upper(), icon)
+        return f"{icon}{pos_icon}{cost_sfx}"
     if etype == "DRAW_CARD":
-        return f"{icon} Pesca {amount} carta/e" if amount else f"{icon} Pesca"
+        return f"{icon}{amount}" if amount else icon
+    if etype == "DISCARD_THEN_DRAW":
+        # compact: ⤵️N  (no cost — purely a hand-management side effect)
+        return f"{ICON_DISCARD}{amount}" if amount else ICON_DISCARD
     if etype == "INTERACT":
-        return f"{icon} Effettua 1 Interazione nella tua Locazione"
-    return f"{icon} {etype.replace('_', ' ').title()}"
+        return f"{icon}{cost_sfx}"
+    if etype == "DISRUPT_ENEMY_FORMATION":
+        return f"{icon}{cost_sfx}"
+    return f"{icon} {etype.replace('_', ' ').title()}{cost_sfx}"
+
+
+def _html_esc(s: str) -> str:
+    """Minimal HTML escaping for text inserted into Qt rich text."""
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _card_description(card: dict) -> str:
-    """Builds the Vista Dettaglio block following UI-Standard-Carte-Missione.md §6."""
-    lines: list[str] = []
-    ctype    = str(card.get("card_type", ""))
+    """Builds the Vista Dettaglio block as Qt-compatible HTML.
+
+    Uses QLabel HTML subset: <b>, <span style="...">, <br>, <hr>.
+    The QLabel must have Qt.TextFormat.RichText or setTextFormat(RichText)
+    for this to render correctly (handled by _set_detail_html helper in
+    GmCompDeckModule or patched in EldhomMainWindow).
+    """
+    ctype     = str(card.get("card_type", ""))
     type_icon = _CARD_TYPE_ICONS.get(ctype, "\U0001f4c4")
     type_name = _CARD_TYPE_IT.get(ctype, ctype or "\u2014")
-    cost     = card.get("timeline_cost", 0)
-    name     = str(card.get("name", ""))
-    effects  = card.get("effects", [])
+    cost      = card.get("timeline_cost", 0)
+    name      = _html_esc(str(card.get("name", "")))
+    effects   = card.get("effects", [])
+    origin    = _html_esc(str(card.get("origin", "Missione")))
 
-    # Main icon: derived from the first effect type.
     main_etype = effects[0].get("effect_type", "") if effects else ""
     main_icon  = _EFFECT_ICONS.get(main_etype, type_icon)
 
-    # ── Intestazione ──────────────────────────────────────────────────────────
-    lines.append(f"{main_icon} {name}   \u23f3 {cost}")
-    lines.append("")
+    parts: list[str] = []
 
-    # ── Tipo | Origine ────────────────────────────────────────────────────────
-    origin = str(card.get("origin", "Missione"))
-    lines.append(f"{type_icon} {type_name}   |   {origin}")
-    lines.append("")
+    # ── Intestazione: nome su riga propria, grande, poi costo + tipo sotto ──
+    parts.append(
+        f'<span style="font-size:14pt; font-weight:700; white-space:nowrap;">'
+        f'{name}'
+        f'</span><br>'
+    )
+    parts.append(
+        f'<span style="font-size:9pt; color:#aaa;">'
+        f'{main_icon}&nbsp;\u23f3{cost}'
+        f'&nbsp;&nbsp;{type_icon}&nbsp;{_html_esc(type_name)}'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp;{origin}'
+        f'</span>'
+    )
+    parts.append('<br><hr style="border:1px solid #444; margin:3px 0;">')
 
-    # ── Effetto rapido ────────────────────────────────────────────────────────
+    # ── Effetto (nessun header) ───────────────────────────────────────────────
     if effects:
-        lines.append("\u2500\u2500 EFFETTO RAPIDO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
         for eff in effects:
-            lines.append(f"  {_effect_summary_line(eff)}")
-        lines.append("")
+            line = _html_esc(_effect_summary_line(eff, cost))
+            parts.append(f'<span style="font-size:11pt;">{line}</span><br>')
+        parts.append('<br>')
 
-    # ── Testo completo ────────────────────────────────────────────────────────
-    text = str(card.get("text", card.get("description", "")))
+    # ── Testo (nessun header, solo cambio font/colore) ────────────────────────
+    text = str(card.get("text", card.get("description", ""))).strip()
     if not text and effects:
-        text = "  ".join(_effect_summary_line(e) for e in effects)
+        text = "  ".join(_effect_summary_line(e, cost) for e in effects)
     if text:
-        lines.append("\u2500\u2500 TESTO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        lines.append(text)
-        lines.append("")
+        parts.append(
+            f'<span style="font-size:9pt; color:#c8c8c8; font-style:italic;">'
+            f'{_html_esc(text)}'
+            f'</span>'
+        )
+        parts.append('<br><br>')
 
-    # ── Trigger ───────────────────────────────────────────────────────────────
-    trigger = str(card.get("reaction_trigger", ""))
+    # ── Trigger (nessun header, colore ambra) ─────────────────────────────────
+    trigger = str(card.get("reaction_trigger", "")).strip()
     if trigger:
-        lines.append("\u2500\u2500 TRIGGER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        lines.append(f"Quando: {trigger}")
-        lines.append("")
+        parts.append(
+            f'<span style="font-size:10pt; color:#e8c44a;">'
+            f'\u26a1&nbsp;{_html_esc(trigger)}'
+            f'</span>'
+        )
+        parts.append('<br><br>')
 
-    # ── Condizioni ────────────────────────────────────────────────────────────
+    # ── Condizioni (nessun header, rosso tenue) ───────────────────────────────
     conditions: list[str] = []
-    if card.get("can_target_backline") is False:
-        conditions.append("\U0001f3af Solo bersagli in \U0001f9f1 Prima Linea")
-    if conditions:
-        lines.append("\u2500\u2500 CONDIZIONI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
-        for cond in conditions:
-            lines.append(f"  {cond}")
-        lines.append("")
+    if any(e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE") and
+           e.get("target") == "ENEMY_FRONTLINE" for e in effects):
+        conditions.append(
+            f'{ICON_ENEMY}\U0001f464 Solo bersagli in Prima Linea'
+        )
+    if str(card.get("condition", "")).upper() == "FRONTLINE":
+        conditions.append(
+            f'\U0001f464 Devi essere in Prima Linea'
+        )
 
-    return "\n".join(lines)
+    if conditions:
+        for cond in conditions:
+            parts.append(
+                f'<span style="font-size:10pt; color:#e07070;">'
+                f'{_html_esc(cond)}'
+                f'</span><br>'
+            )
+        parts.append('<br>')
+
+    return "".join(parts)
 
 
 def _card_meta(card_id: str) -> dict:
@@ -374,6 +455,9 @@ class EldhomMainWindow(QMainWindow):
         self._hero_deck_state: dict[str, dict] = {}
         # Actor whose deck is currently shown in the GmCompDeckModule.
         self._viewing_actor_id: str = ""
+        # Location currently shown in the Info Area panel (re-rendered on
+        # every state_full so it never goes stale until the user changes it).
+        self._area_info_location_id: str = ""
         # Tracks mission_id to detect new-game resets.
         self._current_mission_id: str = ""
 
@@ -388,6 +472,17 @@ class EldhomMainWindow(QMainWindow):
         # Attack targeting state: when True the next actor selection is the
         # target of an interactive attack declared by the active hero.
         self._awaiting_attack: bool = False
+
+        # Card-target targeting state: when True the next actor selection is
+        # the explicit target of a DAMAGE effect on a card being played
+        # (mirrors _awaiting_attack, but sends eldhom.play_card instead of
+        # eldhom.declare_attack). card_id/destination are carried over from
+        # _pre_play_card_hook (destination is only set for a combined
+        # MOVE+DAMAGE card such as Passo e Lama, where the destination click
+        # happens first, then the target click).
+        self._awaiting_card_target: bool = False
+        self._pending_target_card_id: str = ""
+        self._pending_target_destination: str = ""
 
         # Pending reaction window: id of the defender that must react (engine
         # owns the truth; the GUI only collects the player's choice).
@@ -622,7 +717,10 @@ class EldhomMainWindow(QMainWindow):
         reg("eldhom.turn.next_actor",         self._on_next_actor)
         reg("eldhom.turn.next_actor",         self._timeline.on_next_actor)
         reg("eldhom.turn.next_actor",         self._log_widget.on_next_actor)
+        reg("eldhom.turn.next_actor",         self._board.on_next_actor)
         reg("eldhom.pg.turn_ended",           self._on_pg_turn_ended)
+        reg("eldhom.pg.sequence_started",     self._on_sequence_started)
+        reg("eldhom.pg.sequence_ended",       self._on_sequence_ended)
 
         # Interactive attack / reaction window
         reg("eldhom.attack.declared",         self._on_attack_declared)
@@ -675,6 +773,7 @@ class EldhomMainWindow(QMainWindow):
             "eldhom.group.eliminated", "eldhom.formation.changed",
             "eldhom.deck.reshuffled", "eldhom.mission.time_advanced",
             "eldhom.attack.declared", "eldhom.attack.resolved",
+            "eldhom.zone_door.opened",
         ):
             reg(evt, self._log_widget.on_any_event)
         reg("eldhom.action.result",           self._log_widget.on_action_result)
@@ -751,6 +850,10 @@ class EldhomMainWindow(QMainWindow):
         next_a = data.get("next_actor", {})
         if next_a:
             self._activate_actor(next_a.get("actor_id", ""), next_a.get("kind", ""))
+        # Refresh the Info Area panel with fresh data for the location the
+        # player currently has open, so it never shows stale actor/HP info.
+        if self._area_info_location_id:
+            self._show_area_info(self._area_info_location_id)
 
     def _on_next_actor(self, msg: dict) -> None:
         data = _extract_data(msg)
@@ -857,6 +960,26 @@ class EldhomMainWindow(QMainWindow):
                     self._refresh_discard_zone(hero_id)
         if hero_id == self._active_hero_id:
             self._actions.set_enabled(False)
+
+    def _on_sequence_started(self, msg: dict) -> None:
+        """Handle sequence activation: disable simple actions and show stop button."""
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        print(f"[DEBUG] _on_sequence_started: hero_id={hero_id}, active_hero={self._active_hero_id}", flush=True)
+        if hero_id == self._active_hero_id:
+            print(f"[DEBUG] Disabling simple actions for hero {hero_id}", flush=True)
+            # Show the stop-sequence button and disable simple action buttons.
+            self._actions.set_sequence_active(True)
+
+    def _on_sequence_ended(self, msg: dict) -> None:
+        """Handle sequence deactivation: re-enable simple actions and hide stop button."""
+        data    = _extract_data(msg)
+        hero_id = data.get("actor_id", "")
+        print(f"[DEBUG] _on_sequence_ended: hero_id={hero_id}, active_hero={self._active_hero_id}", flush=True)
+        if hero_id == self._active_hero_id:
+            print(f"[DEBUG] Re-enabling simple actions for hero {hero_id}", flush=True)
+            # Hide the stop-sequence button and re-enable simple action buttons.
+            self._actions.set_sequence_active(False)
 
 
     # ── Deck event translation (eldhom.* → GmCompDeckModule) ─────────────────
@@ -978,15 +1101,21 @@ class EldhomMainWindow(QMainWindow):
         """Called when the user selects an actor in the tree or area panel.
 
         While attack targeting is armed, selecting an enemy declares an
-        interactive attack against it; otherwise it just highlights the actor
-        and refreshes the deck panel to show that actor's cards.
+        interactive attack against it; while card-target targeting is armed,
+        it plays the pending card against that enemy instead; otherwise it
+        just highlights the actor and refreshes the deck panel to show that
+        actor's cards.
         """
         if not actor_id:
             return
         if self._awaiting_attack and self._active_hero_id:
             self._try_declare_attack(actor_id)
             return
+        if self._awaiting_card_target and self._active_hero_id:
+            self._try_play_card_with_target(actor_id)
+            return
         self._actors.select_actor(actor_id)
+        self._board.set_selected_actor(actor_id)
         self._refresh_deck_display(actor_id)
 
     def _on_victory(self, msg: dict) -> None:
@@ -1101,9 +1230,26 @@ class EldhomMainWindow(QMainWindow):
         self._awaiting_move = False
         self._actions.disarm_move()
         if self._pending_move_card_id:
-            # Card-driven move: send play_card with destination.
+            # Card-driven move: send play_card with destination — unless the
+            # card ALSO has a DAMAGE effect (e.g. Passo e Lama), in which case
+            # arm card-target targeting next so the player picks the enemy to
+            # hit (destination is carried over and sent together with
+            # target_id once _try_play_card_with_target fires).
             card_id = self._pending_move_card_id
             self._pending_move_card_id = ""
+            meta = _CARD_CATALOG.get(card_id, {})
+            has_damage = any(
+                e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE")
+                for e in meta.get("effects", [])
+            )
+            if has_damage:
+                self._pending_target_card_id     = card_id
+                self._pending_target_destination = destination
+                self._awaiting_card_target = True
+                msg = "\U0001f3af Clicca il nemico da colpire (mappa o pannello attori)"
+                self._status_label.setText(msg)
+                self._actions.set_hint(msg)
+                return
             self._actions.set_hint("")
             self._bridge.send_command(
                 "eldhom.play_card",
@@ -1127,6 +1273,7 @@ class EldhomMainWindow(QMainWindow):
 
     def _show_area_info(self, location_id: str) -> None:
         """Populates the Info Area panel from the cached full-state snapshot."""
+        self._area_info_location_id = location_id
         name = self._location_names.get(location_id, location_id)
         adj_names = [
             self._location_names.get(a, a)
@@ -1194,6 +1341,35 @@ class EldhomMainWindow(QMainWindow):
             "eldhom.declare_attack",
             {"hero_id": self._active_hero_id, "target_id": target_id},
         )
+
+    def _try_play_card_with_target(self, target_id: str) -> None:
+        """Validates the target then sends play_card with the explicit target_id.
+
+        Mirrors _try_declare_attack, but for a card's DAMAGE effect (armed by
+        _pre_play_card_hook). The engine re-validates target_id against the
+        card's declared range/§15 Proiezione — this is just a friendly
+        client-side pre-check (must be a live enemy) before sending.
+        """
+        if not self._actor_is_enemy(target_id):
+            self._status_label.setText(
+                "\u26a0 Seleziona un nemico valido come bersaglio"
+            )
+            self._actors.select_actor(target_id)
+            return
+        self._awaiting_card_target = False
+        card_id     = self._pending_target_card_id
+        destination = self._pending_target_destination
+        self._pending_target_card_id     = ""
+        self._pending_target_destination = ""
+        self._actions.set_hint("")
+        data: dict = {
+            "hero_id":   self._active_hero_id,
+            "card_id":   card_id,
+            "target_id": target_id,
+        }
+        if destination:
+            data["destination"] = destination
+        self._bridge.send_command("eldhom.play_card", data)
 
     def _defender_name(self, defender_id: str) -> str:
         """Resolves a human-friendly label for a defender id."""
@@ -1276,20 +1452,40 @@ class EldhomMainWindow(QMainWindow):
         """Called by _DeckProxy before sending play_card for a card dragged to PlayArea.
 
         If the card has a MOVE effect requiring player destination choice, arms
-        move targeting mode and returns True (play_card is NOT sent yet).
-        Returns False to let the proxy send play_card immediately.
+        move targeting mode and returns True (play_card is NOT sent yet); the
+        destination click handler (_try_move) arms card-target targeting
+        afterwards if the card ALSO has a DAMAGE effect (e.g. Passo e Lama).
+        If the card has a DAMAGE/DEAL_DAMAGE effect but no destination choice,
+        arms card-target targeting directly — the player must click the enemy
+        to hit (mirrors declare_attack's targeting for Attacco Semplice; the
+        engine still auto-selects the nearest valid target if this is ever
+        bypassed, e.g. by a GM tool calling play_card without a target_id).
+        Returns False to let the proxy send play_card immediately (no
+        targeting needed at all, e.g. Mano Ferma, Riprendere Fiato).
         """
         meta = _CARD_CATALOG.get(card_id, {})
+        effects = meta.get("effects", [])
         has_choice_move = any(
             e.get("effect_type") == "MOVE" and not e.get("value", "")
-            for e in meta.get("effects", [])
+            for e in effects
         )
-        if not has_choice_move:
+        has_damage = any(
+            e.get("effect_type") in ("DAMAGE", "DEAL_DAMAGE") for e in effects
+        )
+
+        if not has_choice_move and not has_damage:
             return False
 
-        self._pending_move_card_id = card_id
-        self._awaiting_move = True
-        msg = "\u25b6 Clicca la locazione di destinazione (carta)"
+        if has_choice_move:
+            self._pending_move_card_id = card_id
+            self._awaiting_move = True
+            msg = "\u25b6 Clicca la locazione di destinazione (carta)"
+        else:
+            self._pending_target_card_id     = card_id
+            self._pending_target_destination = ""
+            self._awaiting_card_target = True
+            msg = "\U0001f3af Clicca il nemico da colpire (mappa o pannello attori)"
+
         self._status_label.setText(msg)
         self._actions.set_hint(msg)
         # Send the card back to CardHand visually (the drag already moved it).
@@ -1391,7 +1587,7 @@ class EldhomMainWindow(QMainWindow):
         except ImportError:
             QMessageBox.warning(self, "Tema", "ThemeManager non disponibile.")
             return
-        themes = ["scroll", "stone", "dark_moon", "dungeon", "slate"]
+        themes = ["scroll", "stone", "dark_moon", "blood", "techno"]
         from PySide6.QtWidgets import QInputDialog
         theme, ok = QInputDialog.getItem(
             self, "Scegli Tema", "Tema:", themes, 0, False
@@ -1400,6 +1596,7 @@ class EldhomMainWindow(QMainWindow):
             app = QApplication.instance()
             if app:
                 ThemeManager(app).apply_theme(theme)
+                self._board.refresh_theme()
 
     def _on_file_settings(self) -> None:
         path, _ = QFileDialog.getOpenFileName(

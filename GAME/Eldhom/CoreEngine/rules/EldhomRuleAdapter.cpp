@@ -45,6 +45,45 @@ void EldhomRuleAdapter::add_adjacency(
 	}
 }
 
+std::string EldhomRuleAdapter::zone_of(const LocationId& loc_id)
+{
+	std::size_t last_alpha = loc_id.find_last_not_of("0123456789");
+	if (last_alpha == std::string::npos) { return loc_id; }
+	return loc_id.substr(0, last_alpha + 1);
+}
+
+bool EldhomRuleAdapter::is_zone_boundary(
+	const LocationId& a,
+	const LocationId& b) const
+{
+	return zone_of(a) != zone_of(b);
+}
+
+bool EldhomRuleAdapter::is_zone_door_open(
+	const LocationId& a,
+	const LocationId& b) const
+{
+	if (!is_zone_boundary(a, b)) { return true; }  // same zone: nothing to open
+	const std::pair<LocationId, LocationId> key =
+		(a < b) ? std::make_pair(a, b) : std::make_pair(b, a);
+	return _opened_zone_doors.count(key) > 0;
+}
+
+void EldhomRuleAdapter::open_zone_door(
+	const LocationId& a,
+	const LocationId& b)
+{
+	if (!is_zone_boundary(a, b)) { return; }
+	const std::pair<LocationId, LocationId> key =
+		(a < b) ? std::make_pair(a, b) : std::make_pair(b, a);
+	_opened_zone_doors.insert(key);
+}
+
+const std::set<std::pair<LocationId, LocationId>>& EldhomRuleAdapter::opened_zone_doors() const
+{
+	return _opened_zone_doors;
+}
+
 EffectResult EldhomRuleAdapter::apply_damage(
 	const gmActor::ActorId& target_id,
 	int                     amount,
@@ -93,7 +132,7 @@ EffectResult EldhomRuleAdapter::apply_effect(
 	const EldhomEffect& effect,
 	const HeroId&       actor_id,
 	gmActor::ActorStore& store,
-	const std::string&  target_faction) const
+	const std::string&  target_faction)
 {
 	EffectResult res;
 
@@ -160,19 +199,6 @@ EffectResult EldhomRuleAdapter::apply_effect(
 		res.resolved = true;
 		res.note     = "Draw card (handled by end_hero_turn draw-up)";
 	}
-	else if (effect.effect_type == "PUSH_ENEMY_BACKLINE")
-	{
-		// Spinge il nemico in Prima Linea piu' vicino in Retroguardia.
-		gmActor::ActorId target =
-			_targeting.nearest_target(store, loc, target_faction);
-		if (!target.empty())
-		{
-			store.common(target).area_position = gmActor::AreaPosition::BACKLINE;
-			res.resolved  = true;
-			res.target_id = target;
-			res.note      = target + " pushed to backline";
-		}
-	}
 	else if (effect.effect_type == "REDUCE_DAMAGE")
 	{
 		// Handled upstream in EldhomEngine::play_instants before apply_effect is
@@ -191,9 +217,89 @@ EffectResult EldhomRuleAdapter::apply_effect(
 gmActor::ActorId EldhomRuleAdapter::find_nearest_target(
 	const gmActor::ActorStore& store,
 	const LocationId&          from_loc,
-	const std::string&         faction) const
+	const std::string&         faction,
+	int                        range) const
 {
-	return _targeting.nearest_target(store, from_loc, faction);
+	// range == 0: mischia — same behaviour as before this feature existed.
+	gmActor::ActorId here = _targeting.nearest_target(store, from_loc, faction);
+	if (!here.empty() || range <= 0) { return here; }
+
+	// BFS outward, hop by hop, stopping at the first (nearest) hop that has
+	// at least one valid target. Locations at the same hop distance have no
+	// defined preference order beyond adjacency-map iteration order.
+	std::unordered_set<LocationId> visited;
+	visited.insert(from_loc);
+	std::vector<LocationId> frontier{from_loc};
+
+	for (int hop = 1; hop <= range; ++hop)
+	{
+		std::vector<LocationId> next_frontier;
+		for (const LocationId& loc : frontier)
+		{
+			auto it = _adjacency.find(loc);
+			if (it == _adjacency.end()) { continue; }
+			for (const LocationId& adj : it->second)
+			{
+				if (visited.count(adj)) { continue; }
+				visited.insert(adj);
+				next_frontier.push_back(adj);
+			}
+		}
+		for (const LocationId& loc : next_frontier)
+		{
+			gmActor::ActorId found = _targeting.nearest_target(store, loc, faction);
+			if (!found.empty()) { return found; }
+		}
+		frontier = std::move(next_frontier);
+	}
+	return {};
+}
+
+bool EldhomRuleAdapter::is_valid_target_in_range(
+	const gmActor::ActorStore& store,
+	const LocationId&          from_loc,
+	const gmActor::ActorId&    target_id,
+	const std::string&         faction,
+	int                        range) const
+{
+	if (target_id.empty()) { return false; }
+
+	auto contains_target = [&](const LocationId& loc) -> bool
+	{
+		const std::vector<gmActor::ActorId> targets =
+			_targeting.valid_targets(store, loc, faction);
+		return std::find(targets.begin(), targets.end(), target_id) != targets.end();
+	};
+
+	// hop 0: mischia — same location as the caster.
+	if (contains_target(from_loc)) { return true; }
+	if (range <= 0) { return false; }
+
+	std::unordered_set<LocationId> visited;
+	visited.insert(from_loc);
+	std::vector<LocationId> frontier{from_loc};
+
+	for (int hop = 1; hop <= range; ++hop)
+	{
+		std::vector<LocationId> next_frontier;
+		for (const LocationId& loc : frontier)
+		{
+			auto it = _adjacency.find(loc);
+			if (it == _adjacency.end()) { continue; }
+			for (const LocationId& adj : it->second)
+			{
+				if (visited.count(adj)) { continue; }
+				visited.insert(adj);
+				next_frontier.push_back(adj);
+			}
+		}
+		for (const LocationId& loc : next_frontier)
+		{
+			if (contains_target(loc)) { return true; }
+		}
+		frontier = std::move(next_frontier);
+	}
+	return false;
 }
 
 // ── apply_behavior_step (monster step) ───────────────────────────────────────
@@ -247,6 +353,9 @@ EffectResult EldhomRuleAdapter::apply_behavior_step(
 
 		for (const LocationId& adj : adj_it->second)
 		{
+			// Monsters cannot cross a still-closed zone-boundary door: they must
+			// wait until a PG has opened it by walking through (paying +1 extra timeline cost).
+			if (!is_zone_door_open(loc, adj)) { continue; }
 			if (_targeting.has_valid_target(store, adj, hero_faction))
 			{
 				gmActor::MonsterInstanceState& ms = store.monster_instance(member_id);
@@ -278,7 +387,7 @@ EffectResult EldhomRuleAdapter::apply_behavior_step(
 EffectResult EldhomRuleAdapter::apply_simple_move(
 	const HeroId&        hero_id,
 	const LocationId&    dest_id,
-	gmActor::ActorStore& store) const
+	gmActor::ActorStore& store)
 {
 	EffectResult res;
 	gmActor::HeroState& h = store.hero(hero_id);
@@ -288,6 +397,17 @@ EffectResult EldhomRuleAdapter::apply_simple_move(
 	{
 		res.note = "MOVE: " + dest_id + " not adjacent to " + cur;
 		return res;
+	}
+
+	// Crossing a not-yet-open zone-boundary door costs +1 extra timeline cost and opens
+	// it permanently (from then on, everyone — PGs and monsters — can cross it
+	// as if it were a free passage).
+	if (cur != dest_id && !is_zone_door_open(cur, dest_id))
+	{
+		open_zone_door(cur, dest_id);
+		res.extra_timeline_cost += 1;
+		res.opened_doors.push_back(
+			(cur < dest_id) ? std::make_pair(cur, dest_id) : std::make_pair(dest_id, cur));
 	}
 
 	h.common.area_id = dest_id;
@@ -301,7 +421,9 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 	const HeroId&        hero_id,
 	const LocationId&    dest_id,
 	int                  max_steps,
-	gmActor::ActorStore& store) const
+	gmActor::ActorStore& store,
+	bool                 avoid_enemy_locations,
+	const std::string&   enemy_faction)
 {
 	EffectResult res;
 	if (dest_id.empty() || max_steps <= 0) { return res; }
@@ -315,9 +437,11 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 		return res;
 	}
 
-	// BFS reachability check within max_steps
+	// BFS reachability check within max_steps, tracking predecessors so the
+	// actual path (and any zone-boundary doors it crosses) can be recovered.
 	bool reachable = false;
 	std::unordered_set<LocationId> visited;
+	std::unordered_map<LocationId, LocationId> predecessor;
 	std::queue<std::pair<LocationId, int>> frontier;
 	frontier.push({cur, 0});
 	visited.insert(cur);
@@ -336,8 +460,22 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 
 		for (const LocationId& adj : it->second)
 		{
-			if (adj == dest_id) { reachable = true; break; }
+			if (adj == dest_id)
+			{
+				predecessor[adj] = step_loc;
+				reachable = true;
+				break;
+			}
 			if (visited.count(adj)) { continue; }
+			// Passo Cauto / Scatto Breve: cannot cross THROUGH an enemy-
+			// occupied location (the final destination is exempt, handled
+			// by the `adj == dest_id` branch above).
+			if (avoid_enemy_locations && !enemy_faction.empty() &&
+			    _targeting.has_valid_target(store, adj, enemy_faction))
+			{
+				continue;
+			}
+			predecessor[adj] = step_loc;
 			visited.insert(adj);
 			frontier.push({adj, depth + 1});
 		}
@@ -348,6 +486,31 @@ EffectResult EldhomRuleAdapter::apply_card_move(
 		res.note = "MOVE: " + dest_id + " not reachable in "
 		           + std::to_string(max_steps) + " steps from " + cur;
 		return res;
+	}
+
+	// Reconstruct the path taken and charge +1 extra timeline cost for each not-yet-open
+	// zone-boundary door crossed along it, opening each one permanently.
+	std::vector<LocationId> path;
+	LocationId walk = dest_id;
+	path.push_back(walk);
+	while (walk != cur)
+	{
+		walk = predecessor.at(walk);
+		path.push_back(walk);
+	}
+	std::reverse(path.begin(), path.end());
+
+	for (std::size_t i = 1; i < path.size(); ++i)
+	{
+		const LocationId& from = path[i - 1];
+		const LocationId& to   = path[i];
+		if (!is_zone_door_open(from, to))
+		{
+			open_zone_door(from, to);
+			res.extra_timeline_cost += 1;
+			res.opened_doors.push_back(
+				(from < to) ? std::make_pair(from, to) : std::make_pair(to, from));
+		}
 	}
 
 	h.common.area_id = dest_id;
