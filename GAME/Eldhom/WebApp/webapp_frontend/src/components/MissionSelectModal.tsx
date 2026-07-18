@@ -4,9 +4,9 @@
  * using `GET /missions` (server-side scan) instead of a local filesystem
  * scan — the browser cannot read the server's disk directly.
  *
- * No `onDismiss`: unlike the desktop (where Cancel quits the app), the web
- * page simply has no game to show until a mission is chosen, so there is
- * nothing meaningful to dismiss to.
+ * `onDismiss` is optional and, since `MainMenuModal` was introduced, goes
+ * back to that landing screen (Esc or backdrop click) — before that screen
+ * existed there was nothing meaningful to dismiss to.
  */
 import { useEffect, useState } from 'react'
 import { Modal } from '@webgui/components/Modal'
@@ -15,9 +15,10 @@ import type { MissionSummary } from '../engine/contract'
 export interface MissionSelectModalProps {
   missions: MissionSummary[]
   onSelect: (missionId: string) => void
+  onDismiss?: () => void
 }
 
-export function MissionSelectModal({ missions, onSelect }: MissionSelectModalProps) {
+export function MissionSelectModal({ missions, onSelect, onDismiss }: MissionSelectModalProps) {
   const [selectedId, setSelectedId] = useState(missions[0]?.mission_id ?? '')
 
   // `missions` typically arrives asynchronously (GET /missions), after this
@@ -33,7 +34,7 @@ export function MissionSelectModal({ missions, onSelect }: MissionSelectModalPro
   const selected = missions.find((mission) => mission.mission_id === selectedId) ?? null
 
   return (
-    <Modal title="Scegli Missione — Le Pergamene di Eldhôm">
+    <Modal title="Scegli Missione — Le Pergamene di Eldhôm" onDismiss={onDismiss}>
       <p className="eldhom-modal__intro">Missioni disponibili:</p>
       <ul className="eldhom-modal__mission-list">
         {missions.map((mission) => (

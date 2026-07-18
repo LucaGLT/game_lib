@@ -36,6 +36,7 @@ import { EldhomMap } from './components/EldhomMap'
 import { FormationModal } from './components/FormationModal'
 import { HeroPanel } from './components/HeroPanel'
 import { InstantWindowModal } from './components/InstantWindowModal'
+import { MainMenuModal } from './components/MainMenuModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
 import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
@@ -64,6 +65,11 @@ type Targeting =
  * `logFormat.ts`) plus a collapsed raw-JSON debug log, and the Phase 6
  * modals (mission select / formation / instant window).
  *
+ * Before any session exists, `showMissionSelect` picks between the two
+ * pre-game screens (Phase 19): `MainMenuModal` (landing screen, 4 entries —
+ * only "Gioca una missione" is wired up) and, once that is chosen,
+ * `MissionSelectModal` (dismissible back to the main menu).
+ *
  * Point-and-click targeting for the 4 SIMPLE actions (move destination /
  * attack target) is armed by `ActionPanel` and resolved by this
  * component's `handleLocationClick`/`handleTokenClick`, which own the
@@ -90,6 +96,7 @@ type Targeting =
  */
 function App() {
   const [missions, setMissions] = useState<MissionSummary[]>([])
+  const [showMissionSelect, setShowMissionSelect] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
@@ -427,8 +434,16 @@ function App() {
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />
       </header>
 
-      {sessionId === null && (
-        <MissionSelectModal missions={missions} onSelect={(id) => void handleStartMission(id)} />
+      {sessionId === null && !showMissionSelect && (
+        <MainMenuModal onPlayMission={() => setShowMissionSelect(true)} />
+      )}
+
+      {sessionId === null && showMissionSelect && (
+        <MissionSelectModal
+          missions={missions}
+          onSelect={(id) => void handleStartMission(id)}
+          onDismiss={() => setShowMissionSelect(false)}
+        />
       )}
 
       {eldhomState.pendingFormation && (

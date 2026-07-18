@@ -1343,3 +1343,44 @@
   opacity: 0.6;
   font-style: italic;
 }
+
+.eldhom-modal__main-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.eldhom-modal__main-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eldhom-modal__main-menu button:hover:not(:disabled) {
+  border-color: var(--gm-accent);
+}
+
+.eldhom-modal__main-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eldhom-modal__main-menu-hint {
+  display: block;
+  margin: 2px 0 0 14px;
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
+}

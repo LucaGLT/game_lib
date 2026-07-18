@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.18.0
-**Status:** Phase 18 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-18 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.19.0
+**Status:** Phase 19 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-19 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1305,6 +1305,52 @@ quindi il confronto per identità resettava la vista ad ogni singola azione.
   uno snapshot `state.full`). La soluzione robusta è derivare una **signature** stabile
   (stringa/valore primitivo) dal contenuto rilevante e confrontare quella, ignorando i campi
   che non contano per la decisione (qui: il `type` dell'arco).
+
+---
+
+### Phase 19 — Menu Iniziale (richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: *"All'avvio non deve subito chiedere la missione, ci deve essere
+un menù iniziale (dove posso già scegliere il Tema) con le voci: gioca una missione / esplora
+un villaggio / Gestisci PG / Settings (per ora solo 'gioca una missione' è realmente attivo)".*
+
+Prima di questa fase l'app apriva `MissionSelectModal` direttamente all'avvio (`sessionId ===
+null`). Ora una nuova schermata `MainMenuModal` si frappone come landing screen:
+
+- [x] Nuovo componente `MainMenuModal.tsx` (stesso `Modal` di chrome usato dagli altri dialog
+      pre-sessione): 4 voci — "⚔ Gioca una missione" (attiva) e 3 placeholder disabilitati
+      ("🏘 Esplora un villaggio", "🧑‍🤝‍🧑 Gestisci PG", "⚙ Settings"), ciascuno con un hint
+      "Non ancora disponibile" visibile sotto il bottone
+- [x] `App.tsx`: nuovo stato `showMissionSelect`; quando `sessionId === null` mostra
+      `MainMenuModal` se `!showMissionSelect`, altrimenti `MissionSelectModal` — cliccare
+      "Gioca una missione" imposta `showMissionSelect(true)`
+- [x] `MissionSelectModal`: aggiunto `onDismiss` opzionale (Esc / click sul backdrop / ✕ in
+      alto) che riporta a `showMissionSelect(false)`, quindi al Menu Iniziale — prima non
+      esisteva nulla verso cui tornare, ora è un percorso significativo
+- [x] Il selettore Tema (`ThemeSelect`, nell'header `app-header`) resta sempre visibile
+      indipendentemente dallo stato di sessione/menu, quindi è già utilizzabile dal Menu
+      Iniziale senza alcuna modifica aggiuntiva
+- [x] Nuove classi CSS `.eldhom-modal__main-menu`/`__main-menu-hint` in `App.css`, sullo
+      stesso pattern visivo di `.eldhom-modal__mission-list` (lista verticale di bottoni a
+      piena larghezza) con stato `:disabled` (opacità ridotta, hint in corsivo sotto)
+- [x] `get_errors` pulito su tutti i file toccati; `npm run build`/`npm run lint` puliti
+- [x] Validazione nel browser: reload → Menu Iniziale mostrato per primo (non più il dialog
+      missione), Tema "Stone" già selezionabile dall'header; le 3 voci placeholder risultano
+      `disabled`; click su "Gioca una missione" → apre `MissionSelectModal`; click sul ✕ →
+      torna al Menu Iniziale; ripetuto il percorso completo (Menu → selezione missione → OK)
+      → la missione "L'Ombra sul Corridoio" si avvia correttamente come prima
+
+**Esito Phase 19 (validato):**
+
+- L'avvio dell'app ora mostra sempre il Menu Iniziale per primo, mai più direttamente il
+  dialog di selezione missione.
+- Delle 4 voci solo "Gioca una missione" è funzionante; le altre 3 sono visibili ma
+  disabilitate con hint esplicito, pronte per essere collegate quando le relative schermate
+  esisteranno.
+- Il Tema resta selezionabile in ogni momento (header sempre presente), incluso dal Menu
+  Iniziale, senza alcuna modifica al componente `ThemeSelect` esistente.
+- `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
+  CoreEngine C++ (nessuna modifica al wire-contract).
 
 ---
 
