@@ -1,4 +1,4 @@
-"""bridge_client — plain-Python (Qt-free) TCP transport towards tris_engine.
+"""engine_listener — plain-Python (Qt-free) TCP transport towards a gmXxx engine.
 
 Reuses the wire format and outbound command client from
 ``pyLib/gmGui/engine_bridge`` as-is:
@@ -24,8 +24,12 @@ from pathlib import Path
 
 # ── Make the shared engine_bridge package importable ──────────────────────────
 # Appended (not prepended) so this package's own modules keep priority over
-# any same-named module inside pyLib/gmGui.
-_GMGUI_DIR = Path(__file__).resolve().parents[4] / "pyLib" / "gmGui"
+# any same-named module inside pyLib/gmGui. Deliberately points at
+# pyLib/gmGui itself (not pyLib) so `engine_bridge` resolves as a flat
+# top-level module WITHOUT going through `gmGui/__init__.py` — that module
+# eagerly imports MainWindow/PySide6, which must never load in this Qt-free
+# process.
+_GMGUI_DIR = Path(__file__).resolve().parents[1] / "gmGui"
 if _GMGUI_DIR.is_dir() and str(_GMGUI_DIR) not in sys.path:
     sys.path.append(str(_GMGUI_DIR))
 

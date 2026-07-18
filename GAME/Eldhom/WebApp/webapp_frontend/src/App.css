@@ -1,0 +1,1560 @@
+.app {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 32px 40px;
+  text-align: left;
+  background-color: var(--gm-background);
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.05), transparent 55%);
+  color: var(--gm-text);
+  border-radius: calc(var(--gm-radius) * 1.5);
+  border: 1px solid var(--gm-border);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 0 0 6px rgba(0, 0, 0, 0.12) inset;
+  font-family: var(--gm-font-body);
+  transition: background-color 0.25s ease, color 0.25s ease, font-family 0.15s ease;
+}
+
+/* ── Page backdrop — per-theme skin (richiesta esplicita utente: lo sfondo
+   TEMATICO riguarda l'intera pagina, non solo la mappa — Mappa e Pagina
+   hanno DUE sfondi distinti). Questo blocco ridisegna SOLO lo sfondo di
+   `.app` (l'ambiente/scenario attorno ai pannelli opachi: tavolo di legno,
+   parete di pietra, cielo notturno, ecc.) — resta deliberatamente DIVERSO
+   dallo sfondo di `.eldhom-map` più sotto (l'oggetto di finzione "mappa"
+   stessa). Tutti i testi vivono dentro pannelli opachi (`var(--gm-panel)`,
+   12 regole nel file) tranne il titolo header (usa `--gm-accent` +
+   text-shadow, pensato per restare leggibile su qualunque sfondo) — quindi
+   scurire/tematizzare questo sfondo non compromette la leggibilità. ────── */
+
+.app[data-theme='scroll'] {
+  background-color: #2c1a0c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 15px),
+    repeating-linear-gradient(90deg, rgba(255, 195, 130, 0.05) 0px, rgba(255, 195, 130, 0.05) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #4a3018 0%, #2c1a0c 100%);
+}
+
+.app[data-theme='stone'] {
+  background-color: #211f1c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(0, 0, 0, 0.32), transparent 8%),
+    radial-gradient(circle at 42% 55%, rgba(0, 0, 0, 0.28), transparent 7%),
+    radial-gradient(circle at 76% 22%, rgba(0, 0, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(0, 0, 0, 0.26), transparent 7%),
+    radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.24), transparent 6%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 2px, transparent 2px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 96px),
+    linear-gradient(180deg, #292723 0%, #171614 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
+}
+
+/* Dark Moon "Sfondo Luna" variants (Phase 21) — 5 selectable gradient-only
+   background-art alternatives to the original starfield+moon-disc look
+   (user feedback: no stars, no moon disc — gradients or other treatments
+   only). Selected via the header's "Sfondo Luna" picker (`moonVariant` in
+   App.tsx), applied through the `data-moon-variant` attribute. Page vs map
+   deliberately use different gradient placements (map rules further below,
+   next to `.eldhom-map`) so the two backgrounds stay visually distinct,
+   same principle as every other theme's page-vs-map skin. */
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_01'] {
+  /* Crepuscolo — twilight: deep indigo fading to near-black, soft warm-violet glow low on the page. */
+  background-color: #08070d;
+  background-image:
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(126, 98, 168, 0.22), transparent 70%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    linear-gradient(180deg, #1c1830 0%, #0d0b18 55%, #06050a 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_02'] {
+  /* Aurora — diagonal indigo/purple/teal sweep with two soft aurora-like glows. */
+  background-color: #0a0916;
+  background-image:
+    radial-gradient(ellipse at 25% 15%, rgba(120, 200, 190, 0.1), transparent 50%),
+    radial-gradient(ellipse at 75% 65%, rgba(150, 110, 200, 0.14), transparent 55%),
+    linear-gradient(135deg, #0d0a1a 0%, #1a1030 35%, #142840 65%, #0a0a14 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_03'] {
+  /* Nebulosa — soft, large, blurred color blooms (magenta/indigo/teal), no hard edges. */
+  background-color: #0c0a15;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 20% 25%, rgba(168, 80, 190, 0.16), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 80% 70%, rgba(70, 90, 200, 0.16), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 55% 15%, rgba(90, 180, 190, 0.1), transparent 60%),
+    linear-gradient(180deg, #100a1c 0%, #08060e 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_04'] {
+  /* Nebbia — layered translucent grey-blue mist bands, minimal color, very moody. */
+  background-color: #0c0d12;
+  background-image:
+    linear-gradient(200deg, rgba(140, 150, 170, 0.06) 0%, transparent 22%),
+    linear-gradient(160deg, rgba(140, 150, 170, 0.05) 30%, transparent 55%),
+    linear-gradient(190deg, rgba(120, 130, 155, 0.05) 60%, transparent 80%),
+    linear-gradient(180deg, #14161e 0%, #0a0b10 60%, #050507 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_05'] {
+  /* Profondo — minimal deep vignette, the most understated of the 5 variants. */
+  background-color: #08070b;
+  background-image:
+    radial-gradient(ellipse at 50% 35%, rgba(84, 84, 106, 0.2), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.4), transparent 70%),
+    linear-gradient(180deg, #17151f 0%, #08070c 100%);
+}
+
+.app[data-theme='blood'] {
+  background-color: #150808;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(ellipse at 15% 20%, rgba(107, 21, 21, 0.24), transparent 30%),
+    radial-gradient(ellipse at 85% 75%, rgba(80, 10, 10, 0.22), transparent 32%),
+    radial-gradient(ellipse at 60% 40%, rgba(60, 5, 5, 0.2), transparent 28%),
+    linear-gradient(180deg, #1c0a0a 0%, #0c0404 100%);
+}
+
+.app[data-theme='techno'] {
+  background-color: #050d14;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 229, 255, 0.06), transparent 55%),
+    linear-gradient(rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #0a1720 0%, #050d14 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
+}
+
+/* ── Thematic display font: every title/name/heading-class element switches
+   face along with the rest of the theme (see theme/themes.ts displayFont) —
+   e.g. Scroll reads like manuscript writing, Blood like a gothic-horror
+   novel title, Techno like a sci-fi HUD label. Left off small interactive
+   controls (buttons, inputs) and dense body copy for readability. ───────── */
+.app-header h1,
+.eldhom-mission-title,
+.eldhom-timeline__chip-name,
+.eldhom-actions__title,
+.eldhom-deck-table__title,
+.eldhom-deck-table__zone-title,
+.eldhom-deck-table__card-name,
+.eldhom-deck-table__preview-card-name,
+.eldhom-hero-panel__name,
+.eldhom-area-info__title,
+.eldhom-map__node-name {
+  font-family: var(--gm-font-display);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--gm-border);
+  background-image: linear-gradient(90deg, var(--gm-accent) 0%, transparent 40%);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 2px;
+}
+
+.app-header h1 {
+  font-size: 26px;
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gm-accent);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Stone theme (richiesta esplicita utente): al posto dell'ombra "sospesa"
+   sopra usata dagli altri temi, ogni titolo/nome legge come inciso a scalpello
+   nella pietra — stessa lista di selettori del blocco `--gm-font-display` qui
+   sopra, così l'effetto copre TUTTI i titoli (non solo l'h1 di pagina),
+   coerente con "Roman-inscription / carved-rune feel" già documentato per
+   `displayFont` di Stone in `themes.ts`. Tecnica: un'ombra scura spostata
+   verso l'alto (il lato della scanalatura in ombra, luce da sopra) più un
+   riflesso chiaro spostato verso il basso (il bordo inferiore della
+   scanalatura che cattura luce riflessa) — nessun drop-shadow "fluttuante". */
+.app[data-theme='stone'] .app-header h1,
+.app[data-theme='stone'] .eldhom-mission-title,
+.app[data-theme='stone'] .eldhom-timeline__chip-name,
+.app[data-theme='stone'] .eldhom-actions__title,
+.app[data-theme='stone'] .eldhom-deck-table__title,
+.app[data-theme='stone'] .eldhom-deck-table__zone-title,
+.app[data-theme='stone'] .eldhom-deck-table__card-name,
+.app[data-theme='stone'] .eldhom-deck-table__preview-card-name,
+.app[data-theme='stone'] .eldhom-hero-panel__name,
+.app[data-theme='stone'] .eldhom-area-info__title,
+.app[data-theme='stone'] .eldhom-map__node-name {
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* ── Shared "panel" depth treatment: every Eldhôm panel/card box gets a
+   subtle top-light gradient + drop shadow so the table reads as a set of
+   raised game pieces rather than flat form fields. ─────────────────────── */
+
+.controls,
+.eldhom-timeline,
+.eldhom-actions,
+.eldhom-hand,
+.eldhom-hero-panel,
+.eldhom-area-info,
+.eldhom-deck-table,
+.gmgui-event-log {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 45%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  margin-bottom: 18px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.controls input {
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 4px 8px;
+  font-family: inherit;
+  width: 8em;
+}
+
+.controls button,
+.eldhom-actions__buttons button,
+.eldhom-modal__actions button,
+.eldhom-deck-table__btn {
+  background-color: var(--gm-accent);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 55%);
+  color: var(--gm-background);
+  border: 2px solid var(--gm-accent);
+  border-radius: var(--gm-radius);
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.controls button:hover,
+.eldhom-actions__buttons button:hover:not(:disabled),
+.eldhom-modal__actions button:hover:not(:disabled),
+.eldhom-deck-table__btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.controls button:active {
+  transform: translateY(1px);
+}
+
+/* ── Mission header ──────────────────────────────────────────────────────── */
+
+.eldhom-mission-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  margin: 0 0 14px;
+  color: var(--gm-accent);
+}
+
+/* ── Timeline — theme-reactive, mirrors TimelineWidget's QSS
+   chip_type/chip_active dynamic properties (desktop widget IS
+   theme-driven, unlike the map's edge/token colours below) ────────────── */
+
+.eldhom-timeline {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-timeline__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+  padding: 4px 8px;
+  border-radius: var(--gm-radius);
+  border: 1px solid var(--gm-border);
+  background-color: var(--gm-background);
+  font-size: 12px;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+
+.eldhom-timeline__chip--enemy {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-timeline__chip--active {
+  border-width: 2px;
+  border-color: var(--gm-accent);
+  background-color: var(--gm-panel);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gm-accent) 55%, transparent);
+  transform: translateY(-2px);
+}
+
+.eldhom-timeline__chip-name {
+  font-weight: 700;
+}
+
+.eldhom-timeline__chip-time {
+  color: var(--gm-text);
+  opacity: 0.75;
+}
+
+/* ── Map — edge/token colours are intentionally fixed, NOT theme-reactive:
+   mirrors pyLib/gmGui/widgets/map_scene.py's `_edge_pen()` and
+   theme_manager.py's map_edge_locked_door (#c03030) / map_actor_turn_border
+   (#e03030) / map_sat_actor_bg (#1a237e) semantic tokens, documented there
+   as "fixed gameplay-state semantics, not theme-dependent". Only the map
+   panel/node chrome follows the active theme (--gm-* vars). ──────────── */
+
+.eldhom-map-container {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.eldhom-map__toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-map__toolbar button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--gm-panel) 0%, var(--gm-background) 100%);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.eldhom-map__toolbar button:hover {
+  filter: brightness(1.15);
+}
+
+.eldhom-map__toolbar button:active {
+  transform: translateY(1px);
+}
+
+.eldhom-map {
+  display: block;
+  width: 100%;
+  max-height: 620px;
+  min-height: 320px;
+  background-color: var(--gm-panel);
+  background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 60%);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  touch-action: none;
+  /* Richiesta esplicita utente: i testi della Mappa (nomi locazione, etichette
+     token) non devono essere selezionabili — il drag per il pan altrimenti
+     innesca la selezione testo del browser invece di limitarsi a spostare la
+     visuale. `user-select` è ereditato dai discendenti HTML dentro i
+     `<foreignObject>` (nodi/token), quindi basta impostarlo qui sulla radice. */
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-map:active {
+  cursor: grabbing;
+}
+
+.eldhom-map__empty {
+  padding: 12px;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.eldhom-map__edge--free {
+  stroke: var(--gm-border);
+  stroke-width: 1;
+}
+
+.eldhom-map__edge--closed_door {
+  stroke: #c03030;
+  stroke-width: 2;
+}
+
+.eldhom-map__edge--locked_door {
+  stroke: #c03030;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.eldhom-map__node {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px;
+  background-color: var(--gm-background);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 40%);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: center;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.eldhom-map__node-name {
+  font-weight: 700;
+}
+
+.eldhom-map__node-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.eldhom-map__token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background-color: #1a237e;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.eldhom-map__token--dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.eldhom-map__token--active {
+  outline: 2px solid #e03030;
+  outline-offset: 1px;
+}
+
+.eldhom-map__node--clickable {
+  cursor: pointer;
+}
+
+.eldhom-map__node--clickable:hover {
+  border-color: var(--gm-accent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.eldhom-map__token--clickable {
+  cursor: pointer;
+}
+
+/* Drag&drop of a hand card over a valid Map target (location = MOVE-effect
+   cards, token = DAMAGE-effect cards). Uses `outline`/`box-shadow` rather
+   than `border`/`background-color` deliberately: the per-theme
+   `.eldhom-map__node` rules below already set those two properties (higher
+   specificity via the `[data-theme]` attribute selector), so this stays
+   visible unchanged across every theme without a specificity fight; on
+   tokens it also avoids clashing with the fixed-red `--active` outline. */
+.eldhom-map__node--drag-over {
+  outline: 3px solid var(--gm-accent);
+  outline-offset: 2px;
+}
+
+.eldhom-map__token--drag-over {
+  box-shadow: 0 0 0 2px var(--gm-accent);
+}
+
+/* ── Map area — per-theme "in-fiction artifact" skin (richiesta esplicita
+   utente: l'area mappa deve sembrare DAVVERO una mappa nello stile del tema
+   attivo, non solo colori/font generici). Selezionata via `[data-theme]`
+   sulla radice `.app` (impostato da App.tsx da `theme.id`) — NON tramite
+   webLib/WebGUI_Lib/theme (che resta game-agnostic, questo è un concetto
+   puramente narrativo/Eldhôm). Tocca SOLO fondo mappa, riquadro nodi e vie
+   FREE: le vie CLOSED_DOOR/LOCKED_DOOR e i token attore restano
+   DELIBERATAMENTE fissi in ogni tema, vedi commento sopra
+   `.eldhom-map-container` — qui si ridisegna solo il "materiale" della
+   mappa, non lo stato di gioco. ─────────────────────────────────────────── */
+
+[data-theme='scroll'] .eldhom-map {
+  background-color: #efe0bb;
+  /* Angoli ornamentali (doppio arco, stile filigrana su pergamena) + vignette
+     bruciata ai bordi, ispirati a riferimenti di pergamena antica/mappa del
+     tesoro — realizzati SOLO con radial-gradient, nessun asset esterno. */
+  background-image:
+    radial-gradient(circle at 0% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 100% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 0% 100%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(circle at 100% 100%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(64, 38, 14, 0.3) 90%, rgba(40, 20, 5, 0.55) 100%),
+    radial-gradient(ellipse at 15% 20%, rgba(139, 105, 20, 0.16), transparent 45%),
+    radial-gradient(ellipse at 85% 30%, rgba(139, 105, 20, 0.12), transparent 42%),
+    radial-gradient(ellipse at 60% 88%, rgba(101, 67, 33, 0.14), transparent 45%),
+    radial-gradient(ellipse at 8% 90%, rgba(101, 67, 33, 0.1), transparent 35%),
+    repeating-linear-gradient(115deg, rgba(101, 67, 33, 0.04) 0px, rgba(101, 67, 33, 0.04) 1px, transparent 1px, transparent 6px);
+  background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto, auto;
+  background-repeat: no-repeat;
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 60px rgba(101, 67, 33, 0.35), inset 0 0 0 6px rgba(255, 250, 230, 0.3);
+}
+
+[data-theme='scroll'] .eldhom-map__node {
+  background-color: rgba(255, 250, 230, 0.55);
+  background-image: none;
+  border: 3px double #8a6a3f;
+  box-shadow: 1px 1px 3px rgba(101, 67, 33, 0.4);
+}
+
+[data-theme='scroll'] .eldhom-map__edge--free {
+  stroke: #6b4a23;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+[data-theme='scroll'] .eldhom-map-container::after {
+  content: '🧭';
+}
+
+[data-theme='stone'] .eldhom-map {
+  background-color: #ada89e;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.09), transparent 6%),
+    radial-gradient(circle at 55% 60%, rgba(0, 0, 0, 0.12), transparent 7%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08), transparent 5%),
+    radial-gradient(circle at 30% 80%, rgba(0, 0, 0, 0.1), transparent 6%),
+    radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.07), transparent 5%),
+    repeating-linear-gradient(38deg, rgba(0, 0, 0, 0.05) 0px, rgba(0, 0, 0, 0.05) 1px, transparent 1px, transparent 16px);
+  background-size: 140px 140px, 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
+  border: 3px solid var(--gm-border);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='stone'] .eldhom-map__node {
+  background-color: #c8c3b9;
+  border: 2px solid #4a463f;
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.25), inset -1px -1px 3px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='stone'] .eldhom-map__edge--free {
+  stroke: #4a463f;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+[data-theme='stone'] .eldhom-map-container::after {
+  content: '🗿';
+}
+
+[data-theme='dark_moon'] .eldhom-map {
+  border: 1px solid var(--gm-border);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+/* Same 5 "Sfondo Luna" variants as `.app[data-theme='dark_moon'][data-moon-variant]`
+   above, re-composed for the map surface (different gradient placement per
+   variant so the map reads as a distinct surface from the page behind it). */
+
+[data-theme='dark_moon'][data-moon-variant='moon_01'] .eldhom-map {
+  background-color: #12101c;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(126, 98, 168, 0.22), transparent 70%),
+    linear-gradient(180deg, #201c34 0%, #14121f 60%, #0a0910 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_02'] .eldhom-map {
+  background-color: #0f0d1e;
+  background-image:
+    radial-gradient(ellipse at 70% 20%, rgba(120, 200, 190, 0.12), transparent 50%),
+    radial-gradient(ellipse at 25% 75%, rgba(150, 110, 200, 0.16), transparent 55%),
+    linear-gradient(135deg, #241a3a 0%, #1a1030 35%, #14243a 70%, #0d0c16 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_03'] .eldhom-map {
+  background-color: #120e1e;
+  background-image:
+    radial-gradient(ellipse 55% 40% at 80% 20%, rgba(168, 80, 190, 0.18), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 20% 75%, rgba(70, 90, 200, 0.18), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 50% 90%, rgba(90, 180, 190, 0.12), transparent 60%),
+    linear-gradient(180deg, #17102a 0%, #0b0814 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_04'] .eldhom-map {
+  background-color: #14171f;
+  background-image:
+    linear-gradient(20deg, rgba(150, 160, 180, 0.08) 0%, transparent 25%),
+    linear-gradient(340deg, rgba(140, 150, 170, 0.06) 25%, transparent 55%),
+    linear-gradient(200deg, rgba(120, 130, 155, 0.06) 55%, transparent 85%),
+    linear-gradient(180deg, #1c202a 0%, #12141b 60%, #090a0d 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_05'] .eldhom-map {
+  background-color: #121016;
+  background-image:
+    radial-gradient(ellipse at 50% 20%, rgba(84, 84, 106, 0.22), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.35), transparent 70%),
+    linear-gradient(180deg, #1e1a26 0%, #0d0b12 100%);
+}
+
+[data-theme='dark_moon'] .eldhom-map__node {
+  background-color: rgba(38, 38, 45, 0.85);
+  border: 1px solid var(--gm-accent);
+  box-shadow: 0 0 8px rgba(168, 156, 200, 0.35), inset 0 0 10px rgba(168, 156, 200, 0.08);
+}
+
+[data-theme='dark_moon'] .eldhom-map__edge--free {
+  stroke: var(--gm-accent);
+  stroke-width: 1;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 2px var(--gm-accent));
+}
+
+[data-theme='dark_moon'] .eldhom-map-container::after {
+  content: '🦇';
+}
+
+[data-theme='blood'] .eldhom-map {
+  background-color: #d8c6a0;
+  /* Schizzi/gocce a bordo netto + macchie/pozze più ampie a bordo morbido,
+     ispirati a riferimenti di schizzi di sangue su pergamena/superficie —
+     realizzati SOLO con radial-gradient, nessun asset esterno. */
+  background-image:
+    radial-gradient(circle at 24% 34%, rgba(90, 12, 12, 0.85) 0%, rgba(90, 12, 12, 0.85) 1.4%, transparent 1.9%),
+    radial-gradient(circle at 68% 22%, rgba(107, 21, 21, 0.85) 0%, rgba(107, 21, 21, 0.85) 1.8%, transparent 2.3%),
+    radial-gradient(circle at 44% 62%, rgba(80, 10, 10, 0.8) 0%, rgba(80, 10, 10, 0.8) 1.2%, transparent 1.7%),
+    radial-gradient(circle at 82% 68%, rgba(90, 12, 12, 0.8) 0%, rgba(90, 12, 12, 0.8) 1.5%, transparent 2%),
+    radial-gradient(circle at 15% 78%, rgba(107, 21, 21, 0.7) 0%, rgba(107, 21, 21, 0.7) 1%, transparent 1.5%),
+    radial-gradient(circle at 58% 10%, rgba(90, 12, 12, 0.6) 0%, rgba(90, 12, 12, 0.6) 0.6%, transparent 1%),
+    radial-gradient(ellipse 2.5% 16% at 26% 50%, rgba(90, 12, 12, 0.4), transparent 75%),
+    radial-gradient(ellipse at 20% 25%, rgba(107, 21, 21, 0.5) 0%, rgba(107, 21, 21, 0.42) 20%, transparent 42%),
+    radial-gradient(ellipse at 75% 18%, rgba(107, 21, 21, 0.42) 0%, rgba(107, 21, 21, 0.34) 16%, transparent 37%),
+    radial-gradient(ellipse at 55% 70%, rgba(80, 10, 10, 0.45) 0%, rgba(80, 10, 10, 0.36) 20%, transparent 45%),
+    radial-gradient(ellipse at 12% 85%, rgba(107, 21, 21, 0.34) 0%, rgba(107, 21, 21, 0.26) 15%, transparent 35%),
+    repeating-linear-gradient(112deg, rgba(80, 50, 20, 0.05) 0px, rgba(80, 50, 20, 0.05) 1px, transparent 1px, transparent 6px);
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 70px rgba(60, 5, 5, 0.45);
+}
+
+[data-theme='blood'] .eldhom-map__node {
+  background-color: rgba(216, 198, 160, 0.55);
+  border: 2px solid #6b1515;
+  box-shadow: 1px 1px 4px rgba(80, 10, 10, 0.5);
+}
+
+[data-theme='blood'] .eldhom-map__edge--free {
+  stroke: #6b1515;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 1.5px rgba(80, 10, 10, 0.6));
+}
+
+[data-theme='blood'] .eldhom-map-container::after {
+  content: '🗡️';
+}
+
+[data-theme='techno'] .eldhom-map {
+  background-color: #08131e;
+  /* Cornice HUD ad angoli (bracket) + griglia blueprint + bagliore scanner,
+     ispirati a riferimenti di interfacce sci-fi/HUD — realizzati SOLO con
+     linear-gradient/radial-gradient, nessun asset esterno. */
+  background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(0, 229, 255, 0.14), transparent 30%),
+    linear-gradient(rgba(0, 200, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(0, 200, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.06) 1px, transparent 1px);
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
+  border: 1px solid var(--gm-border);
+  box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.12);
+}
+
+[data-theme='techno'] .eldhom-map__node {
+  background-color: rgba(16, 32, 45, 0.85);
+  border: 1px solid var(--gm-border);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 200, 255, 0.1);
+}
+
+[data-theme='techno'] .eldhom-map__edge--free {
+  stroke: var(--gm-border);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 3;
+  opacity: 0.9;
+}
+
+[data-theme='techno'] .eldhom-map-container::after {
+  content: '📡';
+}
+
+/* Shared placement/behaviour for every theme's corner watermark above (only
+   `content` differs per theme, set in each `[data-theme=...]` rule above). */
+.eldhom-map-container::after {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 20px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Action panel (4 simple actions + inline reaction window) ───────────── */
+
+.eldhom-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-actions--defense {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-actions__title {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.eldhom-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eldhom-actions__buttons button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.eldhom-actions__buttons button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.eldhom-actions__stop {
+  background-color: var(--gm-danger) !important;
+  border-color: var(--gm-danger) !important;
+}
+
+.eldhom-actions__hint {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* ── Deck table (6 zones: Mazzo/Mano/Giocate/Memoria/Scarti/Bandite) ─────── */
+
+.eldhom-deck-table {
+  padding: 10px 14px 14px;
+  margin-bottom: 18px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-deck-table__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.eldhom-deck-table__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.eldhom-deck-table__zones {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.eldhom-deck-table__zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 150px;
+  padding: 8px;
+  background-color: var(--gm-background);
+  border: 1px dashed var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.eldhom-deck-table__zone--drag-over {
+  border-style: solid;
+  border-color: var(--gm-accent);
+  background-color: color-mix(in srgb, var(--gm-accent) 12%, var(--gm-background));
+}
+
+.eldhom-deck-table__zone-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.eldhom-deck-table__zone-empty {
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.55;
+}
+
+.eldhom-deck-table__zone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.eldhom-deck-table__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+.eldhom-deck-table__card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-radius: var(--gm-radius);
+  overflow: hidden;
+}
+
+.eldhom-deck-table__card-play {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 5px 8px;
+  background-color: var(--gm-panel);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-left: 3px solid var(--gm-accent);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  cursor: grab;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, filter 0.15s ease, transform 0.1s ease;
+}
+
+.eldhom-deck-table__card--hand {
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-play:hover:not(:disabled) {
+  border-color: var(--gm-accent);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.eldhom-deck-table__card-play:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.eldhom-deck-table__card-discard {
+  flex: 0 0 auto;
+  width: 22px;
+  background-color: var(--gm-panel);
+  color: var(--gm-danger);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  cursor: pointer;
+  font-size: 11px;
+  transition: filter 0.15s ease;
+}
+
+.eldhom-deck-table__card-discard:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.eldhom-deck-table__card-discard:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.eldhom-deck-table__card--played,
+.eldhom-deck-table__card--discard {
+  padding: 5px 8px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-left: 3px solid var(--gm-border);
+  font-size: 12px;
+}
+
+.eldhom-deck-table__card--top {
+  border-left-color: var(--gm-accent);
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-name {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.eldhom-deck-table__card-summary {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.eldhom-deck-table__deck-stack {
+  position: relative;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.eldhom-deck-table__card-back {
+  position: absolute;
+  width: 40px;
+  height: 56px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--gm-accent) 0px,
+    var(--gm-accent) 6px,
+    var(--gm-panel) 6px,
+    var(--gm-panel) 12px
+  );
+  border: 1px solid var(--gm-border);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.eldhom-deck-table__card-back:nth-child(1) { transform: translate(-6px, -3px) rotate(-4deg); }
+.eldhom-deck-table__card-back:nth-child(2) { transform: translate(-2px, -1px) rotate(-1deg); }
+.eldhom-deck-table__card-back:nth-child(3) { transform: translate(2px, 1px) rotate(2deg); }
+.eldhom-deck-table__card-back:nth-child(4) { transform: translate(6px, 3px) rotate(4deg); }
+
+.eldhom-deck-table__zone-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eldhom-deck-table__zone-pair > .eldhom-deck-table__zone {
+  flex: 1 1 0;
+  min-height: 60px;
+}
+
+.eldhom-deck-table__zone--memory {
+  opacity: 0.75;
+}
+
+.eldhom-deck-table__zone--preview {
+  grid-column: span 2;
+}
+
+.eldhom-deck-table__zone--banish {
+  align-items: center;
+  justify-content: center;
+  border-style: solid;
+}
+
+.eldhom-deck-table__preview-card-hint {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.eldhom-deck-table__preview-card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background-color: var(--gm-panel);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%);
+  border: 1px solid var(--gm-border);
+  border-top: 4px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.eldhom-deck-table__preview-card--instant {
+  border-top-color: var(--gm-warning);
+}
+
+.eldhom-deck-table__preview-card--seq_start {
+  border-top-color: var(--gm-success);
+}
+
+.eldhom-deck-table__preview-card--seq_continue {
+  border-top-color: var(--gm-accent);
+}
+
+.eldhom-deck-table__preview-card--seq_end {
+  border-top-color: var(--gm-danger);
+}
+
+.eldhom-deck-table__preview-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.eldhom-deck-table__preview-card-icon {
+  font-size: 16px;
+}
+
+.eldhom-deck-table__preview-card-name {
+  flex: 1 1 auto;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.eldhom-deck-table__preview-card-cost {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: 999px;
+}
+
+.eldhom-deck-table__preview-card-origin {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.eldhom-deck-table__preview-card-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--gm-border);
+  border-bottom: 1px solid var(--gm-border);
+}
+
+.eldhom-deck-table__preview-card-effect {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eldhom-deck-table__preview-card-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+  overflow-y: auto;
+}
+
+.eldhom-deck-table__preview-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.eldhom-deck-table__preview-card-tag {
+  padding: 1px 6px;
+  font-size: 10px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  opacity: 0.85;
+}
+
+/* ── Debug log (raw JSON) — collapsed by default, secondary/dev-only ────── */
+
+.eldhom-debug-log {
+  margin-bottom: 16px;
+}
+
+.eldhom-debug-log summary {
+  cursor: pointer;
+  font-size: 11px;
+  opacity: 0.6;
+  padding: 4px 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.eldhom-debug-log summary:hover {
+  opacity: 0.9;
+}
+
+.eldhom-debug-log .gmgui-event-log {
+  margin-top: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  max-height: 200px;
+}
+
+/* ── Hero panel row ──────────────────────────────────────────────────────── */
+
+.eldhom-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.eldhom-hero-panel {
+  width: 175px;
+  padding: 8px 12px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+
+.eldhom-hero-panel--clickable {
+  cursor: pointer;
+}
+
+.eldhom-hero-panel--clickable:hover {
+  border-color: var(--gm-accent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Monster-group synthetic card — same red/danger accent convention as
+   TimelineTrack's `--enemy` chip. Declared before `--active` so an active
+   monster group's turn highlight (accent border-color, all 4 sides) still
+   wins when both modifiers apply together. */
+.eldhom-hero-panel--monster {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-hero-panel--monster .eldhom-hero-panel__hp-fill {
+  background-color: var(--gm-danger);
+}
+
+.eldhom-hero-panel--active {
+  border-width: 2px;
+  border-color: var(--gm-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gm-accent) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+.eldhom-hero-panel__name {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.eldhom-hero-panel__hp-track {
+  position: relative;
+  height: 16px;
+  margin-bottom: 4px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  overflow: hidden;
+}
+
+.eldhom-hero-panel__hp-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background-color: var(--gm-success);
+  transition: width 0.25s ease;
+}
+
+.eldhom-hero-panel__hp-text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.eldhom-hero-panel__status,
+.eldhom-hero-panel__timeline,
+.eldhom-hero-panel__location {
+  margin: 2px 0 0;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* ── Board row (map + area info side by side) ───────────────────────────── */
+
+.eldhom-board-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+/* ── Area info panel ─────────────────────────────────────────────────────── */
+
+.eldhom-area-info {
+  flex: 0 0 240px;
+  padding: 10px 14px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.eldhom-area-info__title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--gm-accent);
+}
+
+.eldhom-area-info__adjacent,
+.eldhom-area-info__actors-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.eldhom-area-info__actors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-area-info__actor {
+  width: 100%;
+  text-align: left;
+  padding: 4px 6px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.eldhom-area-info__actor:hover {
+  border-color: var(--gm-accent);
+}
+
+.eldhom-area-info__empty {
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ── Modal content (chrome itself comes from @webgui's generic .gmgui-modal*) ── */
+
+.eldhom-modal__intro {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.eldhom-modal__hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.eldhom-modal__checklist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eldhom-modal__checklist label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.eldhom-modal__error {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--gm-danger);
+  font-weight: 700;
+}
+
+.eldhom-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.eldhom-modal__actions button {
+  background-color: var(--gm-accent);
+  color: var(--gm-background);
+  border: 2px solid var(--gm-accent);
+  border-radius: var(--gm-radius);
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.eldhom-modal__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eldhom-modal__mission-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eldhom-modal__mission-list button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.eldhom-modal__mission-list button:hover {
+  border-color: var(--gm-accent);
+}
+
+.eldhom-modal__mission--selected {
+  border-color: var(--gm-accent) !important;
+  border-width: 2px !important;
+  font-weight: 700;
+}
+
+.eldhom-modal__empty {
+  font-size: 12px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.eldhom-modal__main-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.eldhom-modal__main-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eldhom-modal__main-menu button:hover:not(:disabled) {
+  border-color: var(--gm-accent);
+}
+
+.eldhom-modal__main-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eldhom-modal__main-menu-hint {
+  display: block;
+  margin: 2px 0 0 14px;
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ── ActorDetailModal ("extended card" for a hero/monster-group synthetic card) ── */
+
+.eldhom-actor-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.eldhom-actor-detail__chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eldhom-actor-detail__chip {
+  padding: 2px 10px;
+  border-radius: var(--gm-radius);
+  border: 1px solid var(--gm-border);
+  background-color: var(--gm-background);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.eldhom-actor-detail__chip--enemy {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-actor-detail__hp-track {
+  height: 20px;
+}
+
+.eldhom-actor-detail__section {
+  padding-top: 8px;
+  border-top: 1px solid var(--gm-border);
+}
+
+.eldhom-actor-detail__section p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+.eldhom-actor-detail__section-title {
+  margin: 0 0 4px !important;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.75;
+  letter-spacing: 0.03em;
+}
+
+.eldhom-actor-detail__placeholder {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.eldhom-actor-detail__instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-actor-detail__instance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-size: 12px;
+}
+
+.eldhom-actor-detail__instance--dead {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.eldhom-actor-detail__instance-id {
+  font-weight: 700;
+  min-width: 32px;
+}

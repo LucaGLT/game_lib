@@ -1,8 +1,10 @@
-"""engine_process — spawns and supervises the ``tris_engine`` subprocess.
+"""engine_process — spawns and supervises one gmXxx engine subprocess.
 
-Phase 1 scope: a single subprocess for the whole eng_serve instance.
-Multi-session pooling (one subprocess per user session) is Phase 2's
-responsibility — see GAME/Tic-Tac-Toe/WebApp/PLAN.md.
+Game-agnostic: the caller supplies the executable path, the command port to
+poll, and any extra CLI arguments the specific engine needs (e.g. a data
+directory). Session/process-pooling policy (one subprocess per whole
+process vs. one per user session) is each game's own
+``eng_serve/session_manager.py`` responsibility, not this module's.
 """
 from __future__ import annotations
 
@@ -17,11 +19,11 @@ class EngineProcessError(RuntimeError):
 
 
 class EngineProcess:
-    """Owns one running ``tris_engine`` subprocess and its lifecycle.
+    """Owns one running game-engine subprocess and its lifecycle.
 
     Usage::
 
-        engine = EngineProcess(executable, "127.0.0.1", 9301)
+        engine = EngineProcess(executable, "127.0.0.1", 9211, extra_args=[str(data_dir)])
         engine.start()   # blocks until the command port is reachable
         ...
         engine.stop()
@@ -33,11 +35,13 @@ class EngineProcess:
         command_host: str,
         command_port: int,
         connect_timeout_s: float = 10.0,
+        extra_args: list[str] | None = None,
     ) -> None:
         self._executable: Path = executable
         self._command_host: str = command_host
         self._command_port: int = command_port
         self._connect_timeout_s: float = connect_timeout_s
+        self._extra_args: list[str] = list(extra_args) if extra_args else []
         self._proc: subprocess.Popen | None = None
 
     @property
@@ -55,10 +59,10 @@ class EngineProcess:
         if not self._executable.exists():
             raise EngineProcessError(
                 f"Engine executable not found: {self._executable} "
-                "(build it with: cmake --build build --target tris_engine --config Debug)"
+                "(build it first with CMake)"
             )
         self._proc = subprocess.Popen(
-            [str(self._executable)],
+            [str(self._executable), *self._extra_args],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
