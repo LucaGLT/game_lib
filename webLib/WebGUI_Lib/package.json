@@ -1,0 +1,7 @@
+{
+  "name": "webgui-lib",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Componenti React/TypeScript generici e riusabili per le WebApp di game_lib (temi, client di sessione eng_serve, contratto modulo a eventi). Equivalente web di pyLib/gmGui per le GUI desktop PySide6. Consumata come sorgente TS via alias (vedi vite.config.ts/tsconfig.app.json dei singoli frontend) — nessuna build/publish propria per ora, unico consumer: Tic-Tac-Toe WebApp."
+}
