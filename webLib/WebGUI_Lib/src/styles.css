@@ -157,3 +157,103 @@
   padding: 14px;
 }
 
+/* ── Login form (generic username/password gate, Phase 2 auth) ──────────── */
+
+.gmgui-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 320px;
+  margin: 64px auto;
+  padding: 24px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-login-form h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.gmgui-login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gmgui-login-form__field input {
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.gmgui-login-form__field input:focus {
+  border-color: var(--gm-accent);
+  outline: none;
+}
+
+.gmgui-login-form button[type='submit'] {
+  padding: 8px 16px;
+  background-color: var(--gm-accent);
+  color: var(--gm-panel);
+  border: none;
+  border-radius: var(--gm-radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gmgui-login-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.gmgui-login-form__error {
+  color: var(--gm-danger);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Session picker (list of the caller's own active sessions, Phase 2) ──── */
+
+.gmgui-session-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  margin: 64px auto;
+  padding: 24px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-session-picker h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.gmgui-session-picker__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-session-picker__row-actions {
+  display: flex;
+  gap: 8px;
+}
+

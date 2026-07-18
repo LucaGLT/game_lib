@@ -32,33 +32,34 @@ def _default_engine_executable() -> Path:
 
 
 class Settings(BaseSettings):
-    """Runtime configuration for the eng_serve gateway (Phase 1: single session).
+    """Runtime configuration for the eng_serve gateway (Phase 2: multi-session + auth).
 
     Attributes:
         engine_executable:   Path to the compiled ``tris_engine`` executable.
-        event_host:          Bind address for the event listener (engine -> eng_serve).
-        event_port:          TCP port the engine connects back to for events.
-        command_host:        Host of the engine's command server (eng_serve -> engine).
-        command_port:        TCP port of the engine's command server.
+        event_host:          Bind address for each session's event listener.
+        command_host:        Bind address the engine's command server listens on.
         connect_timeout_s:   Max seconds to wait for the engine's command port at startup.
+        auth_config_path:    Path to the pilot-grade users/limits JSON file (see
+                              ``gmWebServe.tools.manage_users`` to create/update it).
         cors_allow_origins:  Origins allowed to call this API from a browser (Vite dev server).
     """
 
     engine_executable: Path = _default_engine_executable()
 
-    # NOTE: tris_engine.exe has these ports HARD-CODED as C++ constexpr values
-    # (GAME/Tic-Tac-Toe/CoreEngine/engine/TrisTypes.hpp: EVENTS=9100, COMMANDS=9001)
-    # — there is no argv/env override, so eng_serve MUST use the same values.
-    # Consequence for Phase 1: eng_serve and the desktop GUI cannot both be
-    # connected to the SAME engine instance at once (only one process can
-    # bind port 9100). Phase 2's per-session dynamic ports will require a
-    # small, scoped C++ change to make these ports configurable.
+    # NOTE: tris_engine.exe's events/commands ports are now dynamically
+    # allocated PER SESSION by gmWebServe.SessionRegistry (see
+    # session_manager.py) and passed to each engine instance via
+    # --events-port/--commands-port CLI arguments (see
+    # GAME/Tic-Tac-Toe/CoreEngine/main.cpp) — there is no longer a single
+    # fixed port here. gmTris::ports::EVENTS/COMMANDS (9100/9001) remain the
+    # engine's own compiled-in defaults when launched with no arguments at
+    # all (the desktop GUI's direct-connect flow, unchanged).
     event_host: str = "127.0.0.1"
-    event_port: int = 9100
     command_host: str = "127.0.0.1"
-    command_port: int = 9001
 
     connect_timeout_s: float = 10.0
+
+    auth_config_path: Path = Path(__file__).resolve().parent / "auth_config.json"
 
     cors_allow_origins: list[str] = [
         "http://127.0.0.1:5173",

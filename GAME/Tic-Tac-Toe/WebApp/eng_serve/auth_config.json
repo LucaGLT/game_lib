@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "username": "demo",
+      "password_hash": "bb97faafdab7ab21247079d795fe0b92ad0db5f88f9a7a88b4d8b31b08c86c8e",
+      "password_salt": "599a9f8014b156bfadf76ef741ab242e"
+    },
+    {
+      "username": "demo2",
+      "password_hash": "af15b997a7405b3ab53c7a351c69dfb4a82d4d098a55d881ac55adf298b529f6",
+      "password_salt": "2b1ccfa5986e8d34d70fc1c9531c4479"
+    }
+  ],
+  "max_sessions_per_user": 2,
+  "session_idle_timeout_seconds": 600.0
+}

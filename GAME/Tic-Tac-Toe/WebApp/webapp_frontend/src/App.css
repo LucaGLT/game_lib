@@ -218,6 +218,22 @@
   margin: 0;
 }
 
+.app-header__account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.app-header__account button {
+  padding: 4px 10px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  cursor: pointer;
+}
+
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
 
 .game-toolbar {

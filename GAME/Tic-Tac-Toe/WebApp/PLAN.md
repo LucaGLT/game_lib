@@ -1,9 +1,11 @@
 # Tic-Tac-Toe WebApp — Development Plan
 
-**Version:** 0.2.0
-**Status:** Phase 3 – Complete ✅ (Phase 2 – Deliberately deferred ⏸️, single-user resta come nel pyQt)
+**Version:** 0.3.0
+**Status:** Phase 3 – Complete ✅ (Phase 2 – Complete ✅, completata retroattivamente a livello di
+libreria dopo la Phase 3 — vedi Notes)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 5 / React 18 (frontend) — polyglot web layer.
-The existing C++17 CoreEngine (`gmTris`, see `../PLAN.md`) is **unchanged**.
+The existing C++17 CoreEngine (`gmTris`, see `../PLAN.md`) gained an OPTIONAL, backward-compatible
+CLI port override (`--events-port`/`--commands-port`) in Phase 2 — see that phase's Notes.
 **Namespace:** N/A (no C++ namespace) — Python package `eng_serve`, frontend app `webapp_frontend`.
 Reuses the `gmTris` wire-contract (typeId/payload) unchanged.
 
@@ -82,8 +84,9 @@ sulle porte fisse 9100/9001 — coesistenza permanente, nessun impatto.
 
 ## File Structure
 
-Albero **effettivo** dopo le Fasi 1 e 3 + refactor "WebGUI_Lib" (`routers/auth.py`, `routes/`,
-porte dinamiche restano scope della Phase 2, non ancora creati):
+Albero **effettivo** dopo le Fasi 1, 2 e 3 + refactor "WebGUI_Lib". Phase 2 (Multi-Session & Auth)
+è stata costruita **a livello di libreria condivisa** in `pyLib/gmWebServe` (multi-sessione, porte
+dinamiche, auth pilot-grade) e `webLib/WebGUI_Lib` (login/token), non solo per Tris:
 
 ```text
 game_lib/
@@ -96,8 +99,10 @@ game_lib/
 │           │   └── themes.ts        ← 5 temi (CSS custom properties, fedeli a theme_manager.py)
 │           ├── session/
 │           │   ├── types.ts         ← EngineEnvelope/EnvelopeHandler/SessionInfo generici
-│           │   ├── restClient.ts    ← createSession(payload)/sendCommand generici (no starterMode Tris-specifico)
-│           │   ├── wsClient.ts      ← connectSessionEvents generico
+│           │   ├── restClient.ts    ← createSession/listSessions/sendCommand/closeSession (bearer token)
+│           │   ├── wsClient.ts      ← connectSessionEvents(token, sessionId, ...) — token via query param
+│           │   ├── authClient.ts    ← login/logout/fetchCurrentUser (POST /auth/login, /auth/me) — Phase 2 ✅
+│           │   ├── AuthProvider.tsx ← contesto React + localStorage ("stay logged in") — Phase 2 ✅
 │           │   └── EnvelopeRouter.ts← pub/sub per typeId (+ wildcard '*') — dorsale dei "moduli"
 │           ├── modules/
 │           │   ├── GmGuiModule.ts   ← contratto GmGuiModuleDescriptor (equivalente IGmGuiModule)
@@ -106,30 +111,41 @@ game_lib/
 │           │   ├── ErrorBar.tsx     ← barra messaggi/errori generica
 │           │   ├── EventLog.tsx     ← log auto-scroll generico (ex MatchLog)
 │           │   ├── ActorStatusBadges.tsx ← badge stato attore auto-sottoscritti (ex PlayerBadges)
-│           │   └── ThemeSelect.tsx  ← selettore tema generico (estratto da GameToolbar)
+│           │   ├── ThemeSelect.tsx  ← selettore tema generico (estratto da GameToolbar)
+│           │   └── LoginForm.tsx    ← form utente/password generico — Phase 2 ✅
 │           └── styles.css           ← CSS strutturale `gmgui-*`, guidato da variabili `--gm-*`
+├── pyLib/gmWebServe/                  ← libreria condivisa Python (equivalente backend di WebGUI_Lib)
+│   ├── engine_listener.py             ← EngineEventListener (Qt-free) + EngineSender (invariati da Phase 1)
+│   ├── engine_process.py              ← spawn/kill di un engine (porte via `extra_args`, invariato da Phase 1)
+│   ├── port_utils.py                  ← find_free_port() — allocazione dinamica porte — Phase 2 ✅
+│   ├── auth.py                        ← hashing PBKDF2, AuthConfig/AuthService/TokenManager — Phase 2 ✅
+│   ├── session_registry.py            ← SessionRegistry multi-sessione/multi-utente generico — Phase 2 ✅
+│   ├── fastapi_deps.py                ← get_current_user/authenticate_ws (dependency condivisa) — Phase 2 ✅
+│   ├── auth_router.py                 ← router `/auth` pronto all'uso (login/logout/me) — Phase 2 ✅
+│   ├── tools/manage_users.py          ← CLI per creare/aggiornare utenti in auth_config.json — Phase 2 ✅
+│   └── tests/                         ← test generici con un fake_engine.py (no build C++ richiesta)
 └── GAME/Tic-Tac-Toe/WebApp/
     ├── PLAN.md                         ← questo file (single source of truth)
     ├── conftest.py                     ← rende eng_serve importabile per pytest
     ├── eng_serve/                      ← facciata nativa HTTP/WS (FastAPI)
-    │   ├── main.py                     ← FastAPI app factory + lifespan, mount router
-    │   ├── session_manager.py          ← sessione singola "dev-session" (Phase 2: registro multi-sessione)
-    │   ├── engine_process.py           ← spawn/kill di UN tris_engine.exe (porte fisse 9100/9001)
-    │   ├── bridge_client.py            ← EngineEventListener (Qt-free) + EngineSender (riusati da pyLib/gmGui/engine_bridge)
+    │   ├── main.py                     ← FastAPI app factory + lifespan, mount gmWebServe.auth_router + sessions,
+    │   │                                 reaper idle-session periodico — Phase 2 ✅
+    │   ├── session_manager.py          ← wrapper sottile Tris-specifico su gmWebServe.SessionRegistry — Phase 2 ✅
+    │   ├── auth_config.json            ← utenti pilot-grade (hash+salt, mai password in chiaro) — Phase 2 ✅
     │   ├── routers/
-    │   │   └── sessions.py             ← REST comandi/query + endpoint WebSocket eventi (auth.py: Phase 2)
-    │   ├── settings.py                 ← config via pydantic-settings (.env)
+    │   │   └── sessions.py             ← REST list/create/get/command/close + WS (tutto auth-gated) — Phase 2 ✅
+    │   ├── settings.py                 ← config via pydantic-settings (.env) + auth_config_path
     │   ├── requirements.txt
     │   └── tests/
-    │       └── test_session_e2e.py     ← E2E con tris_engine.exe reale (new_game→snapshot→move→cell_changed)
+    │       └── test_session_e2e.py     ← E2E reale: login, isolamento 2 utenti, cap 429 — Phase 2 ✅
     └── webapp_frontend/                ← React + Vite + TypeScript — layer Tris-specifico
         ├── package.json
         ├── tsconfig.app.json            ← `paths`: alias `@webgui/*` + mapping react/react-dom → @types (vedi Notes)
-        ├── vite.config.ts               ← dev proxy verso eng_serve (REST + WS) + alias `@webgui` + config Vitest
+        ├── vite.config.ts               ← dev proxy verso eng_serve (REST + WS + /auth) + alias `@webgui` + Vitest
         ├── src/
-        │   ├── main.tsx
-        │   ├── App.tsx                  ← pagina unica (routing multi-sessione: Phase 2); consuma `@webgui/*`
-        │   ├── App.test.tsx             ← Vitest + Testing Library
+        │   ├── main.tsx                 ← avvolge `<App/>` in `AuthProvider` — Phase 2 ✅
+        │   ├── App.tsx                  ← login gate + picker sessioni (Riprendi/Chiudi) + board; consuma `@webgui/*`
+        │   ├── App.test.tsx             ← Vitest + Testing Library (login form, errore, picker sessioni)
         │   ├── engine/
         │   │   ├── contract.ts          ← typeId/payload gmTris + PLAYER_ACTORS/resolveTrisBadge + linee vincenti
         │   │   └── gameState.ts         ← stato partita + reducer (porta 1:1 gli handler di tris_window.py)
@@ -137,11 +153,10 @@ game_lib/
         │       ├── TrisBoard.tsx        ← griglia 3×3 cliccabile (Tris-specifico)
         │       ├── TurnHeader.tsx       ← banner turno/vittoria/pareggio (Tris-specifico)
         │       └── GameToolbar.tsx      ← Nuova Partita + modalità (usa `ThemeSelect` da `@webgui/*`)
-        └── (routes/, tests/ dedicati: da introdurre in Phase 2 con multi-sessione)
+        └── (routing dedicato `/login`/`/sessions/:id` valutato e NON adottato — vedi Phase 2 Notes)
 ```
 
 ---
-
 
 ## Development Phases
 
@@ -166,31 +181,92 @@ game_lib/
 - Frontend stack effettivamente installato (versioni correnti al momento dello scaffold, superiori a quelle indicative nella tabella di riferimento iniziale): React 19, Vite 8, Vitest 4, `react-router-dom` 7 — nessun impatto sul piano, `react-router-dom` non ancora usato (una sola pagina in Phase 1).
 - `npm run build` e `npm run test` (Vitest) verdi.
 
-### Phase 2 — Multi-Session & Auth [⏸️ Deliberatamente rimandata]
+### Phase 2 — Multi-Session & Auth [✅]
 
-- [ ] `session_manager.py`: registro sessioni attive (session_id → processo + porte + owner)
-- [ ] Allocazione dinamica di porte libere per ogni nuova sessione (niente più porte fisse)
-- [ ] Cleanup: kill del processo e rilascio porte su logout/disconnessione/timeout di inattività
-- [ ] `routers/auth.py`: login pilot-grade (utenti fissi o in-memory) → token di sessione
-- [ ] Isolamento: un token vede/comanda solo le proprie sessioni
-- [ ] Smoke test: due sessioni concorrenti isolate (l'utente A non vede eventi/stato dell'utente B)
+- [x] `session_manager.py`: registro sessioni attive (session_id → processo + porte + owner)
+- [x] Allocazione dinamica di porte libere per ogni nuova sessione (niente più porte fisse)
+- [x] Cleanup: kill del processo e rilascio porte su logout/disconnessione/timeout di inattività
+- [x] `routers/auth.py`: login pilot-grade (utenti fissi o in-memory) → token di sessione
+- [x] Isolamento: un token vede/comanda solo le proprie sessioni
+- [x] Smoke test: due sessioni concorrenti isolate (l'utente A non vede eventi/stato dell'utente B)
 
 **Notes:**
-- **Decisione esplicita dell'utente (2026-07-17):** prima di affrontare il multi-utente, si resta
-  con un solo utente locale che controlla entrambi i giocatori — esattamente come la GUI PySide6
-  oggi. La Fase 3 (resa estetica) è stata sviluppata PRIMA della Fase 2, invertendo l'ordine
-  originale del piano. Questa fase riparte da qui quando si formerà l'esigenza multi-utente.
-- L'autenticazione di questa fase sarà "pilot-grade" (adeguata a validare l'isolamento, non per
-  produzione) — da rivalutare se si va oltre il prototipo.
-- Il modello "un processo per sessione" resta scelto esplicitamente per non violare
-  "engine C++ invariato" (vedi Phase 1 Notes per il vincolo sulle porte hardcoded).
+- **Costruita a livello di libreria condivisa, non solo per Tris** (richiesta esplicita utente,
+  2026-07-18): tutta la logica multi-sessione/auth vive in `pyLib/gmWebServe` (`SessionRegistry`,
+  `auth.py`, `fastapi_deps.py`, `auth_router.py`) e in `webLib/WebGUI_Lib` (`authClient.ts`,
+  `AuthProvider.tsx`, `LoginForm.tsx`, `restClient.ts`/`wsClient.ts` ora bearer-token-aware).
+  Tris è il primo consumatore/pilota; Eldhôm (che ha la stessa sezione Phase 2 "rimandata" nel
+  proprio PLAN.md) può adottarla riusando la libreria quasi invariata — non ancora fatto in
+  questo turno (scope di questo turno: solo Tris, per decisione esplicita dell'utente).
+- **Decisione presa con l'utente (2026-07-18)**: autenticazione "utenti fissi + password con
+  hash/salt + token opachi" (non solo username); limiti sessione **N=2 sessioni concorrenti per
+  utente, timeout di inattività 10 minuti**, entrambi configurabili via file (non hardcoded);
+  login UI reale (non solo token in localStorage); modifica minima e retrocompatibile al C++
+  del CoreEngine per abilitare porte dinamiche.
+- **Modello sessione INVARIATO rispetto al piano originale**: resta "un processo per sessione"
+  (process-per-session), ora davvero concorrente per N sessioni/utente — non viola "engine C++
+  invariato" nel senso forte (nessuna riscrittura di TrisEngine/CmdServer), ma richiede la
+  modifica minima descritta sotto.
+- **Blocco delle porte fisse risolto**: `GAME/Tic-Tac-Toe/CoreEngine/main.cpp` accetta ora
+  argomenti CLI opzionali `--events-port <port>` / `--commands-port <port>` (parsing manuale,
+  nessuna dipendenza esterna), con fallback a `gmTris::ports::EVENTS`/`COMMANDS` se assenti —
+  **eseguire l'exe senza argomenti (come fa oggi la GUI desktop) resta bit-per-bit invariato**.
+  `TrisEngine` guadagna un parametro opzionale `events_port` (default `ports::EVENTS`) per
+  poter passare la porta risolta a `GuiBridge`. Verificato: build pulita + `ctest -R "tris_"`
+  4/4 PASS (incluso `tris_e2e`, che lancia l'exe SENZA argomenti — prova diretta che il
+  comportamento di default non è cambiato).
+- **Allocazione porte**: `gmWebServe.port_utils.find_free_port()` (bind su porta 0, legge la
+  porta assegnata dal SO, richiude) — tecnica standard "trova porta libera", piccola race
+  intrinseca accettata per uso pilot-grade locale (documentata nel docstring).
+- **Auth pilot-grade ma OWASP-consapevole**: password mai in chiaro (PBKDF2-HMAC-SHA256,
+  600.000 iterazioni, salt casuale 16 byte per utente, confronto a tempo costante via
+  `hmac.compare_digest`); hash "fantasma" calcolato anche per username sconosciuti per ridurre
+  (non eliminare) il segnale di timing su username-enumeration; token opachi
+  `secrets.token_urlsafe(32)` con scadenza (default 8h); `SessionNotFoundError` unica sia per
+  "non esiste" sia per "esiste ma di un altro utente" (mai confermare l'esistenza altrui, evita
+  IDOR/information disclosure — OWASP A01). Fuori scope dichiarato: registrazione, reset
+  password, refresh token, rate-limiting sui login — da rivalutare oltre il prototipo.
+- **Config utenti/limiti in file, non hardcoded** (richiesta esplicita utente): nuovo
+  `eng_serve/auth_config.json` (JSON con `users[]`, `max_sessions_per_user`,
+  `session_idle_timeout_seconds`), generato/aggiornato con la nuova CLI
+  `python -m gmWebServe.tools.manage_users --config ... --username ... --password ...`
+  (mai scrive la password in chiaro, solo hash+salt). Due utenti pilota creati: `demo` e
+  `demo2` (necessari per validare l'isolamento cross-utente).
+- **WebSocket + token**: gli handshake WS da browser non possono impostare header custom, quindi
+  il token viaggia come query param `?token=...` (`gmWebServe.fastapi_deps.authenticate_ws`,
+  `wsClient.ts` aggiornato) — limite noto/accettato (il token può finire nei log di accesso),
+  documentato nel codice.
+- **Reaper idle-timeout**: task asyncio in background nel lifespan di `main.py`
+  (`_reap_idle_sessions_periodically`, ogni 60s) chiama `SessionRegistry.reap_idle_sessions()`
+  in un worker thread (`run_in_executor`) per non bloccare l'event loop durante lo stop di un
+  eventuale subprocess. L'"inattività" è definita come "nessun comando inviato dall'utente" (non
+  conta il traffico eventi in arrivo dal motore) — scelta deliberata per rispecchiare
+  l'inattività dell'UTENTE, non quella del motore.
+- **Routing `react-router-dom` valutato e NON adottato**: si è preferito estendere la singola
+  pagina `App.tsx` con rendering condizionale (login → picker sessioni → board) invece di
+  introdurre `/login`+`/sessions/:id`, per coerenza con la Phase 3 (nessuna logica di dominio
+  duplicata, un solo componente orchestratore) e perché con un tetto di 2 sessioni/utente un
+  semplice picker inline è sufficiente — `react-router-dom` resta installato ma inutilizzato,
+  rivalutare se servirà deep-linking a una sessione specifica.
+- **Test**: `pyLib/gmWebServe/tests/` (NUOVO, 18 test) valida `SessionRegistry`/`auth` in modo
+  totalmente game-agnostic contro un `fake_engine.py` (stesso wire-format dei motori reali, zero
+  build C++ richiesta) — isolamento proprietario, cap per-utente, reap idle, hashing/token/login.
+  `eng_serve/tests/test_session_e2e.py` riscritto per Phase 2 (6 test) contro `tris_engine.exe`
+  **reale**: login, 401 senza auth, isolamento tra `demo`/`demo2` con 2 processi motore reali
+  concorrenti, cap 429 al terzo tentativo. Frontend: `App.test.tsx` riscritto (3 test Vitest,
+  `fetch` mockato) per il nuovo login gate/picker. `npm run build`/`lint`/`test` puliti.
+- **Smoke test end-to-end nel browser reale** (non solo automatico): login `demo` → «Sessioni
+  attive: nessuna» → «Nuova Partita» → board reale con `tris_engine.exe` → mossa X in (1,1) →
+  turno passato a O (round-trip completo browser↔eng_serve↔engine) → logout → login `demo2` →
+  confermato **«Nessuna sessione attiva»** (demo2 NON vede la partita di demo, isolamento reale
+  confermato a schermo, non solo via API).
 
 ### Phase 3 — Frontend Functional Parity [✅]
 
 - [x] `TrisBoard.tsx`: griglia 3×3 cliccabile, invio comando `gmTris.move` via REST
 - [x] `SessionDashboard` (in `App.tsx` + `TurnHeader`/`PlayerBadges`/`MatchLog`/`ErrorBar`): turno attivo / stato partita / log — equivalenti read-only ai widget `TurnHeaderWidget`/`TurnFooterWidget`/`LogWidget`/`ErrorBarWidget` della GUI desktop
 - [x] Tema: `src/theme/themes.ts` genera CSS custom properties dagli stessi 5 temi (scroll/stone/dark_moon/blood/techno) + selettore tema live in toolbar
-- [ ] Routing `react-router-dom`: `/login`, `/sessions/:id` — **non necessario finché resta un solo utente/sessione** (Phase 2 deferred); rivalutare quando si introduce multi-sessione
+- [x] Routing `react-router-dom`: `/login`, `/sessions/:id` — valutato in Phase 2 e **deliberatamente non adottato** (login gate + picker sessioni via rendering condizionato nello stesso `App.tsx`; vedi Phase 2 Notes per il confronto)
 - [x] Smoke test: partita completa giocabile nel browser (vittoria e pareggio) con cambio tema funzionante — verificato manualmente (due partite complete, vittorie X e O, cambio tema Scroll→Techno dal vivo)
 
 **Notes:**

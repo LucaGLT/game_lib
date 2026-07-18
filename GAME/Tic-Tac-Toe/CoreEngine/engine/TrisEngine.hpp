@@ -35,8 +35,16 @@ namespace gmTris
 class TrisEngine
 {
   public:
-	/// @brief Constructs the engine and connects the outbound GUI bridge.
-	TrisEngine();
+	/**
+	 * @brief Constructs the engine and connects the outbound GUI bridge.
+	 *
+	 * @param events_port TCP port of the GUI/eng_serve event listener (default
+	 *        @ref gmTris::ports::EVENTS). Overridable so multiple engine
+	 *        instances can each target a different listener — this is what
+	 *        lets eng_serve run one engine per user session, each pair on its
+	 *        own dynamically-allocated ports (see GAME/Tic-Tac-Toe/WebApp).
+	 */
+	explicit TrisEngine(uint16_t events_port = ports::EVENTS);
 
 	/**
 	 * @brief Starts a new match.

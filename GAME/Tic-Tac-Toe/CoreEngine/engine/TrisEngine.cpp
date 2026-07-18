@@ -8,7 +8,7 @@
 namespace gmTris
 {
 
-TrisEngine::TrisEngine() : _gui("127.0.0.1", ports::EVENTS)
+TrisEngine::TrisEngine(uint16_t events_port) : _gui("127.0.0.1", events_port)
 {
 }
 
