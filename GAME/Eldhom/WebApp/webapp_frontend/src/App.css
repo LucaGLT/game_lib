@@ -1128,6 +1128,28 @@
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
 }
 
+.eldhom-hero-panel--clickable {
+  cursor: pointer;
+}
+
+.eldhom-hero-panel--clickable:hover {
+  border-color: var(--gm-accent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Monster-group synthetic card — same red/danger accent convention as
+   TimelineTrack's `--enemy` chip. Declared before `--active` so an active
+   monster group's turn highlight (accent border-color, all 4 sides) still
+   wins when both modifiers apply together. */
+.eldhom-hero-panel--monster {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-hero-panel--monster .eldhom-hero-panel__hp-fill {
+  background-color: var(--gm-danger);
+}
+
 .eldhom-hero-panel--active {
   border-width: 2px;
   border-color: var(--gm-accent);
@@ -1383,4 +1405,90 @@
   font-size: 11px;
   opacity: 0.6;
   font-style: italic;
+}
+
+/* ── ActorDetailModal ("extended card" for a hero/monster-group synthetic card) ── */
+
+.eldhom-actor-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.eldhom-actor-detail__chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eldhom-actor-detail__chip {
+  padding: 2px 10px;
+  border-radius: var(--gm-radius);
+  border: 1px solid var(--gm-border);
+  background-color: var(--gm-background);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.eldhom-actor-detail__chip--enemy {
+  border-color: var(--gm-danger);
+}
+
+.eldhom-actor-detail__hp-track {
+  height: 20px;
+}
+
+.eldhom-actor-detail__section {
+  padding-top: 8px;
+  border-top: 1px solid var(--gm-border);
+}
+
+.eldhom-actor-detail__section p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+.eldhom-actor-detail__section-title {
+  margin: 0 0 4px !important;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.75;
+  letter-spacing: 0.03em;
+}
+
+.eldhom-actor-detail__placeholder {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.eldhom-actor-detail__instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eldhom-actor-detail__instance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background-color: var(--gm-background);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  font-size: 12px;
+}
+
+.eldhom-actor-detail__instance--dead {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.eldhom-actor-detail__instance-id {
+  font-weight: 700;
+  min-width: 32px;
 }

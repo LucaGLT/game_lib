@@ -27,9 +27,10 @@ import {
   type MissionSummary,
 } from './engine/contract'
 import { hasEffect } from './engine/cardIcons'
-import { applyCardCatalog, applyEnvelope, initialEldhomState } from './engine/gameState'
+import { applyCardCatalog, applyEnvelope, initialEldhomState, type EldhomState } from './engine/gameState'
 import { formatEvent, resetLogTimeTracking } from './engine/logFormat'
 import { ActionPanel, type TargetingMode } from './components/ActionPanel'
+import { ActorDetailModal, type ActorDetailSubject } from './components/ActorDetailModal'
 import { AreaInfoPanel } from './components/AreaInfoPanel'
 import { DeckTable } from './components/DeckTable'
 import { EldhomMap } from './components/EldhomMap'
@@ -38,6 +39,7 @@ import { HeroPanel } from './components/HeroPanel'
 import { InstantWindowModal } from './components/InstantWindowModal'
 import { MainMenuModal } from './components/MainMenuModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
+import { MonsterGroupPanel } from './components/MonsterGroupPanel'
 import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
 
@@ -55,20 +57,44 @@ type Targeting =
   | { kind: 'card-attack'; cardId: string; destination?: string }
   | null
 
+/** Which synthetic card's "extended card" popup (`ActorDetailModal`) is open, by id — resolved against live state on every render (see `resolveDetailSubject`) rather than storing a snapshot, so the popup never shows stale HP/state while open. */
+type DetailTarget = { kind: 'hero'; id: string } | { kind: 'monsterGroup'; id: string } | null
+
+/** Looks up the live hero/group data for `target` in `state`. Returns null if the target is unset or no longer exists (e.g. a monster group fully defeated since the popup was opened) — `App` treats a null result as "close the popup". */
+function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDetailSubject | null {
+  if (target === null) {
+    return null
+  }
+  if (target.kind === 'hero') {
+    const hero = state.heroesById[target.id]
+    return hero ? { kind: 'hero', hero } : null
+  }
+  const group = state.groups.find((candidate) => candidate.id === target.id)
+  return group ? { kind: 'monsterGroup', group } : null
+}
+
 /**
  * Main Eldhôm WebApp page. Ties together mission selection, session
  * lifecycle, and all game-state-driven panels: `ActionPanel` (4 simple
  * actions + inline TAKE/BLOCK/DODGE reaction window), `EldhomMap`/
- * `TimelineTrack`, `HeroPanel`s, `DeckTable` (the full 6-zone card table —
- * see that component's docstring for exactly which zone-to-zone moves are
- * real for Eldhôm vs display-only), the narrative event log (coloured, see
- * `logFormat.ts`) plus a collapsed raw-JSON debug log, and the Phase 6
- * modals (mission select / formation / instant window).
+ * `TimelineTrack`, `HeroPanel`s/`MonsterGroupPanel`s, `DeckTable` (the full
+ * 6-zone card table — see that component's docstring for exactly which
+ * zone-to-zone moves are real for Eldhôm vs display-only), the narrative
+ * event log (coloured, see `logFormat.ts`) plus a collapsed raw-JSON debug
+ * log, and the Phase 6 modals (mission select / formation / instant window).
  *
  * Before any session exists, `showMissionSelect` picks between the two
  * pre-game screens (Phase 19): `MainMenuModal` (landing screen, 4 entries —
  * only "Gioca una missione" is wired up) and, once that is chosen,
  * `MissionSelectModal` (dismissible back to the main menu).
+ *
+ * Clicking any synthetic card in the hero row (`HeroPanel`/
+ * `MonsterGroupPanel`) sets `detailTarget` (an id, not a data snapshot —
+ * see `resolveDetailSubject`) which opens `ActorDetailModal` (Phase 20)
+ * with that actor's/group's "extended card". Resolving against live state
+ * on every render (rather than storing the clicked object) means the popup
+ * keeps showing fresh HP/state while open and auto-closes if the
+ * underlying actor disappears (e.g. a fully-defeated monster group).
  *
  * Point-and-click targeting for the 4 SIMPLE actions (move destination /
  * attack target) is armed by `ActionPanel` and resolved by this
@@ -104,6 +130,7 @@ function App() {
   const [eldhomState, setEldhomState] = useState(initialEldhomState)
   const [targeting, setTargeting] = useState<Targeting>(null)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
+  const [detailTarget, setDetailTarget] = useState<DetailTarget>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
   const disconnectRef = useRef<(() => void) | null>(null)
@@ -186,6 +213,7 @@ function App() {
       setEldhomState((previous) => applyCardCatalog(initialEldhomState, Object.values(previous.cards)))
       setTargeting(null)
       setSelectedLocationId(null)
+      setDetailTarget(null)
       setErrorMessage(null)
       disconnectRef.current = connectSessionEvents(session.session_id, (envelope) => {
         nextRouter.dispatch(envelope)
@@ -427,6 +455,8 @@ function App() {
             position: token.position,
           }))
 
+  const detailSubject = resolveDetailSubject(detailTarget, eldhomState)
+
   return (
     <div className="app" data-theme={theme.id} style={themeToCssVars(theme) as CSSProperties}>
       <header className="app-header">
@@ -464,6 +494,14 @@ function App() {
         />
       )}
 
+      {detailSubject && (
+        <ActorDetailModal
+          subject={detailSubject}
+          tokens={eldhomState.tokens}
+          onDismiss={() => setDetailTarget(null)}
+        />
+      )}
+
       {eldhomState.title !== '' && (
         <p className="eldhom-mission-title">
           {eldhomState.title} — ⏳ {eldhomState.missionTime}
@@ -475,7 +513,20 @@ function App() {
 
       <div className="eldhom-hero-row">
         {Object.values(eldhomState.heroesById).map((hero) => (
-          <HeroPanel key={hero.id} hero={hero} isActive={hero.id === eldhomState.nextActorId} />
+          <HeroPanel
+            key={hero.id}
+            hero={hero}
+            isActive={hero.id === eldhomState.nextActorId}
+            onClick={() => setDetailTarget({ kind: 'hero', id: hero.id })}
+          />
+        ))}
+        {eldhomState.groups.map((group) => (
+          <MonsterGroupPanel
+            key={group.id}
+            group={group}
+            isActive={group.id === eldhomState.nextActorId}
+            onClick={() => setDetailTarget({ kind: 'monsterGroup', id: group.id })}
+          />
         ))}
       </div>
 

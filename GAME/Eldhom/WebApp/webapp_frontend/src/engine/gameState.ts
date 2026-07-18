@@ -35,6 +35,7 @@ import {
   type FormationDialogWire,
   type HeroWire,
   type InstantWindowWire,
+  type MonsterGroupWire,
   type NextActorWire,
   type ReactionWindowWire,
   type StateFullWire,
@@ -106,6 +107,8 @@ export interface EldhomState {
   pendingReaction: ReactionWindowWire | null
   /** Raw hero wire data keyed by id (HP/resources/hand-count for HeroPanel, Phase 5). */
   heroesById: Record<string, HeroWire>
+  /** Raw monster-group wire data (name/timeline/monster_type/instances), for `MonsterGroupPanel`/`ActorDetailModal` (Phase 20) — refreshed only on `state.full`, same cadence as `tokens`/`heroesById`. */
+  groups: MonsterGroupWire[]
   /** Set while the engine awaits a mandatory Prima Linea/Retroguardia choice; null otherwise. */
   pendingFormation: FormationDialogWire | null
   /** Set while the engine awaits an instant-card choice (proactive or reactive); null otherwise. */
@@ -128,6 +131,7 @@ export const initialEldhomState: EldhomState = {
   sequenceActiveByHero: {},
   pendingReaction: null,
   heroesById: {},
+  groups: [],
   pendingFormation: null,
   pendingInstantWindow: null,
 }
@@ -364,6 +368,7 @@ function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState
     edges: buildEdges(wire, locations),
     tokens: buildTokens(wire),
     heroesById,
+    groups: wire.groups,
     timelineActors: buildTimelineActors(wire),
     nextActorId: wire.next_actor?.actor_id ?? '',
     nextActorKind: wire.next_actor?.kind ?? '',

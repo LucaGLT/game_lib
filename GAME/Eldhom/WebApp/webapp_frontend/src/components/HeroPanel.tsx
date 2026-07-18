@@ -12,12 +12,18 @@
  * show is already covered by `ActionPanel`'s "TURNO: X" label, this
  * component's own active-border highlight, and `EldhomMap`'s active-token
  * outline — adding it would be redundant, not missing functionality.
+ *
+ * Clicking the card calls `onClick` (Phase 20) — `App.tsx` opens
+ * `ActorDetailModal` with this hero's full wire data, the "extended card"
+ * equivalent of the desktop's `GmActorModule` detail panel shown when an
+ * actor is selected there.
  */
 import type { HeroWire } from '../engine/contract'
 
 export interface HeroPanelProps {
   hero: HeroWire
   isActive: boolean
+  onClick: () => void
 }
 
 const LIFE_STATE_LABELS: Record<number, string> = {
@@ -26,12 +32,15 @@ const LIFE_STATE_LABELS: Record<number, string> = {
   2: 'Morto',
 }
 
-export function HeroPanel({ hero, isActive }: HeroPanelProps) {
+export function HeroPanel({ hero, isActive, onClick }: HeroPanelProps) {
   const hpRatio = hero.max_hp > 0 ? Math.max(0, hero.hp) / hero.max_hp : 0
   const positionLabel = hero.position === 'FRONTLINE' ? 'Primo piano' : 'Retro'
 
   return (
-    <div className={`eldhom-hero-panel${isActive ? ' eldhom-hero-panel--active' : ''}`}>
+    <div
+      className={`eldhom-hero-panel eldhom-hero-panel--clickable${isActive ? ' eldhom-hero-panel--active' : ''}`}
+      onClick={onClick}
+    >
       <p className="eldhom-hero-panel__name">{hero.name}</p>
       <div className="eldhom-hero-panel__hp-track">
         <div className="eldhom-hero-panel__hp-fill" style={{ width: `${hpRatio * 100}%` }} />
@@ -49,3 +58,4 @@ export function HeroPanel({ hero, isActive }: HeroPanelProps) {
     </div>
   )
 }
+

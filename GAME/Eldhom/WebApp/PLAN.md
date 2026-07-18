@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.19.0
-**Status:** Phase 19 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-19 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.20.0
+**Status:** Phase 20 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-20 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1351,6 +1351,83 @@ null`). Ora una nuova schermata `MainMenuModal` si frappone come landing screen:
   Iniziale, senza alcuna modifica al componente `ThemeSelect` esistente.
 - `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
   CoreEngine C++ (nessuna modifica al wire-contract).
+
+---
+
+### Phase 20 — Card sintetiche Gruppi di Mostri + Card estesa Attore (Pop-Up)
+(richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente, in due parti collegate: *"In questa Sezione voglio vedere anche
+le Card Sintetiche dei Gruppi di Mostri in gioco oltre alla Card Sintetiche dei PG"* e
+*"quando Clicco su una Card Sintetica si deve aprire in Pop-Up una pagina che mostra la
+CARDE ESTESA con tutte le info del PG o Mostro — Equipaggiamento, Statistiche, altro ancora
+da definire — vedi come era il pyQt quando selezioni un Actor".*
+
+**Analisi del riferimento PyQt:** lette `pyLib/gmGui/modules/gm_actor_module.py`
+(`GmActorModule`, pannello dettaglio generico: chip Nome/Fazione/Stato, barra PV, liste
+Status/Risorse/Equipaggiamento) e `GAME/Eldhom/GUI/widgets/eldhom_actor_adapter.py`
+(il traduttore Eldhôm-specifico verso quello schema generico). Verificato leggendo
+`GAME/Eldhom/CoreEngine/main.cpp` che il JSON di `eldhom.state.full` **non serializza mai**
+un campo `equipment`/`statuses` né per eroi né per istanze mostro — quindi anche sul
+desktop quelle due sezioni sono sempre vuote per Eldhôm oggi (l'adapter Python le imposta a
+`{}` di default). La card estesa qui è esplicita su questo invece di inventare dati che il
+motore non invia (stesso principio già seguito per il pulsante "🚫 Bandite" e i 3 placeholder
+disabilitati di `MainMenuModal`).
+
+- [x] `gameState.ts`: nuovo campo `groups: MonsterGroupWire[]` in `EldhomState` (dati grezzi
+      wire di ogni gruppo mostro — id/nome/timeline/monster_type/istanze), popolato in
+      `applyStateFull` con la stessa cadenza di aggiornamento di `tokens`/`heroesById` (solo
+      su `state.full`, coerente con Phase 18)
+- [x] Nuovo componente `MonsterGroupPanel.tsx`: una card sintetica per **gruppo** (non per
+      istanza singola, mirror di come `TimelineTrack` mostra un chip per gruppo), con barra
+      PV aggregata (somma PV/PV-max di tutte le istanze), conteggio "N/M vivi", timeline e
+      locazione. Riusa le classi CSS `.eldhom-hero-panel__*` di `HeroPanel` con un modificatore
+      `--monster` (accento rosso/danger, stessa convenzione del chip `--enemy` di
+      `TimelineTrack`)
+- [x] `HeroPanel.tsx`: aggiunta prop `onClick`; la card ora è cliccabile (nuovo modificatore
+      CSS `--clickable`, stesso pattern hover di `.eldhom-map__node--clickable`)
+- [x] `App.tsx`: la hero-row ora renderizza sia `HeroPanel` (per ogni eroe) sia
+      `MonsterGroupPanel` (per ogni gruppo mostro in `eldhomState.groups`); nuovo stato
+      `detailTarget` (solo l'id cliccato, non uno snapshot dei dati) risolto ad ogni render
+      tramite `resolveDetailSubject(target, eldhomState)` — così il pop-up mostra sempre dati
+      freschi mentre resta aperto e si auto-chiude se l'attore referenziato sparisce (es. un
+      gruppo mostri sconfitto del tutto)
+- [x] Nuovo componente `ActorDetailModal.tsx` ("card estesa"): chip Fazione/Tipo-mostro e
+      Stato, barra PV aggregata, sezione **Risorse** (⌛ Tempo, e per gli eroi 📍 locazione),
+      sezione **Mazzo** solo per eroi (🂠 Mazzo, 🗑 Scarti, 🖐 Mano, 🂡 Giocate — dati wire reali
+      non altrimenti mostrati per intero da `HeroPanel`), sezione **Istanze** solo per gruppi
+      mostro (tabella per-istanza: PV, locazione, Vivo/Sconfitto, con la stessa etichetta
+      mappa-coerente "B1"/"B2" di `EldhomMap`, risolta via il prop `tokens` invece di
+      ricalcolare l'euristica di labeling), sezioni **Equipaggiamento**/**Stato ed Effetti
+      attivi** con placeholder esplicito "Non ancora disponibile" (nessun dato reale sul wire
+      oggi — vedi analisi sopra)
+- [x] Nuove classi CSS in `App.css`: `.eldhom-hero-panel--monster`/`--clickable`,
+      `.eldhom-actor-detail*` (chips, sezioni, lista istanze)
+- [x] `get_errors` pulito su tutti i file toccati; `npm run build`/`npm run lint` puliti
+- [x] Validazione nel browser (missione "L'Ombra sul Corridoio"): la hero-row mostra 4 card
+      (Thael, Velyr, Briganti A 2/2 vivi, Briganti B 1/1 vivi) con l'accento rosso e l'icona
+      👹 sulle card mostro; click su Thael → pop-up con chip "HEROES"/"Attivo", PV 6/6,
+      Risorse, sezione Mazzo (5/0/5–5/0), placeholder Equipaggiamento/Stato; click su
+      "Briganti A" → pop-up con chip "Brigante Comune"/"2/2 vivi", PV aggregati 6/6, sezione
+      Istanze con B1 e B2 (3/3 PV, corridoio, Vivo) — etichette identiche a quelle sulla mappa
+
+**Esito Phase 20 (validato):**
+
+- La sezione delle card sintetiche ora mostra, oltre ai PG, anche ogni gruppo di mostri
+  attualmente in missione, visivamente distinto (accento rosso, icona 👹) ma con lo stesso
+  linguaggio visivo delle card PG.
+- Cliccando una qualsiasi card sintetica (PG o gruppo mostri) si apre un pop-up con la
+  "card estesa": tutte le info realmente disponibili sul wire (PV, risorse, mazzo per i PG,
+  breakdown per-istanza per i mostri), con le sezioni Equipaggiamento/Stato presenti ma
+  onestamente segnalate come non ancora disponibili (nessun dato fabbricato).
+- `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
+  CoreEngine C++ (nessuna modifica al wire-contract: solo nuovi campi già presenti in
+  `eldhom.state.full` vengono ora letti/mostrati).
+
+**Notes:**
+- Se in futuro il motore inizierà a serializzare `equipment`/`statuses` per eroi o mostri,
+  le due sezioni placeholder in `ActorDetailModal` sono già pronte: basta popolarle con i
+  dati reali al posto del testo "Non ancora disponibile", senza altre modifiche strutturali.
 
 ---
 
