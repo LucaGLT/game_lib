@@ -50,6 +50,35 @@ function loadStoredTheme(): ThemeId {
   return THEMES.find((theme) => theme.id === stored)?.id ?? DEFAULT_THEME_ID
 }
 
+/**
+ * "Sfondo Luna" — Eldhôm-only background-art variants for the `dark_moon`
+ * theme (Phase 21, replacing the original starfield+moon-disc art the user
+ * disliked). Deliberately NOT added to the shared `ThemeId`/`THEMES`
+ * registry (`webLib/WebGUI_Lib/src/theme/themes.ts`): that file mirrors the
+ * desktop PySide6 app's fixed 5 themes 1:1 and is shared with other WebApps
+ * (Tris) — these are purely a `.app`/`.eldhom-map` `background-image` swap
+ * layered on top of the existing `dark_moon` color tokens, scoped to this
+ * component via a second `data-moon-variant` attribute (see `App.css`).
+ * Only shown/relevant when `themeId === 'dark_moon'`.
+ */
+type MoonVariantId = 'moon_01' | 'moon_02' | 'moon_03' | 'moon_04' | 'moon_05'
+
+const MOON_VARIANTS: ReadonlyArray<{ id: MoonVariantId; displayName: string }> = [
+  { id: 'moon_01', displayName: 'Moon_01 — Crepuscolo' },
+  { id: 'moon_02', displayName: 'Moon_02 — Aurora' },
+  { id: 'moon_03', displayName: 'Moon_03 — Nebulosa' },
+  { id: 'moon_04', displayName: 'Moon_04 — Nebbia' },
+  { id: 'moon_05', displayName: 'Moon_05 — Profondo' },
+]
+
+const DEFAULT_MOON_VARIANT_ID: MoonVariantId = 'moon_01'
+const MOON_VARIANT_STORAGE_KEY = 'eldhom-webapp-moon-variant'
+
+function loadStoredMoonVariant(): MoonVariantId {
+  const stored = window.localStorage.getItem(MOON_VARIANT_STORAGE_KEY)
+  return MOON_VARIANTS.find((variant) => variant.id === stored)?.id ?? DEFAULT_MOON_VARIANT_ID
+}
+
 /** What a location/token click (or card drop) on the map currently resolves to (or null if nothing is armed). */
 type Targeting =
   | { kind: 'simple-move' }
@@ -96,6 +125,13 @@ function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDe
  * keeps showing fresh HP/state while open and auto-closes if the
  * underlying actor disappears (e.g. a fully-defeated monster group).
  *
+ * When the `dark_moon` theme is active, an extra "Sfondo Luna" picker
+ * (Phase 21) lets the user cycle through 5 alternative background-art
+ * variants (`moonVariant`, `MOON_VARIANTS`) replacing the original
+ * starfield+moon-disc art — see `App.css`'s `[data-moon-variant]` rules.
+ * This is deliberately NOT part of the shared `ThemeId` registry (see the
+ * comment above `MOON_VARIANTS`).
+ *
  * Point-and-click targeting for the 4 SIMPLE actions (move destination /
  * attack target) is armed by `ActionPanel` and resolved by this
  * component's `handleLocationClick`/`handleTokenClick`, which own the
@@ -133,6 +169,7 @@ function App() {
   const [detailTarget, setDetailTarget] = useState<DetailTarget>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
+  const [moonVariant, setMoonVariant] = useState<MoonVariantId>(loadStoredMoonVariant)
   const disconnectRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
@@ -142,6 +179,10 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(THEME_STORAGE_KEY, themeId)
   }, [themeId])
+
+  useEffect(() => {
+    window.localStorage.setItem(MOON_VARIANT_STORAGE_KEY, moonVariant)
+  }, [moonVariant])
 
   useEffect(() => {
     listMissions()
@@ -458,10 +499,30 @@ function App() {
   const detailSubject = resolveDetailSubject(detailTarget, eldhomState)
 
   return (
-    <div className="app" data-theme={theme.id} style={themeToCssVars(theme) as CSSProperties}>
+    <div
+      className="app"
+      data-theme={theme.id}
+      data-moon-variant={moonVariant}
+      style={themeToCssVars(theme) as CSSProperties}
+    >
       <header className="app-header">
         <h1>Eldhôm — WebApp</h1>
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />
+        {theme.id === 'dark_moon' && (
+          <label className="gmgui-field">
+            Sfondo Luna
+            <select
+              value={moonVariant}
+              onChange={(event) => setMoonVariant(event.target.value as MoonVariantId)}
+            >
+              {MOON_VARIANTS.map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {variant.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </header>
 
       {sessionId === null && !showMissionSelect && (

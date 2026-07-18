@@ -50,16 +50,60 @@
   background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
 }
 
-.app[data-theme='dark_moon'] {
-  background-color: #06060a;
+/* Dark Moon "Sfondo Luna" variants (Phase 21) — 5 selectable gradient-only
+   background-art alternatives to the original starfield+moon-disc look
+   (user feedback: no stars, no moon disc — gradients or other treatments
+   only). Selected via the header's "Sfondo Luna" picker (`moonVariant` in
+   App.tsx), applied through the `data-moon-variant` attribute. Page vs map
+   deliberately use different gradient placements (map rules further below,
+   next to `.eldhom-map`) so the two backgrounds stay visually distinct,
+   same principle as every other theme's page-vs-map skin. */
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_01'] {
+  /* Crepuscolo — twilight: deep indigo fading to near-black, soft warm-violet glow low on the page. */
+  background-color: #08070d;
   background-image:
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(126, 98, 168, 0.22), transparent 70%),
     radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
-    radial-gradient(1.2px 1.2px at 20% 30%, #ffffff 100%, transparent),
-    radial-gradient(1px 1px at 60% 70%, #cfd0ff 100%, transparent),
-    radial-gradient(1.4px 1.4px at 80% 15%, #ffffff 100%, transparent),
-    radial-gradient(1px 1px at 35% 85%, #cfd0ff 100%, transparent),
-    linear-gradient(180deg, #14141e 0%, #08080c 60%, #030305 100%);
-  background-size: auto, 340px 340px, 340px 340px, 340px 340px, 340px 340px, auto;
+    linear-gradient(180deg, #1c1830 0%, #0d0b18 55%, #06050a 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_02'] {
+  /* Aurora — diagonal indigo/purple/teal sweep with two soft aurora-like glows. */
+  background-color: #0a0916;
+  background-image:
+    radial-gradient(ellipse at 25% 15%, rgba(120, 200, 190, 0.1), transparent 50%),
+    radial-gradient(ellipse at 75% 65%, rgba(150, 110, 200, 0.14), transparent 55%),
+    linear-gradient(135deg, #0d0a1a 0%, #1a1030 35%, #142840 65%, #0a0a14 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_03'] {
+  /* Nebulosa — soft, large, blurred color blooms (magenta/indigo/teal), no hard edges. */
+  background-color: #0c0a15;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 20% 25%, rgba(168, 80, 190, 0.16), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 80% 70%, rgba(70, 90, 200, 0.16), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 55% 15%, rgba(90, 180, 190, 0.1), transparent 60%),
+    linear-gradient(180deg, #100a1c 0%, #08060e 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_04'] {
+  /* Nebbia — layered translucent grey-blue mist bands, minimal color, very moody. */
+  background-color: #0c0d12;
+  background-image:
+    linear-gradient(200deg, rgba(140, 150, 170, 0.06) 0%, transparent 22%),
+    linear-gradient(160deg, rgba(140, 150, 170, 0.05) 30%, transparent 55%),
+    linear-gradient(190deg, rgba(120, 130, 155, 0.05) 60%, transparent 80%),
+    linear-gradient(180deg, #14161e 0%, #0a0b10 60%, #050507 100%);
+}
+
+.app[data-theme='dark_moon'][data-moon-variant='moon_05'] {
+  /* Profondo — minimal deep vignette, the most understated of the 5 variants. */
+  background-color: #08070b;
+  background-image:
+    radial-gradient(ellipse at 50% 35%, rgba(84, 84, 106, 0.2), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.4), transparent 70%),
+    linear-gradient(180deg, #17151f 0%, #08070c 100%);
 }
 
 .app[data-theme='blood'] {
@@ -551,31 +595,53 @@
 }
 
 [data-theme='dark_moon'] .eldhom-map {
-  background-color: #101018;
-  /* Disco lunare (con crateri) + nubi sottili in un angolo del cielo
-     stellato, ispirati a riferimenti fotografici di luna/cielo notturno —
-     realizzati SOLO con radial-gradient, nessun asset esterno. */
-  background-image:
-    radial-gradient(circle at 84% 12%, rgba(140, 140, 160, 0.55) 0%, rgba(140, 140, 160, 0.55) 1%, transparent 1.4%),
-    radial-gradient(circle at 88% 16%, rgba(140, 140, 160, 0.5) 0%, rgba(140, 140, 160, 0.5) 0.7%, transparent 1.1%),
-    radial-gradient(circle at 87% 11%, rgba(150, 150, 168, 0.45) 0%, rgba(150, 150, 168, 0.45) 0.5%, transparent 0.9%),
-    radial-gradient(circle at 86% 14%, #dcdce6 0%, #dcdce6 8%, transparent 8.6%),
-    radial-gradient(circle at 86% 14%, rgba(220, 220, 235, 0.25), transparent 16%),
-    radial-gradient(ellipse 40% 10% at 30% 60%, rgba(60, 60, 80, 0.22), transparent 70%),
-    radial-gradient(ellipse 55% 8% at 65% 78%, rgba(50, 50, 70, 0.18), transparent 70%),
-    radial-gradient(1.6px 1.6px at 12% 20%, #ffffff 100%, transparent),
-    radial-gradient(1.2px 1.2px at 32% 65%, #cfd0ff 100%, transparent),
-    radial-gradient(1.4px 1.4px at 55% 15%, #ffffff 100%, transparent),
-    radial-gradient(1px 1px at 70% 55%, #cfd0ff 100%, transparent),
-    radial-gradient(1.6px 1.6px at 85% 80%, #ffffff 100%, transparent),
-    radial-gradient(1.1px 1.1px at 92% 25%, #cfd0ff 100%, transparent),
-    radial-gradient(1.3px 1.3px at 6% 82%, #ffffff 100%, transparent),
-    radial-gradient(1px 1px at 45% 92%, #cfd0ff 100%, transparent),
-    radial-gradient(ellipse at 50% 0%, rgba(168, 156, 200, 0.12), transparent 60%);
-  background-size: auto, auto, auto, auto, auto, auto, auto, 220px 220px, 220px 220px, 220px 220px, 220px 220px,
-    220px 220px, 220px 220px, 220px 220px, 220px 220px, auto;
   border: 1px solid var(--gm-border);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+/* Same 5 "Sfondo Luna" variants as `.app[data-theme='dark_moon'][data-moon-variant]`
+   above, re-composed for the map surface (different gradient placement per
+   variant so the map reads as a distinct surface from the page behind it). */
+
+[data-theme='dark_moon'][data-moon-variant='moon_01'] .eldhom-map {
+  background-color: #12101c;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(126, 98, 168, 0.22), transparent 70%),
+    linear-gradient(180deg, #201c34 0%, #14121f 60%, #0a0910 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_02'] .eldhom-map {
+  background-color: #0f0d1e;
+  background-image:
+    radial-gradient(ellipse at 70% 20%, rgba(120, 200, 190, 0.12), transparent 50%),
+    radial-gradient(ellipse at 25% 75%, rgba(150, 110, 200, 0.16), transparent 55%),
+    linear-gradient(135deg, #241a3a 0%, #1a1030 35%, #14243a 70%, #0d0c16 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_03'] .eldhom-map {
+  background-color: #120e1e;
+  background-image:
+    radial-gradient(ellipse 55% 40% at 80% 20%, rgba(168, 80, 190, 0.18), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 20% 75%, rgba(70, 90, 200, 0.18), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 50% 90%, rgba(90, 180, 190, 0.12), transparent 60%),
+    linear-gradient(180deg, #17102a 0%, #0b0814 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_04'] .eldhom-map {
+  background-color: #14171f;
+  background-image:
+    linear-gradient(20deg, rgba(150, 160, 180, 0.08) 0%, transparent 25%),
+    linear-gradient(340deg, rgba(140, 150, 170, 0.06) 25%, transparent 55%),
+    linear-gradient(200deg, rgba(120, 130, 155, 0.06) 55%, transparent 85%),
+    linear-gradient(180deg, #1c202a 0%, #12141b 60%, #090a0d 100%);
+}
+
+[data-theme='dark_moon'][data-moon-variant='moon_05'] .eldhom-map {
+  background-color: #121016;
+  background-image:
+    radial-gradient(ellipse at 50% 20%, rgba(84, 84, 106, 0.22), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.35), transparent 70%),
+    linear-gradient(180deg, #1e1a26 0%, #0d0b12 100%);
 }
 
 [data-theme='dark_moon'] .eldhom-map__node {
@@ -592,7 +658,7 @@
 }
 
 [data-theme='dark_moon'] .eldhom-map-container::after {
-  content: '🌙';
+  content: '🦇';
 }
 
 [data-theme='blood'] .eldhom-map {

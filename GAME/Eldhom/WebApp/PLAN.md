@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.20.0
-**Status:** Phase 20 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-20 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.21.0
+**Status:** Phase 21 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-21 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1428,6 +1428,72 @@ disabilitati di `MainMenuModal`).
 - Se in futuro il motore inizierà a serializzare `equipment`/`statuses` per eroi o mostri,
   le due sezioni placeholder in `ActorDetailModal` sono già pronte: basta popolarle con i
   dati reali al posto del testo "Non ancora disponibile", senza altre modifiche strutturali.
+
+---
+
+### Phase 21 — Sfondo Luna: 5 varianti sfumate per il tema Dark Moon
+(richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente: *"Gli sfondi usati per il tema DARK MOON non mi piacciono per
+nulla non voglio le stelle e la luna prova a usare sfondi sfumati oppure altro.. creane
+diversi Temi Moon_01, Moon_02, .... almeno 5 diversi .... . poi con calma valuterò"*.
+
+**Decisione architetturale:** NON aggiunti a `webLib/WebGUI_Lib/src/theme/themes.ts`
+(`ThemeId`/`THEMES`) perché quel file è esplicitamente condiviso e "ported from the PySide6
+reference implementation" (rispecchia 1:1 i 5 temi fissi del desktop Qt, usato anche da
+Tris) — aggiungere varianti sperimentali lì avrebbe rotto quel contratto e contaminato un
+altro gioco. Le 5 varianti sono invece un secondo selettore **Eldhôm-only** ("Sfondo Luna",
+visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
+(`background-image`) delle due superfici già Eldhôm-specifiche (`.app`/pagina e
+`.eldhom-map`/mappa), senza toccare i token colore (`--gm-*`) del tema.
+
+- [x] `App.tsx`: nuovo tipo `MoonVariantId` (`moon_01`..`moon_05`) + costante
+      `MOON_VARIANTS` (id + nome visualizzato, es. "Moon_01 — Crepuscolo"); nuovo stato
+      `moonVariant` persistito in `localStorage` (stessa chiave/pattern di `themeId`);
+      nuovo attributo `data-moon-variant` sul contenitore radice `.app`; nuovo selettore
+      "Sfondo Luna" nell'header, renderizzato solo quando `theme.id === 'dark_moon'`
+- [x] `App.css`: rimossi interamente i pattern a pallini (stelle) e il disco lunare con
+      crateri dai blocchi `.app[data-theme='dark_moon']` e
+      `[data-theme='dark_moon'] .eldhom-map`; sostituiti con 5 coppie di blocchi
+      `[data-moon-variant='moon_0N']` (pagina + mappa, con piazzamento del gradiente
+      diverso tra i due per restare due sfondi distinti come per gli altri temi), tutti
+      costruiti solo con `linear-gradient`/`radial-gradient` sfumati (nessun asset esterno,
+      nessun pattern a pallini, nessuna forma a disco):
+      - **Moon_01 — Crepuscolo**: gradiente verticale indigo-scuro verso il nero con un
+        bagliore viola caldo diffuso
+      - **Moon_02 — Aurora**: sweep diagonale indaco/viola/teal con due bagliori sfumati
+      - **Moon_03 — Nebulosa**: macchie di colore ampie e sfocate (magenta/indaco/teal)
+      - **Moon_04 — Nebbia**: bande traslucide grigio-blu sovrapposte, minimale
+      - **Moon_05 — Profondo**: vignettatura scura minimale, la più sobria delle 5
+      - Icona d'angolo mappa (`.eldhom-map-container::after`) cambiata da 🌙 a 🦇
+        (pipistrello, coerente con il commento già presente in `themes.ts` sul
+        "gothic fantasy-noir feel (wolves/bats/moonlit ruins)" del tema)
+- [x] `get_errors` pulito su entrambi i file (solo il warning preesistente e non correlato su
+      `color-mix()`); `npm run build`/`npm run lint` puliti
+- [x] Validazione nel browser: selettore "Sfondo Luna" appare/scompare correttamente in base
+      al Tema attivo; le 5 varianti verificate via screenshot (sfondo pagina, schermata Menu
+      Iniziale) mostrano gradienti chiaramente distinti tra loro, nessuna stella, nessun disco
+      lunare; verificato anche lo sfondo mappa (Moon_01 e Moon_03) con una missione attiva;
+      icona d'angolo confermata 🦇 via `getComputedStyle(..., '::after').content`; confermato
+      che tornando al tema Scroll il selettore "Sfondo Luna" scompare e l'icona d'angolo torna
+      🧭 (nessuna interferenza con gli altri 4 temi)
+
+**Esito Phase 21 (validato):**
+
+- Il tema Dark Moon non mostra più il campo stellato né il disco lunare che non piacevano
+  all'utente; al suo posto, un nuovo selettore "Sfondo Luna" (visibile solo con Dark Moon
+  attivo) permette di scegliere fra 5 varianti a sfumature (Moon_01..Moon_05), tutte
+  salvate in `localStorage` e pronte per una valutazione con calma da parte dell'utente.
+- Nessuna modifica al registro condiviso dei temi (`webLib/WebGUI_Lib`): Tris e il desktop
+  PySide6 restano invariati; i 4 temi diversi da Dark Moon restano invariati.
+- `npm run build`/`npm run lint` puliti; nessun impatto sul CoreEngine C++ (nessuna modifica
+  al wire-contract).
+
+**Notes:**
+- L'utente valuterà le 5 varianti con calma. Se sceglierà una preferita in modo definitivo,
+  un possibile follow-up è rimuovere il selettore "Sfondo Luna" e fissare quella variante
+  come unico sfondo di `dark_moon` (semplificazione), oppure lasciare il selettore com'è se
+  preferisce poter cambiare sfondo a piacere.
 
 ---
 
