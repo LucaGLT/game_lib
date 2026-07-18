@@ -46,7 +46,13 @@ from .auth import (
 from .engine_listener import EngineEventListener, EngineSender
 from .engine_process import EngineProcess, EngineProcessError
 from .port_utils import find_free_port
-from .session_registry import GameSession, SessionLimitExceededError, SessionNotFoundError, SessionRegistry
+from .session_registry import (
+    GameSession,
+    SessionFullError,
+    SessionLimitExceededError,
+    SessionNotFoundError,
+    SessionRegistry,
+)
 
 __all__ = [
     "EngineEventListener",
@@ -58,6 +64,7 @@ __all__ = [
     "SessionRegistry",
     "SessionNotFoundError",
     "SessionLimitExceededError",
+    "SessionFullError",
     "AuthConfig",
     "AuthService",
     "AuthSession",

@@ -144,6 +144,14 @@ function parseHex(hex: string): { r: number; g: number; b: number } {
  * Builds the CSS custom properties for one theme, applied on the app root.
  * Tone derivations mirror `ThemeManager._build_stylesheet` (accent.lighter(125)
  * / accent / accent.darker(135) for success/warning/danger).
+ *
+ * Also sets the actual `fontFamily` CSS property (not just a `--gm-*`
+ * custom property) to the theme's body face — since `font-family` is
+ * inherited by default, applying this on the SAME root element consuming
+ * apps already spread this object onto is enough to theme every descendant
+ * "for free", with zero extra CSS in each game. Headings opt into the
+ * DISPLAY face instead via a plain `h1..h6`/`.gmgui-display-font` rule in
+ * `styles.css`.
  */
 export function themeToCssVars(theme: ThemeTokens): Record<string, string> {
   return {
@@ -158,5 +166,6 @@ export function themeToCssVars(theme: ThemeTokens): Record<string, string> {
     '--gm-danger': darken(theme.accent, 0.35),
     '--gm-font-display': theme.displayFont,
     '--gm-font-body': theme.bodyFont,
+    fontFamily: theme.bodyFont,
   }
 }

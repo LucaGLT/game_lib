@@ -149,6 +149,78 @@ def test_session_limit_returns_429(client: TestClient) -> None:
     assert third.status_code == 429
 
 
+def test_join_session_invalid_code_returns_404(client: TestClient) -> None:
+    token = _login(client, _DEMO2_USERNAME, _DEMO2_PASSWORD)
+    response = client.post(
+        "/sessions/join", json={"join_code": "ZZZZZZ"}, headers=_auth_headers(token)
+    )
+    assert response.status_code == 404
+
+
+def test_two_users_join_same_match_and_play(client: TestClient) -> None:
+    """Shared Multiplayer: a SECOND (different) user joins the SAME match via a
+    join code and pilots the other seat — not an isolated match of their own.
+
+    Also proves the server-side anti-spoofing guard (`SessionManager.send_command`):
+    even if a participant's client sends a forged `player` field for `gmTris.move`,
+    the engine only ever sees the mark tied to THAT caller's real seat.
+    """
+    token_x = _login(client, _DEMO_USERNAME, _DEMO_PASSWORD)
+    token_o = _login(client, _DEMO2_USERNAME, _DEMO2_PASSWORD)
+
+    create_response = client.post(
+        "/sessions", json={"starter_mode": "fixed_x"}, headers=_auth_headers(token_x)
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+    session_id = created["session_id"]
+    join_code = created["join_code"]
+    assert created["your_role"] == "X"
+    assert created["roles"] == {"X": _DEMO_USERNAME, "O": None}
+
+    join_response = client.post(
+        "/sessions/join", json={"join_code": join_code}, headers=_auth_headers(token_o)
+    )
+    assert join_response.status_code == 200
+    joined = join_response.json()
+    assert joined["session_id"] == session_id
+    assert joined["your_role"] == "O"
+    assert joined["roles"] == {"X": _DEMO_USERNAME, "O": _DEMO2_USERNAME}
+
+    # The joiner must now see the match in their OWN session list too.
+    listed_o = client.get("/sessions", headers=_auth_headers(token_o)).json()
+    assert [s["session_id"] for s in listed_o] == [session_id]
+
+    # A SINGLE websocket (the joiner's) is enough to prove the match is truly
+    # SHARED: it must see events caused by the OTHER user's REST calls, which
+    # would never happen if "join" merely created an isolated second session.
+    with client.websocket_connect(f"/sessions/{session_id}/ws?token={token_o}") as ws_o:
+        assert _collect_until(ws_o, "gmMap.snapshot") is not None
+
+        # "X" (demo) moves via their OWN token — a forged "player":"O" in the
+        # request body is overridden server-side to demo's TRUE seat ("X").
+        move_x = client.post(
+            f"/sessions/{session_id}/command",
+            json={"type_id": "gmTris.move", "data": {"player": "O", "row": 1, "col": 1}},
+            headers=_auth_headers(token_x),
+        )
+        assert move_x.status_code == 200
+        cell_changed_x = _collect_until(ws_o, "gmMap.cell_changed")
+        assert cell_changed_x is not None
+        assert cell_changed_x["data"]["mark"] == "X"  # demo's TRUE seat, not the forged "O"
+
+        # "O" (demo2) moves — forging "player":"X" is likewise overridden.
+        move_o = client.post(
+            f"/sessions/{session_id}/command",
+            json={"type_id": "gmTris.move", "data": {"player": "X", "row": 2, "col": 2}},
+            headers=_auth_headers(token_o),
+        )
+        assert move_o.status_code == 200
+        cell_changed_o = _collect_until(ws_o, "gmMap.cell_changed")
+        assert cell_changed_o is not None
+        assert cell_changed_o["data"]["mark"] == "O"  # demo2's TRUE seat, not the forged "X"
+
+
 def _collect_until(websocket, type_id: str, attempts: int = 30) -> dict | None:
     """Reads envelopes from *websocket* until one matches *type_id* or attempts run out."""
     for _ in range(attempts):

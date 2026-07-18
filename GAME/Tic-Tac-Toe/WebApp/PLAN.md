@@ -1,8 +1,8 @@
 # Tic-Tac-Toe WebApp — Development Plan
 
-**Version:** 0.3.0
-**Status:** Phase 3 – Complete ✅ (Phase 2 – Complete ✅, completata retroattivamente a livello di
-libreria dopo la Phase 3 — vedi Notes)
+**Version:** 0.4.0
+**Status:** Phase 6 – Complete ✅ (Phase 3 – Complete ✅; Phase 2 – Complete ✅, completata
+retroattivamente a livello di libreria dopo la Phase 3 — vedi Notes; Phase 4/5 restano ⏳)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 5 / React 18 (frontend) — polyglot web layer.
 The existing C++17 CoreEngine (`gmTris`, see `../PLAN.md`) gained an OPTIONAL, backward-compatible
 CLI port override (`--events-port`/`--commands-port`) in Phase 2 — see that phase's Notes.
@@ -112,7 +112,8 @@ game_lib/
 │           │   ├── EventLog.tsx     ← log auto-scroll generico (ex MatchLog)
 │           │   ├── ActorStatusBadges.tsx ← badge stato attore auto-sottoscritti (ex PlayerBadges)
 │           │   ├── ThemeSelect.tsx  ← selettore tema generico (estratto da GameToolbar)
-│           │   └── LoginForm.tsx    ← form utente/password generico — Phase 2 ✅
+│           │   ├── LoginForm.tsx    ← form utente/password generico — Phase 2 ✅
+│           │   └── JoinSessionForm.tsx ← form "entra con codice" generico — Phase 6 ✅
 │           └── styles.css           ← CSS strutturale `gmgui-*`, guidato da variabili `--gm-*`
 ├── pyLib/gmWebServe/                  ← libreria condivisa Python (equivalente backend di WebGUI_Lib)
 │   ├── engine_listener.py             ← EngineEventListener (Qt-free) + EngineSender (invariati da Phase 1)
@@ -120,6 +121,7 @@ game_lib/
 │   ├── port_utils.py                  ← find_free_port() — allocazione dinamica porte — Phase 2 ✅
 │   ├── auth.py                        ← hashing PBKDF2, AuthConfig/AuthService/TokenManager — Phase 2 ✅
 │   ├── session_registry.py            ← SessionRegistry multi-sessione/multi-utente generico — Phase 2 ✅
+│   │                                     (roles/participants/join_code/join_session — Phase 6 ✅)
 │   ├── fastapi_deps.py                ← get_current_user/authenticate_ws (dependency condivisa) — Phase 2 ✅
 │   ├── auth_router.py                 ← router `/auth` pronto all'uso (login/logout/me) — Phase 2 ✅
 │   ├── tools/manage_users.py          ← CLI per creare/aggiornare utenti in auth_config.json — Phase 2 ✅
@@ -131,9 +133,11 @@ game_lib/
     │   ├── main.py                     ← FastAPI app factory + lifespan, mount gmWebServe.auth_router + sessions,
     │   │                                 reaper idle-session periodico — Phase 2 ✅
     │   ├── session_manager.py          ← wrapper sottile Tris-specifico su gmWebServe.SessionRegistry — Phase 2 ✅
+    │   │                                 (roles X/O, join_session, binding server-side player — Phase 6 ✅)
     │   ├── auth_config.json            ← utenti pilot-grade (hash+salt, mai password in chiaro) — Phase 2 ✅
     │   ├── routers/
     │   │   └── sessions.py             ← REST list/create/get/command/close + WS (tutto auth-gated) — Phase 2 ✅
+    │   │                                 (+ POST /sessions/join — Phase 6 ✅)
     │   ├── settings.py                 ← config via pydantic-settings (.env) + auth_config_path
     │   ├── requirements.txt
     │   └── tests/
@@ -356,6 +360,66 @@ di `pyLib/gmGui`, con scope completo incluso un contratto "modulo" generico (mir
 
 **Notes:**
 - Fase esplicitamente opzionale/futura: la decisione "coesistenza permanente" non richiede questa unificazione per essere soddisfatta oggi.
+
+### Phase 6 — Shared Multiplayer (Join Code) & Font Theming Backport [✅]
+
+- [x] `pyLib/gmWebServe/session_registry.py`: sessioni multi-partecipante (`roles`, `participants`, `join_code`), `join_session()`, `SessionFullError`
+- [x] `eng_serve/session_manager.py`: ruoli Tris (`X`/`O`), `join_session()`, binding server-side del campo `player` al ruolo reale del chiamante (anti-spoofing)
+- [x] `eng_serve/routers/sessions.py`: endpoint `POST /sessions/join`, `SessionInfo` esteso (`join_code`/`roles`/`your_role`)
+- [x] Frontend: `JoinSessionForm` (nuovo componente condiviso in `webLib/WebGUI_Lib`), picker sessioni con codice/ruoli, banner di ruolo in partita, polling "attesa avversario"
+- [x] Gating turni lato frontend: la board si disabilita se non è il turno del ruolo dell'utente corrente
+- [x] Font theming: `themeToCssVars()` imposta anche `fontFamily` reale (non solo custom property), regola globale `h1..h6` nello `styles.css` condiviso
+- [x] Smoke test: 2 utenti reali (browser separati) creano/joinano/giocano la STESSA partita end-to-end
+
+**Notes:**
+- **Origine della richiesta**: l'utente ha chiarito che "Multi-User" non significa sessioni isolate
+  per utente (già ottenuto in Phase 2), ma **due utenti che pilotano lo stesso match condiviso**
+  tramite un codice di invito ("User Demo avvia una partita... darà un codice GameABCnnn a Demo2").
+  Costruito di nuovo a livello di libreria (`pyLib/gmWebServe` + `webLib/WebGUI_Lib`), non solo
+  per Tris, coerentemente col principio già seguito in Phase 2.
+- **Modello dati**: `GameSession` sostituisce il concetto di singolo `owner` con `roles: tuple[str,...]`
+  (es. `("X","O")`) e `participants: dict[str, str|None]` (ruolo → username o `None` se libero).
+  `owner` resta per audit/back-compat ma i controlli di accesso usano `is_participant(username)`.
+- **Join code**: 6 caratteri, alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (esclude I/O/0/1
+  ambigui), generato per sessione e indicizzato in `_session_id_by_code` per lookup O(1).
+  `join_session()` è idempotente per chi è già partecipante, alza `SessionFullError` (→409) se
+  tutti i ruoli sono occupati, e conta comunque contro il **cap sessioni del joiner**
+  (`SessionLimitExceededError`→429) — scelta deliberata per coerenza con Phase 2.
+- **Fix di sicurezza (OWASP A01, Broken Access Control)**: `SessionManager.send_command()` di
+  Tris ora **sovrascrive sempre** il campo `player` di `gmTris.move` con il ruolo reale
+  server-side del chiamante (`session.role_of(username)`), ignorando qualsiasi valore inviato
+  dal client — impedisce a "O" di forgiare mosse come "X" (o viceversa). Validato con un test E2E
+  che invia deliberatamente un `player` forgiato e verifica che il motore riceva il ruolo corretto.
+- **UX "attesa avversario"**: il motore C++ non emette un evento nativo "qualcuno si è unito"
+  (il join è un concetto puro di `eng_serve`/registry, invisibile al motore). Il frontend fa
+  polling (`GET /sessions/{id}`, ogni 3s) finché un ruolo resta libero, poi si ferma da solo.
+  Verificato dal vivo: il banner "in attesa dell'avversario" sparisce entro ~3s dall'ingresso
+  del secondo utente, senza reload di pagina.
+- **Font theming — bug reale trovato**: `themeToCssVars()` impostava SOLO le custom property
+  `--gm-font-*`, mai una vera proprietà CSS `fontFamily` — il tema Eldhôm "sembrava" più curato
+  solo perché il CSS *locale* di Eldhôm referenziava esplicitamente `var(--gm-font-body)`, mentre
+  quello di Tris no. Fix nella libreria condivisa (non nel gioco): `themeToCssVars()` ora
+  restituisce anche `fontFamily: theme.bodyFont`, ereditato via CSS da tutti i discendenti senza
+  bisogno di CSS per-gioco; `h1..h6` e la nuova classe opt-in `.gmgui-display-font` usano il
+  display font tramite una regola globale in `webLib/WebGUI_Lib/src/styles.css`.
+- **Board 1-indicizzata**: gotcha di test (non di prodotto) riscoperto scrivendo il nuovo test
+  E2E a 2 utenti — vedi memoria di repository `tris-webapp-plan.md` per i dettagli.
+- **Validato**: 25 test `pyLib/gmWebServe/tests` (17 su `SessionRegistry`, incl. 7 nuovi su
+  join/ruoli) + 8 test `eng_serve/tests/test_session_e2e.py` (incl. 2 nuovi, contro
+  `tris_engine.exe` reale) + 3 test Vitest frontend, tutti verdi. `npm run build` pulito.
+- **Smoke test manuale nel browser reale, 2 sessioni indipendenti** (non solo automatico):
+  login `demo` → Nuova Partita (ruolo X, codice mostrato) → login `demo2` in una pagina separata →
+  «Entra in una partita» col codice → ruolo O assegnato, board condivisa confermata a schermo →
+  mossa X in (1,1) vista **live** (via WebSocket) sulla pagina di demo2 senza refresh → mossa O
+  in (2,2) vista live sulla pagina di demo → turni alternati e board disabilitata/abilitata
+  correttamente per ciascun ruolo → chiusura sessione da un partecipante propagata correttamente
+  (verificata risposta server `204`, poi `404` sul secondo tentativo di chiusura, gestito senza
+  errori lato UI).
+- **Fuori scope, segnalato ma non risolto in questo turno**: `GAME/Eldhom/WebApp/webapp_frontend`
+  ha una build TypeScript rotta **preesistente** (4 errori — `App.tsx` chiama ancora le vecchie
+  firme pre-Phase-2 di `createSession`/`connectSessionEvents`/`sendCommand` senza token), NON
+  causata da questo turno (confermato via `git status` vuoto su `GAME/Eldhom`) — Eldhôm Phase 2
+  è deliberatamente rimandata (vedi `eldhom-webapp-plan.md`); da portare quando richiesto.
 
 ---
 

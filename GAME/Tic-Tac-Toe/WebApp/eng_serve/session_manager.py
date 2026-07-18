@@ -2,10 +2,15 @@
 
 Phase 2: real multi-session, multi-user registry (dynamic ports, per-user
 concurrent-session cap, idle-timeout cleanup, ownership-checked access) — see
-GAME/Tic-Tac-Toe/WebApp/PLAN.md, Phase 2. All of the multi-session/auth
-machinery lives in the shared ``pyLib/gmWebServe`` library; this module's
-only Tris-specific knowledge is the bootstrap command (``gmTris.new_game``)
-and where to find the compiled engine executable (``settings.py``).
+GAME/Tic-Tac-Toe/WebApp/PLAN.md, Phase 2. Phase "Shared Multiplayer": a session
+now has two named roles (``"X"``/``"O"``), and a SECOND (different) user can
+join the SAME match via a short join code — see
+:meth:`SessionManager.join_session`. All of the multi-session/auth/shared
+-participant machinery lives in the shared ``pyLib/gmWebServe`` library; this
+module's only Tris-specific knowledge is the bootstrap command
+(``gmTris.new_game``), the two role names, and the move-command field
+(``player``) that must be bound server-side to whichever role the caller
+actually holds (never trust a client-supplied mark — see :meth:`send_command`).
 """
 from __future__ import annotations
 
@@ -21,6 +26,7 @@ if str(_PYLIB_DIR) not in sys.path:
 
 from gmWebServe import (  # noqa: E402
     GameSession,
+    SessionFullError,
     SessionLimitExceededError,
     SessionNotFoundError,
     SessionRegistry,
@@ -33,7 +39,18 @@ __all__ = [
     "GameSession",
     "SessionNotFoundError",
     "SessionLimitExceededError",
+    "SessionFullError",
 ]
+
+#: The two Tris seats — the session creator always fills "X" first;
+#: a second (different) user fills "O" via :meth:`SessionManager.join_session`.
+TRIS_ROLES = ("X", "O")
+
+#: gmTris.move's mark field — bound server-side to the CALLER's own role in
+#: :meth:`SessionManager.send_command`, never trusted verbatim from the
+#: client, so one participant cannot forge a move on the other's behalf.
+_MOVE_TYPE_ID = "gmTris.move"
+_MOVE_PLAYER_FIELD = "player"
 
 
 class SessionManager:
@@ -66,6 +83,10 @@ class SessionManager:
     def create_session(self, owner: str, starter_mode: str) -> GameSession:
         """Boots a new `tris_engine` instance for *owner* and starts a match.
 
+        *owner* fills the "X" seat; share the returned session's `join_code`
+        with a second (different) user so they can fill "O" via
+        :meth:`join_session` and play the SAME match.
+
         Raises:
             SessionLimitExceededError: If *owner* is already at their
                 concurrent-session cap.
@@ -77,7 +98,22 @@ class SessionManager:
             bootstrap=lambda sender: sender.send_command(
                 "gmTris.new_game", {"starter_mode": starter_mode}
             ),
+            roles=TRIS_ROLES,
         )
+
+    def join_session(self, join_code: str, joining_user: str) -> GameSession:
+        """Attaches *joining_user* to the "O" seat of the session for *join_code*.
+
+        Idempotent if *joining_user* already holds a seat in that session
+        (e.g. a page reload). See `gmWebServe.SessionRegistry.join_session`.
+
+        Raises:
+            SessionNotFoundError: If *join_code* matches no active session.
+            SessionFullError: If both seats are already held by others.
+            SessionLimitExceededError: If *joining_user* is already at their
+                own concurrent-session cap.
+        """
+        return self._registry.join_session(join_code, joining_user)
 
     def list_sessions(self, owner: str) -> list[GameSession]:
         """Returns every active session belonging to *owner* (may be empty)."""
@@ -95,9 +131,21 @@ class SessionManager:
     def send_command(self, session_id: str, owner: str, type_id: str, data: dict) -> None:
         """Forwards one command envelope to the running engine.
 
+        For `gmTris.move`, the `player` field is ALWAYS overwritten
+        server-side with the caller's own assigned seat ("X"/"O"), ignoring
+        whatever value the client sent — this is what stops the "O" player
+        from forging a move as "X" (or vice-versa) now that a session can
+        have two different authenticated users (OWASP A01 guard).
+
         Raises:
             SessionNotFoundError: If *session_id* does not belong to *owner*.
         """
+        if type_id == _MOVE_TYPE_ID:
+            session = self._registry.get_session(session_id, owner)
+            role = session.role_of(owner)
+            if role is None:
+                raise SessionNotFoundError(session_id)
+            data = {**data, _MOVE_PLAYER_FIELD: role}
         self._registry.send_command(session_id, owner, type_id, data)
 
     def subscribe(self, session_id: str, owner: str):

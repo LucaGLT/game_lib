@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from gmWebServe.session_registry import (
+    SessionFullError,
     SessionLimitExceededError,
     SessionNotFoundError,
     SessionRegistry,
@@ -36,8 +37,8 @@ def _bootstrap(sender) -> None:
     sender.send_command("fake.hello", {})
 
 
-def _create(registry: SessionRegistry, owner: str):
-    return registry.create_session(owner, _bootstrap, extra_args=[str(_FAKE_ENGINE)])
+def _create(registry: SessionRegistry, owner: str, roles=("player",)):
+    return registry.create_session(owner, _bootstrap, extra_args=[str(_FAKE_ENGINE)], roles=roles)
 
 
 def test_create_and_get_session(registry: SessionRegistry) -> None:
@@ -123,3 +124,65 @@ def test_reap_idle_sessions_spares_active_ones(registry: SessionRegistry) -> Non
     reaped = registry.reap_idle_sessions()
     assert session.session_id not in reaped
     registry.get_session(session.session_id, "alice")  # still present, must not raise
+
+
+# ── Shared multiplayer: join-by-code (two DIFFERENT users, SAME match) ──────
+
+
+def test_join_session_success(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    joined = registry.join_session(session.join_code, "bob")
+    assert joined.session_id == session.session_id
+    assert joined.participants == {"X": "alice", "O": "bob"}
+    assert joined.role_of("alice") == "X"
+    assert joined.role_of("bob") == "O"
+    # Both participants can now access the SAME session (shared match).
+    registry.get_session(session.session_id, "bob")
+    registry.get_session(session.session_id, "alice")
+
+
+def test_join_session_invalid_code_raises(registry: SessionRegistry) -> None:
+    _create(registry, "alice", roles=("X", "O"))
+    with pytest.raises(SessionNotFoundError):
+        registry.join_session("ZZZZZZ", "bob")
+
+
+def test_join_session_full_raises(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    registry.join_session(session.join_code, "bob")
+    with pytest.raises(SessionFullError):
+        registry.join_session(session.join_code, "carol")
+
+
+def test_join_session_idempotent_for_existing_participant(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    registry.join_session(session.join_code, "bob")
+    # Re-joining with an already-seated user is a no-op, not an error
+    # (e.g. a browser reload just reconnects them to their existing seat).
+    rejoined = registry.join_session(session.join_code, "bob")
+    assert rejoined.participants == {"X": "alice", "O": "bob"}
+    rejoined_owner = registry.join_session(session.join_code, "alice")
+    assert rejoined_owner.participants == {"X": "alice", "O": "bob"}
+
+
+def test_join_session_counts_against_joiner_cap(registry: SessionRegistry) -> None:
+    session1 = _create(registry, "alice", roles=("X", "O"))
+    session2 = _create(registry, "carol", roles=("X", "O"))
+    registry.join_session(session1.join_code, "bob")
+    registry.join_session(session2.join_code, "bob")
+    with pytest.raises(SessionLimitExceededError):
+        _create(registry, "bob")
+
+
+def test_list_sessions_includes_joined_sessions(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    registry.join_session(session.join_code, "bob")
+    assert [s.session_id for s in registry.list_sessions("bob")] == [session.session_id]
+
+
+def test_any_participant_can_close_shared_session(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    registry.join_session(session.join_code, "bob")
+    registry.close_session(session.session_id, "bob")
+    with pytest.raises(SessionNotFoundError):
+        registry.get_session(session.session_id, "alice")

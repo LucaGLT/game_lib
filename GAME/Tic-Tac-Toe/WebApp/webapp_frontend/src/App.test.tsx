@@ -73,7 +73,9 @@ describe('App (Phase 2 login gate + Phase 3 themed board)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Sessioni attive' })).toBeInTheDocument()
     expect(
-      screen.getByText('Nessuna sessione attiva. Premi «Nuova Partita» per iniziare.'),
+      screen.getByText(
+        'Nessuna sessione attiva. Premi «Nuova Partita» per iniziare, oppure entra in una partita con un codice.',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Nuova Partita' })).toBeInTheDocument()
     expect(screen.getByText('demo')).toBeInTheDocument()

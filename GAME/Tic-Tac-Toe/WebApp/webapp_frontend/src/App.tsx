@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '@webgui/session/AuthProvider'
 import { LoginForm } from '@webgui/components/LoginForm'
-import { createSession, listSessions, closeSession, sendCommand } from '@webgui/session/restClient'
+import { JoinSessionForm } from '@webgui/components/JoinSessionForm'
+import {
+  createSession,
+  listSessions,
+  closeSession,
+  sendCommand,
+  joinSession,
+  getSession,
+} from '@webgui/session/restClient'
 import { connectSessionEvents } from '@webgui/session/wsClient'
 import { EnvelopeRouter } from '@webgui/session/EnvelopeRouter'
 import { useGmGuiModule } from '@webgui/modules/useGmGuiModule'
@@ -27,9 +35,16 @@ function loadStoredTheme(): ThemeId {
 
 function friendlyErrorMessage(caught: unknown): string {
   const message = caught instanceof Error ? caught.message : String(caught)
-  return message.includes('429')
-    ? 'Hai raggiunto il numero massimo di sessioni contemporanee: chiudine una per continuare.'
-    : message
+  if (message.includes('429')) {
+    return 'Hai raggiunto il numero massimo di sessioni contemporanee: chiudine una per continuare.'
+  }
+  if (message.includes('joinSession') && message.includes('404')) {
+    return 'Codice partita non valido.'
+  }
+  if (message.includes('joinSession') && message.includes('409')) {
+    return 'Questa partita ha già due giocatori.'
+  }
+  return message
 }
 
 /**
@@ -47,6 +62,7 @@ function friendlyErrorMessage(caught: unknown): string {
 function App() {
   const auth = useAuth()
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [activeSession, setActiveSession] = useState<SessionInfo | null>(null)
   const [sessions, setSessions] = useState<SessionInfo[]>([])
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [gameState, setGameState] = useState<GameState>(initialGameState)
@@ -74,6 +90,30 @@ function App() {
       })
   }, [auth.session])
 
+  const myRole = activeSession?.your_role ?? null
+  const needsOpponent =
+    activeSession !== null && Object.values(activeSession.roles).some((holder) => holder === null)
+  const authToken = auth.session?.token ?? null
+
+  // While waiting for a second (different) user to join via the join code,
+  // poll their seat every few seconds — the engine has no "someone joined"
+  // event of its own (joining is a pure eng_serve/session concept), so this
+  // is the only way the creator finds out the opponent is in without a
+  // manual page reload.
+  useEffect(() => {
+    if (authToken === null || sessionId === null || !needsOpponent) {
+      return
+    }
+    const intervalId = window.setInterval(() => {
+      getSession(authToken, sessionId)
+        .then(setActiveSession)
+        .catch(() => {
+          // Best-effort refresh only; a transient failure here is not fatal.
+        })
+    }, 3000)
+    return () => window.clearInterval(intervalId)
+  }, [authToken, sessionId, needsOpponent])
+
   // The Tris reducer subscribes to every typeId ("*") via the shared router —
   // it is itself just one more `EnvelopeRouter` consumer, on equal footing
   // with the generic `ActorStatusBadges` module below (which independently
@@ -82,12 +122,13 @@ function App() {
     setGameState((previous) => applyEnvelope(previous, envelope))
   })
 
-  function connectToSession(token: string, id: string): void {
+  function connectToSession(token: string, session: SessionInfo): void {
     disconnectRef.current?.()
     const nextRouter = new EnvelopeRouter()
     setRouter(nextRouter)
-    setSessionId(id)
-    disconnectRef.current = connectSessionEvents(token, id, (envelope) => {
+    setSessionId(session.session_id)
+    setActiveSession(session)
+    disconnectRef.current = connectSessionEvents(token, session.session_id, (envelope) => {
       nextRouter.dispatch(envelope)
     })
   }
@@ -102,7 +143,7 @@ function App() {
       if (sessionId === null) {
         const session = await createSession(token, { starter_mode: starterMode })
         setSessions((previous) => [...previous, session])
-        connectToSession(token, session.session_id)
+        connectToSession(token, session)
       } else {
         // Restarts the match on the same engine connection, without
         // recreating the session/process (mirrors the desktop Reload button).
@@ -121,7 +162,14 @@ function App() {
       }))
       return
     }
+    if (gameState.activeMark !== myRole) {
+      setGameState((previous) => ({ ...previous, errorMessage: 'Non è il tuo turno.' }))
+      return
+    }
     try {
+      // `player` is only a hint: the server always re-derives the real mark
+      // from the caller's own seat, so this can never move on the opponent's
+      // behalf even if this check above were somehow bypassed client-side.
       await sendCommand(auth.session.token, sessionId, CMD_MOVE, { player: gameState.activeMark, row, col })
     } catch (caught) {
       setGameState((previous) => ({ ...previous, errorMessage: friendlyErrorMessage(caught) }))
@@ -132,7 +180,31 @@ function App() {
     if (auth.session === null) {
       return
     }
-    connectToSession(auth.session.token, id)
+    const session = sessions.find((candidate) => candidate.session_id === id)
+    if (session === undefined) {
+      return
+    }
+    connectToSession(auth.session.token, session)
+  }
+
+  async function handleJoinSession(joinCode: string): Promise<void> {
+    if (auth.session === null) {
+      return
+    }
+    const token = auth.session.token
+    let session: SessionInfo
+    try {
+      session = await joinSession(token, joinCode)
+    } catch (caught) {
+      throw new Error(friendlyErrorMessage(caught))
+    }
+    setSessions((previous) => {
+      const exists = previous.some((candidate) => candidate.session_id === session.session_id)
+      return exists
+        ? previous.map((candidate) => (candidate.session_id === session.session_id ? session : candidate))
+        : [...previous, session]
+    })
+    connectToSession(token, session)
   }
 
   async function handleCloseSession(id: string): Promise<void> {
@@ -150,6 +222,7 @@ function App() {
       disconnectRef.current?.()
       disconnectRef.current = null
       setSessionId(null)
+      setActiveSession(null)
       setRouter(null)
       setGameState(initialGameState)
     }
@@ -159,6 +232,7 @@ function App() {
     disconnectRef.current?.()
     disconnectRef.current = null
     setSessionId(null)
+    setActiveSession(null)
     setRouter(null)
     setGameState(initialGameState)
     setSessions([])
@@ -186,7 +260,11 @@ function App() {
     )
   }
 
-  const boardDisabled = sessionId === null || gameState.gameOver || gameState.activeMark === null
+  const boardDisabled =
+    sessionId === null ||
+    gameState.gameOver ||
+    gameState.activeMark === null ||
+    gameState.activeMark !== myRole
 
   return (
     <div className="app" style={themeToCssVars(theme) as CSSProperties}>
@@ -218,11 +296,18 @@ function App() {
         <div className="gmgui-session-picker">
           <h2>Sessioni attive</h2>
           {sessions.length === 0 && (
-            <p>Nessuna sessione attiva. Premi «Nuova Partita» per iniziare.</p>
+            <p>Nessuna sessione attiva. Premi «Nuova Partita» per iniziare, oppure entra in una partita con un codice.</p>
           )}
           {sessions.map((session) => (
             <div key={session.session_id} className="gmgui-session-picker__row">
-              <span>Sessione {session.session_id.slice(0, 8)}</span>
+              <span>
+                Sessione {session.session_id.slice(0, 8)} ·{' '}
+                <span className="gmgui-session-picker__code">{session.join_code}</span>
+                {' · '}
+                {Object.entries(session.roles)
+                  .map(([role, username]) => `${role}: ${username ?? 'in attesa'}`)
+                  .join(' · ')}
+              </span>
               <div className="gmgui-session-picker__row-actions">
                 <button type="button" onClick={() => handleResumeSession(session.session_id)}>
                   Riprendi
@@ -233,9 +318,21 @@ function App() {
               </div>
             </div>
           ))}
+          <JoinSessionForm onSubmit={handleJoinSession} />
         </div>
       ) : (
         <>
+          {myRole !== null && (
+            <p className="tris-role-banner">
+              Sei il Giocatore <strong>{myRole}</strong>
+              {needsOpponent && activeSession !== null && (
+                <>
+                  {' — in attesa dell\'avversario. Condividi il codice: '}
+                  <span className="gmgui-session-picker__code">{activeSession.join_code}</span>
+                </>
+              )}
+            </p>
+          )}
           <TurnHeader status={gameState.header} />
 
           <div className="game-layout">

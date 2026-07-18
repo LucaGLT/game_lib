@@ -32,13 +32,40 @@ export async function createSession(
   return (await response.json()) as SessionInfo
 }
 
-/** Lists every session owned by the caller (GET /sessions). */
+/** Lists every session the caller participates in, created or joined (GET /sessions). */
 export async function listSessions(token: string): Promise<SessionInfo[]> {
   const response = await fetch('/sessions', { headers: authHeaders(token) })
   if (!response.ok) {
     throw new Error(`listSessions failed: HTTP ${response.status}`)
   }
   return (await response.json()) as SessionInfo[]
+}
+
+/** Returns one session's current status, e.g. to poll for a shared match's seats (GET /sessions/{id}). */
+export async function getSession(token: string, sessionId: string): Promise<SessionInfo> {
+  const response = await fetch(`/sessions/${sessionId}`, { headers: authHeaders(token) })
+  if (!response.ok) {
+    throw new Error(`getSession failed: HTTP ${response.status}`)
+  }
+  return (await response.json()) as SessionInfo
+}
+
+/**
+ * Joins the SAME session/match as its creator, using the `join_code` they
+ * shared out-of-band (e.g. verbally) — this is what makes a match truly
+ * multiplayer (two different users piloting two different seats of ONE
+ * shared session), as opposed to each user getting their own isolated match.
+ */
+export async function joinSession(token: string, joinCode: string): Promise<SessionInfo> {
+  const response = await fetch('/sessions/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify({ join_code: joinCode }),
+  })
+  if (!response.ok) {
+    throw new Error(`joinSession failed: HTTP ${response.status}`)
+  }
+  return (await response.json()) as SessionInfo
 }
 
 /** Forwards one command envelope (e.g. gmTris.move) to the running engine. */

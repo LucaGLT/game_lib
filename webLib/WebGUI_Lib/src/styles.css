@@ -11,6 +11,22 @@
  * rules belong in this file.
  */
 
+/* ── Thematic typography (shared by EVERY game_lib WebApp) ────────────────
+   `themeToCssVars()` already puts `fontFamily: --gm-font-body` on the app
+   root it's applied to (inherited by everything below it "for free"); these
+   two rules cover the rest: headings get the thematic DISPLAY face, and any
+   other title/name-like text can opt in via `.gmgui-display-font`. */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.gmgui-display-font {
+  font-family: var(--gm-font-display);
+}
+
 /* ── Field (labeled select), used by ThemeSelect and any similar toolbar field ── */
 
 .gmgui-field {
@@ -222,6 +238,70 @@
   text-align: center;
 }
 
+/* ── Join-session form (shared multiplayer: join by code) ────────────────── */
+
+.gmgui-join-session-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background-color: var(--gm-background);
+  border: 1px dashed var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-join-session-form h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.gmgui-join-session-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gmgui-join-session-form__field input {
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gmgui-join-session-form__field input:focus {
+  border-color: var(--gm-accent);
+  outline: none;
+}
+
+.gmgui-join-session-form button[type='submit'] {
+  padding: 8px 16px;
+  background-color: var(--gm-accent);
+  color: var(--gm-panel);
+  border: none;
+  border-radius: var(--gm-radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gmgui-join-session-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.gmgui-join-session-form__error {
+  color: var(--gm-danger);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
 /* ── Session picker (list of the caller's own active sessions, Phase 2) ──── */
 
 .gmgui-session-picker {
@@ -255,5 +335,11 @@
 .gmgui-session-picker__row-actions {
   display: flex;
   gap: 8px;
+}
+
+.gmgui-session-picker__code {
+  font-family: var(--gm-font-display);
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 

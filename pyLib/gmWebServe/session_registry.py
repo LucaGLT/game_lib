@@ -16,9 +16,10 @@ a game-specific typeId or payload.
 from __future__ import annotations
 
 import asyncio
+import secrets
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
@@ -33,9 +34,20 @@ __all__ = [
     "SessionRegistry",
     "SessionNotFoundError",
     "SessionLimitExceededError",
+    "SessionFullError",
 ]
 
 BootstrapFn = Callable[[EngineSender], None]
+
+#: Join-code alphabet excludes visually ambiguous characters (I/O/0/1) so a
+#: code can be read aloud or typed from memory without mistakes.
+_JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_JOIN_CODE_LENGTH = 6
+
+
+def _generate_join_code() -> str:
+    """Returns one random join code (not guaranteed unique across sessions)."""
+    return "".join(secrets.choice(_JOIN_CODE_ALPHABET) for _ in range(_JOIN_CODE_LENGTH))
 
 
 class SessionNotFoundError(RuntimeError):
@@ -51,13 +63,34 @@ class SessionLimitExceededError(RuntimeError):
     """Raised when a user is already at their concurrent-session cap."""
 
 
+class SessionFullError(RuntimeError):
+    """Raised when :meth:`SessionRegistry.join_session` finds every seat taken.
+
+    Every :class:`GameSession` role (e.g. ``"X"``/``"O"``) is already held by
+    someone else — the join code itself is valid but the match has no free seat.
+    """
+
+
 @dataclass
 class GameSession:
     """Everything the registry knows about one running game session.
 
+    A session has one or more named *roles* (e.g. Tris' ``("X", "O")``, or a
+    single-player game's default ``("player",)``). :attr:`participants` maps
+    each role to the username currently holding it, or ``None`` if that seat
+    is still free — see :meth:`SessionRegistry.join_session`. A session is
+    SHARED: every participant sees the same engine/event stream, which is how
+    two different browsers/users end up playing the same match together.
+
     Attributes:
         session_id: Opaque unique identifier for this session.
-        owner: Username that created this session (from the auth token).
+        owner: Username that created this session (from the auth token) —
+            always the initial holder of ``roles[0]``. Kept for audit/back
+            -compat; access checks use :meth:`is_participant`, not this field.
+        join_code: Short human-shareable code (see :meth:`SessionRegistry.
+            join_session`) a second user types in to join THIS SAME session.
+        roles: Ordered seat names for this session (e.g. ``("X", "O")``).
+        participants: Role -> username currently holding it, or ``None``.
         engine: The subprocess wrapper for the running game engine.
         listener: TCP server accepting the engine's outbound events.
         sender: TCP client used to forward commands to the engine.
@@ -72,6 +105,9 @@ class GameSession:
 
     session_id: str
     owner: str
+    join_code: str
+    roles: tuple[str, ...]
+    participants: dict[str, str | None]
     engine: EngineProcess
     listener: EngineEventListener
     sender: EngineSender
@@ -79,6 +115,17 @@ class GameSession:
     last_activity_at: float
     last_envelope_by_type: dict[str, dict] = field(default_factory=dict)
     subscribers: set[asyncio.Queue] = field(default_factory=set)
+
+    def is_participant(self, username: str) -> bool:
+        """True if *username* currently holds any role in this session."""
+        return username in self.participants.values()
+
+    def role_of(self, username: str) -> str | None:
+        """Returns the role *username* holds in this session, or ``None``."""
+        for role, holder in self.participants.items():
+            if holder == username:
+                return role
+        return None
 
 
 class SessionRegistry:
@@ -107,6 +154,7 @@ class SessionRegistry:
         self.idle_timeout_seconds: float = idle_timeout_seconds
         self._lock: Lock = Lock()
         self._sessions: dict[str, GameSession] = {}
+        self._session_id_by_code: dict[str, str] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
 
     def create_session(
@@ -114,11 +162,13 @@ class SessionRegistry:
         owner: str,
         bootstrap: BootstrapFn,
         extra_args: list[str] | None = None,
+        roles: Sequence[str] = ("player",),
     ) -> GameSession:
         """Boots a new engine subprocess and registers a session for *owner*.
 
         Args:
-            owner: Username this session belongs to (from the auth token).
+            owner: Username this session belongs to (from the auth token) —
+                automatically assigned the first role in *roles*.
             bootstrap: Called once (outside any lock) with the newly-created
                 :class:`~gmWebServe.engine_listener.EngineSender`, so the
                 caller can send its game-specific "start a match" command
@@ -127,6 +177,11 @@ class SessionRegistry:
                 a data directory). The dynamically-allocated
                 ``--events-port``/``--commands-port`` flags are appended
                 automatically, after these.
+            roles: Ordered seat names for this session, e.g. Tris'
+                ``("X", "O")``. *owner* fills ``roles[0]``; remaining seats
+                start empty and are filled via :meth:`join_session` using the
+                returned session's ``join_code``. Defaults to a single seat
+                for games that do not need shared multiplayer.
 
         Raises:
             SessionLimitExceededError: If *owner* already has
@@ -135,7 +190,7 @@ class SessionRegistry:
                 its command port never becomes reachable.
         """
         with self._lock:
-            owned_count = sum(1 for s in self._sessions.values() if s.owner == owner)
+            owned_count = sum(1 for s in self._sessions.values() if s.is_participant(owner))
             if owned_count >= self.max_sessions_per_user:
                 raise SessionLimitExceededError(
                     f"User '{owner}' already has {owned_count} active session(s) "
@@ -143,6 +198,7 @@ class SessionRegistry:
                 )
 
             session_id = uuid.uuid4().hex
+            join_code = self._generate_unique_join_code_locked()
             event_port = find_free_port(self._event_host)
             command_port = find_free_port(self._command_host)
 
@@ -172,10 +228,17 @@ class SessionRegistry:
             listener.start()
             sender = EngineSender(host=self._command_host, port=command_port)
 
+            role_tuple = tuple(roles)
+            participants: dict[str, str | None] = {role: None for role in role_tuple}
+            participants[role_tuple[0]] = owner
+
             now = time.time()
             session = GameSession(
                 session_id=session_id,
                 owner=owner,
+                join_code=join_code,
+                roles=role_tuple,
+                participants=participants,
                 engine=engine,
                 listener=listener,
                 sender=sender,
@@ -183,47 +246,107 @@ class SessionRegistry:
                 last_activity_at=now,
             )
             self._sessions[session_id] = session
+            self._session_id_by_code[join_code] = session_id
 
         # Outside the lock: triggers the engine's lazy connect-back to the
         # event listener started above.
         bootstrap(sender)
         return session
 
-    def list_sessions(self, owner: str) -> list[GameSession]:
-        """Returns every active session belonging to *owner* (may be empty)."""
-        with self._lock:
-            return [s for s in self._sessions.values() if s.owner == owner]
+    def join_session(self, join_code: str, joining_user: str) -> GameSession:
+        """Attaches *joining_user* to the session identified by *join_code*.
 
-    def get_session(self, session_id: str, owner: str) -> GameSession:
-        """Returns the session if it exists and belongs to *owner*.
+        Idempotent for a user who is already a participant (e.g. a page
+        reload just reconnects them to their existing seat) — otherwise
+        assigns them to the first unfilled role, so a second (different)
+        user ends up in the SAME session/match as the creator.
+
+        Args:
+            join_code: The code shown to the session's creator, shared
+                out-of-band (e.g. verbally, chat) with the user who should join.
+            joining_user: Username of the user attempting to join.
 
         Raises:
-            SessionNotFoundError: If *session_id* is unknown, or belongs to a
-                different owner.
+            SessionNotFoundError: If *join_code* matches no active session.
+            SessionFullError: If every role is already held by someone else.
+            SessionLimitExceededError: If *joining_user* is already at their
+                own concurrent-session cap.
+        """
+        normalized_code = join_code.strip().upper()
+        with self._lock:
+            session_id = self._session_id_by_code.get(normalized_code)
+            session = self._sessions.get(session_id) if session_id is not None else None
+            if session is None:
+                raise SessionNotFoundError(normalized_code)
+            if session.is_participant(joining_user):
+                return session
+
+            free_role = next(
+                (role for role, holder in session.participants.items() if holder is None), None
+            )
+            if free_role is None:
+                raise SessionFullError(normalized_code)
+
+            joined_count = sum(1 for s in self._sessions.values() if s.is_participant(joining_user))
+            if joined_count >= self.max_sessions_per_user:
+                raise SessionLimitExceededError(
+                    f"User '{joining_user}' already has {joined_count} active session(s) "
+                    f"(limit {self.max_sessions_per_user})"
+                )
+
+            session.participants[free_role] = joining_user
+            return session
+
+    def _generate_unique_join_code_locked(self) -> str:
+        """Generates a join code not already in use. Caller must hold ``self._lock``."""
+        for _ in range(10):
+            code = _generate_join_code()
+            if code not in self._session_id_by_code:
+                return code
+        raise RuntimeError("Could not generate a unique join code after 10 attempts")
+
+    def list_sessions(self, username: str) -> list[GameSession]:
+        """Returns every active session *username* participates in (may be empty).
+
+        Includes sessions *username* created AND sessions they joined via
+        :meth:`join_session` — either way they currently hold one of its roles.
+        """
+        with self._lock:
+            return [s for s in self._sessions.values() if s.is_participant(username)]
+
+    def get_session(self, session_id: str, username: str) -> GameSession:
+        """Returns the session if it exists and *username* holds one of its roles.
+
+        Raises:
+            SessionNotFoundError: If *session_id* is unknown, or *username* is
+                not a participant of it.
         """
         with self._lock:
             session = self._sessions.get(session_id)
-        if session is None or session.owner != owner:
+        if session is None or not session.is_participant(username):
             raise SessionNotFoundError(session_id)
         return session
 
-    def send_command(self, session_id: str, owner: str, type_id: str, data: dict) -> None:
+    def send_command(self, session_id: str, username: str, type_id: str, data: dict) -> None:
         """Forwards one command envelope to the running engine and marks activity.
 
         Raises:
-            SessionNotFoundError: If *session_id* does not belong to *owner*.
+            SessionNotFoundError: If *username* is not a participant of *session_id*.
         """
-        session = self.get_session(session_id, owner)
+        session = self.get_session(session_id, username)
         session.last_activity_at = time.time()
         session.sender.send_command(type_id, data)
 
-    def subscribe(self, session_id: str, owner: str) -> asyncio.Queue:
+    def subscribe(self, session_id: str, username: str) -> asyncio.Queue:
         """Registers a new WebSocket subscriber, pre-filled with the last known state.
 
+        Every participant of a session shares the SAME event stream — this is
+        how two different users end up watching/playing the same match.
+
         Raises:
-            SessionNotFoundError: If *session_id* does not belong to *owner*.
+            SessionNotFoundError: If *username* is not a participant of *session_id*.
         """
-        session = self.get_session(session_id, owner)
+        session = self.get_session(session_id, username)
         session.last_activity_at = time.time()
         queue: asyncio.Queue = asyncio.Queue()
         for envelope in session.last_envelope_by_type.values():
@@ -231,25 +354,30 @@ class SessionRegistry:
         session.subscribers.add(queue)
         return queue
 
-    def unsubscribe(self, session_id: str, owner: str, queue: asyncio.Queue) -> None:
+    def unsubscribe(self, session_id: str, username: str, queue: asyncio.Queue) -> None:
         """Removes a previously registered WebSocket subscriber, if still active."""
         try:
-            session = self.get_session(session_id, owner)
+            session = self.get_session(session_id, username)
         except SessionNotFoundError:
             return
         session.subscribers.discard(queue)
 
-    def close_session(self, session_id: str, owner: str) -> None:
+    def close_session(self, session_id: str, username: str) -> None:
         """Stops and forgets one session, freeing its slot in the per-user cap.
 
+        Any participant (not just the original creator) may close a shared
+        session — it ends the match for everyone in it, symmetric with how
+        any player might concede/leave a real board game.
+
         Raises:
-            SessionNotFoundError: If *session_id* does not belong to *owner*.
+            SessionNotFoundError: If *username* is not a participant of *session_id*.
         """
         with self._lock:
             session = self._sessions.get(session_id)
-            if session is None or session.owner != owner:
+            if session is None or not session.is_participant(username):
                 raise SessionNotFoundError(session_id)
             del self._sessions[session_id]
+            self._session_id_by_code.pop(session.join_code, None)
         self._teardown(session)
 
     def reap_idle_sessions(self) -> list[str]:
@@ -270,6 +398,7 @@ class SessionRegistry:
             ]
             for session in expired:
                 del self._sessions[session.session_id]
+                self._session_id_by_code.pop(session.join_code, None)
         for session in expired:
             self._teardown(session)
         return [session.session_id for session in expired]
@@ -279,6 +408,7 @@ class SessionRegistry:
         with self._lock:
             sessions = list(self._sessions.values())
             self._sessions.clear()
+            self._session_id_by_code.clear()
         for session in sessions:
             self._teardown(session)
 
