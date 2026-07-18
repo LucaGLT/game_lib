@@ -341,6 +341,13 @@
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
   cursor: grab;
   touch-action: none;
+  /* Richiesta esplicita utente: i testi della Mappa (nomi locazione, etichette
+     token) non devono essere selezionabili — il drag per il pan altrimenti
+     innesca la selezione testo del browser invece di limitarsi a spostare la
+     visuale. `user-select` è ereditato dai discendenti HTML dentro i
+     `<foreignObject>` (nodi/token), quindi basta impostarlo qui sulla radice. */
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 

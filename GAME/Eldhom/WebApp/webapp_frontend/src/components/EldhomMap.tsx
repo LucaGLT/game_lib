@@ -158,6 +158,25 @@ function fitViewBox(layout: MapLayout): ViewBox {
   return { x: 0, y: 0, w: layout.width, h: layout.height }
 }
 
+/**
+ * Stable signature of the map's TOPOLOGY (which locations exist and how
+ * they connect) — deliberately excludes edge `type` (FREE/CLOSED_DOOR/
+ * LOCKED_DOOR) and all token/hero state. The engine re-sends a full
+ * `state.full` after almost every action/card, which rebuilds brand-new
+ * `locations`/`edges` array instances with the *same* content; comparing
+ * those by object identity (as this component used to) reset the player's
+ * zoom/pan on every single action. Comparing by this signature instead
+ * means the view is only refit when the graph itself actually changes
+ * (new mission). Opening a zone door does NOT change this signature (only
+ * an edge's `type` changes, never its endpoints), which matches the fact
+ * that `computeLayout` never repositions nodes based on door state either.
+ */
+function topologySignature(locations: MapLocation[], edges: MapEdge[]): string {
+  const locationPart = locations.map((location) => location.id).join(',')
+  const edgePart = edges.map((edge) => `${edge.a}~${edge.b}`).join(',')
+  return `${locationPart}|${edgePart}`
+}
+
 export function EldhomMap({
   locations,
   edges,
@@ -173,13 +192,19 @@ export function EldhomMap({
   const [viewBox, setViewBox] = useState<ViewBox>(() => fitViewBox(layout))
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const panState = useRef<{ pointerId: number; startClientX: number; startClientY: number; startViewBox: ViewBox } | null>(null)
+  const topologyRef = useRef<string>(topologySignature(locations, edges))
 
-  // Resets the view whenever the underlying map changes (new mission, or a
-  // rebuild triggered by a newly-unlocked passage) so zoom/pan never leaves
-  // the player stuck looking at an empty area of a now-different map.
+  // Resets the view only when the map's actual topology changes (new
+  // mission) — see `topologySignature` above for why identity-based
+  // comparison (the previous behaviour) incorrectly reset zoom/pan on
+  // every action/card played.
   useEffect(() => {
-    setViewBox(fitViewBox(layout))
-  }, [layout])
+    const signature = topologySignature(locations, edges)
+    if (signature !== topologyRef.current) {
+      topologyRef.current = signature
+      setViewBox(fitViewBox(layout))
+    }
+  }, [locations, edges, layout])
 
   // Native (non-passive) wheel listener — see module docstring for why this
   // cannot be a React onWheel handler.

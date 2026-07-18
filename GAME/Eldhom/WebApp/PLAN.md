@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.17.0
-**Status:** Phase 17 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-17 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
+**Version:** 0.18.0
+**Status:** Phase 18 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
+Phase 9-18 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
 critiche — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1240,6 +1240,71 @@ coerente con l'identità già dichiarata per questo tema (`themes.ts`, commento
   regola è scoped esclusivamente a `.app[data-theme='stone']`.
 - `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
   CoreEngine C++ (nessuna modifica al wire-contract, solo CSS).
+
+---
+
+### Phase 18 — Testi Mappa non selezionabili + Zoom stabile durante le azioni
+(richiesta esplicita utente) [✅ Completato]
+
+Richiesta esplicita utente, in due parti indipendenti sulla Mappa:
+
+1. *"I Testi sulla MAPPA NON devono essere Selezionabili"* — i nomi delle locazioni e le
+   etichette dei token non devono poter essere selezionati con il mouse (il drag per il pan
+   innescava la selezione testo nativa del browser).
+2. *"Lo Zoom deve rimanere stabile quando gioco azioni o Carte (vedo che invece fa sempre un
+   FIT)"* — bug: ogni azione/carta giocata faceva scattare un "Adatta alla vista" non
+   richiesto, azzerando zoom/pan impostati manualmente dal giocatore.
+
+**Causa del bug zoom individuata:** `EldhomMap.tsx` ricalcolava `layout` via `useMemo(...,
+[locations, edges])` e un `useEffect(..., [layout])` chiamava `setViewBox(fitViewBox(layout))`
+ogni volta che l'oggetto `layout` cambiava **identità**. Il motore reinvia un `state.full`
+completo dopo quasi ogni comando (`applyStateFull` in `gameState.ts`), che ricostruisce
+`locations`/`edges` come **nuovi array** anche quando il contenuto è identico — la mappa non
+cambia mai struttura durante una missione (le locazioni sono fisse dall'inizio; l'apertura di
+una porta cambia solo il campo `type` di un arco già esistente, mai l'insieme di nodi/archi),
+quindi il confronto per identità resettava la vista ad ogni singola azione.
+
+- [x] `App.css`: `.eldhom-map` (radice SVG) riceve `user-select: none` /
+      `-webkit-user-select: none` — proprietà ereditata dai discendenti HTML dentro i
+      `<foreignObject>` (nomi nodo, etichette token), quindi un'unica regola sulla radice
+      basta per l'intera Mappa
+- [x] `EldhomMap.tsx`: nuova funzione `topologySignature(locations, edges)` che produce una
+      stringa stabile dagli id delle locazioni e dalle coppie `a~b` degli archi
+      (deliberatamente **esclude** il campo `type` dell'arco e ogni stato di token/eroe);
+      nuovo `topologyRef` (`useRef`) che ricorda l'ultima signature vista; l'effetto di reset
+      ora confronta la signature corrente con quella memorizzata e chiama
+      `setViewBox(fitViewBox(layout))` **solo** se è realmente cambiata (nuova missione),
+      non più ad ogni ricostruzione di `state.full` con contenuto invariato
+- [x] `get_errors` pulito su entrambi i file; `npm run build`/`npm run lint` puliti
+- [x] Validazione funzionale reale nel browser (missione "L'Ombra sul Corridoio"):
+  - `getComputedStyle(...).userSelect` → `'none'` confermato sia sulla radice `.eldhom-map`
+    sia su un nome-nodo sia su un'etichetta-token
+  - simulazione di una vera selezione testo (drag del mouse sopra un nome-nodo via
+    `page.mouse.down/move/up`) → `window.getSelection().toString()` resta vuoto dopo il drag
+  - zoom avanti ripetuto (pulsante toolbar) per impostare un `viewBox` non-default, poi
+    lettura dell'attributo `viewBox` dell'SVG: **invariato** dopo aver pescato una carta, e
+    **invariato di nuovo** dopo un'azione semplice "Muovi" completa (spostamento eroe +
+    apertura di una porta + avanzamento turno) — il caso che prima causava sempre il reset
+
+**Esito Phase 18 (validato):**
+
+- I testi della Mappa (nomi locazione, etichette token) non sono più selezionabili con il
+  mouse; il drag continua a funzionare correttamente solo come pan della visuale.
+- Lo zoom/pan impostato manualmente dal giocatore ora sopravvive a **qualunque** azione o
+  carta giocata, inclusi i casi che modificano la mappa stessa (apertura porta) — la vista
+  si adatta automaticamente ("Adatta alla vista") **solo** quando inizia una missione con un
+  insieme di locazioni realmente diverso, mai durante il turno di gioco.
+- `npm run build`/`npm run lint` puliti; nessun impatto su Tris (`webLib/WebGUI_Lib`) né sul
+  CoreEngine C++ (nessuna modifica al wire-contract).
+
+**Notes:**
+- Lezione generale da ricordare: quando un `useEffect`/`useMemo` deve reagire a un cambiamento
+  *sostanziale* di un dato (non a qualunque nuova istanza dell'oggetto/array che lo contiene),
+  confrontare per **identità di riferimento** è fragile se il dato a monte viene ricostruito
+  da zero ad ogni aggiornamento (pattern comune con reducer che rigenerano stato immutabile da
+  uno snapshot `state.full`). La soluzione robusta è derivare una **signature** stabile
+  (stringa/valore primitivo) dal contenuto rilevante e confrontare quella, ignorando i campi
+  che non contano per la decisione (qui: il `type` dell'arco).
 
 ---
 
