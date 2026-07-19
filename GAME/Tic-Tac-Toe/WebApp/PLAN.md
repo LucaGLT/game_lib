@@ -1,6 +1,6 @@
 # Tic-Tac-Toe WebApp — Development Plan
 
-**Version:** 0.4.0
+**Version:** 0.4.1
 **Status:** Phase 6 – Complete ✅ (Phase 3 – Complete ✅; Phase 2 – Complete ✅, completata
 retroattivamente a livello di libreria dopo la Phase 3 — vedi Notes; Phase 4/5 restano ⏳)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 5 / React 18 (frontend) — polyglot web layer.
@@ -421,9 +421,48 @@ di `pyLib/gmGui`, con scope completo incluso un contratto "modulo" generico (mir
   causata da questo turno (confermato via `git status` vuoto su `GAME/Eldhom`) — Eldhôm Phase 2
   è deliberatamente rimandata (vedi `eldhom-webapp-plan.md`); da portare quando richiesto.
 
+**Addendum "Sfondo tematico di pagina + contrasto testi" (2026-07-19), stesso giorno:**
+richiesta esplicita dell'utente — lo sfondo/le sfumature per-tema esistevano SOLO in Eldhôm
+(`App.css` locale, mai promosse a libreria), esattamente lo stesso pattern di "libreria non
+davvero condivisa" già corretto per i font. Estratto in `webLib/WebGUI_Lib/src/styles.css`
+un nuovo blocco opt-in `.gmgui-theme-backdrop[data-theme='...']` (5 regole, gradient portati
+1:1 dallo sfondo pagina di Eldhôm Phase 13/14; Dark Moon usa la variante "Crepuscolo" come
+default condiviso — il selettore-varianti resta un arricchimento locale di Eldhôm). Tris
+aggiunge `data-theme={themeId}` + la classe `gmgui-theme-backdrop` sulla propria `<div
+className="app">` (in tutti e 3 gli stati: restoring/login/gioco) per ereditarlo gratis.
+- **Bug di contrasto trovato e corretto durante la verifica visiva**: applicare lo sfondo
+  scuro a `.app` ha rotto il contrasto di testi che poggiano DIRETTAMENTE su di esso (non
+  dentro un pannello opaco `--gm-panel`) per i temi "chiari" Scroll/Stone, il cui `--gm-text`
+  è pensato per contrastare `--gm-background` (chiaro), non il nuovo sfondo scuro. Fix: nuova
+  custom property `--gm-backdrop-text` (= `var(--gm-accent)`) definita dentro ciascuna delle 5
+  regole `.gmgui-theme-backdrop[data-theme='...']` — mirror esatto del pattern già validato in
+  Eldhôm (`.app-header h1 { color: var(--gm-accent); text-shadow: ...; }`), ma promosso a
+  variabile di libreria riusabile invece di essere ripetuto come valore letterale in ogni gioco.
+  Applicato in Tris a `.app-header h1`, `.app-header__account` (username) e `.tris-role-banner`
+  (gli unici 3 punti che non vivono dentro un pannello `--gm-panel`); tutto il resto (h2
+  "Sessioni attive", "Turno di: Player X", "Tic-Tac-Toe — Accedi") viveva già dentro un
+  pannello opaco (`.gmgui-session-picker`/`.turn-header`/`.gmgui-login-form`, tutti
+  `background-color: var(--gm-panel)`) quindi il solo `--gm-text` bastava.
+- **Causa radice separata e più grave trovata durante l'indagine**: `webapp_frontend/src/
+  index.css` conteneva ~110 righe di CSS morto ereditate da UN ALTRO template Vite (variabili
+  `--text`/`--heading`/`--accent`/`#social`/`.counter`, mai referenziate da nessun componente
+  Tris — verificato via grep prima di rimuovere, stesso approccio già usato per la pulizia di
+  `App.css` in Phase 3) con una regola `h1, h2 { color: var(--text-h); }` che sovrascriveva
+  SEMPRE il colore di OGNI h1/h2 della pagina con un valore statico legato al
+  `prefers-color-scheme` del sistema operativo, non al tema `gmGui` selezionato — la causa
+  principale per cui "nessun tema" mostrava colori giusti sui titoli. Ridotto a
+  `body { margin: 0; background: <gradiente scuro neutro>; min-height: 100vh; }` (stesso valore
+  di fallback già usato da Eldhôm in `index.css`, così l'area attorno a `.app` non mostra più
+  uno sfondo bianco su schermi più alti del contenuto).
+- **Validato visivamente nel browser reale su tutti e 5 i temi + schermata di login**
+  (screenshot per ciascuno): Scroll/Stone/Dark Moon/Blood/Techno tutti con titoli, username,
+  banner di ruolo e pannelli leggibili; `npm run build`/`npm run test` (3/3) verdi dopo ogni
+  round di modifica.
+
 ---
 
 ## Key Design Decisions
+
 
 1. **Pilota:** `gmTris` (Tic-Tac-Toe) scelto per maturità (4 fasi CoreEngine complete, wire-contract stabile, E2E testato) e semplicità di dominio, per validare l'architettura web a basso rischio.
 2. **Convivenza permanente:** la GUI PySide6 esistente resta invariata e autonoma; la WebApp è un canale aggiuntivo, non un rimpiazzo.

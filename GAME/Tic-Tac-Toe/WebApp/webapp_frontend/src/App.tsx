@@ -243,7 +243,7 @@ function App() {
 
   if (auth.isRestoring) {
     return (
-      <div className="app" style={themeToCssVars(theme) as CSSProperties}>
+      <div className="app gmgui-theme-backdrop" data-theme={themeId} style={themeToCssVars(theme) as CSSProperties}>
         <p>Verifica sessione in corso…</p>
       </div>
     )
@@ -251,7 +251,7 @@ function App() {
 
   if (!auth.isAuthenticated) {
     return (
-      <div className="app" style={themeToCssVars(theme) as CSSProperties}>
+      <div className="app gmgui-theme-backdrop" data-theme={themeId} style={themeToCssVars(theme) as CSSProperties}>
         <LoginForm
           title="Tic-Tac-Toe — Accedi"
           onSubmit={(username, password) => auth.login(username, password)}
@@ -267,7 +267,7 @@ function App() {
     gameState.activeMark !== myRole
 
   return (
-    <div className="app" style={themeToCssVars(theme) as CSSProperties}>
+    <div className="app gmgui-theme-backdrop" data-theme={themeId} style={themeToCssVars(theme) as CSSProperties}>
       <header className="app-header">
         <h1>Tic-Tac-Toe — WebApp</h1>
         <GameToolbar

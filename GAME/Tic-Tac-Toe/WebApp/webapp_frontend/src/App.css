@@ -32,6 +32,8 @@
 .app-header h1 {
   font-size: 20px;
   margin: 0;
+  color: var(--gm-backdrop-text);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 .app-header__account {
@@ -39,6 +41,8 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  color: var(--gm-backdrop-text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .app-header__account button {
@@ -56,7 +60,8 @@
   text-align: center;
   font-size: 13px;
   margin: 0 0 8px;
-  color: var(--gm-text);
+  color: var(--gm-backdrop-text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* ── Toolbar ──────────────────────────────────────────────────────────────────── */
