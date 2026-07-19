@@ -97,11 +97,11 @@ const THEME_VARIANTS: Record<ThemeId, ReadonlyArray<ThemeVariant>> = {
     { id: 'reliquary', displayName: 'Reliquary' },
   ],
   dark_moon: [
-    { id: 'moon_01', displayName: 'Moon_01 — Crepuscolo' },
-    { id: 'moon_02', displayName: 'Moon_02 — Aurora' },
-    { id: 'moon_03', displayName: 'Moon_03 — Nebulosa' },
-    { id: 'moon_04', displayName: 'Moon_04 — Nebbia' },
-    { id: 'moon_05', displayName: 'Moon_05 — Profondo' },
+    { id: 'moon_01', displayName: 'Twilight' },
+    { id: 'moon_02', displayName: 'Dawn' },
+    { id: 'moon_03', displayName: 'Nebula' },
+    { id: 'moon_04', displayName: 'Mist' },
+    { id: 'moon_05', displayName: 'Deep' },
   ],
   blood: [
     { id: 'sacrificial_altar', displayName: 'Sacrificial Altar' },
