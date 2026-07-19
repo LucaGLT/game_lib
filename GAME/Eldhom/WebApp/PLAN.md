@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.23.0
-**Status:** Phase 23 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-23 inserite fuori sequenza su richiesta
+**Version:** 0.24.0
+**Status:** Phase 24 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-24 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1663,6 +1663,76 @@ visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
   "Formazione — HEROES @ ingresso" per Velyr non è stato auto-risolto ed è stato chiuso
   manualmente).
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.23.0, Status "Phase 23 – Completato ✅".
+
+### Phase 24 — Fine Turno sempre premibile con azioni ingrigite, banner di ruolo dinamico, header missione senza tempo (richieste esplicite utente) [✅ Completato]
+
+- [x] **"Nessuna azione disponibile" — tutte le Azioni/Carte ingrigite, SOLO Fine Turno abilitato**:
+  nuovo calcolo client-side `hasAnyAction` (`App.tsx`) che combina `canAttackNow` (un nemico vivo
+  nella stessa locazione dell'eroe attivo), `canInteractNow` (un `special_object` registrato in
+  quella locazione — nuovo campo `EldhomState.specialObjects`, popolato da `wire.special_objects`
+  in `applyStateFull`), `canRecoverNow` (`hp < max_hp`) e `hasPlayableCardNow` (riusa
+  `isPlayable`, spostato da `DeckTable.tsx` a `engine/cardIcons.ts` per essere condiviso senza
+  violare la regola oxlint "un file di componenti esporta solo componenti"). MOVE è
+  deliberatamente ESCLUSO dal calcolo (un eroe puo quasi sempre tentare di muoversi; il motore
+  gia' rifiuta con un errore chiaro una destinazione non valida, invariato). Quando
+  `hasAnyAction` e' `false`, `ActionPanel` disabilita i 4 pulsanti Azione Semplice (Muovi/
+  Attacca/Interagisci/Recupera) e mostra la nota "⚠ Nessuna azione disponibile — premi 🏁 Fine
+  Turno per passare"; **Fine Turno NON e' mai incluso in questo gating** (resta abilitato per
+  l'intera durata del proprio turno, come da richiesta esplicita "il giocatore DEVE premere
+  Fine Turno anche quando non ha piu' azioni da fare"). Le carte in mano erano gia' correttamente
+  ingrigite dalla logica di giocabilita' preesistente (`isPlayable`) quando non c'e' nulla da
+  giocare — nessuna modifica necessaria li', dato che se una carta e' giocabile `hasAnyAction`
+  e' automaticamente vero.
+- [x] **Banner di ruolo e messaggio di turno rivolti al giocatore, non all'eroe attivo**: nuovo
+  `myHeroName` (App.tsx) col nome dell'eroe PROPRIO del partecipante (mai quello dell'eroe che sta
+  agendo in quel momento, che puo' essere un compagno mentre questo partecipante aspetta) —
+  fallback a 3 livelli: `HeroWire.name` (autorevole, valorizzato solo a missione avviata) →
+  `pg_roster[].display_name` della missione scelta (gia' disponibile da `GET /missions` subito
+  dopo la creazione sessione, mentre si e' ancora "in attesa di altri giocatori") → l'`hero_id`
+  grezzo come ultima risorsa. Banner "Sei **{myHeroName}**" (era `{myHeroId}` minuscolo).
+  `ActionPanel`'s prop `heroName` rinominata `myHeroName`; testo di stato turno sostituito:
+  `"Tocca a Te, {myHeroName}"` quando e' il proprio turno, `"{myHeroName}, attendi che gli altri
+  facciano le loro Azioni"` quando non lo e' (era rispettivamente `"TURNO: {nome eroe attivo}"`/
+  `"In attesa…"`) — con fallback esplicito a `"In attesa…"` quando `myHeroName === ''` (nessuna
+  sessione ancora attiva), per non mostrare un messaggio rotto tipo ", attendi..." senza nome.
+- [x] **Header missione senza tempo + pop-up dettagli**: testo cambiato da
+  `"{titolo} — ⏳ {tempo}"` a `"SessionCode : {join_code} -- Missione : {titolo}"` (il tempo
+  ⏳ non compare piu' nell'header, per richiesta esplicita utente); l'elemento e' ora un
+  `<button>` (era un `<p>`, resettato via CSS a look invariato + `cursor:pointer`/hover) che apre
+  il nuovo `MissionDetailsModal.tsx` con Titolo/Codice Sessione/Descrizione (quest'ultima presa
+  da `GET /missions`'s `MissionSummary.description`, gia' esposta e mai usata finora in UI).
+- [x] **Validato**: `npm run build`/`npm run lint` puliti (zero errori, zero warning — incl. il
+  warning oxlint fast-refresh iniziale, risolto spostando `isPlayable`). Smoke test end-to-end nel
+  browser reale (sessione singola, missione "L'Ombra sul Corridoio", solo Thael): banner "Sei
+  Thael" confermato; scartate tutte le 5 carte di mano (HP gia' 6/6, nessun nemico/oggetto a
+  "ingresso") → i 4 pulsanti Azione Semplice diventano `disabled`, compare l'avviso, **Fine Turno
+  resta cliccabile** e funziona (turno passato a Velyr, log narrativo coerente); click sull'header
+  missione → pop-up con Titolo/Codice/Descrizione corretti confermato via lettura DOM diretta.
+
+**Notes:**
+- **`canInteractNow` e' un'approssimazione dichiarata, non una verita' assoluta lato motore**:
+  il wire `special_objects[]` non espone se un oggetto e' gia' stato usato
+  (`_special_object_used` e' interno al motore C++, mai serializzato) — quindi un oggetto gia'
+  attivato in precedenza risultera' ancora "disponibile" per questo calcolo. Scelta deliberata:
+  meglio un falso positivo occasionale (INTERACT mostrato abilitato quando in realta' sarebbe un
+  no-op) che un falso negativo (nascondere un'azione realmente valida) — il motore accetta comunque
+  il comando senza errori in entrambi i casi.
+- **RECOVER e INTERACT sono SEMPRE accettati dal motore anche a vuoto** (verificato leggendo
+  `EldhomRuleAdapter::apply_simple_recover`/`EldhomEngine::trigger_special_object`: nessuno dei due
+  ha un percorso di fallimento, entrambi "riescono" anche senza alcun effetto reale) —
+  `hasAnyAction` e' quindi deliberatamente una euristica UX ("c'e' qualcosa di SENSATO da fare"),
+  non una replica esatta della legalita' lato motore: server e client possono non essere
+  perfettamente d'accordo su casi limite, ma il server resta comunque l'autorita' finale (respinge
+  con un errore chiaro qualunque azione realmente non valida, invariato).
+- **MOVE escluso apposta dal gating**: quasi ogni locazione ha almeno un'adiacenza, quindi
+  includerlo avrebbe reso `hasAnyAction` vero quasi sempre, vanificando la richiesta — e la sua
+  utilita' ("posso spostarmi da qualche parte") resta comunque sempre visibile/cliccabile.
+- **Bug auto-corretto durante la validazione**: la prima versione del messaggio di turno non
+  gestiva il caso `myHeroName === ''` (nessuna sessione attiva, `ActionPanel` comunque sempre
+  renderizzato) — mostrava ", attendi che gli altri..." con un nome vuoto davanti. Corretto con un
+  fallback esplicito a "In attesa…", scoperto ricaricando la pagina durante il test dal vivo prima
+  ancora di aprire una sessione.
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.24.0, Status "Phase 24 – Completato ✅".
 
 ---
 

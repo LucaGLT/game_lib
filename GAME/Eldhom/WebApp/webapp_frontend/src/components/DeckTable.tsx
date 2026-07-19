@@ -48,7 +48,7 @@
  * tags) rather than the one-line header hint it replaces.
  */
 import { useState } from 'react'
-import { CARD_TYPE_ICONS, effectSummaryLine, hasEffect } from '../engine/cardIcons'
+import { CARD_TYPE_ICONS, effectSummaryLine, hasEffect, isPlayable } from '../engine/cardIcons'
 import type { CardWire, HeroWire } from '../engine/contract'
 import { readDragPayload, setDragPayload } from '../engine/dragPayload'
 
@@ -65,19 +65,6 @@ export interface DeckTableProps {
   onTakeDiscard: () => void
   onReshuffle: () => void
   onOpenBanish: () => void
-}
-
-function isPlayable(card: CardWire | undefined, sequenceActive: boolean): boolean {
-  if (!card) {
-    return false
-  }
-  if (card.card_type === 'INSTANT') {
-    return false
-  }
-  if (sequenceActive) {
-    return card.card_type === 'SEQ_CONTINUE' || card.card_type === 'SEQ_END'
-  }
-  return card.card_type === 'SINGLE' || card.card_type === 'SEQ_START'
 }
 
 /** True if the card needs a destination/target and must therefore be dropped on the Map, not on Giocate/Memoria. */

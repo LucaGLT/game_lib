@@ -26,9 +26,12 @@ export interface PendingReactionView {
 }
 
 export interface ActionPanelProps {
-  heroName: string
+  /** The VIEWING participant's own hero name (properly capitalized) — the turn-status message always addresses them, never whichever hero currently acts. */
+  myHeroName: string
   enabled: boolean
   sequenceActive: boolean
+  /** True if the active hero has at least one legal/meaningful action (a melee target, an interactable object, something to heal, or a playable card) besides Fine Turno — see App.tsx. When false, the 4 base actions are disabled (Fine Turno never is). */
+  hasAnyAction: boolean
   targetingMode: TargetingMode
   pendingReaction: PendingReactionView | null
   onArmMove: () => void
@@ -47,9 +50,10 @@ const REACTION_LABELS: Record<string, string> = {
 }
 
 export function ActionPanel({
-  heroName,
+  myHeroName,
   enabled,
   sequenceActive,
+  hasAnyAction,
   targetingMode,
   pendingReaction,
   onArmMove,
@@ -77,22 +81,33 @@ export function ActionPanel({
     )
   }
 
+  // Explicit user request: the player must ALWAYS be able to confirm Fine
+  // Turno, even (especially) when nothing else is worth doing — so ONLY the
+  // 4 base actions are gated by `hasAnyAction`, never the end-turn button.
+  const baseActionsDisabled = !enabled || sequenceActive || !hasAnyAction
   return (
     <div className="eldhom-actions">
-      <span className="eldhom-actions__title">{enabled ? `TURNO: ${heroName}` : 'In attesa…'}</span>
+      <span className="eldhom-actions__title">
+        {enabled
+          ? `Tocca a Te, ${myHeroName}`
+          : myHeroName !== ''
+            ? `${myHeroName}, attendi che gli altri facciano le loro Azioni`
+            : 'In attesa…'}
+      </span>
       <div className="eldhom-actions__buttons">
-        <button type="button" disabled={!enabled || sequenceActive} onClick={onArmMove}>
+        <button type="button" disabled={baseActionsDisabled} onClick={onArmMove}>
           {targetingMode === 'move' ? '✕ Annulla Muovi' : '▶️ 2◻️ : 2⏳'}
         </button>
-        <button type="button" disabled={!enabled || sequenceActive} onClick={onArmAttack}>
+        <button type="button" disabled={baseActionsDisabled} onClick={onArmAttack}>
           {targetingMode === 'attack' ? '✕ Annulla Attacco' : '⏸️⚔️ 1❌ : 2⏳'}
         </button>
-        <button type="button" disabled={!enabled || sequenceActive} onClick={onInteract}>
+        <button type="button" disabled={baseActionsDisabled} onClick={onInteract}>
           ⏺️ : 3⏳
         </button>
-        <button type="button" disabled={!enabled || sequenceActive} onClick={onRecover}>
+        <button type="button" disabled={baseActionsDisabled} onClick={onRecover}>
           +1❤️ ♻️1🂠 : 3⏳
-        </button>        {!sequenceActive && (
+        </button>
+        {!sequenceActive && (
           <button
             type="button"
             className="eldhom-actions__end-turn"
@@ -102,7 +117,8 @@ export function ActionPanel({
           >
             🏁 Fine Turno
           </button>
-        )}        {sequenceActive && (
+        )}
+        {sequenceActive && (
           <button type="button" className="eldhom-actions__stop" onClick={onStopSequence}>
             ■ Stop seq.
           </button>
@@ -113,6 +129,9 @@ export function ActionPanel({
       )}
       {targetingMode === 'attack' && (
         <p className="eldhom-actions__hint">⚔ Clicca il nemico da attaccare sulla mappa</p>
+      )}
+      {enabled && !sequenceActive && !hasAnyAction && (
+        <p className="eldhom-actions__hint">⚠ Nessuna azione disponibile — premi 🏁 Fine Turno per passare</p>
       )}
     </div>
   )

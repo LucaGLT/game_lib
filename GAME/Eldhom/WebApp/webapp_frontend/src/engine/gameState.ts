@@ -38,6 +38,7 @@ import {
   type MonsterGroupWire,
   type NextActorWire,
   type ReactionWindowWire,
+  type SpecialObjectWire,
   type StateFullWire,
 } from './contract'
 
@@ -113,6 +114,8 @@ export interface EldhomState {
   pendingFormation: FormationDialogWire | null
   /** Set while the engine awaits an instant-card choice (proactive or reactive); null otherwise. */
   pendingInstantWindow: InstantWindowWire | null
+  /** Raw special-object wire data (levers/treasure/secret passages), refreshed only on `state.full` — used to check whether INTERACT has anything to do at a location (see App.tsx's `hasAnyAction`). */
+  specialObjects: SpecialObjectWire[]
 }
 
 export const initialEldhomState: EldhomState = {
@@ -134,6 +137,7 @@ export const initialEldhomState: EldhomState = {
   groups: [],
   pendingFormation: null,
   pendingInstantWindow: null,
+  specialObjects: [],
 }
 
 /** Loads the card catalog into state (call once after `listCards()` resolves — not envelope-driven). */
@@ -373,6 +377,7 @@ function applyStateFull(previous: EldhomState, wire: StateFullWire): EldhomState
     nextActorId: wire.next_actor?.actor_id ?? '',
     nextActorKind: wire.next_actor?.kind ?? '',
     handByHero,
+    specialObjects: wire.special_objects,
   }
 }
 

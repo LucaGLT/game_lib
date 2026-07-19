@@ -39,7 +39,7 @@ import {
   type InstantOptionWire,
   type MissionSummary,
 } from './engine/contract'
-import { hasEffect } from './engine/cardIcons'
+import { hasEffect, isPlayable } from './engine/cardIcons'
 import { applyCardCatalog, applyEnvelope, initialEldhomState, type EldhomState } from './engine/gameState'
 import { formatEvent, resetLogTimeTracking } from './engine/logFormat'
 import { ActionPanel, type TargetingMode } from './components/ActionPanel'
@@ -52,6 +52,7 @@ import { HeroPanel } from './components/HeroPanel'
 import { HeroSelectModal } from './components/HeroSelectModal'
 import { InstantWindowModal } from './components/InstantWindowModal'
 import { MainMenuModal } from './components/MainMenuModal'
+import { MissionDetailsModal } from './components/MissionDetailsModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
 import { MonsterGroupPanel } from './components/MonsterGroupPanel'
 import { TimelineTrack } from './components/TimelineTrack'
@@ -190,6 +191,7 @@ function App() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
   const [detailTarget, setDetailTarget] = useState<DetailTarget>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [showMissionDetails, setShowMissionDetails] = useState(false)
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
   const [moonVariant, setMoonVariant] = useState<MoonVariantId>(loadStoredMoonVariant)
   const disconnectRef = useRef<(() => void) | null>(null)
@@ -265,6 +267,46 @@ function App() {
   const isMyTurn = myHeroId !== null && activeHeroId === myHeroId
   const isMyPendingReaction = myHeroId !== null && pendingReaction?.defender_id === myHeroId
   const canAct = isMyTurn || isMyPendingReaction
+
+  // Player's own hero display name (properly capitalized, e.g. "Velyr") —
+  // used for the persistent role banner AND the turn-status message, which
+  // must always address THIS participant, never whichever hero currently
+  // acts (that can be a teammate while this participant waits their turn).
+  // 3-tier fallback: the authoritative wire name (`HeroWire.name`, only
+  // populated once the mission has actually started — see
+  // `applyStateFull`), else the chosen mission's roster `display_name`
+  // (already available right after session creation, while
+  // "in attesa di altri giocatori"), else the raw (lowercase) hero_id as a
+  // last resort if neither has loaded yet.
+  const myRosterDisplayName =
+    myHeroId !== null
+      ? missions
+          .find((mission) => mission.mission_id === activeSession?.mission_id)
+          ?.pg_roster.find((entry) => entry.hero_id === myHeroId)?.display_name
+      : undefined
+  const myHeroName =
+    myHeroId !== null ? (eldhomState.heroesById[myHeroId]?.name ?? myRosterDisplayName ?? myHeroId) : ''
+
+  // "Nessuna azione disponibile" (explicit user request): the active hero
+  // must ALWAYS be able to press Fine Turno, but when NONE of the 4 base
+  // actions nor any hand card would do anything meaningful, those (not Fine
+  // Turno) should look disabled instead of inviting a pointless click.
+  // MOVE is deliberately NOT part of this check — a hero can always at
+  // least attempt to move (near-universal fallback outside true dead ends)
+  // and the engine already returns a clear error if a chosen destination
+  // turns out to be invalid, same as it always has.
+  const activeHero = eldhomState.heroesById[activeHeroId]
+  const canAttackNow =
+    activeHero !== undefined &&
+    eldhomState.tokens.some((token) => !token.isHero && token.alive && token.location === activeHero.location)
+  const canInteractNow =
+    activeHero !== undefined &&
+    eldhomState.specialObjects.some((object) => object.location_id === activeHero.location)
+  const canRecoverNow = activeHero !== undefined && activeHero.hp < activeHero.max_hp
+  const hasPlayableCardNow = activeHeroHand.some((cardId) =>
+    isPlayable(eldhomState.cards[cardId], activeHeroSequenceActive),
+  )
+  const hasAnyAction = canAttackNow || canInteractNow || canRecoverNow || hasPlayableCardNow
 
   // actor_id -> display name/label, used by InstantWindowModal (heroes get
   // their full name, monster instances get their short map-token label).
@@ -806,7 +848,7 @@ function App() {
 
       {sessionId !== null && myHeroId !== null && (
         <p className="eldhom-role-banner">
-          Sei <strong>{myHeroId}</strong>
+          Sei <strong>{myHeroName}</strong>
           {needsMorePlayers && activeSession !== null && (
             <>
               {' — in attesa di altri giocatori. Condividi il codice: '}
@@ -843,10 +885,24 @@ function App() {
       )}
 
       {eldhomState.title !== '' && (
-        <p className="eldhom-mission-title">
-          {eldhomState.title} — ⏳ {eldhomState.missionTime}
+        <button
+          type="button"
+          className="eldhom-mission-title"
+          onClick={() => setShowMissionDetails(true)}
+          title="Clicca per i dettagli della missione"
+        >
+          SessionCode : {activeSession?.join_code ?? '—'} -- Missione : {eldhomState.title}
           {eldhomState.isOver ? ' — Missione conclusa' : ''}
-        </p>
+        </button>
+      )}
+
+      {showMissionDetails && (
+        <MissionDetailsModal
+          title={eldhomState.title}
+          joinCode={activeSession?.join_code ?? '—'}
+          description={missions.find((mission) => mission.mission_id === eldhomState.missionId)?.description ?? ''}
+          onDismiss={() => setShowMissionDetails(false)}
+        />
       )}
 
       <TimelineTrack actors={eldhomState.timelineActors} activeActorId={eldhomState.nextActorId} />
@@ -891,9 +947,10 @@ function App() {
       </div>
 
       <ActionPanel
-        heroName={activeHeroName}
+        myHeroName={myHeroName}
         enabled={activeHeroId !== '' && canAct}
         sequenceActive={activeHeroSequenceActive}
+        hasAnyAction={hasAnyAction}
         targetingMode={targetingMode}
         pendingReaction={pendingReactionView}
         onArmMove={handleArmMove}
