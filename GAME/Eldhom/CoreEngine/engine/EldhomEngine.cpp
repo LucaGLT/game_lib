@@ -516,6 +516,12 @@ ActionResult EldhomEngine::do_simple_action(
 		trigger_special_object(hero_id);
 		break;
 
+	case SimpleActionType::PASS:
+		cost = COST_SIMPLE_PASS;
+		eff.resolved = true;
+		eff.note     = hero_id + " ends turn";
+		break;
+
 	case SimpleActionType::RECOVER:
 		cost = COST_SIMPLE_RECOVER;
 		eff  = _rule_adapter.apply_simple_recover(hero_id, _store);

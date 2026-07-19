@@ -21,6 +21,14 @@ exactly, generalised for Eldhôm's differences:
   Eldhôm is a cooperative game (not zero-sum like Tris' X-vs-O), so any
   participant may resolve a shared dialog on the party's behalf — equivalent
   to any player being able to move a shared token at a physical table.
+- **No participant controls monsters** (see :meth:`_auto_resolve_monster_events`):
+  a reaction window whose ``defender_id`` is not one of the session's PGs, or
+  a formation dialog none of whose ``actors`` are PGs, would otherwise wait
+  forever for a human who does not exist. The server auto-answers these on
+  the monsters' behalf (always "Subisci"/TAKE for reactions — these monsters
+  have no real parry/dodge capability yet; empty backline for formation,
+  i.e. "all to frontline" — both deliberately simple placeholders, revisit
+  if/when monster AI gains real reaction choices).
 """
 from __future__ import annotations
 
@@ -67,6 +75,11 @@ _HERO_OWNED_COMMAND_FIELDS: dict[str, str] = {
     "eldhom.deck.take_discard": "hero_id",
     "eldhom.deck.reshuffle": "hero_id",
 }
+
+_EVT_REACTION_WINDOW_OPENED = "eldhom.reaction.window_opened"
+_EVT_FORMATION_DIALOG_NEEDED = "eldhom.formation.dialog_needed"
+_CMD_REACT_DEFENSE = "eldhom.react_defense"
+_CMD_RESOLVE_FORMATION = "eldhom.resolve_formation"
 
 
 class SessionManager:
@@ -136,6 +149,7 @@ class SessionManager:
             extra_args=[str(self._settings.data_dir)],
             roles=hero_ids,
             owner_role=owner_hero_id,
+            on_event=self._auto_resolve_monster_events,
         )
         self._mission_id_by_session[session.session_id] = mission_id
         return session
@@ -243,4 +257,50 @@ class SessionManager:
         """Stops every active engine subprocess (app shutdown)."""
         self._registry.shutdown()
         self._mission_id_by_session.clear()
+
+    @staticmethod
+    def _auto_resolve_monster_events(session: GameSession, envelope: dict) -> None:
+        """Server-side `on_event` hook: answers dialogs no human participant can.
+
+        A session's `roles` are exactly its mission's PG/hero ids (see
+        :meth:`create_session`) — anything NOT in there is a monster. Runs on
+        the engine listener's background thread (same as the generic fan-out
+        that calls it); uses `session.sender` directly rather than going
+        through :meth:`send_command`, since there is no *owner* here to
+        authenticate against.
+
+        Handles:
+          - `eldhom.reaction.window_opened`: if `defender_id` is not a PG,
+            always answers "TAKE" (Subisci) — these monsters have no real
+            parry/dodge capability yet.
+          - `eldhom.formation.dialog_needed`: if none of the listed `actors`
+            are PGs (an all-monster formation dialog), answers with an empty
+            backline (everyone to Prima Linea) — always a valid (RG<=PL)
+            choice, and the simplest sensible default until monster AI needs
+            a smarter one.
+        """
+        type_id = envelope.get("typeId")
+        data = envelope.get("data", {})
+
+        if type_id == _EVT_REACTION_WINDOW_OPENED:
+            defender_id = data.get("defender_id", "")
+            if defender_id and defender_id not in session.roles:
+                session.sender.send_command(
+                    _CMD_REACT_DEFENSE, {"defender_id": defender_id, "reaction": "TAKE"}
+                )
+            return
+
+        if type_id == _EVT_FORMATION_DIALOG_NEEDED:
+            actors = data.get("actors", [])
+            actor_ids = [a.get("actor_id", "") for a in actors if isinstance(a, dict)]
+            if actor_ids and not any(actor_id in session.roles for actor_id in actor_ids):
+                session.sender.send_command(
+                    _CMD_RESOLVE_FORMATION,
+                    {
+                        "faction_id": data.get("faction_id", ""),
+                        "location_id": data.get("location_id", ""),
+                        "backline": [],
+                    },
+                )
+            return
 

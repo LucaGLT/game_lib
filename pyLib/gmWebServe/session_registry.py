@@ -16,6 +16,7 @@ a game-specific typeId or payload.
 from __future__ import annotations
 
 import asyncio
+import logging
 import secrets
 import time
 import uuid
@@ -28,6 +29,17 @@ from .auth import DEFAULT_MAX_SESSIONS_PER_USER, DEFAULT_SESSION_IDLE_TIMEOUT_S
 from .engine_listener import EngineEventListener, EngineSender
 from .engine_process import EngineProcess, EngineProcessError
 from .port_utils import find_free_port
+
+_LOGGER = logging.getLogger(__name__)
+
+#: Called with (session, envelope) for every engine event of a session, after
+#: the generic fan-out (last-envelope cache + WebSocket subscribers). Lets a
+#: game's own SessionManager react server-side to specific events (e.g.
+#: Eldhôm auto-resolving a monster's reaction/formation dialog, since no
+#: human user owns a monster's identity) without teaching this generic
+#: registry any game-specific typeId. Exceptions are caught and logged, never
+#: propagated (a buggy hook must not break the generic event fan-out).
+OnEventFn = Callable[["GameSession", dict], None]
 
 __all__ = [
     "GameSession",
@@ -155,6 +167,7 @@ class SessionRegistry:
         self._lock: Lock = Lock()
         self._sessions: dict[str, GameSession] = {}
         self._session_id_by_code: dict[str, str] = {}
+        self._on_event_by_session: dict[str, OnEventFn] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
 
     def create_session(
@@ -164,6 +177,7 @@ class SessionRegistry:
         extra_args: list[str] | None = None,
         roles: Sequence[str] = ("player",),
         owner_role: str | None = None,
+        on_event: OnEventFn | None = None,
     ) -> GameSession:
         """Boots a new engine subprocess and registers a session for *owner*.
 
@@ -188,6 +202,11 @@ class SessionRegistry:
                 user CHOOSE instead of always defaulting to ``roles[0]``
                 (e.g. Eldhôm: the creator picks which PG/hero to play).
                 Must be one of *roles* if given.
+            on_event: Optional per-session hook called with (session,
+                envelope) for every engine event, after the generic fan-out
+                (see :data:`OnEventFn`). Lets a game auto-respond to events
+                that need a decision no human participant can make (e.g.
+                Eldhôm auto-resolving a monster's reaction/formation dialog).
 
         Raises:
             ValueError: If *owner_role* is given but not one of *roles*.
@@ -258,6 +277,8 @@ class SessionRegistry:
             )
             self._sessions[session_id] = session
             self._session_id_by_code[join_code] = session_id
+            if on_event is not None:
+                self._on_event_by_session[session_id] = on_event
 
         # Outside the lock: triggers the engine's lazy connect-back to the
         # event listener started above.
@@ -430,6 +451,7 @@ class SessionRegistry:
                 raise SessionNotFoundError(session_id)
             del self._sessions[session_id]
             self._session_id_by_code.pop(session.join_code, None)
+            self._on_event_by_session.pop(session_id, None)
         self._teardown(session)
 
     def reap_idle_sessions(self) -> list[str]:
@@ -451,6 +473,7 @@ class SessionRegistry:
             for session in expired:
                 del self._sessions[session.session_id]
                 self._session_id_by_code.pop(session.join_code, None)
+                self._on_event_by_session.pop(session.session_id, None)
         for session in expired:
             self._teardown(session)
         return [session.session_id for session in expired]
@@ -461,6 +484,7 @@ class SessionRegistry:
             sessions = list(self._sessions.values())
             self._sessions.clear()
             self._session_id_by_code.clear()
+            self._on_event_by_session.clear()
         for session in sessions:
             self._teardown(session)
 
@@ -474,10 +498,19 @@ class SessionRegistry:
         """Runs on the listener's background thread: fan out thread-safely."""
         with self._lock:
             session = self._sessions.get(session_id)
+            on_event = self._on_event_by_session.get(session_id)
         if session is None:
             return
         session.last_envelope_by_type[envelope.get("typeId", "")] = envelope
-        if self.loop is None:
-            return
-        for queue in list(session.subscribers):
-            self.loop.call_soon_threadsafe(queue.put_nowait, envelope)
+        if self.loop is not None:
+            for queue in list(session.subscribers):
+                self.loop.call_soon_threadsafe(queue.put_nowait, envelope)
+        if on_event is not None:
+            try:
+                on_event(session, envelope)
+            except Exception:
+                _LOGGER.exception(
+                    "on_event hook raised for session %s, typeId=%s",
+                    session_id,
+                    envelope.get("typeId"),
+                )

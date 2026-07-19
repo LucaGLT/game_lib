@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.22.0
-**Status:** Phase 22 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-22 inserite fuori sequenza su richiesta
+**Version:** 0.23.0
+**Status:** Phase 23 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-23 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1589,6 +1589,80 @@ visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
   parallelo (vedi memoria utente `tooling-lessons.md` per la tecnica di aggiramento) — la
   prova finale è stata comunque confermata leggendo lo stato REALE lato server via fetch
   autenticato diretto, non solo il rendering della pagina.
+
+### Phase 23 — Fine Turno esplicito (PASS) + Auto-risoluzione dialoghi Mostri (richiesta esplicita utente, CRITICO) [✅ Completato]
+
+- [x] **Bug critico risolto**: da quando (Phase 22) ogni partecipante controlla solo il
+  proprio PG, nessuno risponde più alle finestre di reazione/formazione che riguardano
+  ESCLUSIVAMENTE i gruppi mostro — il gioco restava bloccato indefinitamente in attesa di un
+  umano che non esiste. Richiesta utente: *"non c'è nessuno che Muove i Mostri!!! [...] Il
+  gioco deve SEMPRE scegliere SUBISCI (per ora facciamo così...)"*.
+- [x] **Libreria estesa** (`pyLib/gmWebServe/session_registry.py`): `create_session()`
+  guadagna un hook opzionale `on_event: OnEventFn | None`, invocato con `(session, envelope)`
+  per OGNI evento motore, subito dopo il fan-out generico — resta 100% game-agnostic (nessuna
+  logica Eldhôm nella libreria condivisa), retrocompatibile (parametro opzionale, Tris non lo
+  usa).
+- [x] **`eng_serve/session_manager.py::_auto_resolve_monster_events`** (nuovo, `staticmethod`,
+  passato come `on_event=` alla creazione di ogni `GameSession`): per
+  `eldhom.reaction.window_opened` con `defender_id` NON in `session.roles` → invia sempre
+  `eldhom.react_defense` con `{"reaction": "TAKE"}` (Subisci); per
+  `eldhom.formation.dialog_needed` con nessun `actors[].actor_id` in `session.roles` → invia
+  `eldhom.resolve_formation` con `backline: []` (tutti in Prima Linea, sempre una scelta
+  valida). Usa `session.sender.send_command(...)` direttamente, non il
+  `SessionManager.send_command()` autenticato — non esiste un "owner" umano da verificare per
+  un'azione di un mostro.
+- [x] **Scope deliberatamente limitato**: NON gestisce `eldhom.instant.window_opened` — quella
+  finestra è sempre innescata da un evento legato a un PG reale, quindi un umano è sempre
+  disponibile a rispondere; solo reazione e formazione possono riguardare ESCLUSIVAMENTE
+  mostri. Placeholder scelti deliberatamente semplici (sempre TAKE, sempre backline vuota) —
+  da rivedere se/quando i mostri guadagneranno un'IA di reazione più ricca.
+- [x] **Nuova azione semplice "Fine Turno"**: `SimpleActionType::PASS` (nuovo,
+  `EldhomTypes.hpp`), costo `COST_SIMPLE_PASS = 3` (stesso costo di RECOVER/INTERACT), nessun
+  effetto oltre all'avanzamento della propria posizione in Linea Temporale — gestito in
+  `EldhomEngine.cpp::do_simple_action` (nuovo `case SimpleActionType::PASS`) e nel parsing
+  stringa di `main.cpp` (`action_str == "PASS"`). Permette a QUALSIASI utente loggato di
+  confermare esplicitamente "ho finito il turno", anche se avrebbe ancora azioni disponibili.
+  Richiesta utente: *"mi serve che ci sia un Tasto che permetta di dire ad un User loggato 'Ho
+  finito il mio Turno!' [...] anche se effettivamente non ha più nulla da fare"*.
+- [x] **Frontend**: `ActionPanel.tsx` guadagna prop `onEndTurn` + bottone `🏁 Fine Turno`
+  (abilitato ogni volta che è il proprio turno, indipendentemente dalle azioni ancora
+  disponibili); `App.tsx::handleEndTurn()` invia `eldhom.simple_action` con
+  `{hero_id: activeHeroId, action_type: 'PASS'}`; `App.css` nuova regola
+  `.eldhom-actions__end-turn` (`var(--gm-accent)`, coerente coi token tema esistenti, nessun
+  colore hardcoded nuovo).
+- [x] **Test**: nuovo `eng_serve/tests/test_session_e2e.py::test_end_turn_pass_action` (contro
+  `eldhom_engine.exe` REALE — verifica `eldhom.action.result` ok, `eldhom.turn.next_actor`
+  cambia PG, timeline dell'attore +3, HP/mano invariati) + 5 nuovi unit test in
+  `test_session_manager.py` per `_auto_resolve_monster_events` (reazione auto-TAKE quando il
+  difensore è un mostro, no-op quando è un PG reale, formazione auto-backline-vuota
+  all-mostri, no-op quando almeno un attore è un PG reale).
+- [x] **Validato**: 16/16 test `eng_serve/tests` (incl. il nuovo PASS) + 32/32 test
+  `pyLib/gmWebServe/tests` (zero regressioni sulla libreria condivisa) + `npm run build`
+  pulito. **Smoke test end-to-end nel browser reale con 2 utenti** (demo=thael, demo2=velyr,
+  missione "L'Ombra sul Corridoio"): Fine Turno validato per ENTRAMBI gli eroi (timeline
+  →3/→6, turno passato correttamente all'altro, log narrativo coerente, nessun costo HP/mano);
+  Thael spostato in "corridoio" (adiacente al gruppo Briganti A, 2/2 vivi) e turno fatto
+  avanzare fino all'attivazione del gruppo mostro — **i Briganti A hanno attaccato
+  automaticamente Thael (2 danni, HP 6→4) senza alcun blocco/attesa**, il turno è proseguito
+  regolarmente fino a "Gioca Thael" — conferma dal vivo della correzione del bug critico.
+
+**Notes:**
+- **Costo PASS non esplicitamente confermato dall'utente**: 3⏳ è stato scelto per coerenza
+  con RECOVER/INTERACT (le altre azioni semplici "di riempimento" a costo fisso) — da
+  rivedere se l'utente preferisce un costo diverso (es. 0, o pari al minimo costo azione
+  disponibile).
+- **Perché un hook generico in libreria invece di logica hardcoded in `eng_serve`**: mirror
+  della scelta già fatta per ogni altra estensione condivisa di questo piano (Phase 22
+  `owner_role`/`peek_session_by_code`, Phase 2 `SessionRegistry`/auth) — `pyLib/gmWebServe`
+  resta l'unico posto con la logica di sessione, `eng_serve` resta un pass-through sottile
+  che inietta solo la callback Eldhôm-specifica.
+- **Formazione dialog SOLO-PG non toccata**: se anche un solo attore in `actors` è un PG
+  reale (caso comune: un mostro entra in una locazione con eroi, scompaginando ANCHE la
+  formazione eroi), l'hook non risponde — resta un dialog di gruppo che un partecipante
+  umano deve risolvere normalmente (validato dal vivo in questo stesso smoke test: il dialog
+  "Formazione — HEROES @ ingresso" per Velyr non è stato auto-risolto ed è stato chiuso
+  manualmente).
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.23.0, Status "Phase 23 – Completato ✅".
 
 ---
 

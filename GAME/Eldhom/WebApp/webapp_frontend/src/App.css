@@ -841,6 +841,12 @@
   border-color: var(--gm-danger) !important;
 }
 
+.eldhom-actions__end-turn {
+  background-color: var(--gm-accent) !important;
+  border-color: var(--gm-accent) !important;
+  color: var(--gm-panel) !important;
+}
+
 .eldhom-actions__hint {
   margin: 0;
   font-size: 12px;

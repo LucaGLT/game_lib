@@ -325,6 +325,7 @@ private:
 		if      (action_str == "MOVE")     { action = eldhom::SimpleActionType::MOVE; }
 		else if (action_str == "ATTACK")   { action = eldhom::SimpleActionType::ATTACK; }
 		else if (action_str == "INTERACT") { action = eldhom::SimpleActionType::INTERACT; }
+		else if (action_str == "PASS")     { action = eldhom::SimpleActionType::PASS; }
 
 		eldhom::ActionResult r =
 			_engine->do_simple_action(hero_id, action, destination, discard_ids);

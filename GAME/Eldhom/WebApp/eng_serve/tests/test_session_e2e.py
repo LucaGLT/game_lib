@@ -108,6 +108,181 @@ def test_create_session_invalid_hero_id_returns_400(client: TestClient) -> None:
     assert response.status_code == 400
 
 
+def test_end_turn_pass_action(client: TestClient) -> None:
+    """"Fine Turno": a user can explicitly end their turn (SimpleActionType::PASS)
+    even with no productive action left — advances the timeline (cost 3) with
+    no other side effect, and hands the turn to the next actor. Uses "thael"
+    directly: a freshly created single-claim session always starts with thael
+    as next_actor (mirrors test_single_session_end_to_end); anti-spoofing would
+    force hero_id back to the caller's own role (thael) regardless anyway.
+    """
+    token = _login(client, _DEMO_USERNAME, _DEMO_PASSWORD)
+    create_response = client.post(
+        "/sessions",
+        json={"mission_id": _MISSION_ID, "hero_id": "thael"},
+        headers=_auth_headers(token),
+    )
+    assert create_response.status_code == 201
+    session_id = create_response.json()["session_id"]
+
+    with client.websocket_connect(f"/sessions/{session_id}/ws?token={token}") as ws:
+        state_full = _collect_until(ws, "eldhom.state.full")
+        assert state_full is not None
+        assert state_full["data"]["next_actor"]["actor_id"] == "thael"
+        hero_before = next(h for h in state_full["data"]["heroes"] if h["id"] == "thael")
+
+        pass_response = client.post(
+            f"/sessions/{session_id}/command",
+            json={"type_id": "eldhom.simple_action", "data": {"hero_id": "thael", "action_type": "PASS"}},
+            headers=_auth_headers(token),
+        )
+        assert pass_response.status_code == 200
+
+        result = _collect_until(ws, "eldhom.action.result")
+        assert result is not None
+        assert result["data"].get("ok") is True, result["data"]
+
+        next_actor_evt = _collect_until(ws, "eldhom.turn.next_actor")
+        assert next_actor_evt is not None
+        assert next_actor_evt["data"]["actor_id"] != "thael"  # turn handed over
+
+        state_after = _collect_until(ws, "eldhom.state.full")
+        assert state_after is not None
+        hero_after = next(h for h in state_after["data"]["heroes"] if h["id"] == "thael")
+        assert hero_after["timeline"] == hero_before["timeline"] + 3
+        assert hero_after["hp"] == hero_before["hp"]  # no side effect, unlike RECOVER
+        assert hero_after["hand"] == hero_before["hand"]  # no card cycling, unlike RECOVER
+
+
+def test_monster_reaction_window_auto_resolved_as_take(client: TestClient) -> None:
+    """No participant controls monsters: a reaction window on a monster defender
+    must resolve itself (always "Subisci"/TAKE for now) instead of hanging
+    forever waiting for a human who does not exist — see SessionManager.
+    _auto_resolve_monster_events. Uses missione_01 (Thael/Velyr start at
+    "ingresso", adjacent to "corridoio" where brigante_A1 already stands) with
+    TWO real users (mirrors an actual shared-multiplayer mission).
+    """
+    token_thael = _login(client, _DEMO_USERNAME, _DEMO_PASSWORD)
+    token_velyr = _login(client, _DEMO2_USERNAME, _DEMO2_PASSWORD)
+
+    create_response = client.post(
+        "/sessions",
+        json={"mission_id": "missione_01", "hero_id": "thael"},
+        headers=_auth_headers(token_thael),
+    )
+    assert create_response.status_code == 201
+    session_id = create_response.json()["session_id"]
+    join_code = create_response.json()["join_code"]
+
+    join_response = client.post(
+        "/sessions/join",
+        json={"join_code": join_code, "hero_id": "velyr"},
+        headers=_auth_headers(token_velyr),
+    )
+    assert join_response.status_code == 200
+
+    cards_response = client.get("/cards", headers=_auth_headers(token_thael))
+    assert cards_response.status_code == 200
+    catalog = {c["card_id"]: c for c in cards_response.json()}
+
+    def _has_melee_damage(card_id: str) -> bool:
+        return any(
+            e.get("effect_type") == "DAMAGE" and e.get("attack_type") == "MELEE"
+            for e in catalog[card_id]["effects"]
+        )
+
+    with client.websocket_connect(f"/sessions/{session_id}/ws?token={token_thael}") as ws:
+        state_full = _collect_until(ws, "eldhom.state.full")
+        assert state_full is not None
+
+        # Thael moves next to brigante_A1 (both heroes start at "ingresso",
+        # adjacent to "corridoio" — no card/hand dependency for this step).
+        move_response = client.post(
+            f"/sessions/{session_id}/command",
+            json={
+                "type_id": "eldhom.simple_action",
+                "data": {"hero_id": "thael", "action_type": "MOVE", "destination": "corridoio"},
+            },
+            headers=_auth_headers(token_thael),
+        )
+        assert move_response.status_code == 200
+        assert _collect_until(ws, "eldhom.pg.moved") is not None
+
+        # Timeline alternates heroes (both started at 0): it is now Velyr's
+        # turn. A no-op-ish RECOVER brings Velyr's timeline back in line with
+        # Thael's, so Thael acts again next (tie-break favours heroes in
+        # roster order) — mirrors what a real 2nd participant would do.
+        recover_response = client.post(
+            f"/sessions/{session_id}/command",
+            json={
+                "type_id": "eldhom.simple_action",
+                "data": {"hero_id": "velyr", "action_type": "RECOVER", "discard_ids": []},
+            },
+            headers=_auth_headers(token_velyr),
+        )
+        assert recover_response.status_code == 200
+
+        # Velyr alone at "ingresso" trips a (real, unrelated) HEROES formation
+        # check — any participant may resolve a party-wide dialog (Phase 22).
+        formation_needed = _collect_until(ws, "eldhom.formation.dialog_needed")
+        assert formation_needed is not None
+        resolve_response = client.post(
+            f"/sessions/{session_id}/command",
+            json={
+                "type_id": "eldhom.resolve_formation",
+                "data": {"faction_id": "HEROES", "location_id": "ingresso", "backline": []},
+            },
+            headers=_auth_headers(token_thael),
+        )
+        assert resolve_response.status_code == 200
+        assert _collect_until(ws, "eldhom.formation.done") is not None
+
+        # Deck is shuffled per session: use whichever MELEE/DAMAGE card is
+        # actually in Thael's current hand instead of hardcoding one.
+        state_full = _collect_until(ws, "eldhom.state.full")
+        assert state_full is not None
+        thael_hand = next(
+            h["hand"] for h in state_full["data"]["heroes"] if h["id"] == "thael"
+        )
+        attack_card_id = next(cid for cid in thael_hand if _has_melee_damage(cid))
+
+        attack_response = client.post(
+            f"/sessions/{session_id}/command",
+            json={
+                "type_id": "eldhom.play_card",
+                "data": {"hero_id": "thael", "card_id": attack_card_id, "target_id": "brigante_A1"},
+            },
+            headers=_auth_headers(token_thael),
+        )
+        assert attack_response.status_code == 200
+        assert _collect_until(ws, "eldhom.attack.declared") is not None
+
+        # Instants have priority over the defense window: skip them (empty
+        # selection) — any participant may answer a party-wide instant window.
+        instants_opened = _collect_until(ws, "eldhom.instant.window_opened")
+        if instants_opened is not None:
+            skip_response = client.post(
+                f"/sessions/{session_id}/command",
+                json={"type_id": "eldhom.play_instants", "data": {"selected": []}},
+                headers=_auth_headers(token_velyr),
+            )
+            assert skip_response.status_code == 200
+
+        # The window opens, then the SERVER auto-answers "TAKE" on the
+        # monster's behalf — the test never sends `eldhom.react_defense` itself.
+        window_opened = _collect_until(ws, "eldhom.reaction.window_opened")
+        assert window_opened is not None
+        assert window_opened["data"]["defender_id"] == "brigante_A1"
+
+        window_closed = _collect_until(ws, "eldhom.reaction.window_closed")
+        assert window_closed is not None
+
+        resolved = _collect_until(ws, "eldhom.attack.resolved")
+        assert resolved is not None
+        assert resolved["data"]["defender_id"] == "brigante_A1"
+        assert resolved["data"]["reaction"] == "TAKE"
+
+
 def test_single_session_end_to_end(client: TestClient) -> None:
     """The full smoke test scenario from PLAN.md, single user controlling one PG."""
     token = _login(client, _DEMO_USERNAME, _DEMO_PASSWORD)

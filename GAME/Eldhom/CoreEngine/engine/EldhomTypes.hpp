@@ -40,7 +40,11 @@ enum class SimpleActionType {
 	MOVE,      ///< Movimento Semplice: sposta fino a 2 Loc, cost 2⌛
 	ATTACK,    ///< Attacco Semplice: infliggi 1❌ su bersaglio vicino, cost 2⌛
 	INTERACT,  ///< Interazione Semplice: usa elemento scena, cost 3⌛
-	RECOVER    ///< Recupero Semplice: +1 PV, scarta/pesca una carta, cost 3⌛
+	RECOVER,   ///< Recupero Semplice: +1 PV, scarta/pesca una carta, cost 3⏳
+	PASS       ///< Fine Turno: nessun effetto, sposta solo avanti la propria timeline_position, cost 3⏳.
+	           ///< Aggiunto per il multiplayer condiviso: un PG umano deve poter passare
+	           ///< esplicitamente la mano anche quando non vuole/non ha bisogno di agire
+	           ///< ulteriormente (nessun equivalente nel regolamento cartaceo originale).
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +140,9 @@ constexpr int COST_SIMPLE_ATTACK    = 2;
 constexpr int COST_SIMPLE_INTERACT  = 3;
 /** @brief Timeline cost for Azione Semplice: Recupero. */
 constexpr int COST_SIMPLE_RECOVER   = 3;
+
+/** @brief Timeline cost for a hero voluntarily ending their turn ("Fine Turno", no rulebook equivalent). */
+constexpr int COST_SIMPLE_PASS      = 3;
 
 /** @brief Timeline cost for basic monster move (§23). */
 constexpr int COST_MONSTER_MOVE     = 1;

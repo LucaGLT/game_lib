@@ -35,6 +35,7 @@ export interface ActionPanelProps {
   onArmAttack: () => void
   onInteract: () => void
   onRecover: () => void
+  onEndTurn: () => void
   onStopSequence: () => void
   onReactionChosen: (reaction: string) => void
 }
@@ -55,6 +56,7 @@ export function ActionPanel({
   onArmAttack,
   onInteract,
   onRecover,
+  onEndTurn,
   onStopSequence,
   onReactionChosen,
 }: ActionPanelProps) {
@@ -90,8 +92,17 @@ export function ActionPanel({
         </button>
         <button type="button" disabled={!enabled || sequenceActive} onClick={onRecover}>
           +1❤️ ♻️1🂠 : 3⏳
-        </button>
-        {sequenceActive && (
+        </button>        {!sequenceActive && (
+          <button
+            type="button"
+            className="eldhom-actions__end-turn"
+            disabled={!enabled}
+            onClick={onEndTurn}
+            title="Conferma esplicitamente la fine del tuo turno, anche se potresti agire ancora"
+          >
+            🏁 Fine Turno
+          </button>
+        )}        {sequenceActive && (
           <button type="button" className="eldhom-actions__stop" onClick={onStopSequence}>
             ■ Stop seq.
           </button>

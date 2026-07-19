@@ -460,6 +460,11 @@ function App() {
     })
   }
 
+  /** "Fine Turno": explicit user-confirmed pass, even with no productive action left (see PLAN.md). */
+  async function handleEndTurn(): Promise<void> {
+    await sendEldhomCommand(CMD_SIMPLE_ACTION, { hero_id: activeHeroId, action_type: 'PASS' })
+  }
+
   async function handleStopSequence(): Promise<void> {
     await sendEldhomCommand(CMD_STOP_SEQUENCE, { hero_id: activeHeroId })
   }
@@ -895,6 +900,7 @@ function App() {
         onArmAttack={handleArmAttack}
         onInteract={() => void handleInteract()}
         onRecover={() => void handleRecover()}
+        onEndTurn={() => void handleEndTurn()}
         onStopSequence={() => void handleStopSequence()}
         onReactionChosen={(reaction) => void handleReactionChosen(reaction)}
       />
