@@ -330,6 +330,7 @@
 .eldhom-mission-title,
 .eldhom-timeline__chip-name,
 .eldhom-actions__title,
+.eldhom-turn-status,
 .eldhom-deck-table__title,
 .eldhom-deck-table__zone-title,
 .eldhom-deck-table__card-name,
@@ -397,6 +398,25 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+/* ── Turn-status banner ("Tocca a Te, X" / "X, attendi…") — moved here (next
+   to the role banner, near the top of the page) from ActionPanel's own title,
+   which now always reads "Azione di X" instead (see ActionPanel.tsx). Reuses
+   the same boxed/panel treatment ActionPanel's title used to sit inside. ── */
+
+.eldhom-turn-status {
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+  padding: 8px 14px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  color: var(--gm-accent);
+}
+
 /* ── Stone theme (richiesta esplicita utente): al posto dell'ombra "sospesa"
    sopra usata dagli altri temi, ogni titolo/nome legge come inciso a scalpello
    nella pietra — stessa lista di selettori del blocco `--gm-font-display` qui
@@ -410,6 +430,7 @@
 .app[data-theme='stone'] .eldhom-mission-title,
 .app[data-theme='stone'] .eldhom-timeline__chip-name,
 .app[data-theme='stone'] .eldhom-actions__title,
+.app[data-theme='stone'] .eldhom-turn-status,
 .app[data-theme='stone'] .eldhom-deck-table__title,
 .app[data-theme='stone'] .eldhom-deck-table__zone-title,
 .app[data-theme='stone'] .eldhom-deck-table__card-name,

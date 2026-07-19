@@ -26,8 +26,8 @@ export interface PendingReactionView {
 }
 
 export interface ActionPanelProps {
-  /** The VIEWING participant's own hero name (properly capitalized) — the turn-status message always addresses them, never whichever hero currently acts. */
-  myHeroName: string
+  /** The currently active actor's hero name (properly capitalized) — shown in the panel title as "Azione di {name}", regardless of who is viewing (the turn-status message addressing the VIEWING participant lives in App.tsx instead, near the role banner). */
+  activeHeroName: string
   enabled: boolean
   sequenceActive: boolean
   /** True if the active hero has at least one legal/meaningful action (a melee target, an interactable object, something to heal, or a playable card) besides Fine Turno — see App.tsx. When false, the 4 base actions are disabled (Fine Turno never is). */
@@ -52,7 +52,7 @@ const REACTION_LABELS: Record<string, string> = {
 }
 
 export function ActionPanel({
-  myHeroName,
+  activeHeroName,
   enabled,
   sequenceActive,
   hasAnyAction,
@@ -92,13 +92,7 @@ export function ActionPanel({
   const baseActionsDisabled = !enabled || sequenceActive || !hasAnyAction || awaitingConfirmation
   return (
     <div className="eldhom-actions">
-      <span className="eldhom-actions__title">
-        {enabled
-          ? `Tocca a Te, ${myHeroName}`
-          : myHeroName !== ''
-            ? `${myHeroName}, attendi che gli altri facciano le loro Azioni`
-            : 'In attesa…'}
-      </span>
+      <span className="eldhom-actions__title">Azione di {activeHeroName !== '' ? activeHeroName : '—'}</span>
       <div className="eldhom-actions__buttons">
         <button type="button" disabled={baseActionsDisabled} onClick={onArmMove}>
           {targetingMode === 'move' ? '✕ Annulla Muovi' : '▶️ 2◻️ : 2⏳'}

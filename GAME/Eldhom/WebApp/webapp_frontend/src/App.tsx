@@ -910,6 +910,16 @@ function App() {
         </p>
       )}
 
+      {sessionId !== null && myHeroId !== null && (
+        <p className="eldhom-turn-status">
+          {activeHeroId !== '' && canAct
+            ? `Tocca a Te, ${myHeroName}`
+            : myHeroName !== ''
+              ? `${myHeroName}, attendi che gli altri facciano le loro Azioni`
+              : 'In attesa…'}
+        </p>
+      )}
+
       {eldhomState.pendingFormation && (
         <FormationModal
           locationId={eldhomState.pendingFormation.location_id}
@@ -999,7 +1009,7 @@ function App() {
       </div>
 
       <ActionPanel
-        myHeroName={myHeroName}
+        activeHeroName={activeHeroName}
         enabled={activeHeroId !== '' && canAct}
         sequenceActive={activeHeroSequenceActive}
         hasAnyAction={hasAnyAction}
