@@ -45,6 +45,12 @@ enum class SimpleActionType {
 	           ///< Aggiunto per il multiplayer condiviso: un PG umano deve poter passare
 	           ///< esplicitamente la mano anche quando non vuole/non ha bisogno di agire
 	           ///< ulteriormente (nessun equivalente nel regolamento cartaceo originale).
+	           ///< Doppio significato in base allo stato del motore: se il PG non ha ancora
+	           ///< agito in questo turno, PASS "salta" il turno (costo pieno 3⏳); se il PG ha
+	           ///< GIÀ completato la propria unica azione/carta/sequenza consentita e il motore
+	           ///< attende la sua conferma esplicita (vedi `has_pending_turn_confirmation()`),
+	           ///< PASS diventa la CONFERMA di fine turno (costo 0, il costo reale è già stato
+	           ///< addebitato dall'azione appena completata).
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +122,8 @@ enum class ActionResultCode {
 	ERR_INSTANT_NOT_ELIGIBLE,     ///< A selected instant is not in the eligible set
 	ERR_NO_PENDING_FORMATION,     ///< resolve_formation called without a pending dialog
 	ERR_INVALID_FORMATION_CHOICE, ///< Retroguardia count exceeds Prima Linea count
-	ERR_POSITION_REQUIRED         ///< Card requires the caster to be in FRONTLINE
+	ERR_POSITION_REQUIRED,        ///< Card requires the caster to be in FRONTLINE
+	ERR_TURN_CONFIRMATION_PENDING ///< Hero already acted this turn; only a PASS confirmation is allowed
 };
 
 /** @brief Result returned by engine action methods. */

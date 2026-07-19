@@ -1003,6 +1003,7 @@ function App() {
         enabled={activeHeroId !== '' && canAct}
         sequenceActive={activeHeroSequenceActive}
         hasAnyAction={hasAnyAction}
+        awaitingConfirmation={eldhomState.turnAwaitingConfirmation}
         targetingMode={targetingMode}
         pendingReaction={pendingReactionView}
         onArmMove={handleArmMove}
@@ -1020,7 +1021,12 @@ function App() {
         hero={eldhomState.heroesById[activeHeroId]}
         cards={eldhomState.cards}
         sequenceActive={activeHeroSequenceActive}
-        enabled={activeHeroId !== '' && pendingReactionView === null && isMyTurn}
+        enabled={
+          activeHeroId !== '' &&
+          pendingReactionView === null &&
+          isMyTurn &&
+          !eldhomState.turnAwaitingConfirmation
+        }
         onPlayCard={handlePlayCard}
         onDiscardCard={(cardId) => void handleDiscardCard(cardId)}
         onDrawCard={() => void handleDrawCard()}

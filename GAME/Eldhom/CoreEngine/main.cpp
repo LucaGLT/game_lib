@@ -149,6 +149,24 @@ public:
 			return;
 		}
 
+		// While a hero's end-of-turn confirmation is pending (they already
+		// completed their one allowed action/card/sequence this turn), only
+		// their own Fine Turno confirmation (a simple_action command — validated
+		// as PASS by the engine itself) and state requests are accepted. Richiesta
+		// esplicita utente: il turno non deve MAI passare al prossimo Attore senza
+		// una conferma esplicita, anche quando il PG non ha più nulla da fare.
+		if (_engine && _engine->has_pending_turn_confirmation()
+		    && type_id != eldhom::CMD_SIMPLE_ACTION
+		    && type_id != eldhom::CMD_REQUEST_STATE)
+		{
+			nlohmann::json err;
+			err["ok"]      = false;
+			err["error"]   = "Conferma Fine Turno in sospeso: premi Fine Turno prima di continuare.";
+			err["command"] = type_id;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
 		if (type_id == eldhom::CMD_START_MISSION)
 		{
 			handle_start_mission(data);
@@ -726,6 +744,7 @@ private:
 		d["actor_name"]     = name_str;
 		d["mission_time"]   = _engine->mission_time();
 		d["actor_timeline"] = actor_timeline;
+		d["awaiting_confirmation"] = _engine->has_pending_turn_confirmation();
 		_bridge.send_event(eldhom::EVT_TURN_NEXT_ACTOR, d);
 	}
 

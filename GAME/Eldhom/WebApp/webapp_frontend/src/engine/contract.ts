@@ -181,6 +181,14 @@ export interface NextActorWire {
   actor_timeline: number
   kind: string
   mission_time: number
+  /**
+   * True while the announced actor already completed their one allowed
+   * action/card/sequence this turn and must explicitly confirm Fine Turno
+   * (a PASS simple_action) before the engine will actually hand the turn to
+   * whoever the timeline says is next. See EldhomEngine::has_pending_turn_
+   * confirmation(). Absent on older engine builds — treat as false.
+   */
+  awaiting_confirmation?: boolean
 }
 
 /** One card effect entry (`card.effects[]`) — shape varies by `effect_type`, see cards_base.json. */

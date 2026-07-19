@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.25.0
-**Status:** Phase 25 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-25 inserite fuori sequenza su richiesta
+**Version:** 0.26.0
+**Status:** Phase 26 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-26 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1799,6 +1799,82 @@ Monolith) — nessuna variante inventata oltre l'elenco fornito (Scroll resta a 
 - Nessuna modifica al wire-contract/motore C++ — puramente un ampliamento CSS/React lato
   frontend, stesso principio di Phase 21 ("NOT added to the shared ThemeId/THEMES registry").
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.25.0, Status "Phase 25 – Completato ✅".
+
+### Phase 26 — Conferma esplicita Fine Turno (gate anti-passaggio-automatico) [✅ Completato]
+
+Bug critico segnalato con forte urgenza dall'utente, distinto dalla Phase 23 ("Fine Turno
+esplicito"): con la Phase 23, Fine Turno era già SEMPRE premibile, ma il turno passava ANCHE
+automaticamente non appena l'eroe attivo esauriva azioni/carte/sequenza disponibili (o dopo
+un'unica azione semplice) — richiesta esplicita: *"Quando un PG fa una azione [...] il Turno
+NON deve mai passare al Attore successivo [...] devi disabilitare tutte le azioni e lasciare
+abilitato SOLO 'Fine Turno' e rimani bloccato lì finché il Giocatore clicca il tasto Fine
+Turno"*. Chiarito via domanda esplicita prima di implementare (rischio riscrittura errata e
+costosa del motore turni): la regola "1 azione/carta/sequenza-intera per turno" resta
+invariata, cambia solo che il passaggio VERO del turno richiede sempre una conferma esplicita
+e a costo zero dopo l'azione.
+
+- [x] `EldhomTypes.hpp`: nuovo `ActionResultCode::ERR_TURN_CONFIRMATION_PENDING`; doc-comment
+      di `SimpleActionType::PASS` aggiornato per il suo doppio significato (skip vs conferma).
+- [x] `EldhomEngine.hpp`/`.cpp`: nuovo meccanismo "gate di conferma fine turno" —
+      `_pending_confirm_hero` (HeroId, vuoto=nessuno); `next_actor()` lo controlla PRIMA di
+      tutto il resto (anche prima della Priorità 1 sequenza) e, se impostato, ritorna sempre
+      quello stesso eroe; `has_pending_turn_confirmation()` (query pubblica);
+      `request_end_of_turn(hero_id)` (setter privato, sostituisce la maggior parte delle
+      chiamate dirette a `end_hero_turn()` nei punti che prima terminavano subito il turno:
+      `do_simple_action`, `play_card`, `resolve_reaction`, `stop_sequence`, coda formazioni).
+      Il vero `end_hero_turn()` (flush carte giocate→scarti, reset sequenza, ripesca, eventi)
+      gira SOLO quando l'eroe in attesa invia un `simple_action{PASS}` mentre `_pending_
+      confirm_hero` combacia (trattato come "conferma", costo 0, azzera il flag) — altrimenti
+      un PASS resta il vecchio "salta il turno" a costo `COST_SIMPLE_PASS`.
+- [x] **Bug scoperto e corretto durante l'hardening**: `resolve_reaction()` armava il gate
+      incondizionatamente, anche quando la carta di origine era un `SEQ_START`/`SEQ_CONTINUE`
+      ancora aperto — avrebbe bloccato erroneamente la carta successiva della stessa Sequenza
+      dietro `ERR_TURN_CONFIRMATION_PENDING`. Fix: `request_end_of_turn` viene chiamato solo se
+      `!_seq_states.at(attacker_id).active` (mirror del controllo `is_turn_ending` già
+      presente in `play_card`) — durante una Sequenza aperta l'eroe mantiene la priorità piena
+      via la Priorità 1 di `next_actor()`, nessuna conferma richiesta finché non si chiude.
+- [x] `main.cpp`: nuovo 4° gate in `handle_command()` (dopo i 3 gate già esistenti per attacco/
+      formazione/finestra reattiva) — mentre `has_pending_turn_confirmation()` è vero, accetta
+      solo `simple_action` (validato PASS dal motore stesso) e `request_state`; ogni altro
+      comando è rifiutato con un `eldhom.action.result` esplicito. Nuovo campo
+      `awaiting_confirmation: bool` aggiunto al payload di `eldhom.turn.next_actor`
+      (`emit_next_actor_event()`), propagato automaticamente a tutti i comandi che già
+      richiamano quella funzione.
+- [x] **Suite test C++ portata a 114/114** (`test_eldhom_mission01.cpp`): nuovo helper
+      `confirm_turn()` (invia il PASS di conferma, ignora eventuali dialog di formazione
+      lasciati in sospeso — innocuo, `next_actor()` non consulta mai `_formation_queue`),
+      `drain_formation_dialogs()`/`settle_pending_turns()` (per i pochi test che devono
+      osservare lo stato POST-fine-turno reale, es. `discard_count`) inseriti in ~15 funzioni
+      di test esistenti dopo ogni azione concatenata; nuovo `test_turn_confirmation_gate()`
+      dedicato (16 asserzioni: azione→pending, seconda azione/carta rifiutata con
+      `ERR_TURN_CONFIRMATION_PENDING`, altro eroe rifiutato con `ERR_NOT_YOUR_TURN`, conferma a
+      costo 0 vs skip a costo `COST_SIMPLE_PASS`, turno che passa solo dopo la conferma).
+- [x] **Frontend**: `contract.ts`'s `NextActorWire` guadagna `awaiting_confirmation?: boolean`;
+      `gameState.ts`'s `EldhomState` guadagna `turnAwaitingConfirmation: boolean`
+      (`applyNextActor` lo popola dal wire); `ActionPanel.tsx` guadagna prop
+      `awaitingConfirmation` — i 4 pulsanti Azione Semplice E le carte di `DeckTable` vengono
+      disabilitati anche quando vero (non solo quando `!hasAnyAction`), Fine Turno resta SEMPRE
+      abilitato; nuovo messaggio dedicato "✅ Hai già agito questo turno — premi 🏁 Fine Turno
+      per confermare e passare al prossimo Attore" (distinto dal vecchio "⚠ Nessuna azione
+      disponibile").
+- **Validato end-to-end nel browser reale con 2 utenti** (demo=thael, demo2=velyr, missione
+  "L'Ombra sul Corridoio"): Thael esegue Recupero → i 4 pulsanti Azione Semplice, tutte le
+  carte in mano e persino "Pesca" diventano `disabled`, appare il nuovo messaggio di conferma,
+  MA il turno NON passa (linea temporale conferma Thael ancora attiva, log narrativo ancora
+  "Gioca Thael") — esattamente il comportamento richiesto. Click su Fine Turno → log narrativo
+  "thael termina il turno" + "Gioca Velyr", ENTRAMBE le schede browser si aggiornano real-time
+  via WebSocket (Velyr vede subito "Tocca a Te, Velyr" con controlli abilitati).
+- **Lezione tecnica importante scoperta durante l'hardening dei test** (irrilevante per il
+  frontend, solo per la suite C++): un attore SOLO in una locazione ed in Retroguardia
+  (default di Velyr) è SEMPRE una formazione invalida ("scompaginamento": Prima Linea vuota) —
+  innesca automaticamente un dialog di formazione ad ogni azione in quella locazione finché
+  qualcuno non risolve esplicitamente. `_formation_turn_hero` è uno slot singolo: se DUE eroi
+  finiscono indipendentemente in attesa (uno via dialog di formazione, l'altro via conferma
+  diretta), risolvere il dialog puo' sovrascrivere/perdere silenziosamente lo stato dell'altro
+  — limite noto del motore, aggirato nei test tenendo gli eroi insieme invece di lasciarne uno
+  solo, non ancora rilevante per il gameplay reale (nessuna sessione live lo ha mai incontrato).
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.26.0, nuova Phase 26 in coda (dopo Phase
+  25, mai rinumerata).
 
 ---
 

@@ -116,6 +116,13 @@ export interface EldhomState {
   pendingInstantWindow: InstantWindowWire | null
   /** Raw special-object wire data (levers/treasure/secret passages), refreshed only on `state.full` — used to check whether INTERACT has anything to do at a location (see App.tsx's `hasAnyAction`). */
   specialObjects: SpecialObjectWire[]
+  /**
+   * True while `nextActorId` already completed their one allowed action this
+   * turn and must press Fine Turno before the engine hands the turn to
+   * whoever the timeline says is next (see `NextActorWire.awaiting_
+   * confirmation` / `EldhomEngine::has_pending_turn_confirmation()`).
+   */
+  turnAwaitingConfirmation: boolean
 }
 
 export const initialEldhomState: EldhomState = {
@@ -138,6 +145,7 @@ export const initialEldhomState: EldhomState = {
   pendingFormation: null,
   pendingInstantWindow: null,
   specialObjects: [],
+  turnAwaitingConfirmation: false,
 }
 
 /** Loads the card catalog into state (call once after `listCards()` resolves — not envelope-driven). */
@@ -428,6 +436,7 @@ function applyNextActor(previous: EldhomState, envelope: EngineEnvelope): Eldhom
     ...previous,
     nextActorId: data.actor_id,
     nextActorKind: data.kind,
+    turnAwaitingConfirmation: data.awaiting_confirmation ?? false,
     timelineActors: previous.timelineActors.map((actor) =>
       actor.actorId === data.actor_id ? { ...actor, timeline: data.actor_timeline } : actor,
     ),

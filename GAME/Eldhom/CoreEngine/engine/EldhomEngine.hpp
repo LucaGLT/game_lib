@@ -242,6 +242,12 @@ public:
 	 * broken by tie_break_rank (§2.2): heroes first, then allies, then
 	 * monster groups.
 	 *
+	 * While `has_pending_turn_confirmation()` is true, ALWAYS returns that
+	 * same hero instead of recomputing from timeline positions: the hero
+	 * already completed their one allowed action/card/sequence this turn and
+	 * must explicitly confirm (`do_simple_action(..., PASS)`) before the
+	 * engine actually hands the turn to whoever the timeline says is next.
+	 *
 	 * @return Actor ID, or empty string if all actors are removed.
 	 */
 	std::string next_actor() const;
@@ -403,6 +409,20 @@ public:
 
 	/** @brief Read-only access to the next pending formation dialog item. */
 	const PendingFormation& current_formation_dialog() const;
+
+	// ── Explicit end-of-turn confirmation gate ───────────────────────────────────
+
+	/**
+	 * @brief True while a hero has completed their one allowed action this
+	 * turn (Azione Semplice, singola Carta, or a closed sequence) and the
+	 * engine is waiting for their explicit `PASS` confirmation before really
+	 * ending the turn (see `next_actor()`). Richiesta esplicita utente: "il
+	 * Turno NON deve mai passare al prossimo Attore" senza una conferma
+	 * esplicita col tasto Fine Turno, anche quando il PG non ha più nulla da
+	 * fare. While true, every other command (`play_card`/`declare_attack`/
+	 * deck overrides) is rejected server-side (see `main.cpp::handle_command`).
+	 */
+	bool has_pending_turn_confirmation() const;
 
 	/**
 	 * @brief Resolves the current formation dialog with the player's choice.
@@ -589,7 +609,8 @@ private:
 	std::deque<PendingFormation> _formation_queue; ///< Queued formation dialogs
 	bool        _formation_ends_turn = false; ///< True when end_hero_turn is deferred
 	std::string _formation_turn_hero;          ///< Hero whose turn to end after dialogs
-
+	// ── Explicit end-of-turn confirmation state ───────────────────────
+	HeroId      _pending_confirm_hero; ///< Non-empty = this hero must PASS to confirm before turn passes
 	void emit(const EventType& type,
 	          const std::string& actor_id  = {},
 	          const std::string& payload   = {}) const;
@@ -618,6 +639,15 @@ private:
 
 	/** @brief Ends a hero's turn: resets sequence, emits EVT_PG_TURN_ENDED. */
 	void end_hero_turn(const HeroId& hero_id);
+
+	/**
+	 * @brief Marks `hero_id` as having completed their one allowed action this
+	 * turn: the real `end_hero_turn()` (and the timeline recomputation it
+	 * implies via `next_actor()`) is deferred until they send an explicit
+	 * `PASS` confirmation. Replaces every direct `end_hero_turn(hero_id)` call
+	 * that used to run immediately at the end of a successful action.
+	 */
+	void request_end_of_turn(const HeroId& hero_id);
 
 	/**
 	 * @brief Computes the target enemy faction for a hero's attack.

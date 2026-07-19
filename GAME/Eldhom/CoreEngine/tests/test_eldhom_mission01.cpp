@@ -50,6 +50,88 @@ void check(bool condition, const std::string& label)
 	}
 }
 
+/**
+ * @brief Resolves any queued formation dialogs.
+ *
+ * Preserves whichever actors are ALREADY marked BACKLINE, except the engine
+ * always rejects a resolution leaving the frontline empty/outnumbered (a
+ * "scompaginamento": e.g. a lone BACKLINE hero alone in a location) — in
+ * that case falls back to forcing enough actors to FRONTLINE to satisfy
+ * back <= front (dropping from the end of the preserved list), so this
+ * always terminates with a valid choice rather than looping on a rejected
+ * `resolve_formation()` call.
+ */
+void drain_formation_dialogs(eldhom::EldhomEngine& engine)
+{
+	int guard = 0;
+	while (engine.has_pending_formation() && guard < 10)
+	{
+		++guard;
+		const eldhom::PendingFormation& pf = engine.current_formation_dialog();
+		std::vector<gmActor::ActorId> backline_ids;
+		for (const eldhom::ActorFormationEntry& entry : pf.actors)
+		{
+			if (entry.in_backline) { backline_ids.push_back(entry.actor_id); }
+		}
+		const int total = static_cast<int>(pf.actors.size());
+		while (!backline_ids.empty() && 2 * static_cast<int>(backline_ids.size()) > total)
+		{
+			backline_ids.pop_back();
+		}
+		engine.resolve_formation(pf.faction_id, pf.location_id, backline_ids);
+	}
+}
+
+/**
+ * @brief Sends the explicit PASS confirmation a hero must send after
+ * completing their one allowed action/card/sequence this turn, before the
+ * engine hands the turn to whoever the timeline says is next (see
+ * `EldhomEngine::request_end_of_turn()`/`has_pending_turn_confirmation()`).
+ * Every test scenario that chains more than one action needs this between
+ * consecutive actions — mirrors the frontend's "Fine Turno" button.
+ *
+ * Deliberately does NOT touch `_formation_queue`: `next_actor()` only ever
+ * consults `_pending_confirm_hero` (cleared unconditionally the instant this
+ * PASS is processed), so a formation dialog left dangling here is harmless
+ * to turn progression — exactly like every other action in this engine.
+ * Only a couple of tests need the REAL `end_hero_turn()` (card flush to
+ * discard) to have actually run by a specific point despite a dangling
+ * dialog; those use `settle_pending_turns()` instead.
+ */
+void confirm_turn(eldhom::EldhomEngine& engine, const eldhom::HeroId& hero_id)
+{
+	engine.do_simple_action(hero_id, eldhom::SimpleActionType::PASS);
+}
+
+/**
+ * @brief Repeatedly drains queued formation dialogs and confirms whichever
+ * hero is currently the pending-confirmation target, until no confirmation
+ * is pending AND no formation dialog remains queued (bounded).
+ *
+ * `_pending_confirm_hero` (one hero's own completed-action confirmation)
+ * and `_formation_ends_turn`/`_formation_turn_hero` (a DIFFERENT hero's
+ * end-of-turn deferred behind a formation dialog) are independent and can
+ * be set simultaneously for two different heroes — so this deliberately
+ * does not take a hero_id: it always confirms via `next_actor()` (which
+ * reflects whichever hero is currently short-circuited as pending) rather
+ * than a fixed name, so it correctly unwinds either order.
+ *
+ * Only needed by tests that must observe POST-end-of-turn state
+ * (discard_count, has_pending_turn_confirmation) despite a formation
+ * dialog possibly deferring the real `end_hero_turn()`; `confirm_turn()`
+ * alone is sufficient (and safer — see its own doc comment) otherwise.
+ */
+void settle_pending_turns(eldhom::EldhomEngine& engine)
+{
+	for (int guard = 0; guard < 10; ++guard)
+	{
+		drain_formation_dialogs(engine);
+		if (!engine.has_pending_turn_confirmation()) { break; }
+		engine.do_simple_action(engine.next_actor(), eldhom::SimpleActionType::PASS);
+	}
+}
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Card catalog builder
 // ─────────────────────────────────────────────────────────────────────────────
@@ -376,6 +458,11 @@ void test_pg_turn_simple_action_move()
 	check(engine.timeline_position("thael") == eldhom::COST_SIMPLE_MOVE + 1,
 	      "Thael timeline = COST_SIMPLE_MOVE + 1 after crossing a zone door");
 
+	// Thael must explicitly confirm Fine Turno before the engine hands the
+	// turn to whoever the timeline says is next.
+	check(engine.has_pending_turn_confirmation(), "Thael must confirm before turn passes");
+	confirm_turn(engine, "thael");
+
 	// Next actor should be Velyr (timeline 0 < 1)
 	check(engine.next_actor() == "velyr", "Velyr is next after Thael moves");
 
@@ -420,10 +507,12 @@ void test_pg_turn_play_card_single()
 
 	// Thael moves to corridoio where enemies are
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	// Velyr stays in ingresso — use RECOVER (not a no-op MOVE to her own
 	// location, which would silently fail and leave her timeline at 0,
 	// making her — not Thael — the next actor).
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	// Now Thael has timeline=COST_SIMPLE_MOVE+1 (crossing the still-closed
 	// ingresso<->corridoio zone door costs +1), Velyr=COST_SIMPLE_RECOVER — both 3.
@@ -469,9 +558,11 @@ void test_pg_turn_sequence()
 
 	// Thael moves to corridoio
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	// Velyr stays in ingresso — RECOVER, not a no-op MOVE to her own location
 	// (see test_pg_turn_play_card_single for why that silently fails).
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	// Thael plays SEQ_START — turn should NOT end
 	eldhom::ActionResult r1 = engine.play_card("thael", "base_attacco_inizio_seq");
@@ -480,8 +571,11 @@ void test_pg_turn_sequence()
 	const gmAlea::SequenceState& seq1 = engine.sequence_state("thael");
 	check(seq1.active, "Sequence is active after SEQ_START");
 
-	// Thael is still next (turn not over)
+	// Thael is still next (turn not over) — no confirmation pending either,
+	// since an open sequence keeps full priority via next_actor()'s
+	// sequence check (Priority 1), unlike a plain completed action.
 	check(engine.next_actor() == "thael", "Thael still next during sequence");
+	check(!engine.has_pending_turn_confirmation(), "No confirmation pending mid-sequence");
 
 	// Thael plays SEQ_END — turn ends
 	eldhom::ActionResult r2 = engine.play_card("thael", "base_attacco_chiudi_seq");
@@ -490,8 +584,20 @@ void test_pg_turn_sequence()
 	const gmAlea::SequenceState& seq2 = engine.sequence_state("thael");
 	check(!seq2.active, "Sequence closed after SEQ_END");
 
-	// SEQ_END is turn-ending — Velyr should be next
-	check(engine.next_actor() != "thael", "Thael's turn ended after SEQ_END");
+	// base_attacco_chiudi_seq's DAMAGE effect is deferred (parks a pending
+	// attack); the real end-of-turn confirmation gate is only armed once
+	// resolve_reaction() actually resolves it (mirrors base_colpo_d_apertura
+	// in test_fase1_colpo_apertura). resolve_reaction's own formation check
+	// may ALSO queue a dialog instead of arming the gate directly — drain it
+	// first, mirroring confirm_turn().
+	check(engine.has_pending_attack(), "SEQ_END's DAMAGE effect opened a pending attack");
+	engine.resolve_reaction("brigante_A1", eldhom::DefenseReaction::TAKE);
+	drain_formation_dialogs(engine);
+
+	// SEQ_END is turn-ending — Thael must confirm before Velyr becomes next.
+	check(engine.has_pending_turn_confirmation(), "Thael must confirm Fine Turno after SEQ_END");
+	settle_pending_turns(engine);
+	check(engine.next_actor() != "thael", "Thael's turn ended after confirming post-SEQ_END");
 }
 
 void test_monster_group_turn()
@@ -517,6 +623,7 @@ void test_monster_group_turn()
 		if (engine.next_actor_kind() != gmActor::ActorKind::HERO) { break; }
 		const std::string& next = engine.next_actor();
 		engine.do_simple_action(next, eldhom::SimpleActionType::RECOVER);
+		confirm_turn(engine, next);
 	}
 
 	check(engine.next_actor_kind() == gmActor::ActorKind::MONSTER_GROUP,
@@ -569,12 +676,18 @@ void test_victory_all_monsters_eliminated()
 
 	// Thael moves to corridoio to be in range of Briganti A
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "velyr");
 	// Push ahead to make monsters go next
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "ingresso");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "ingresso");
+	confirm_turn(engine, "velyr");
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "velyr");
 
 	// Let briganti_A activate first (Assalto card — they are in corridoio)
 	if (engine.next_actor_kind() == gmActor::ActorKind::MONSTER_GROUP)
@@ -649,6 +762,10 @@ void test_victory_all_monsters_eliminated()
 					engine.do_simple_action(next, eldhom::SimpleActionType::RECOVER);
 				}
 			}
+
+			// Confirm Fine Turno regardless of which branch was taken above,
+			// so next_actor() genuinely advances instead of staying pending.
+			confirm_turn(engine, next);
 		}
 		else if (kind == gmActor::ActorKind::MONSTER_GROUP)
 		{
@@ -698,6 +815,7 @@ void test_defeat_time_limit()
 		if (engine.next_actor_kind() == gmActor::ActorKind::HERO)
 		{
 			engine.do_simple_action(next, eldhom::SimpleActionType::RECOVER);
+			confirm_turn(engine, next);
 		}
 		else
 		{
@@ -727,6 +845,7 @@ void test_zone_door_blocks_monster_until_pg_crosses()
 		const std::string next = engine.next_actor();
 		check(engine.do_simple_action(next, eldhom::SimpleActionType::MOVE, "corridoio").ok(),
 		      next + " moves to corridoio");
+		confirm_turn(engine, next);
 	}
 
 	// briganti_B starts in "sala" (a different zone from "corridoio"): the
@@ -745,13 +864,16 @@ void test_zone_door_blocks_monster_until_pg_crosses()
 	const std::string crosser = engine.next_actor();
 	check(engine.do_simple_action(crosser, eldhom::SimpleActionType::MOVE, "sala").ok(),
 	      crosser + " crosses into sala (opens the zone door)");
+	confirm_turn(engine, crosser);
 
 	int guard = 0;
 	while (engine.next_actor() != crosser && guard < 20)
 	{
 		if (engine.next_actor_kind() == gmActor::ActorKind::HERO)
 		{
-			engine.do_simple_action(engine.next_actor(), eldhom::SimpleActionType::RECOVER);
+			const std::string acting_hero = engine.next_actor();
+			engine.do_simple_action(acting_hero, eldhom::SimpleActionType::RECOVER);
+			confirm_turn(engine, acting_hero);
 		}
 		else if (engine.next_actor_kind() == gmActor::ActorKind::MONSTER_GROUP)
 		{
@@ -812,6 +934,7 @@ void test_phase0_requires_frontline()
 	// Thael starts in FRONTLINE (Sim 01 fixture): the card must succeed.
 	eldhom::ActionResult r1 = engine.play_card("thael", "test_requires_frontline");
 	check(r1.ok(), "FRONTLINE caster can play a requires_frontline card");
+	confirm_turn(engine, "thael");
 
 	// Move Velyr (starts BACKLINE) to try the same card: must fail.
 	eldhom::ActionResult r2 = engine.play_card("velyr", "test_requires_frontline");
@@ -886,7 +1009,9 @@ void test_fase1_colpo_apertura()
 
 	check(engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio").ok(),
 	      "Thael moves to corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	eldhom::ActionResult r = engine.play_card("thael", "base_colpo_d_apertura");
 	check(r.ok(), "Thael plays base_colpo_d_apertura OK");
@@ -977,9 +1102,13 @@ void test_fase1_mano_ferma()
 
 	// Move Thael to sala (ingresso -> corridoio -> sala); Velyr fills turns.
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "sala");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	events.clear();
 	eldhom::ActionResult r = engine.play_card("thael", "base_mano_ferma");
@@ -1079,7 +1208,9 @@ void test_fase1_colpo_secco_bonus_condizionale()
 			def, card_cat, behavior_cat, nullptr);
 
 		engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+		confirm_turn(engine, "thael");
 		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+		confirm_turn(engine, "velyr");
 
 		const std::vector<eldhom::CardId>& hand = engine.hand_cards("thael");
 		check(!hand.empty(), "Thael has cards in hand before Colpo Secco");
@@ -1125,10 +1256,14 @@ void test_fase1_colpo_secco_bonus_condizionale()
 			def, card_cat_b, behavior_cat, nullptr);
 
 		engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+		confirm_turn(engine, "thael");
 		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+		confirm_turn(engine, "velyr");
 		eldhom::ActionResult rpush = engine.play_card("thael", "test_push_backline_cs");
 		check(rpush.ok(), "Thael plays test_push_backline_cs OK");
+		confirm_turn(engine, "thael");
 		engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+		confirm_turn(engine, "velyr");
 
 		check(engine.actor_store().hero("thael").common.area_position ==
 		      gmActor::AreaPosition::BACKLINE, "Thael pushed to BACKLINE for scenario B");
@@ -1175,9 +1310,24 @@ void test_fase1_riprendere_fiato()
 		def, card_cat, behavior_cat, nullptr);
 
 	// Move Thael (FRONTLINE) next to brigante_A1 and take a real hit so HEAL
-	// is observable (current_hp < max_hp).
+	// is observable (current_hp < max_hp). Velyr JOINS her in corridoio
+	// (rather than staying alone in ingresso) so the HERO faction there is
+	// front=1/back=1 (valid) instead of front=0/back=1 ("scompaginamento":
+	// a lone BACKLINE hero always queues a formation dialog) — avoids an
+	// engine edge case where two heroes' independently-deferred end-of-turns
+	// (one via a formation dialog, one direct) can race on the single
+	// `_formation_turn_hero` slot and clobber each other. Thael goes first
+	// (tie-break favours her at timeline 0=0) and pays the +1 closed-door
+	// cost (timeline=3); Velyr's own move is then cheaper (door already
+	// open, timeline=2), so she also RECOVERs once more to push her
+	// timeline back above Thael's, restoring "Thael is next" for her card
+	// play below.
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "velyr");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	const int hp_before_hit = engine.actor_store().hero("thael").common.current_hp;
 	engine.resolve_group_turn_for("briganti_A"); // brigante_assalto: deals damage directly
@@ -1193,10 +1343,7 @@ void test_fase1_riprendere_fiato()
 	check(r.ok(), "Thael (FRONTLINE) plays base_riprendere_fiato OK");
 	check(engine.actor_store().hero("thael").common.current_hp == hp_after_hit + 1,
 	      "Riprendere Fiato heals 1 HP");
-	// +1 for the discarded card, +1 for base_riprendere_fiato itself moving
-	// from played to discard when end_hero_turn runs.
-	check(engine.discard_count("thael") == discard_before_thael + 2,
-	      "Riprendere Fiato discards 1 card (FRONTLINE: base amount, not doubled)");
+	confirm_turn(engine, "thael");
 
 	// Velyr (BACKLINE): discard/draw amount doubles to 2.
 	const std::vector<eldhom::CardId>& hand_v = engine.hand_cards("velyr");
@@ -1206,6 +1353,18 @@ void test_fase1_riprendere_fiato()
 	eldhom::ActionResult rv = engine.play_card(
 		"velyr", "base_riprendere_fiato", "", { hand_v[0], hand_v[1] });
 	check(rv.ok(), "Velyr (BACKLINE) plays base_riprendere_fiato OK");
+
+	// Both cards' effects (including the BACKLINE-doubled discard amount)
+	// are already locked in at this point, so it is now safe to drain any
+	// dangling formation dialogs while forcing both end-of-turns through
+	// for the discard_count checks below.
+	settle_pending_turns(engine);
+	// +1 for the discarded card, +1 for base_riprendere_fiato itself moving
+	// from played to discard when end_hero_turn runs.
+	check(engine.discard_count("thael") == discard_before_thael + 2,
+	      "Riprendere Fiato discards 1 card (FRONTLINE: base amount, not doubled)");
+
+	settle_pending_turns(engine);
 	// +2 for the discarded cards (doubled, BACKLINE), +1 for the card itself.
 	check(engine.discard_count("velyr") == discard_before_velyr + 3,
 	      "Riprendere Fiato discards 2 cards for a BACKLINE caster (doubled)");
@@ -1244,9 +1403,13 @@ void test_fase2_assestarsi()
 	// it until a PG has opened it by walking through. Open it first, then
 	// walk Thael back, so briganti_A is free to advance into "ingresso".
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "ingresso");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	// briganti_A starts in "corridoio", adjacent to "ingresso" where both
 	// heroes stand. Force its group turn explicitly (bypassing next_actor
@@ -1299,7 +1462,9 @@ void test_fase2_pressione_continua()
 		def, card_cat, behavior_cat, nullptr);
 
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	engine.play_card("thael", "base_colpo_d_apertura");
 	eldhom::ReactionResolution res1;
@@ -1362,7 +1527,9 @@ void test_card_explicit_target_overrides_auto_select()
 		def, card_cat, behavior_cat, nullptr);
 
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	// Explicitly target brigante_A3 (9 hp) instead of the auto-selected
 	// brigante_A1 (3 hp, lower — would win nearest_target's HP tie-break).
@@ -1437,7 +1604,9 @@ void test_card_no_target_falls_back_to_auto_select()
 		def, card_cat, behavior_cat, nullptr);
 
 	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
 	engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	confirm_turn(engine, "velyr");
 
 	// No target_id supplied (default empty): falls back to automatic
 	// nearest-target selection — unchanged, pre-existing behaviour.
@@ -1446,6 +1615,75 @@ void test_card_no_target_falls_back_to_auto_select()
 	check(engine.has_pending_attack(), "Auto-select opened a pending attack");
 	check(engine.pending_attack().defender_id == "brigante_A1",
 	      "Auto-select still picks brigante_A1 (the only/nearest valid target)");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Explicit end-of-turn confirmation gate (Fine Turno) — dedicated coverage.
+// "Il PG nel suo Turno può... In ogni caso DEVE prima premere il PULSANTE
+// Fine Turno e SOLO DOPO il Turno passa davvero al Successivo Attore."
+// ─────────────────────────────────────────────────────────────────────────────
+
+void test_turn_confirmation_gate()
+{
+	std::cout << "\n=== test_turn_confirmation_gate ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	for (eldhom::MonsterGroupEntry& g : def.monster_groups) { g.start_timeline = 1000; }
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Both heroes stay together in "ingresso" throughout (their mission
+	// start location) — front=1 (Thael)/back=1 (Velyr) is always a valid
+	// formation there, so no formation dialog interferes with this test.
+	check(!engine.has_pending_turn_confirmation(), "No confirmation pending initially");
+
+	eldhom::ActionResult first = engine.do_simple_action("thael", eldhom::SimpleActionType::RECOVER);
+	check(first.ok(), "Thael's RECOVER (her one allowed action) OK");
+	check(engine.has_pending_turn_confirmation(), "Confirmation now pending after Thael's action");
+	check(engine.next_actor() == "thael", "Thael remains next_actor() while pending confirmation");
+
+	// A second action by Thael herself is rejected — she must confirm first.
+	eldhom::ActionResult second = engine.do_simple_action("thael", eldhom::SimpleActionType::RECOVER);
+	check(second.code == eldhom::ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+	      "Thael's second simple action is rejected with ERR_TURN_CONFIRMATION_PENDING");
+
+	// A card play by Thael is ALSO rejected while pending.
+	eldhom::ActionResult card_attempt = engine.play_card("thael", "base_colpo_secco");
+	check(card_attempt.code == eldhom::ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+	      "Thael's card play is ALSO rejected with ERR_TURN_CONFIRMATION_PENDING while pending");
+
+	// Velyr cannot act either: next_actor() stays short-circuited to Thael.
+	eldhom::ActionResult velyr_attempt = engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	check(velyr_attempt.code == eldhom::ActionResultCode::ERR_NOT_YOUR_TURN,
+	      "Velyr cannot act while Thael's confirmation is pending (ERR_NOT_YOUR_TURN)");
+
+	// Confirming (PASS while pending) costs 0 additional timeline — the
+	// action's own cost was already charged when it was performed.
+	const int thael_tl_before_confirm = engine.timeline_position("thael");
+	eldhom::ActionResult confirm = engine.do_simple_action("thael", eldhom::SimpleActionType::PASS);
+	check(confirm.ok(), "Thael's PASS-as-confirm OK");
+	check(engine.timeline_position("thael") == thael_tl_before_confirm,
+	      "Confirming costs 0 additional timeline");
+	check(!engine.has_pending_turn_confirmation(), "No confirmation pending after Thael confirms");
+	check(engine.next_actor() == "velyr", "Velyr becomes next_actor() only after Thael confirms");
+
+	// Velyr can now act normally, and becomes pending herself.
+	eldhom::ActionResult velyr_move = engine.do_simple_action("velyr", eldhom::SimpleActionType::RECOVER);
+	check(velyr_move.ok(), "Velyr can act after Thael confirmed");
+	check(engine.has_pending_turn_confirmation(), "Confirmation now pending for Velyr");
+	confirm_turn(engine, "velyr");
+	check(engine.next_actor() == "thael", "Thael is next again after Velyr confirms");
+
+	// PASS as a genuine skip (nothing pending) costs COST_SIMPLE_PASS,
+	// unlike the zero-cost confirm above.
+	const int thael_tl_before_skip = engine.timeline_position("thael");
+	eldhom::ActionResult skip = engine.do_simple_action("thael", eldhom::SimpleActionType::PASS);
+	check(skip.ok(), "Thael's PASS-as-skip (nothing of hers pending) OK");
+	check(engine.timeline_position("thael") == thael_tl_before_skip + eldhom::COST_SIMPLE_PASS,
+	      "Skipping (not confirming) costs COST_SIMPLE_PASS timeline");
 }
 
 
@@ -1478,6 +1716,8 @@ int main()
 	test_card_explicit_target_overrides_auto_select();
 	test_card_explicit_target_rejected_when_invalid();
 	test_card_no_target_falls_back_to_auto_select();
+
+	test_turn_confirmation_gate();
 
 	std::cout << "\n================================================\n";
 	std::cout << "PASS: " << s_pass << "   FAIL: " << s_fail << "\n";

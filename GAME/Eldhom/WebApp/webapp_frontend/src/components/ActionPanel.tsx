@@ -32,6 +32,8 @@ export interface ActionPanelProps {
   sequenceActive: boolean
   /** True if the active hero has at least one legal/meaningful action (a melee target, an interactable object, something to heal, or a playable card) besides Fine Turno — see App.tsx. When false, the 4 base actions are disabled (Fine Turno never is). */
   hasAnyAction: boolean
+  /** True if the active hero already completed their one allowed action/card/sequence this turn and must press Fine Turno to confirm before the turn actually passes — see `EldhomState.turnAwaitingConfirmation`. Like `hasAnyAction`, this disables the 4 base actions but never Fine Turno; unlike it, it also takes priority for the hint message shown. */
+  awaitingConfirmation: boolean
   targetingMode: TargetingMode
   pendingReaction: PendingReactionView | null
   onArmMove: () => void
@@ -54,6 +56,7 @@ export function ActionPanel({
   enabled,
   sequenceActive,
   hasAnyAction,
+  awaitingConfirmation,
   targetingMode,
   pendingReaction,
   onArmMove,
@@ -82,9 +85,11 @@ export function ActionPanel({
   }
 
   // Explicit user request: the player must ALWAYS be able to confirm Fine
-  // Turno, even (especially) when nothing else is worth doing — so ONLY the
-  // 4 base actions are gated by `hasAnyAction`, never the end-turn button.
-  const baseActionsDisabled = !enabled || sequenceActive || !hasAnyAction
+  // Turno, even (especially) when nothing else is worth doing OR when they
+  // already acted this turn and are only awaiting confirmation — so ONLY the
+  // 4 base actions are gated by `hasAnyAction`/`awaitingConfirmation`, never
+  // the end-turn button.
+  const baseActionsDisabled = !enabled || sequenceActive || !hasAnyAction || awaitingConfirmation
   return (
     <div className="eldhom-actions">
       <span className="eldhom-actions__title">
@@ -130,7 +135,12 @@ export function ActionPanel({
       {targetingMode === 'attack' && (
         <p className="eldhom-actions__hint">⚔ Clicca il nemico da attaccare sulla mappa</p>
       )}
-      {enabled && !sequenceActive && !hasAnyAction && (
+      {enabled && !sequenceActive && awaitingConfirmation && (
+        <p className="eldhom-actions__hint">
+          ✅ Hai già agito questo turno — premi 🏁 Fine Turno per confermare e passare al prossimo Attore
+        </p>
+      )}
+      {enabled && !sequenceActive && !awaitingConfirmation && !hasAnyAction && (
         <p className="eldhom-actions__hint">⚠ Nessuna azione disponibile — premi 🏁 Fine Turno per passare</p>
       )}
     </div>

@@ -358,6 +358,12 @@ void EldhomEngine::emit(
 
 std::string EldhomEngine::next_actor() const
 {
+	// While a hero must explicitly confirm Fine Turno (already completed
+	// their one allowed action/card/sequence this turn), they ALWAYS remain
+	// "next" — the real timeline recomputation below is skipped entirely
+	// until that confirmation arrives (see `request_end_of_turn()`).
+	if (!_pending_confirm_hero.empty()) { return _pending_confirm_hero; }
+
 	// Priority 1: any hero with an active non-interrupted sequence.
 	// During a sequence the acting hero must complete it before anyone else acts.
 	for (const auto& kv : _seq_states)
@@ -456,8 +462,17 @@ ActionResult EldhomEngine::do_simple_action(
 		return { ActionResultCode::ERR_ACTOR_KO, hero_id + " is KO" };
 	}
 
+	// The hero already completed their one allowed action this turn and must
+	// explicitly confirm Fine Turno (PASS) before doing anything else.
+	if (_pending_confirm_hero == hero_id && action_type != SimpleActionType::PASS)
+	{
+		return { ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+		         hero_id + " must confirm Fine Turno before acting again" };
+	}
+
 	EffectResult eff;
-	int          cost = 0;
+	int          cost       = 0;
+	bool         is_confirm = false;
 
 	switch (action_type)
 	{
@@ -517,9 +532,22 @@ ActionResult EldhomEngine::do_simple_action(
 		break;
 
 	case SimpleActionType::PASS:
-		cost = COST_SIMPLE_PASS;
-		eff.resolved = true;
-		eff.note     = hero_id + " ends turn";
+		if (_pending_confirm_hero == hero_id)
+		{
+			// Confirming an already-completed action: no additional cost, the
+			// real action's cost was already charged when it was performed.
+			cost         = 0;
+			is_confirm   = true;
+			eff.resolved = true;
+			eff.note     = hero_id + " confirms end of turn";
+			_pending_confirm_hero.clear();
+		}
+		else
+		{
+			cost = COST_SIMPLE_PASS;
+			eff.resolved = true;
+			eff.note     = hero_id + " ends turn";
+		}
 		break;
 
 	case SimpleActionType::RECOVER:
@@ -563,7 +591,14 @@ ActionResult EldhomEngine::do_simple_action(
 		return {};
 	}
 
-	end_hero_turn(hero_id);
+	if (is_confirm)
+	{
+		end_hero_turn(hero_id);
+	}
+	else
+	{
+		request_end_of_turn(hero_id);
+	}
 	return {};
 }
 
@@ -595,6 +630,15 @@ ActionResult EldhomEngine::play_card(
 	    c.life_state == gmActor::ActorLifeState::DEAD)
 	{
 		return { ActionResultCode::ERR_ACTOR_KO, hero_id + " is KO" };
+	}
+
+	// The hero already completed their one allowed action this turn and must
+	// explicitly confirm Fine Turno (PASS via do_simple_action) before playing
+	// another card.
+	if (_pending_confirm_hero == hero_id)
+	{
+		return { ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+		         hero_id + " must confirm Fine Turno before acting again" };
 	}
 
 	// Look up card
@@ -877,7 +921,7 @@ ActionResult EldhomEngine::play_card(
 	// Turn-ending check uses the state BEFORE the advance
 	if (_sequence_adapter.is_turn_ending(original_card_type, seq_before))
 	{
-		end_hero_turn(hero_id);
+		request_end_of_turn(hero_id);
 	}
 
 	return {};
@@ -894,6 +938,15 @@ ActionResult EldhomEngine::stop_sequence(const HeroId& hero_id)
 		return { ActionResultCode::ERR_NOT_YOUR_TURN, hero_id };
 	}
 
+	// A hero mid-sequence can never also be awaiting turn confirmation (that
+	// state is only entered once a sequence closes) — the check below is
+	// defensive, mirroring the guard in do_simple_action/play_card.
+	if (_pending_confirm_hero == hero_id)
+	{
+		return { ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+		         hero_id + " must confirm Fine Turno before acting again" };
+	}
+
 	const gmAlea::SequenceState& seq = _seq_states.at(hero_id);
 	if (!seq.active)
 	{
@@ -902,7 +955,7 @@ ActionResult EldhomEngine::stop_sequence(const HeroId& hero_id)
 
 	_seq_states[hero_id] = _sequence_adapter.reset();
 	emit(EVT_SEQUENCE_ENDED, hero_id, "voluntary_stop");
-	end_hero_turn(hero_id);
+	request_end_of_turn(hero_id);
 	return {};
 }
 
@@ -937,6 +990,12 @@ ActionResult EldhomEngine::declare_attack(
 	    c.life_state == gmActor::ActorLifeState::DEAD)
 	{
 		return { ActionResultCode::ERR_ACTOR_KO, hero_id + " is KO" };
+	}
+
+	if (_pending_confirm_hero == hero_id)
+	{
+		return { ActionResultCode::ERR_TURN_CONFIRMATION_PENDING,
+		         hero_id + " must confirm Fine Turno before acting again" };
 	}
 
 	if (target_id.empty() || !_store.has_actor(target_id))
@@ -1373,14 +1432,18 @@ ActionResult EldhomEngine::resolve_reaction(
 		 std::to_string(static_cast<int>(SimpleActionType::ATTACK)));
 
 	// Defer end_hero_turn if formation dialogs are queued (main.cpp handles them).
+	// If the source card left a sequence open (SEQ_START/SEQ_CONTINUE), the
+	// attacker keeps full priority via next_actor()'s sequence check — no
+	// confirmation is requested until the sequence actually closes (mirrors
+	// play_card's own is_turn_ending check for the non-deferred-damage path).
 	if (!_formation_queue.empty())
 	{
 		_formation_ends_turn = true;
 		_formation_turn_hero = attacker_id;
 	}
-	else
+	else if (!_seq_states.at(attacker_id).active)
 	{
-		end_hero_turn(attacker_id);
+		request_end_of_turn(attacker_id);
 	}
 
 	if (out)
@@ -1583,6 +1646,20 @@ const PendingFormation& EldhomEngine::current_formation_dialog() const
 	return _formation_queue.front();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Explicit end-of-turn confirmation gate
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool EldhomEngine::has_pending_turn_confirmation() const
+{
+	return !_pending_confirm_hero.empty();
+}
+
+void EldhomEngine::request_end_of_turn(const HeroId& hero_id)
+{
+	_pending_confirm_hero = hero_id;
+}
+
 ActionResult EldhomEngine::resolve_formation(
 	const std::string&                   faction_id,
 	const LocationId&                    location_id,
@@ -1648,7 +1725,7 @@ ActionResult EldhomEngine::resolve_formation(
 	// Queue exhausted: end the deferred hero turn if applicable.
 	if (_formation_ends_turn && !_formation_turn_hero.empty())
 	{
-		end_hero_turn(_formation_turn_hero);
+		request_end_of_turn(_formation_turn_hero);
 		_formation_ends_turn = false;
 		_formation_turn_hero = {};
 	}
