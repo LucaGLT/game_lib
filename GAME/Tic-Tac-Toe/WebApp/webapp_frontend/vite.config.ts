@@ -24,12 +24,13 @@ export default defineConfig({
     // Exposes the dev server through ngrok for remote tablet access.
     allowedHosts: ['elf-chaplain-spindle.ngrok-free.dev'],
     // Forwards REST + WebSocket calls to eng_serve (uvicorn default port) so the
-    // browser never needs to know about the backend origin in dev (Phase 1: no auth).
+    // browser never needs to know about the backend origin in dev (Phase 2: pilot-grade auth).
     proxy: {
       '/sessions': {
         target: 'http://127.0.0.1:8000',
         ws: true,
       },
+      '/auth': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
     },
   },

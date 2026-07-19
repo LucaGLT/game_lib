@@ -1,16 +1,21 @@
-"""session_manager — Phase 1: a single, process-wide game session (no auth).
+"""session_manager — Tris-specific thin wrapper over gmWebServe.SessionRegistry.
 
-Deliberately hardcodes ONE session so Phase 1 can validate the full engine
-<-> eng_serve <-> browser round trip end-to-end. Phase 2 replaces this with
-a real per-user registry (session_id -> SessionState), authentication, and
-idle-session cleanup — see GAME/Tic-Tac-Toe/WebApp/PLAN.md, Phase 2.
+Phase 2: real multi-session, multi-user registry (dynamic ports, per-user
+concurrent-session cap, idle-timeout cleanup, ownership-checked access) — see
+GAME/Tic-Tac-Toe/WebApp/PLAN.md, Phase 2. Phase "Shared Multiplayer": a session
+now has two named roles (``"X"``/``"O"``), and a SECOND (different) user can
+join the SAME match via a short join code — see
+:meth:`SessionManager.join_session`. All of the multi-session/auth/shared
+-participant machinery lives in the shared ``pyLib/gmWebServe`` library; this
+module's only Tris-specific knowledge is the bootstrap command
+(``gmTris.new_game``), the two role names, and the move-command field
+(``player``) that must be bound server-side to whichever role the caller
+actually holds (never trust a client-supplied mark — see :meth:`send_command`).
 """
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
-from threading import Lock
 
 # ── Make the shared gmWebServe toolkit importable (pyLib is the common parent
 #    of gmWebServe and gmGui) — see GAME/Eldhom/WebApp/PLAN.md, Phase 1, for
@@ -20,180 +25,153 @@ if str(_PYLIB_DIR) not in sys.path:
     sys.path.insert(0, str(_PYLIB_DIR))
 
 from gmWebServe import (  # noqa: E402
-    EngineEventListener,
-    EngineProcess,
-    EngineProcessError,
-    EngineSender,
+    GameSession,
+    SessionFullError,
+    SessionLimitExceededError,
+    SessionNotFoundError,
+    SessionRegistry,
 )
 
 from .settings import Settings
 
-SESSION_ID = "dev-session"
-
 __all__ = [
     "SessionManager",
-    "SessionState",
+    "GameSession",
     "SessionNotFoundError",
-    "SessionAlreadyRunningError",
-    "SESSION_ID",
+    "SessionLimitExceededError",
+    "SessionFullError",
 ]
 
+#: The two Tris seats — the session creator always fills "X" first;
+#: a second (different) user fills "O" via :meth:`SessionManager.join_session`.
+TRIS_ROLES = ("X", "O")
 
-class SessionNotFoundError(RuntimeError):
-    """Raised when the requested session_id does not match the active session."""
-
-
-class SessionAlreadyRunningError(RuntimeError):
-    """Raised when create_session() is called while a session is already active."""
-
-
-class SessionState:
-    """Everything eng_serve knows about the one running game session (Phase 1).
-
-    Attributes:
-        session_id:            Identifier of this session (fixed in Phase 1).
-        last_envelope_by_type:  Latest envelope seen for each ``typeId``, used
-            to replay current state to a browser tab that connects late.
-        subscribers:           Active WebSocket subscriber queues.
-    """
-
-    def __init__(self, session_id: str) -> None:
-        self.session_id: str = session_id
-        self.last_envelope_by_type: dict[str, dict] = {}
-        self.subscribers: set[asyncio.Queue] = set()
+#: gmTris.move's mark field — bound server-side to the CALLER's own role in
+#: :meth:`SessionManager.send_command`, never trusted verbatim from the
+#: client, so one participant cannot forge a move on the other's behalf.
+_MOVE_TYPE_ID = "gmTris.move"
+_MOVE_PLAYER_FIELD = "player"
 
 
 class SessionManager:
-    """Owns the single Phase-1 session: engine process, bridge, and WS fan-out.
+    """Owns the Tris `SessionRegistry` and knows the `gmTris.new_game` bootstrap."""
 
-    Thread-safety: :meth:`create_session` and :meth:`shutdown` are guarded by
-    a lock because they mutate process/socket state; :meth:`_on_envelope`
-    runs on the listener's background thread and hands events to the asyncio
-    loop via ``call_soon_threadsafe``.
-    """
-
-    def __init__(self, settings: Settings) -> None:
-        self._settings: Settings = settings
-        self._lock: Lock = Lock()
-        self._session: SessionState | None = None
-        self._engine: EngineProcess | None = None
-        self._listener: EngineEventListener | None = None
-        self._command_sender: EngineSender | None = None
-        self.loop: asyncio.AbstractEventLoop | None = None
+    def __init__(
+        self,
+        settings: Settings,
+        max_sessions_per_user: int,
+        idle_timeout_seconds: float,
+    ) -> None:
+        self._registry: SessionRegistry = SessionRegistry(
+            executable=settings.engine_executable,
+            event_host=settings.event_host,
+            command_host=settings.command_host,
+            connect_timeout_s=settings.connect_timeout_s,
+            max_sessions_per_user=max_sessions_per_user,
+            idle_timeout_seconds=idle_timeout_seconds,
+        )
 
     @property
-    def active_session_id(self) -> str | None:
-        """The id of the currently running session, or None if none is active."""
-        return self._session.session_id if self._session is not None else None
+    def loop(self):
+        """The asyncio loop used to fan out engine events to WebSocket subscribers."""
+        return self._registry.loop
 
-    def create_session(self, starter_mode: str) -> SessionState:
-        """Boots the engine subprocess and the bridge, then starts a match.
+    @loop.setter
+    def loop(self, value) -> None:
+        self._registry.loop = value
 
-        Sending the bootstrap ``gmTris.new_game`` command is what triggers
-        the engine to lazily connect back on the event port — the same
-        sequence used by ``GAME/Tic-Tac-Toe/GUI/tests/e2e_test.py``.
+    def create_session(self, owner: str, starter_mode: str) -> GameSession:
+        """Boots a new `tris_engine` instance for *owner* and starts a match.
 
-        Raises:
-            SessionAlreadyRunningError: If a session is already active.
-            EngineProcessError: If the engine subprocess fails to start or
-                its command port never becomes reachable.
-        """
-        with self._lock:
-            if self._session is not None:
-                raise SessionAlreadyRunningError(self._session.session_id)
-
-            session = SessionState(SESSION_ID)
-            listener = EngineEventListener(
-                self._settings.event_host,
-                self._settings.event_port,
-                on_envelope=lambda envelope: self._on_envelope(session, envelope),
-            )
-            listener.bind()
-
-            engine = EngineProcess(
-                self._settings.engine_executable,
-                self._settings.command_host,
-                self._settings.command_port,
-                self._settings.connect_timeout_s,
-            )
-            try:
-                engine.start()
-            except EngineProcessError:
-                listener.stop()
-                raise
-
-            listener.start()
-            sender = EngineSender(
-                host=self._settings.command_host, port=self._settings.command_port
-            )
-
-            self._session = session
-            self._engine = engine
-            self._listener = listener
-            self._command_sender = sender
-
-        # Outside the lock: triggers the engine's lazy connect-back to the
-        # event listener started above.
-        sender.send_command("gmTris.new_game", {"starter_mode": starter_mode})
-        return session
-
-    def get_session(self, session_id: str) -> SessionState:
-        """Returns the active session if *session_id* matches.
+        *owner* fills the "X" seat; share the returned session's `join_code`
+        with a second (different) user so they can fill "O" via
+        :meth:`join_session` and play the SAME match.
 
         Raises:
-            SessionNotFoundError: If no session is active, or the id differs.
+            SessionLimitExceededError: If *owner* is already at their
+                concurrent-session cap.
+            gmWebServe.EngineProcessError: If the engine subprocess fails to
+                start or its command port never becomes reachable.
         """
-        if self._session is None or self._session.session_id != session_id:
-            raise SessionNotFoundError(session_id)
-        return self._session
+        return self._registry.create_session(
+            owner,
+            bootstrap=lambda sender: sender.send_command(
+                "gmTris.new_game", {"starter_mode": starter_mode}
+            ),
+            roles=TRIS_ROLES,
+        )
 
-    def send_command(self, session_id: str, type_id: str, data: dict) -> None:
+    def join_session(self, join_code: str, joining_user: str) -> GameSession:
+        """Attaches *joining_user* to the "O" seat of the session for *join_code*.
+
+        Idempotent if *joining_user* already holds a seat in that session
+        (e.g. a page reload). See `gmWebServe.SessionRegistry.join_session`.
+
+        Raises:
+            SessionNotFoundError: If *join_code* matches no active session.
+            SessionFullError: If both seats are already held by others.
+            SessionLimitExceededError: If *joining_user* is already at their
+                own concurrent-session cap.
+        """
+        return self._registry.join_session(join_code, joining_user)
+
+    def list_sessions(self, owner: str) -> list[GameSession]:
+        """Returns every active session belonging to *owner* (may be empty)."""
+        return self._registry.list_sessions(owner)
+
+    def get_session(self, session_id: str, owner: str) -> GameSession:
+        """Returns the session if it exists and belongs to *owner*.
+
+        Raises:
+            SessionNotFoundError: If *session_id* is unknown, or belongs to a
+                different owner.
+        """
+        return self._registry.get_session(session_id, owner)
+
+    def send_command(self, session_id: str, owner: str, type_id: str, data: dict) -> None:
         """Forwards one command envelope to the running engine.
 
-        Raises:
-            SessionNotFoundError: If *session_id* does not match the active session.
-        """
-        self.get_session(session_id)
-        assert self._command_sender is not None
-        self._command_sender.send_command(type_id, data)
+        For `gmTris.move`, the `player` field is ALWAYS overwritten
+        server-side with the caller's own assigned seat ("X"/"O"), ignoring
+        whatever value the client sent — this is what stops the "O" player
+        from forging a move as "X" (or vice-versa) now that a session can
+        have two different authenticated users (OWASP A01 guard).
 
-    def subscribe(self, session_id: str) -> asyncio.Queue:
+        Raises:
+            SessionNotFoundError: If *session_id* does not belong to *owner*.
+        """
+        if type_id == _MOVE_TYPE_ID:
+            session = self._registry.get_session(session_id, owner)
+            role = session.role_of(owner)
+            if role is None:
+                raise SessionNotFoundError(session_id)
+            data = {**data, _MOVE_PLAYER_FIELD: role}
+        self._registry.send_command(session_id, owner, type_id, data)
+
+    def subscribe(self, session_id: str, owner: str):
         """Registers a new WebSocket subscriber, pre-filled with the last known state.
 
         Raises:
-            SessionNotFoundError: If *session_id* does not match the active session.
+            SessionNotFoundError: If *session_id* does not belong to *owner*.
         """
-        session = self.get_session(session_id)
-        queue: asyncio.Queue = asyncio.Queue()
-        for envelope in session.last_envelope_by_type.values():
-            queue.put_nowait(envelope)
-        session.subscribers.add(queue)
-        return queue
+        return self._registry.subscribe(session_id, owner)
 
-    def unsubscribe(self, session_id: str, queue: asyncio.Queue) -> None:
+    def unsubscribe(self, session_id: str, owner: str, queue) -> None:
         """Removes a previously registered WebSocket subscriber, if still active."""
-        session = self._session
-        if session is not None and session.session_id == session_id:
-            session.subscribers.discard(queue)
+        self._registry.unsubscribe(session_id, owner, queue)
+
+    def close_session(self, session_id: str, owner: str) -> None:
+        """Stops and forgets one session, freeing its slot in the per-user cap.
+
+        Raises:
+            SessionNotFoundError: If *session_id* does not belong to *owner*.
+        """
+        self._registry.close_session(session_id, owner)
+
+    def reap_idle_sessions(self) -> list[str]:
+        """Closes every session idle for longer than the configured timeout."""
+        return self._registry.reap_idle_sessions()
 
     def shutdown(self) -> None:
-        """Stops the engine subprocess and the event listener (app shutdown)."""
-        with self._lock:
-            if self._listener is not None:
-                self._listener.stop()
-            if self._command_sender is not None:
-                self._command_sender.close()
-            if self._engine is not None:
-                self._engine.stop()
-            self._session = None
-            self._engine = None
-            self._listener = None
-            self._command_sender = None
-
-    def _on_envelope(self, session: SessionState, envelope: dict) -> None:
-        """Runs on the listener's background thread: fan out thread-safely."""
-        session.last_envelope_by_type[envelope.get("typeId", "")] = envelope
-        if self.loop is None:
-            return
-        for queue in list(session.subscribers):
-            self.loop.call_soon_threadsafe(queue.put_nowait, envelope)
+        """Stops every active session (app shutdown)."""
+        self._registry.shutdown()
