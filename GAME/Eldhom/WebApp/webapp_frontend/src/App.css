@@ -169,6 +169,39 @@
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
+/* ── Account controls (Shared Multiplayer: multi-session + auth) — sits
+   directly on the themed backdrop like the h1 above, so the bare username
+   text uses the same accent+shadow treatment; the buttons get an opaque
+   panel background so they stay legible/clickable regardless of theme. ── */
+
+.app-header__account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gm-accent);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.app-header__account button {
+  padding: 4px 10px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  cursor: pointer;
+}
+
+/* ── Shared-multiplayer role banner ("Sei thael", join-code share) ───────── */
+
+.eldhom-role-banner {
+  text-align: center;
+  font-size: 13px;
+  margin: 0 0 8px;
+  color: var(--gm-accent);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
 /* ── Stone theme (richiesta esplicita utente): al posto dell'ombra "sospesa"
    sopra usata dagli altri temi, ogni titolo/nome legge come inciso a scalpello
    nella pietra — stessa lista di selettori del blocco `--gm-font-display` qui

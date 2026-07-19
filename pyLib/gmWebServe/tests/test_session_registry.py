@@ -186,3 +186,55 @@ def test_any_participant_can_close_shared_session(registry: SessionRegistry) -> 
     registry.close_session(session.session_id, "bob")
     with pytest.raises(SessionNotFoundError):
         registry.get_session(session.session_id, "alice")
+
+
+def test_create_session_with_explicit_owner_role(registry: SessionRegistry) -> None:
+    """A creator can choose a NON-first role (e.g. Eldh\u00f4m: pick a PG/hero)."""
+    session = registry.create_session(
+        "alice", _bootstrap, extra_args=[str(_FAKE_ENGINE)], roles=("thael", "velyr"), owner_role="velyr"
+    )
+    assert session.participants == {"thael": None, "velyr": "alice"}
+    assert session.role_of("alice") == "velyr"
+
+
+def test_create_session_invalid_owner_role_raises(registry: SessionRegistry) -> None:
+    with pytest.raises(ValueError):
+        registry.create_session(
+            "alice", _bootstrap, extra_args=[str(_FAKE_ENGINE)], roles=("thael", "velyr"), owner_role="khar"
+        )
+
+
+def test_peek_session_by_code_shows_roles_without_joining(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("thael", "velyr"))
+    peeked = registry.peek_session_by_code(session.join_code)
+    assert peeked.session_id == session.session_id
+    assert peeked.participants == {"thael": "alice", "velyr": None}
+    # Peeking must NOT register bob as a participant.
+    assert not peeked.is_participant("bob")
+
+
+def test_peek_session_by_code_invalid_raises(registry: SessionRegistry) -> None:
+    with pytest.raises(SessionNotFoundError):
+        registry.peek_session_by_code("ZZZZZZ")
+
+
+def test_join_session_with_requested_role(registry: SessionRegistry) -> None:
+    """A joiner can choose WHICH remaining seat to take (e.g. pick a PG/hero)."""
+    session = registry.create_session(
+        "alice", _bootstrap, extra_args=[str(_FAKE_ENGINE)], roles=("thael", "velyr"), owner_role="thael"
+    )
+    joined = registry.join_session(session.join_code, "bob", requested_role="velyr")
+    assert joined.participants == {"thael": "alice", "velyr": "bob"}
+    assert joined.role_of("bob") == "velyr"
+
+
+def test_join_session_requested_role_taken_raises(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    with pytest.raises(SessionFullError):
+        registry.join_session(session.join_code, "bob", requested_role="X")
+
+
+def test_join_session_invalid_requested_role_raises(registry: SessionRegistry) -> None:
+    session = _create(registry, "alice", roles=("X", "O"))
+    with pytest.raises(ValueError):
+        registry.join_session(session.join_code, "bob", requested_role="Z")

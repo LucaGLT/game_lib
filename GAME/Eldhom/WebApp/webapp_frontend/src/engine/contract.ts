@@ -14,6 +14,7 @@
  * `emit_full_state()`/`forward_engine_event()`/`handle_*()` methods, not
  * assumed from the C++ EventType/CommandType constants alone.
  */
+import type { SessionInfo, SessionPreview } from '@webgui/session/types'
 
 /** Sent by eng_serve's POST /sessions to bootstrap the engine (see session_manager.py). */
 export const CMD_START_MISSION = 'eldhom.start_mission'
@@ -255,20 +256,38 @@ export interface MissionSummary {
   mission_id: string
   title: string
   description: string
+  pg_roster: PgRosterEntry[]
+}
+
+/** One playable PG/hero of a mission's roster (`MissionSummary.pg_roster`) — used to render the "pick your PG/hero" screen (see `HeroSelectModal`). */
+export interface PgRosterEntry {
+  hero_id: string
+  display_name: string
+  class_name: string
+}
+
+/** Response of `GET /sessions/by-code/{code}` (Shared Multiplayer: preview before joining). */
+export interface EldhomSessionPreview extends SessionPreview {
+  mission_id: string | null
+}
+
+/** Eldhôm's `SessionInfo` (create/join/list/get) adds `mission_id` on top of the generic shared shape. */
+export interface EldhomSessionInfo extends SessionInfo {
+  mission_id: string | null
 }
 
 /** Lists the card catalog (GET /cards — Eldhôm-specific, ex module-level _CARD_CATALOG). */
-export async function listCards(): Promise<CardWire[]> {
-  const response = await fetch('/cards')
+export async function listCards(token: string): Promise<CardWire[]> {
+  const response = await fetch('/cards', { headers: { Authorization: `Bearer ${token}` } })
   if (!response.ok) {
     throw new Error(`listCards failed: HTTP ${response.status}`)
   }
   return (await response.json()) as CardWire[]
 }
 
-/** Lists available missions (GET /missions — Eldhôm-specific, ex MissionSelectDialog). */
-export async function listMissions(): Promise<MissionSummary[]> {
-  const response = await fetch('/missions')
+/** Lists available missions, incl. each one's `pg_roster` (GET /missions — Eldhôm-specific, ex MissionSelectDialog). */
+export async function listMissions(token: string): Promise<MissionSummary[]> {
+  const response = await fetch('/missions', { headers: { Authorization: `Bearer ${token}` } })
   if (!response.ok) {
     throw new Error(`listMissions failed: HTTP ${response.status}`)
   }

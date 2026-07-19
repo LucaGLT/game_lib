@@ -163,12 +163,13 @@ class SessionRegistry:
         bootstrap: BootstrapFn,
         extra_args: list[str] | None = None,
         roles: Sequence[str] = ("player",),
+        owner_role: str | None = None,
     ) -> GameSession:
         """Boots a new engine subprocess and registers a session for *owner*.
 
         Args:
             owner: Username this session belongs to (from the auth token) —
-                automatically assigned the first role in *roles*.
+                assigned *owner_role* (or ``roles[0]`` if not given).
             bootstrap: Called once (outside any lock) with the newly-created
                 :class:`~gmWebServe.engine_listener.EngineSender`, so the
                 caller can send its game-specific "start a match" command
@@ -178,17 +179,28 @@ class SessionRegistry:
                 ``--events-port``/``--commands-port`` flags are appended
                 automatically, after these.
             roles: Ordered seat names for this session, e.g. Tris'
-                ``("X", "O")``. *owner* fills ``roles[0]``; remaining seats
-                start empty and are filled via :meth:`join_session` using the
-                returned session's ``join_code``. Defaults to a single seat
-                for games that do not need shared multiplayer.
+                ``("X", "O")``. *owner* fills *owner_role* (or ``roles[0]``
+                by default); remaining seats start empty and are filled via
+                :meth:`join_session` using the returned session's
+                ``join_code``. Defaults to a single seat for games that do
+                not need shared multiplayer.
+            owner_role: Which role *owner* takes, when the caller lets the
+                user CHOOSE instead of always defaulting to ``roles[0]``
+                (e.g. Eldhôm: the creator picks which PG/hero to play).
+                Must be one of *roles* if given.
 
         Raises:
+            ValueError: If *owner_role* is given but not one of *roles*.
             SessionLimitExceededError: If *owner* already has
                 ``max_sessions_per_user`` active sessions.
             EngineProcessError: If the engine subprocess fails to start or
                 its command port never becomes reachable.
         """
+        role_tuple = tuple(roles)
+        chosen_owner_role = owner_role if owner_role is not None else role_tuple[0]
+        if chosen_owner_role not in role_tuple:
+            raise ValueError(f"owner_role {chosen_owner_role!r} not in roles {role_tuple!r}")
+
         with self._lock:
             owned_count = sum(1 for s in self._sessions.values() if s.is_participant(owner))
             if owned_count >= self.max_sessions_per_user:
@@ -228,9 +240,8 @@ class SessionRegistry:
             listener.start()
             sender = EngineSender(host=self._command_host, port=command_port)
 
-            role_tuple = tuple(roles)
             participants: dict[str, str | None] = {role: None for role in role_tuple}
-            participants[role_tuple[0]] = owner
+            participants[chosen_owner_role] = owner
 
             now = time.time()
             session = GameSession(
@@ -253,22 +264,54 @@ class SessionRegistry:
         bootstrap(sender)
         return session
 
-    def join_session(self, join_code: str, joining_user: str) -> GameSession:
+    def peek_session_by_code(self, join_code: str) -> GameSession:
+        """Looks up a session by *join_code* WITHOUT joining it.
+
+        Lets a would-be joiner see which roles are still free (e.g. to render
+        a "pick your PG/hero" screen listing only the unclaimed ones) before
+        actually committing to :meth:`join_session`. The join code itself is
+        the only "auth" required — same trust model as ``join_session``.
+
+        Raises:
+            SessionNotFoundError: If *join_code* matches no active session.
+        """
+        normalized_code = join_code.strip().upper()
+        with self._lock:
+            session_id = self._session_id_by_code.get(normalized_code)
+            session = self._sessions.get(session_id) if session_id is not None else None
+            if session is None:
+                raise SessionNotFoundError(normalized_code)
+            return session
+
+    def join_session(
+        self,
+        join_code: str,
+        joining_user: str,
+        requested_role: str | None = None,
+    ) -> GameSession:
         """Attaches *joining_user* to the session identified by *join_code*.
 
         Idempotent for a user who is already a participant (e.g. a page
         reload just reconnects them to their existing seat) — otherwise
-        assigns them to the first unfilled role, so a second (different)
-        user ends up in the SAME session/match as the creator.
+        assigns them to *requested_role* (if given) or the first unfilled
+        role, so a second (different) user ends up in the SAME
+        session/match as the creator.
 
         Args:
             join_code: The code shown to the session's creator, shared
                 out-of-band (e.g. verbally, chat) with the user who should join.
             joining_user: Username of the user attempting to join.
+            requested_role: Which role/seat *joining_user* wants (e.g.
+                Eldhôm: which remaining PG/hero to play), when the caller lets
+                the user CHOOSE instead of auto-filling the first free role.
+                Must be one of the session's roles if given.
 
         Raises:
             SessionNotFoundError: If *join_code* matches no active session.
-            SessionFullError: If every role is already held by someone else.
+            ValueError: If *requested_role* is given but not one of the
+                session's roles.
+            SessionFullError: If *requested_role* is already held by someone
+                else, or (when not given) every role is already taken.
             SessionLimitExceededError: If *joining_user* is already at their
                 own concurrent-session cap.
         """
@@ -281,11 +324,20 @@ class SessionRegistry:
             if session.is_participant(joining_user):
                 return session
 
-            free_role = next(
-                (role for role, holder in session.participants.items() if holder is None), None
-            )
-            if free_role is None:
-                raise SessionFullError(normalized_code)
+            if requested_role is not None:
+                if requested_role not in session.roles:
+                    raise ValueError(
+                        f"requested_role {requested_role!r} not in roles {session.roles!r}"
+                    )
+                if session.participants[requested_role] is not None:
+                    raise SessionFullError(normalized_code)
+                free_role: str | None = requested_role
+            else:
+                free_role = next(
+                    (role for role, holder in session.participants.items() if holder is None), None
+                )
+                if free_role is None:
+                    raise SessionFullError(normalized_code)
 
             joined_count = sum(1 for s in self._sessions.values() if s.is_participant(joining_user))
             if joined_count >= self.max_sessions_per_user:

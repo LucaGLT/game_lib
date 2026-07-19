@@ -23,14 +23,16 @@ export default defineConfig({
     // Exposes the dev server through ngrok for remote tablet access.
     allowedHosts: ['elf-chaplain-spindle.ngrok-free.dev'],
     // Forwards REST + WebSocket calls to eng_serve so the browser never
-    // needs to know about the backend origin in dev (Phase 1: no auth).
-    // Port 8100 (not Tris' 8000) so both games' dev servers can run side by
-    // side — see eng_serve/main.py's module docstring.
+    // needs to know about the backend origin in dev (Shared Multiplayer:
+    // multi-session + pilot-grade auth). Port 8100 (not Tris' 8000) so both
+    // games' dev servers can run side by side — see eng_serve/main.py's
+    // module docstring.
     proxy: {
       '/sessions': {
         target: 'http://127.0.0.1:8100',
         ws: true,
       },
+      '/auth': 'http://127.0.0.1:8100',
       '/health': 'http://127.0.0.1:8100',
       '/missions': 'http://127.0.0.1:8100',
       '/cards': 'http://127.0.0.1:8100',

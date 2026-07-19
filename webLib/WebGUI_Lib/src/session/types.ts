@@ -22,3 +22,15 @@ export interface SessionInfo {
   /** The role the CALLER holds in this session, or null if they hold none (should not happen). */
   your_role: string | null
 }
+
+/**
+ * Base shape of a "peek before joining" preview (GET .../by-code/{code}-style
+ * endpoints) — lets a would-be joiner see which roles/seats are still free
+ * (e.g. to render a "pick your remaining role" screen) without actually
+ * joining. Games with extra context to show (e.g. Eldhôm's `mission_id`)
+ * extend this with their own local interface; `restClient.previewSessionByCode`
+ * is generic over the exact shape returned.
+ */
+export interface SessionPreview {
+  roles: Record<string, string | null>
+}

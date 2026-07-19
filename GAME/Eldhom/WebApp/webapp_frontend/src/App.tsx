@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { createSession, sendCommand } from '@webgui/session/restClient'
+import { useAuth } from '@webgui/session/AuthProvider'
+import { LoginForm } from '@webgui/components/LoginForm'
+import { JoinSessionForm } from '@webgui/components/JoinSessionForm'
+import {
+  createSession,
+  listSessions,
+  closeSession,
+  sendCommand,
+  joinSession,
+  getSession,
+  previewSessionByCode,
+} from '@webgui/session/restClient'
 import { connectSessionEvents } from '@webgui/session/wsClient'
 import { EnvelopeRouter } from '@webgui/session/EnvelopeRouter'
 import { useGmGuiModule } from '@webgui/modules/useGmGuiModule'
@@ -23,6 +34,8 @@ import {
   CMD_STOP_SEQUENCE,
   listCards,
   listMissions,
+  type EldhomSessionInfo,
+  type EldhomSessionPreview,
   type InstantOptionWire,
   type MissionSummary,
 } from './engine/contract'
@@ -36,6 +49,7 @@ import { DeckTable } from './components/DeckTable'
 import { EldhomMap } from './components/EldhomMap'
 import { FormationModal } from './components/FormationModal'
 import { HeroPanel } from './components/HeroPanel'
+import { HeroSelectModal } from './components/HeroSelectModal'
 import { InstantWindowModal } from './components/InstantWindowModal'
 import { MainMenuModal } from './components/MainMenuModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
@@ -157,9 +171,17 @@ function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDe
  * Eldhôm-specific.
  */
 function App() {
+  const auth = useAuth()
   const [missions, setMissions] = useState<MissionSummary[]>([])
+  const [sessions, setSessions] = useState<EldhomSessionInfo[]>([])
+  const [showNewMissionFlow, setShowNewMissionFlow] = useState(false)
   const [showMissionSelect, setShowMissionSelect] = useState(false)
+  const [missionForHeroPick, setMissionForHeroPick] = useState<MissionSummary | null>(null)
+  const [joinPreview, setJoinPreview] = useState<{ joinCode: string; preview: EldhomSessionPreview } | null>(
+    null,
+  )
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [activeSession, setActiveSession] = useState<EldhomSessionInfo | null>(null)
   const [router, setRouter] = useState<EnvelopeRouter | null>(null)
   const [logEntries, setLogEntries] = useState<string[]>([])
   const [narrativeLog, setNarrativeLog] = useState<EventLogEntry[]>([])
@@ -171,6 +193,7 @@ function App() {
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
   const [moonVariant, setMoonVariant] = useState<MoonVariantId>(loadStoredMoonVariant)
   const disconnectRef = useRef<(() => void) | null>(null)
+  const authToken = auth.session?.token ?? null
 
   useEffect(() => {
     return () => disconnectRef.current?.()
@@ -185,16 +208,25 @@ function App() {
   }, [moonVariant])
 
   useEffect(() => {
-    listMissions()
+    if (authToken === null) {
+      return
+    }
+    listMissions(authToken)
       .then((found) => setMissions(found))
       .catch((caught) => setErrorMessage(String(caught)))
-  }, [])
+    listSessions(authToken)
+      .then((found) => setSessions(found as EldhomSessionInfo[]))
+      .catch((caught) => setErrorMessage(String(caught)))
+  }, [authToken])
 
   useEffect(() => {
-    listCards()
+    if (authToken === null) {
+      return
+    }
+    listCards(authToken)
       .then((found) => setEldhomState((previous) => applyCardCatalog(previous, found)))
       .catch((caught) => setErrorMessage(String(caught)))
-  }, [])
+  }, [authToken])
 
   // Wildcard subscription: every envelope feeds the raw-JSON debug log
   // (Phase 1), the Eldhôm-specific narrative log (Phase 5, `logFormat.ts`),
@@ -207,6 +239,7 @@ function App() {
     setEldhomState((previous) => applyEnvelope(previous, envelope))
   })
 
+  const myHeroId = activeSession?.your_role ?? null
   const activeHeroId = eldhomState.nextActorKind === 'HERO' ? eldhomState.nextActorId : ''
   const activeHeroName =
     eldhomState.timelineActors.find((actor) => actor.actorId === activeHeroId)?.name ?? activeHeroId
@@ -223,6 +256,15 @@ function App() {
           incomingDamage: pendingReaction.incoming_damage,
           reactions: pendingReaction.reactions,
         }
+  // Shared Multiplayer turn gate: this participant may act if it is THEIR
+  // hero's turn, or if THEIR hero is the one facing the pending reaction —
+  // mirrors Tris' `activeMark !== myRole` board-disable check. The server
+  // enforces this regardless (see session_manager._HERO_OWNED_COMMAND_FIELDS),
+  // this is purely UX feedback so the controls look disabled instead of
+  // silently failing.
+  const isMyTurn = myHeroId !== null && activeHeroId === myHeroId
+  const isMyPendingReaction = myHeroId !== null && pendingReaction?.defender_id === myHeroId
+  const canAct = isMyTurn || isMyPendingReaction
 
   // actor_id -> display name/label, used by InstantWindowModal (heroes get
   // their full name, monster instances get their short map-token label).
@@ -241,36 +283,154 @@ function App() {
     setTargeting(null)
   }, [activeHeroId, hasPendingReaction])
 
-  async function handleStartMission(missionId: string): Promise<void> {
+  /** Wires a freshly created/joined/resumed session's router + WS + reset local state — shared by every entry point below. */
+  function connectToSession(token: string, session: EldhomSessionInfo): void {
+    disconnectRef.current?.()
+    const nextRouter = new EnvelopeRouter()
+    setRouter(nextRouter)
+    setSessionId(session.session_id)
+    setActiveSession(session)
+    setLogEntries([])
+    setNarrativeLog([])
+    resetLogTimeTracking()
+    setEldhomState((previous) => applyCardCatalog(initialEldhomState, Object.values(previous.cards)))
+    setTargeting(null)
+    setSelectedLocationId(null)
+    setDetailTarget(null)
+    setErrorMessage(null)
+    disconnectRef.current = connectSessionEvents(token, session.session_id, (envelope) => {
+      nextRouter.dispatch(envelope)
+    })
+  }
+
+  function friendlyErrorMessage(caught: unknown): string {
+    const message = caught instanceof Error ? caught.message : String(caught)
+    if (message.includes('429')) {
+      return 'Hai raggiunto il numero massimo di missioni contemporanee: chiudine una per continuare.'
+    }
+    if (message.includes('previewSessionByCode') && message.includes('404')) {
+      return 'Codice missione non valido.'
+    }
+    if (message.includes('joinSession') && message.includes('409')) {
+      return 'Quel PG è già stato scelto da un altro giocatore.'
+    }
+    return message
+  }
+
+  /** Step 1 of "Nuova missione": mission chosen (MissionSelectModal) — now pick a PG (HeroSelectModal). */
+  function handleMissionSelected(missionId: string): void {
+    const mission = missions.find((candidate) => candidate.mission_id === missionId) ?? null
+    setShowMissionSelect(false)
+    setMissionForHeroPick(mission)
+  }
+
+  /** Step 2: PG chosen for a NEW session — actually creates it and seats the caller. */
+  async function handleHeroChosenForNewSession(heroId: string): Promise<void> {
+    if (authToken === null || missionForHeroPick === null) {
+      return
+    }
     try {
-      const session = await createSession({ mission_id: missionId })
-      disconnectRef.current?.()
-      const nextRouter = new EnvelopeRouter()
-      setRouter(nextRouter)
-      setSessionId(session.session_id)
-      setLogEntries([])
-      setNarrativeLog([])
-      resetLogTimeTracking()
-      setEldhomState((previous) => applyCardCatalog(initialEldhomState, Object.values(previous.cards)))
-      setTargeting(null)
-      setSelectedLocationId(null)
-      setDetailTarget(null)
-      setErrorMessage(null)
-      disconnectRef.current = connectSessionEvents(session.session_id, (envelope) => {
-        nextRouter.dispatch(envelope)
-      })
+      const session = await createSession(authToken, { mission_id: missionForHeroPick.mission_id, hero_id: heroId })
+      const typedSession = session as EldhomSessionInfo
+      setSessions((previous) => [...previous.filter((s) => s.session_id !== typedSession.session_id), typedSession])
+      setMissionForHeroPick(null)
+      setShowNewMissionFlow(false)
+      connectToSession(authToken, typedSession)
     } catch (caught) {
-      setErrorMessage(String(caught))
+      setErrorMessage(friendlyErrorMessage(caught))
     }
   }
 
+  /** "Entra con codice": previews the session's roster/free seats BEFORE joining (JoinSessionForm.onSubmit). */
+  async function handleJoinSession(joinCode: string): Promise<void> {
+    if (authToken === null) {
+      return
+    }
+    try {
+      const preview = await previewSessionByCode<EldhomSessionPreview>(authToken, joinCode)
+      setJoinPreview({ joinCode, preview })
+    } catch (caught) {
+      const message = friendlyErrorMessage(caught)
+      setErrorMessage(message)
+      throw new Error(message)
+    }
+  }
+
+  /** PG chosen (among the remaining free seats) for a mission joined via code. */
+  async function handleHeroChosenForJoin(heroId: string): Promise<void> {
+    if (authToken === null || joinPreview === null) {
+      return
+    }
+    try {
+      const session = await joinSession(authToken, joinPreview.joinCode, { hero_id: heroId })
+      const typedSession = session as EldhomSessionInfo
+      setSessions((previous) => [...previous.filter((s) => s.session_id !== typedSession.session_id), typedSession])
+      setJoinPreview(null)
+      connectToSession(authToken, typedSession)
+    } catch (caught) {
+      setErrorMessage(friendlyErrorMessage(caught))
+    }
+  }
+
+  function handleResumeSession(session: EldhomSessionInfo): void {
+    if (authToken === null) {
+      return
+    }
+    connectToSession(authToken, session)
+  }
+
+  async function handleCloseSession(targetSessionId: string): Promise<void> {
+    if (authToken === null) {
+      return
+    }
+    try {
+      await closeSession(authToken, targetSessionId)
+    } catch (caught) {
+      setErrorMessage(String(caught))
+      return
+    }
+    setSessions((previous) => previous.filter((s) => s.session_id !== targetSessionId))
+    if (sessionId === targetSessionId) {
+      disconnectRef.current?.()
+      setSessionId(null)
+      setActiveSession(null)
+    }
+  }
+
+  function handleLogout(): void {
+    disconnectRef.current?.()
+    setSessionId(null)
+    setActiveSession(null)
+    setSessions([])
+    auth.logout()
+  }
+
+  // Opponent-join polling: while a shared session still has a free seat,
+  // check every 3s so the creator's screen updates automatically once a
+  // second (or third+) user joins — the C++ engine has no native "someone
+  // joined" event (joining is a pure eng_serve/session-registry concept).
+  const needsMorePlayers = activeSession !== null && Object.values(activeSession.roles).some((h) => h === null)
+  useEffect(() => {
+    if (authToken === null || sessionId === null || !needsMorePlayers) {
+      return undefined
+    }
+    const intervalId = window.setInterval(() => {
+      getSession(authToken, sessionId)
+        .then((session) => setActiveSession(session as EldhomSessionInfo))
+        .catch(() => {
+          /* transient poll failure — next tick retries */
+        })
+    }, 3000)
+    return () => window.clearInterval(intervalId)
+  }, [authToken, sessionId, needsMorePlayers])
+
   async function sendEldhomCommand(typeId: string, data: Record<string, unknown>): Promise<void> {
-    if (sessionId === null) {
+    if (sessionId === null || authToken === null) {
       setErrorMessage('Nessuna sessione attiva: avvia prima una missione.')
       return
     }
     try {
-      await sendCommand(sessionId, typeId, data)
+      await sendCommand(authToken, sessionId, typeId, data)
     } catch (caught) {
       setErrorMessage(String(caught))
     }
@@ -467,6 +627,36 @@ function App() {
   }
 
   const theme = getTheme(themeId)
+
+  if (auth.isRestoring) {
+    return (
+      <div
+        className="app"
+        data-theme={theme.id}
+        data-moon-variant={moonVariant}
+        style={themeToCssVars(theme) as CSSProperties}
+      >
+        <p>Verifica sessione in corso…</p>
+      </div>
+    )
+  }
+
+  if (!auth.isAuthenticated) {
+    return (
+      <div
+        className="app"
+        data-theme={theme.id}
+        data-moon-variant={moonVariant}
+        style={themeToCssVars(theme) as CSSProperties}
+      >
+        <LoginForm
+          title="Le Pergamene di Eldhôm — Accedi"
+          onSubmit={(username, password) => auth.login(username, password)}
+        />
+      </div>
+    )
+  }
+
   const targetingMode: TargetingMode =
     targeting?.kind === 'simple-move'
       ? 'move'
@@ -523,18 +713,102 @@ function App() {
             </select>
           </label>
         )}
+        <div className="app-header__account">
+          <span>{auth.session?.username}</span>
+          {sessionId !== null && (
+            <button type="button" onClick={() => void handleCloseSession(sessionId)}>
+              Chiudi missione
+            </button>
+          )}
+          <button type="button" onClick={handleLogout}>
+            Esci
+          </button>
+        </div>
       </header>
 
-      {sessionId === null && !showMissionSelect && (
+      {sessionId === null && !showNewMissionFlow && (
+        <div className="gmgui-session-picker">
+          <h2>Missioni attive</h2>
+          {sessions.length === 0 && (
+            <p>Nessuna missione attiva. Premi «Nuova missione» per iniziare, oppure entra in una missione con un codice.</p>
+          )}
+          {sessions.map((session) => (
+            <div key={session.session_id} className="gmgui-session-picker__row">
+              <span>
+                Missione {session.session_id.slice(0, 8)} ·{' '}
+                <span className="gmgui-session-picker__code">{session.join_code}</span>
+                {' · '}
+                {Object.entries(session.roles)
+                  .map(([hero, username]) => `${hero}: ${username ?? 'in attesa'}`)
+                  .join(' · ')}
+              </span>
+              <div className="gmgui-session-picker__row-actions">
+                <button type="button" onClick={() => handleResumeSession(session)}>
+                  Riprendi
+                </button>
+                <button type="button" onClick={() => void handleCloseSession(session.session_id)}>
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="eldhom-modal__actions">
+            <button type="button" onClick={() => setShowNewMissionFlow(true)}>
+              ⚔ Nuova missione
+            </button>
+          </div>
+          <JoinSessionForm onSubmit={handleJoinSession} title="Entra in una missione" />
+        </div>
+      )}
+
+      {sessionId === null && showNewMissionFlow && !showMissionSelect && missionForHeroPick === null && (
         <MainMenuModal onPlayMission={() => setShowMissionSelect(true)} />
       )}
 
-      {sessionId === null && showMissionSelect && (
+      {sessionId === null && showMissionSelect && missionForHeroPick === null && (
         <MissionSelectModal
           missions={missions}
-          onSelect={(id) => void handleStartMission(id)}
+          onSelect={handleMissionSelected}
           onDismiss={() => setShowMissionSelect(false)}
         />
+      )}
+
+      {sessionId === null && missionForHeroPick !== null && (
+        <HeroSelectModal
+          heroes={missionForHeroPick.pg_roster}
+          title={`Scegli il tuo PG — ${missionForHeroPick.title}`}
+          onSelect={(heroId) => void handleHeroChosenForNewSession(heroId)}
+          onDismiss={() => setMissionForHeroPick(null)}
+        />
+      )}
+
+      {joinPreview !== null && (
+        <HeroSelectModal
+          heroes={
+            missions.find((m) => m.mission_id === joinPreview.preview.mission_id)?.pg_roster ??
+            Object.keys(joinPreview.preview.roles).map((heroId) => ({
+              hero_id: heroId,
+              display_name: heroId,
+              class_name: '',
+            }))
+          }
+          takenBy={joinPreview.preview.roles}
+          title="Scegli il tuo PG (rimasti)"
+          onSelect={(heroId) => void handleHeroChosenForJoin(heroId)}
+          onDismiss={() => setJoinPreview(null)}
+        />
+      )}
+
+      {sessionId !== null && myHeroId !== null && (
+        <p className="eldhom-role-banner">
+          Sei <strong>{myHeroId}</strong>
+          {needsMorePlayers && activeSession !== null && (
+            <>
+              {' — in attesa di altri giocatori. Condividi il codice: '}
+              <span className="gmgui-session-picker__code">{activeSession.join_code}</span>
+            </>
+          )}
+        </p>
       )}
 
       {eldhomState.pendingFormation && (
@@ -613,7 +887,7 @@ function App() {
 
       <ActionPanel
         heroName={activeHeroName}
-        enabled={activeHeroId !== ''}
+        enabled={activeHeroId !== '' && canAct}
         sequenceActive={activeHeroSequenceActive}
         targetingMode={targetingMode}
         pendingReaction={pendingReactionView}
@@ -631,7 +905,7 @@ function App() {
         hero={eldhomState.heroesById[activeHeroId]}
         cards={eldhomState.cards}
         sequenceActive={activeHeroSequenceActive}
-        enabled={activeHeroId !== '' && pendingReactionView === null}
+        enabled={activeHeroId !== '' && pendingReactionView === null && isMyTurn}
         onPlayCard={handlePlayCard}
         onDiscardCard={(cardId) => void handleDiscardCard(cardId)}
         onDrawCard={() => void handleDrawCard()}

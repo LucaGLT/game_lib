@@ -10,7 +10,7 @@
  * `session/authClient.ts` (Phase 2: pilot-grade multi-user auth) — the
  * server isolates each user's sessions from every other user's.
  */
-import type { SessionInfo } from './types'
+import type { SessionInfo, SessionPreview } from './types'
 
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
@@ -55,17 +55,45 @@ export async function getSession(token: string, sessionId: string): Promise<Sess
  * shared out-of-band (e.g. verbally) — this is what makes a match truly
  * multiplayer (two different users piloting two different seats of ONE
  * shared session), as opposed to each user getting their own isolated match.
+ *
+ * *extraFields* lets a game pass additional caller-chosen fields the server
+ * needs to pick a SPECIFIC seat (e.g. Eldhôm's `{ hero_id }`) instead of
+ * relying on "first free role" auto-assignment (Tris' two fixed seats).
  */
-export async function joinSession(token: string, joinCode: string): Promise<SessionInfo> {
+export async function joinSession(
+  token: string,
+  joinCode: string,
+  extraFields: Record<string, unknown> = {},
+): Promise<SessionInfo> {
   const response = await fetch('/sessions/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ join_code: joinCode }),
+    body: JSON.stringify({ join_code: joinCode, ...extraFields }),
   })
   if (!response.ok) {
     throw new Error(`joinSession failed: HTTP ${response.status}`)
   }
   return (await response.json()) as SessionInfo
+}
+
+/**
+ * Previews a session's roles/seats by its join code, WITHOUT joining it (GET
+ * .../sessions/by-code/{code}) — lets a would-be joiner see which seats are
+ * still free (e.g. to render a "pick your remaining role" screen) before
+ * committing to `joinSession`. Generic over the exact response shape a game
+ * returns (e.g. Eldhôm adds `mission_id`) via the `T` type parameter.
+ */
+export async function previewSessionByCode<T extends SessionPreview = SessionPreview>(
+  token: string,
+  joinCode: string,
+): Promise<T> {
+  const response = await fetch(`/sessions/by-code/${encodeURIComponent(joinCode)}`, {
+    headers: authHeaders(token),
+  })
+  if (!response.ok) {
+    throw new Error(`previewSessionByCode failed: HTTP ${response.status}`)
+  }
+  return (await response.json()) as T
 }
 
 /** Forwards one command envelope (e.g. gmTris.move) to the running engine. */

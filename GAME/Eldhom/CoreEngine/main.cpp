@@ -43,6 +43,26 @@
 namespace {
 volatile std::sig_atomic_t g_running = 1;
 void handle_signal(int) { g_running = 0; }
+
+/// @brief Parses "--flag_name <value>" from argv, or returns fallback if absent/invalid.
+uint16_t read_port_option(int argc, char** argv, const std::string& flag_name, uint16_t fallback)
+{
+	for (int i = 1; i < argc - 1; ++i)
+	{
+		if (flag_name == argv[i])
+		{
+			try
+			{
+				return static_cast<uint16_t>(std::stoi(argv[i + 1]));
+			}
+			catch (const std::exception&)
+			{
+				return fallback;
+			}
+		}
+	}
+	return fallback;
+}
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,9 +72,9 @@ void handle_signal(int) { g_running = 0; }
 class EldhomServer
 {
 public:
-	explicit EldhomServer(const std::string& data_dir)
+	explicit EldhomServer(const std::string& data_dir, uint16_t events_port = eldhom::ports::EVENTS)
 		: _data_dir(data_dir)
-		, _bridge("127.0.0.1", eldhom::ports::EVENTS)
+		, _bridge("127.0.0.1", events_port)
 	{
 	}
 
@@ -912,21 +932,28 @@ int main(int argc, char* argv[])
 	std::signal(SIGINT,  handle_signal);
 	std::signal(SIGTERM, handle_signal);
 
-	// data_dir: first arg or default relative to build location
+	// data_dir: first positional arg or default relative to build location
 	std::string data_dir = "GAME/Eldhom/data";
-	if (argc >= 2) { data_dir = argv[1]; }
+	if (argc >= 2 && argv[1][0] != '-') { data_dir = argv[1]; }
+
+	// Optional CLI overrides (see file header): let eng_serve run several
+	// independent engine instances at once, one per session, each pair on its
+	// own dynamically-allocated ports. No arguments (desktop GUI launch
+	// scripts) keeps the compiled-in defaults, unchanged.
+	const uint16_t events_port   = read_port_option(argc, argv, "--events-port", eldhom::ports::EVENTS);
+	const uint16_t commands_port = read_port_option(argc, argv, "--commands-port", eldhom::ports::COMMANDS);
 
 	std::cout << "[EldhomEngine] Le Pergamene di Eldhom — CoreEngine P7\n";
 	std::cout << "[EldhomEngine] Data dir : " << data_dir << "\n";
 	std::cout << "[EldhomEngine] Events   : connecting to GUI on port "
-	          << eldhom::ports::EVENTS << "\n";
+	          << events_port << "\n";
 	std::cout << "[EldhomEngine] Commands : listening on port "
-	          << eldhom::ports::COMMANDS << "\n";
+	          << commands_port << "\n";
 
-	EldhomServer server(data_dir);
+	EldhomServer server(data_dir, events_port);
 
 	eldhom::EldhomCmdServer cmd_server(
-		eldhom::ports::COMMANDS,
+		commands_port,
 		[&server](const std::string& type_id, const nlohmann::json& data)
 		{
 			try
@@ -941,7 +968,7 @@ int main(int argc, char* argv[])
 
 	cmd_server.start();
 
-	std::cout << "[EldhomEngine] Ready. Waiting for GUI connection on port 9211...\n";
+	std::cout << "[EldhomEngine] Ready. Waiting for GUI connection on port " << commands_port << "...\n";
 
 	while (g_running)
 	{
