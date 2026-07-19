@@ -1,9 +1,9 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.21.0
-**Status:** Phase 21 – Completato ✅ (Phase 2 saltata/rimandata; Phase 7-8 non ancora iniziate —
-Phase 9-21 inserite fuori sequenza su richiesta esplicita utente per correzioni estetiche/UX
-critiche — vedi Esito sotto)
+**Version:** 0.22.0
+**Status:** Phase 22 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-22 inserite fuori sequenza su richiesta
+esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -247,18 +247,24 @@ game_lib/
 
 ---
 
-### Phase 2 — Multi-Session & Auth [⏸️ Deliberatamente rimandata / saltata]
+### Phase 2 — Multi-Session & Auth [✅ Completato]
 
-- [ ] (invariato rispetto a Tris — vedi `GAME/Tic-Tac-Toe/WebApp/PLAN.md` Phase 2 per la checklist)
+- [x] Multi-sessione/multi-utente reale via `pyLib/gmWebServe.SessionRegistry` (porte dinamiche,
+  cap sessioni/utente, idle-timeout, auth pilot-grade) — stesso pattern di Tris, vedi
+  `GAME/Tic-Tac-Toe/WebApp/PLAN.md` Phase 2 per il disegno di libreria condiviso
+- [x] Login UI reale (`LoginForm` condiviso), token bearer su REST + query param su WS
+- [x] Porte dinamiche anche per `eldhom_engine.exe` (`--events-port`/`--commands-port` opzionali)
 
 **Notes:**
-- **Decisione esplicita dell'utente per questa pianificazione (2026-07-17):** si mantiene
-  `MONO_USER_MANAGES_ALL_PLAYER` — un solo utente locale controlla tutti i 2-5 PG della
-  missione, esattamente come la GUI desktop oggi. Questa fase riparte da qui solo quando/se
-  si formerà l'esigenza multi-utente (stessa logica già applicata a Tris).
-- **Confermato di nuovo (stesso turno di Phase 3):** l'utente ha esplicitamente chiesto di
-  saltare la Phase 2 e procedere direttamente con la Phase 3 — nessun lavoro svolto qui,
-  scelta deliberata confermata due volte.
+- **Completata insieme alla Phase 22** (2026-07-19), non separatamente: l'utente ha chiesto
+  direttamente il multiplayer condiviso ("almeno 2 Users diversi... il primo sceglie il PG..."),
+  quindi non ha più senso fare PRIMA una Phase 2 "mono-utente-multi-sessione" isolata e poi
+  una Phase successiva per la condivisione — le due sono state implementate insieme. Vedi
+  Phase 22 per tutti i dettagli tecnici (session_manager/routers/frontend/anti-spoofing).
+- `MONO_USER_MANAGES_ALL_PLAYER` (un solo utente controlla tutti i PG) resta un modello
+  VALIDO e ancora supportato: se un utente sceglie tutti i PG rimasti joinando più volte da
+  solo (o semplicemente non condivide il codice), nulla glielo impedisce — il vincolo
+  "un PG per partecipante" è opzionale, non imposto strutturalmente dal motore.
 
 ---
 
@@ -1497,6 +1503,95 @@ visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
 
 ---
 
+### Phase 22 — Shared Multiplayer via Codice + Scelta PG (richiesta esplicita utente) [✅ Completato]
+
+- [x] `pyLib/gmWebServe/session_registry.py`: generalizzato con `owner_role`/`requested_role`
+  (scelta esplicita del ruolo, non più solo auto-assegnazione "primo libero" di Tris) +
+  `peek_session_by_code()` (anteprima ruoli/PG liberi prima di joinare) — retrocompatibile al
+  100% con Tris (parametri opzionali, comportamento di default invariato, 32/32 test verdi)
+- [x] `GAME/Eldhom/CoreEngine/main.cpp`: porte dinamiche opzionali `--events-port`/
+  `--commands-port` (stesso pattern/stessa funzione `read_port_option` di Tris Phase 2) —
+  `EldhomServer` guadagna un parametro `events_port` di default `eldhom::ports::EVENTS`,
+  `EldhomGuiBridge`/`EldhomCmdServer` accettavano già una porta nel costruttore (stessa
+  scoperta di Tris: bastava aggiungere il parsing argv, non serviva toccare le classi bridge)
+- [x] `eng_serve/session_manager.py` riscritto: da singola sessione fissa `"dev-session"`
+  senza auth (Phase 1) a `SessionRegistry` reale con ruoli = roster PG della missione scelta
+  (`roles=hero_ids`, dinamico per missione, NON una coppia fissa come Tris X/O)
+- [x] `eng_serve/missions.py`: `scan_missions()` include ora `pg_roster` (hero_id/display_name/
+  class_name) per ogni missione + nuovo `hero_ids_for_mission()` (validazione lato server di
+  un `hero_id` scelto dal client, senza fidarsi ciecamente dell'input)
+- [x] `eng_serve/routers/sessions.py`: `POST /sessions` richiede ora `{mission_id, hero_id}`
+  (il chiamante SCEGLIE il PG, non più auto-assegnato); nuovo `GET /sessions/by-code/{code}`
+  (anteprima SENZA joinare, per mostrare quali PG sono ancora liberi); `POST /sessions/join`
+  richiede `{join_code, hero_id}` (scelta esplicita fra i PG rimasti); `GET /missions`/
+  `GET /cards` ora dietro auth (`Depends(get_current_user)`)
+- [x] `eng_serve/main.py`: montato `gmWebServe.auth_router` + reaper idle-session periodico
+  (mirror 1:1 di Tris, mai fatto prima per Eldhôm dato che Phase 2 era stata saltata)
+- [x] `eng_serve/auth_config.json` (NUOVO): utenti pilota `demo`/`demo2` (stesso schema di
+  Tris, hash+salt PBKDF2, mai password in chiaro), generato via
+  `python -m gmWebServe.tools.manage_users`
+- [x] Frontend: `webLib/WebGUI_Lib` esteso — `SessionPreview` (tipo base) + `previewSessionByCode()`
+  (nuova funzione REST condivisa, generica sul tipo di ritorno) + `joinSession()` generalizzato
+  con un parametro opzionale `extraFields` (per passare `{hero_id}`, retrocompatibile con Tris
+  che non lo usa)
+- [x] Frontend Eldhôm: NUOVO componente `HeroSelectModal.tsx` (mirror di `MissionSelectModal`),
+  riusato sia alla creazione (tutti i PG del roster selezionabili) sia al join (solo i PG
+  ancora liberi, quelli presi mostrati disabilitati con "già scelto da `<utente>`")
+- [x] `App.tsx`: aggiunto login gate (`AuthProvider`/`LoginForm`, MAI presente prima — Phase 2
+  era saltata) + picker "Missioni attive" (Riprendi/Chiudi/`JoinSessionForm`) PRIMA di
+  `MainMenuModal`/`MissionSelectModal` (rimasti invariati); nuovo flusso a 2 passi per la
+  creazione (missione → `HeroSelectModal`) e per il join (codice → anteprima → `HeroSelectModal`
+  sui soli PG liberi); polling "attesa altri giocatori" (stesso pattern 3s di Tris); banner di
+  ruolo ("Sei thael"); gating turno (`canAct`) su `ActionPanel`/`DeckTable`
+- [x] **Fix di sicurezza (OWASP A01, Broken Access Control)**: `SessionManager.send_command()`
+  sovrascrive SEMPRE il campo hero-id rilevante (`hero_id` o, per `react_defense`,
+  `defender_id`) col ruolo reale del chiamante per i comandi legati a UN PG specifico
+  (`simple_action`/`play_card`/`stop_sequence`/`declare_attack`/`react_defense`/i 4 comandi
+  GM-override mazzo) — un partecipante non può comandare il PG dell'altro. **Scelta
+  deliberata differente da Tris**: i dialog "di gruppo" (`resolve_formation`/`play_instants`/
+  `play_reactive_instants`) NON sono ristretti a un singolo PG — Eldhôm è cooperativo (non a
+  somma zero come X-contro-O di Tris), quindi qualunque partecipante può risolverli per il
+  gruppo, equivalente a un giocatore qualsiasi che muove un segnalino condiviso al tavolo
+  fisico.
+- [x] Corretto anche un bug PREESISTENTE (non causato da questa fase, scoperto durante
+  l'indagine): `App.tsx` chiamava ancora le vecchie firme pre-libreria-condivisa di
+  `createSession`/`connectSessionEvents`/`sendCommand` (senza token) — la build `npm run
+  build` era rotta da quando Tris aveva introdotto l'auth nella libreria condivisa. Risolto
+  come parte naturale dell'aggiunta dell'auth gate.
+
+**Notes:**
+- **Origine della richiesta**: dopo aver validato Tris (\"ho testato personalmente, tutto
+  OK\"), l'utente ha chiesto la STESSA logica su Eldhôm, con una variante specifica: \"il
+  primo deve scegliere il PG con cui giocare e il secondo User sceglie fra i PG rimasti\" —
+  a differenza di Tris (ruoli fissi X/O auto-assegnati), qui la scelta è sempre esplicita per
+  ENTRAMBI i lati (creazione e join), e i ruoli sono dinamici (2-5 PG a seconda della
+  missione, non una coppia fissa).
+- **`pg_roster` già presente nei file missione**: `mission_01.json`/`mission_sim_a.json`
+  avevano già un campo `pg_roster` con `hero_id`/`display_name`/`class_name` per PG — non è
+  stato necessario alcun nuovo schema dati, solo esporlo via `GET /missions`.
+- **`eldhom.action.result` non include l'hero_id che ha agito** (solo `{ok, code, error}`) —
+  per il test E2E anti-spoofing è stato usato `eldhom.pg.moved` (che include `actor_id`)
+  come segnale osservabile, verificando che rifletta il VERO ruolo del chiamante e non quello
+  forgiato nel payload.
+- **Validato**: 32 test `pyLib/gmWebServe/tests` (7 nuovi su owner_role/requested_role/
+  peek_session_by_code) + 9 test `eng_serve/tests/test_session_e2e.py` (riscritti da zero per
+  Shared Multiplayer, incl. un test dedicato anti-spoofing, contro `eldhom_engine.exe` REALE)
+  + `npm run build` pulito (nessuna suite Vitest per il frontend Eldhôm, mai esistita prima
+  d'ora — validazione sempre stata manuale/browser per questo sotto-progetto, coerente con le
+  fasi precedenti).
+- **Smoke test manuale nel browser reale con 2 utenti**: missione creata da demo scegliendo
+  "thael", condiviso il codice, demo2 entrato scegliendo "velyr" (unico PG rimasto per le
+  missioni attuali a 2 PG); stato di missione realmente condiviso e sincronizzato via
+  WebSocket fra le due sessioni (mosse/carte giocate da un lato viste dall'altro); gating
+  turno confermato (controlli disabilitati quando non è il turno/reazione del proprio PG).
+  **Nota metodologica**: il tool di automazione browser condivide il `localStorage` fra tab
+  diverse della stessa sessione, complicando il test manuale di 2 utenti autenticati in
+  parallelo (vedi memoria utente `tooling-lessons.md` per la tecnica di aggiramento) — la
+  prova finale è stata comunque confermata leggendo lo stato REALE lato server via fetch
+  autenticato diretto, non solo il rendering della pagina.
+
+---
+
 ## Key Design Decisions
 
 1. **Pilota #2 dopo Tris:** Eldhôm è scelto per validare che sia `webLib/WebGUI_Lib` sia il
@@ -1504,8 +1599,10 @@ visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
    formazioni, dialog) e non solo al caso semplice di Tris.
 2. **Convivenza permanente:** la GUI PySide6 esistente resta invariata e autonoma; la WebApp è
    un canale aggiuntivo, non un rimpiazzo — stesso principio di Tris.
-3. **`MONO_USER_MANAGES_ALL_PLAYER`:** un solo utente locale gestisce tutti i PG; nessuna
-   sessione multi-utente/autenticazione in questo piano (Phase 2 deliberatamente rimandata).
+3. **Multi-utente condiviso (dalla Phase 22):** più utenti autenticati possono controllare PG
+   diversi della STESSA missione tramite un codice di invito, ciascuno scegliendo esplicitamente
+   il proprio PG — `MONO_USER_MANAGES_ALL_PLAYER` resta comunque possibile (nessun vincolo
+   strutturale impedisce a un solo utente di tenere per sé più PG non condivisi).
 4. **Le 3 dialog diventano modali web event-driven, non RPC bloccanti:** nessuna modifica al
    wire-contract C++ — solo un nuovo stato React "modale pendente" popolato dagli eventi
    `eldhom.formation.dialog_needed` / `eldhom.instant.window_opened` /
