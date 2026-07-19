@@ -36,7 +36,13 @@ enum class StarterMode
 	DICE_1D2 ///< A 1d2 roll decides who starts.
 };
 
-/// @brief Network ports used by the Engine↔GUI bridge.
+/// @brief Default network ports used by the Engine↔GUI bridge.
+///
+/// @note These are only the *defaults*. `main.cpp` accepts optional
+///       `--events-port`/`--commands-port` CLI overrides (used by eng_serve
+///       to run several engine instances at once, one per user session, on
+///       dynamically-allocated ports) — running with no arguments still
+///       uses exactly these values, unchanged.
 namespace ports
 {
 /// @brief Port where the GUI listens for engine events (Engine is client).

@@ -11,6 +11,22 @@
  * rules belong in this file.
  */
 
+/* ── Thematic typography (shared by EVERY game_lib WebApp) ────────────────
+   `themeToCssVars()` already puts `fontFamily: --gm-font-body` on the app
+   root it's applied to (inherited by everything below it "for free"); these
+   two rules cover the rest: headings get the thematic DISPLAY face, and any
+   other title/name-like text can opt in via `.gmgui-display-font`. */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.gmgui-display-font {
+  font-family: var(--gm-font-display);
+}
+
 /* ── Field (labeled select), used by ThemeSelect and any similar toolbar field ── */
 
 .gmgui-field {
@@ -155,5 +171,245 @@
 
 .gmgui-modal__body {
   padding: 14px;
+}
+
+/* ── Login form (generic username/password gate, Phase 2 auth) ──────────── */
+
+.gmgui-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 320px;
+  margin: 64px auto;
+  padding: 24px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-login-form h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.gmgui-login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gmgui-login-form__field input {
+  background-color: var(--gm-background);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.gmgui-login-form__field input:focus {
+  border-color: var(--gm-accent);
+  outline: none;
+}
+
+.gmgui-login-form button[type='submit'] {
+  padding: 8px 16px;
+  background-color: var(--gm-accent);
+  color: var(--gm-panel);
+  border: none;
+  border-radius: var(--gm-radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gmgui-login-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.gmgui-login-form__error {
+  color: var(--gm-danger);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Join-session form (shared multiplayer: join by code) ────────────────── */
+
+.gmgui-join-session-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background-color: var(--gm-background);
+  border: 1px dashed var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-join-session-form h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.gmgui-join-session-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gmgui-join-session-form__field input {
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gmgui-join-session-form__field input:focus {
+  border-color: var(--gm-accent);
+  outline: none;
+}
+
+.gmgui-join-session-form button[type='submit'] {
+  padding: 8px 16px;
+  background-color: var(--gm-accent);
+  color: var(--gm-panel);
+  border: none;
+  border-radius: var(--gm-radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gmgui-join-session-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.gmgui-join-session-form__error {
+  color: var(--gm-danger);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Session picker (list of the caller's own active sessions, Phase 2) ──── */
+
+.gmgui-session-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  margin: 64px auto;
+  padding: 24px;
+  background-color: var(--gm-panel);
+  color: var(--gm-text);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-session-picker h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.gmgui-session-picker__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+}
+
+.gmgui-session-picker__row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.gmgui-session-picker__code {
+  font-family: var(--gm-font-display);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* ── Themed page backdrop (shared by EVERY game_lib WebApp) ──────────────────
+   Opt-in: add BOTH `data-theme={theme.id}` and this class to a game's root
+   element (alongside its own local class, e.g. `className="app gmgui-theme-
+   backdrop"`) to get a per-theme gradient background "for free", instead of
+   every game re-implementing its own. The `[data-theme='...']` attribute
+   selector always outscores a plain single-class rule (e.g. `.app`), so a
+   game's own flat `background-color` fallback is safely overridden without
+   needing `!important` or careful stylesheet ordering. Gradients ported 1:1
+   from the original Eldhôm WebApp per-theme page skin (Phase 13/14); Dark
+   Moon uses the "Crepuscolo" variant as the shared default (Eldhôm alone
+   keeps its extra selectable-variant picker as a local, game-specific
+   enhancement layered on top via `[data-moon-variant]`). ────────────────── */
+
+.gmgui-theme-backdrop[data-theme='scroll'] {
+  --gm-backdrop-text: var(--gm-accent);
+  background-color: #2c1a0c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 15px),
+    repeating-linear-gradient(90deg, rgba(255, 195, 130, 0.05) 0px, rgba(255, 195, 130, 0.05) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #4a3018 0%, #2c1a0c 100%);
+}
+
+.gmgui-theme-backdrop[data-theme='stone'] {
+  --gm-backdrop-text: var(--gm-accent);
+  background-color: #211f1c;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(0, 0, 0, 0.32), transparent 8%),
+    radial-gradient(circle at 42% 55%, rgba(0, 0, 0, 0.28), transparent 7%),
+    radial-gradient(circle at 76% 22%, rgba(0, 0, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(0, 0, 0, 0.26), transparent 7%),
+    radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.24), transparent 6%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 2px, transparent 2px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 96px),
+    linear-gradient(180deg, #292723 0%, #171614 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
+}
+
+.gmgui-theme-backdrop[data-theme='dark_moon'] {
+  --gm-backdrop-text: var(--gm-accent);
+  background-color: #08070d;
+  background-image:
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(126, 98, 168, 0.22), transparent 70%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    linear-gradient(180deg, #1c1830 0%, #0d0b18 55%, #06050a 100%);
+}
+
+.gmgui-theme-backdrop[data-theme='blood'] {
+  --gm-backdrop-text: var(--gm-accent);
+  background-color: #150808;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
+    radial-gradient(ellipse at 15% 20%, rgba(107, 21, 21, 0.24), transparent 30%),
+    radial-gradient(ellipse at 85% 75%, rgba(80, 10, 10, 0.22), transparent 32%),
+    radial-gradient(ellipse at 60% 40%, rgba(60, 5, 5, 0.2), transparent 28%),
+    linear-gradient(180deg, #1c0a0a 0%, #0c0404 100%);
+}
+
+.gmgui-theme-backdrop[data-theme='techno'] {
+  --gm-backdrop-text: var(--gm-accent);
+  background-color: #050d14;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 229, 255, 0.06), transparent 55%),
+    linear-gradient(rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #0a1720 0%, #050d14 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
 }
 
