@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.26.0
-**Status:** Phase 26 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-26 inserite fuori sequenza su richiesta
+**Version:** 0.27.0
+**Status:** Phase 27 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-27 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1875,6 +1875,35 @@ e a costo zero dopo l'azione.
   solo, non ancora rilevante per il gameplay reale (nessuna sessione live lo ha mai incontrato).
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.26.0, nuova Phase 26 in coda (dopo Phase
   25, mai rinumerata).
+
+### Phase 27 — Banner di stato turno spostato in alto + titolo pannello "Azione di X" [✅ Completato]
+
+Richiesta utente (con screenshot annotati): i messaggi "Tocca a Te, Thael"/"Velyr, attendi che
+gli altri facciano le loro Azioni" non devono stare sulla barra delle Azioni, ma nella parte
+alta della pagina (vicino al banner "Sei Thael"/"Sei Velyr"); sulla barra delle Azioni va invece
+scritto semplicemente "Azione di Xxxxxx".
+
+- [x] `App.tsx`: nuovo paragrafo `.eldhom-turn-status` inserito subito dopo `.eldhom-role-banner`
+      ("Sei {myHeroName}"), con la STESSA logica di messaggio che prima viveva in
+      `ActionPanel.tsx` (`Tocca a Te, X` se `canAct`, altrimenti `X, attendi che gli altri...`,
+      fallback `In attesa…`) — comportamento visivo identico, solo posizione diversa.
+- [x] `ActionPanel.tsx`: prop `myHeroName` (nome dell'eroe che sta VISUALIZZANDO) sostituita da
+      `activeHeroName` (nome dell'eroe attualmente ATTIVO, già calcolato in App.tsx per
+      `DeckTable`); il titolo del pannello è ora sempre `Azione di {activeHeroName}` (fallback
+      "—" se vuoto, es. durante il turno di un gruppo di mostri), indipendentemente da chi sta
+      guardando o da chi può agire.
+- [x] `App.css`: nuova regola `.eldhom-turn-status` (stesso trattamento a pannello bordato di
+      `.eldhom-actions`/`.eldhom-mission-title`, così il banner spostato mantiene lo stesso peso
+      visivo che aveva dentro il pannello Azioni); aggiunta alle 2 liste di selettori condivise
+      (font tematico display, incisione Stone) accanto a `.eldhom-actions__title`.
+- **Validato end-to-end nel browser reale con 2 utenti** (demo=thael, demo2=velyr): sulla scheda
+  di Thael, "Sei Thael" seguito subito da "Thael, attendi che gli altri facciano le loro
+  Azioni" in alto, pannello Azioni con titolo "Azione di Velyr" (turno di Velyr); sulla scheda
+  di Velyr, "Tocca a Te, Velyr" in alto, stesso "Azione di Velyr" nel pannello — confermato sia
+  via lettura DOM diretta (`textContent` dei 3 elementi) sia via screenshot a pagina intera.
+- Nessuna modifica al wire-contract/motore C++ — puramente un riposizionamento UI React/CSS.
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.27.0, nuova Phase 27 in coda (dopo Phase
+  26, mai rinumerata).
 
 ---
 
