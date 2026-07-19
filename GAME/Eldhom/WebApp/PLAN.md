@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.24.0
-**Status:** Phase 24 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-24 inserite fuori sequenza su richiesta
+**Version:** 0.25.0
+**Status:** Phase 25 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-25 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1733,6 +1733,72 @@ visibile solo quando il Tema attivo è Dark Moon) che sostituisce SOLO lo sfondo
   fallback esplicito a "In attesa…", scoperto ricaricando la pagina durante il test dal vivo prima
   ancora di aprire una sessione.
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.24.0, Status "Phase 24 – Completato ✅".
+
+### Phase 25 — Sotto-temi generalizzati a tutti e 5 i temi (richiesta esplicita utente) [✅ Completato]
+
+L'utente ha apprezzato "Sfondo Luna" (Phase 21, solo Dark Moon: 5 varianti di sfondo pagina/
+mappa selezionabili) e ha chiesto lo stesso meccanismo per tutti gli altri 4 temi, fornendo
+l'elenco esatto dei nomi: Scroll (4: Ancient Library/Arcane Manuscript/Alchemical
+Scriptorium/Nautical Chart), Stone (5: Elder Stone/Frost Runes/Obsidian Codex/Primeval
+Dolmen/Reliquary), Blood (5: Sacrificial Altar/Crimson Earth/Eclipse Runestone/Iron &
+Blood/Nocturnal Blood), Techno (5: Motherboard/Holographic/Clockwork Brass/Distopia/Quantum
+Monolith) — nessuna variante inventata oltre l'elenco fornito (Scroll resta a 4, non 5).
+
+- [x] **Meccanismo generalizzato** (`App.tsx`): il precedente `MoonVariantId`/`MOON_VARIANTS`/
+  `moonVariant` (solo `dark_moon`) diventa `THEME_VARIANTS: Record<ThemeId,
+  ReadonlyArray<{id,displayName}>>` con una lista indipendente per tema; nuovo stato
+  `themeVariants: Record<ThemeId, string>` (una scelta ricordata PER TEMA, non una sola
+  variabile globale) così cambiare tema e tornare indietro riporta l'ultima scelta fatta per
+  quel tema; persistito in `localStorage` come JSON sotto una nuova chiave
+  `eldhom-webapp-theme-variant` (la vecchia `eldhom-webapp-moon-variant` resta orfana,
+  accettabile per un'app pilota). Il picker header (rinominato da "Sfondo Luna" a
+  "Sotto-tema") ora e' SEMPRE visibile (non più condizionato a `theme.id === 'dark_moon'`).
+  Attributo DOM rinominato da `data-moon-variant` a `data-theme-variant` (3 punti in App.tsx).
+- [x] **CSS** (`App.css`): per Scroll/Stone/Blood, la struttura già stabilita da Dark Moon
+  (Phase 21) si applica pari pari — `border`/`box-shadow` restano condivisi in una regola
+  base per-tema, SOLO `background-color`/`-image` (e per Scroll anche `-position`/`-size`/
+  `-repeat`) si spostano in N regole `[data-theme='X'][data-theme-variant='Y']`. **Eccezione
+  Techno**: la mappa usa 8 layer `linear-gradient(var(--gm-accent),...)` per la cornice HUD
+  ad angoli (già theme-reattiva, non hardcoded) — poiché le liste CSS `background-image`/
+  `-position`/`-size`/`-repeat` NON si fondono tra regole in cascata (vince per intero la
+  dichiarazione più specifica), i 5 layer di contenuto (bagliore+griglia) variabili per
+  sotto-tema richiedono di ripetere gli 8 layer bracket IDENTICI in ciascuna delle 5 regole
+  variante — più verboso ma l'unico modo corretto dato questo vincolo del CSS.
+- [x] **Una variante per tema riusa ESATTAMENTE il vecchio aspetto fisso** (nessun contenuto
+  visivo perso): Scroll → "Ancient Library", Stone → "Elder Stone", Blood → "Sacrificial
+  Altar", Techno → "Motherboard" (scelta per somiglianza concettuale col vecchio look a
+  griglia/circuito, non per posizione nell'elenco). Le altre varianti sono nuove
+  rielaborazioni SOLO di tinta/collocazione dei gradienti (stessa tecnica già stabilita:
+  radial/linear-gradient puri, nessun asset esterno, nessun colore/font hardcoded fuori da
+  questo strato puramente decorativo) — le ornamentazioni strutturali (anelli d'angolo
+  Scroll, speckle Stone, schizzi Blood, bracket HUD Techno) restano IDENTICHE tra le varianti
+  dello stesso tema (fanno parte dell'identità "materiale" del tema, non qualcosa che
+  l'utente ha chiesto di variare) — solo bagliori/macchie/griglie cambiano colore.
+- [x] **Validato**: `npm run build`/`npm run lint` puliti (zero errori/warning). Smoke test dal
+  vivo nel browser: dropdown "Sotto-tema" verificato per tutti e 5 i temi (conteggio/nomi
+  esatti confermati via lettura DOM diretta delle `<option>`); sfondo pagina verificato per
+  Scroll ("Nautical Chart": blu marino con griglia sottile), Stone ("Elder Stone": granito
+  grigio invariato), Blood ("Eclipse Runestone": anello di bagliore rosso scuro concentrico),
+  Techno ("Holographic": sfumatura ciano/magenta); sfondo MAPPA verificato per Techno
+  ("Holographic", `background-color` #0d0a18 confermato via `getComputedStyle`, bracket HUD
+  ciano ancora presenti) durante una missione reale avviata appositamente per il test.
+
+**Notes:**
+- **Gotcha screenshot riconfermato più grave**: anche uno screenshot A PAGINA INTERA (non solo
+  scoped a un selettore, già noto da Phase 13) puo' restituire un frame stale subito dopo un
+  cambio tema/variante via `page.selectOption()` — 2 tentativi consecutivi hanno mostrato lo
+  sfondo VECCHIO nonostante `getComputedStyle`/attributi DOM confermassero gia' il nuovo stato.
+  Soluzione affidabile: `page.screenshot({path:...})` (Playwright diretto, salvato su disco) +
+  tool `view_image` sul file — ha funzionato al primo colpo quando lo strumento screenshot
+  integrato continuava a fallire. Vedi memoria utente `tooling-lessons.md`.
+- **Perché una mappa PER TEMA (`themeVariants: Record<ThemeId,string>`) invece di una singola
+  variabile globale**: cambiare tema e poi tornare al precedente riporta l'ultima scelta fatta
+  per quel tema specifico, invece di resettare sempre alla prima variante — UX più naturale
+  per un utente che confronta piu' temi, costo implementativo marginale (un `Record` invece
+  di una stringa).
+- Nessuna modifica al wire-contract/motore C++ — puramente un ampliamento CSS/React lato
+  frontend, stesso principio di Phase 21 ("NOT added to the shared ThemeId/THEMES registry").
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.25.0, Status "Phase 25 – Completato ✅".
 
 ---
 

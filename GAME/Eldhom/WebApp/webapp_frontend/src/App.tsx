@@ -66,32 +66,82 @@ function loadStoredTheme(): ThemeId {
 }
 
 /**
- * "Sfondo Luna" — Eldhôm-only background-art variants for the `dark_moon`
- * theme (Phase 21, replacing the original starfield+moon-disc art the user
- * disliked). Deliberately NOT added to the shared `ThemeId`/`THEMES`
- * registry (`webLib/WebGUI_Lib/src/theme/themes.ts`): that file mirrors the
- * desktop PySide6 app's fixed 5 themes 1:1 and is shared with other WebApps
- * (Tris) — these are purely a `.app`/`.eldhom-map` `background-image` swap
- * layered on top of the existing `dark_moon` color tokens, scoped to this
- * component via a second `data-moon-variant` attribute (see `App.css`).
- * Only shown/relevant when `themeId === 'dark_moon'`.
+ * "Sotto-tema" — Eldhôm-only background-art variants for EVERY theme
+ * (Phase 21 introduced this for `dark_moon` only, as "Sfondo Luna"; this
+ * turn generalises it to all 5 themes per explicit user request —
+ * "mi è piaciuta l'idea di avere dei Sotto Temi [...] fa lo stesso per
+ * TUTTI gli altri temi"). Deliberately NOT added to the shared
+ * `ThemeId`/`THEMES` registry (`webLib/WebGUI_Lib/src/theme/themes.ts`):
+ * that file mirrors the desktop PySide6 app's fixed 5 themes 1:1 and is
+ * shared with other WebApps (Tris) — these are purely a `.app`/
+ * `.eldhom-map` `background-image` swap layered on top of the existing
+ * theme's color tokens, scoped to this component via a `data-theme-variant`
+ * attribute (see `App.css`). Each theme keeps its OWN independent id space
+ * and variant COUNT (Scroll has 4, the other 4 themes have 5) — exactly the
+ * list the user asked for, no invented extra entries.
  */
-type MoonVariantId = 'moon_01' | 'moon_02' | 'moon_03' | 'moon_04' | 'moon_05'
+type ThemeVariant = { id: string; displayName: string }
 
-const MOON_VARIANTS: ReadonlyArray<{ id: MoonVariantId; displayName: string }> = [
-  { id: 'moon_01', displayName: 'Moon_01 — Crepuscolo' },
-  { id: 'moon_02', displayName: 'Moon_02 — Aurora' },
-  { id: 'moon_03', displayName: 'Moon_03 — Nebulosa' },
-  { id: 'moon_04', displayName: 'Moon_04 — Nebbia' },
-  { id: 'moon_05', displayName: 'Moon_05 — Profondo' },
-]
+const THEME_VARIANTS: Record<ThemeId, ReadonlyArray<ThemeVariant>> = {
+  scroll: [
+    { id: 'ancient_library', displayName: 'Ancient Library' },
+    { id: 'arcane_manuscript', displayName: 'Arcane Manuscript' },
+    { id: 'alchemical_scriptorium', displayName: 'Alchemical Scriptorium' },
+    { id: 'nautical_chart', displayName: 'Nautical Chart' },
+  ],
+  stone: [
+    { id: 'elder_stone', displayName: 'Elder Stone' },
+    { id: 'frost_runes', displayName: 'Frost Runes' },
+    { id: 'obsidian_codex', displayName: 'Obsidian Codex' },
+    { id: 'primeval_dolmen', displayName: 'Primeval Dolmen' },
+    { id: 'reliquary', displayName: 'Reliquary' },
+  ],
+  dark_moon: [
+    { id: 'moon_01', displayName: 'Moon_01 — Crepuscolo' },
+    { id: 'moon_02', displayName: 'Moon_02 — Aurora' },
+    { id: 'moon_03', displayName: 'Moon_03 — Nebulosa' },
+    { id: 'moon_04', displayName: 'Moon_04 — Nebbia' },
+    { id: 'moon_05', displayName: 'Moon_05 — Profondo' },
+  ],
+  blood: [
+    { id: 'sacrificial_altar', displayName: 'Sacrificial Altar' },
+    { id: 'crimson_earth', displayName: 'Crimson Earth' },
+    { id: 'eclipse_runestone', displayName: 'Eclipse Runestone' },
+    { id: 'iron_blood', displayName: 'Iron & Blood' },
+    { id: 'nocturnal_blood', displayName: 'Nocturnal Blood' },
+  ],
+  techno: [
+    { id: 'motherboard', displayName: 'Motherboard' },
+    { id: 'holographic', displayName: 'Holographic' },
+    { id: 'clockwork_brass', displayName: 'Clockwork Brass' },
+    { id: 'distopia', displayName: 'Distopia' },
+    { id: 'quantum_monolith', displayName: 'Quantum Monolith' },
+  ],
+}
 
-const DEFAULT_MOON_VARIANT_ID: MoonVariantId = 'moon_01'
-const MOON_VARIANT_STORAGE_KEY = 'eldhom-webapp-moon-variant'
+const THEME_VARIANT_STORAGE_KEY = 'eldhom-webapp-theme-variant'
 
-function loadStoredMoonVariant(): MoonVariantId {
-  const stored = window.localStorage.getItem(MOON_VARIANT_STORAGE_KEY)
-  return MOON_VARIANTS.find((variant) => variant.id === stored)?.id ?? DEFAULT_MOON_VARIANT_ID
+/** Reads the per-theme remembered variant choice from localStorage, defaulting any theme with no (or an invalid) stored choice to its own first variant. */
+function loadStoredThemeVariants(): Record<ThemeId, string> {
+  const defaults = Object.fromEntries(
+    THEMES.map((theme) => [theme.id, THEME_VARIANTS[theme.id][0].id]),
+  ) as Record<ThemeId, string>
+  const raw = window.localStorage.getItem(THEME_VARIANT_STORAGE_KEY)
+  if (raw === null) {
+    return defaults
+  }
+  try {
+    const stored = JSON.parse(raw) as Partial<Record<ThemeId, string>>
+    for (const theme of THEMES) {
+      const candidate = stored[theme.id]
+      if (candidate !== undefined && THEME_VARIANTS[theme.id].some((variant) => variant.id === candidate)) {
+        defaults[theme.id] = candidate
+      }
+    }
+  } catch {
+    // Malformed storage: fall back to defaults built above.
+  }
+  return defaults
 }
 
 /** What a location/token click (or card drop) on the map currently resolves to (or null if nothing is armed). */
@@ -140,12 +190,12 @@ function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDe
  * keeps showing fresh HP/state while open and auto-closes if the
  * underlying actor disappears (e.g. a fully-defeated monster group).
  *
- * When the `dark_moon` theme is active, an extra "Sfondo Luna" picker
- * (Phase 21) lets the user cycle through 5 alternative background-art
- * variants (`moonVariant`, `MOON_VARIANTS`) replacing the original
- * starfield+moon-disc art — see `App.css`'s `[data-moon-variant]` rules.
- * This is deliberately NOT part of the shared `ThemeId` registry (see the
- * comment above `MOON_VARIANTS`).
+ * A "Sotto-tema" picker (generalised from Phase 21's dark_moon-only
+ * "Sfondo Luna") lets the user cycle through several alternative
+ * background-art variants for WHICHEVER theme is active
+ * (`themeVariants`/`THEME_VARIANTS`) — see `App.css`'s
+ * `[data-theme-variant]` rules. This is deliberately NOT part of the shared
+ * `ThemeId` registry (see the comment above `THEME_VARIANTS`).
  *
  * Point-and-click targeting for the 4 SIMPLE actions (move destination /
  * attack target) is armed by `ActionPanel` and resolved by this
@@ -193,7 +243,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showMissionDetails, setShowMissionDetails] = useState(false)
   const [themeId, setThemeId] = useState<ThemeId>(loadStoredTheme)
-  const [moonVariant, setMoonVariant] = useState<MoonVariantId>(loadStoredMoonVariant)
+  const [themeVariants, setThemeVariants] = useState<Record<ThemeId, string>>(loadStoredThemeVariants)
   const disconnectRef = useRef<(() => void) | null>(null)
   const authToken = auth.session?.token ?? null
 
@@ -206,8 +256,8 @@ function App() {
   }, [themeId])
 
   useEffect(() => {
-    window.localStorage.setItem(MOON_VARIANT_STORAGE_KEY, moonVariant)
-  }, [moonVariant])
+    window.localStorage.setItem(THEME_VARIANT_STORAGE_KEY, JSON.stringify(themeVariants))
+  }, [themeVariants])
 
   useEffect(() => {
     if (authToken === null) {
@@ -674,13 +724,17 @@ function App() {
   }
 
   const theme = getTheme(themeId)
+  const currentThemeVariant = themeVariants[themeId] ?? THEME_VARIANTS[themeId][0].id
+  function setCurrentThemeVariant(variantId: string): void {
+    setThemeVariants((previous) => ({ ...previous, [themeId]: variantId }))
+  }
 
   if (auth.isRestoring) {
     return (
       <div
         className="app"
         data-theme={theme.id}
-        data-moon-variant={moonVariant}
+        data-theme-variant={currentThemeVariant}
         style={themeToCssVars(theme) as CSSProperties}
       >
         <p>Verifica sessione in corso…</p>
@@ -693,7 +747,7 @@ function App() {
       <div
         className="app"
         data-theme={theme.id}
-        data-moon-variant={moonVariant}
+        data-theme-variant={currentThemeVariant}
         style={themeToCssVars(theme) as CSSProperties}
       >
         <LoginForm
@@ -739,27 +793,25 @@ function App() {
     <div
       className="app"
       data-theme={theme.id}
-      data-moon-variant={moonVariant}
+      data-theme-variant={currentThemeVariant}
       style={themeToCssVars(theme) as CSSProperties}
     >
       <header className="app-header">
         <h1>Eldhôm — WebApp</h1>
         <ThemeSelect themeId={themeId} onThemeChange={setThemeId} />
-        {theme.id === 'dark_moon' && (
-          <label className="gmgui-field">
-            Sfondo Luna
-            <select
-              value={moonVariant}
-              onChange={(event) => setMoonVariant(event.target.value as MoonVariantId)}
-            >
-              {MOON_VARIANTS.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {variant.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label className="gmgui-field">
+          Sotto-tema
+          <select
+            value={currentThemeVariant}
+            onChange={(event) => setCurrentThemeVariant(event.target.value)}
+          >
+            {THEME_VARIANTS[theme.id].map((variant) => (
+              <option key={variant.id} value={variant.id}>
+                {variant.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="app-header__account">
           <span>{auth.session?.username}</span>
           {sessionId !== null && (

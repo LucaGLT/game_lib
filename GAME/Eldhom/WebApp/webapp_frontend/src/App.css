@@ -26,7 +26,13 @@
    text-shadow, pensato per restare leggibile su qualunque sfondo) — quindi
    scurire/tematizzare questo sfondo non compromette la leggibilità. ────── */
 
-.app[data-theme='scroll'] {
+/* Scroll "Sotto-tema" variants (richiesta esplicita utente, stesso meccanismo
+   di Dark Moon generalizzato a tutti i temi) — 4 alternative gradient-only,
+   stessa tecnica (radial/linear-gradient, nessun asset esterno) della
+   pergamena base, solo la tinta d'inchiostro cambia. */
+
+.app[data-theme='scroll'][data-theme-variant='ancient_library'] {
+  /* Ancient Library — warm sepia wood-grain shelving (il look originale di Scroll). */
   background-color: #2c1a0c;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
@@ -35,7 +41,42 @@
     linear-gradient(180deg, #4a3018 0%, #2c1a0c 100%);
 }
 
-.app[data-theme='stone'] {
+.app[data-theme='scroll'][data-theme-variant='arcane_manuscript'] {
+  /* Arcane Manuscript — parchment tinted with a faint violet arcane-ink glow. */
+  background-color: #241429;
+  background-image:
+    radial-gradient(ellipse at 50% 10%, rgba(170, 120, 220, 0.1), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 15px),
+    repeating-linear-gradient(90deg, rgba(190, 140, 230, 0.06) 0px, rgba(190, 140, 230, 0.06) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #3a2246 0%, #201025 100%);
+}
+
+.app[data-theme='scroll'][data-theme-variant='alchemical_scriptorium'] {
+  /* Alchemical Scriptorium — parchment tinted with a faint verdigris-copper glow. */
+  background-color: #142218;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(110, 200, 160, 0.08), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 2px, transparent 2px, transparent 15px),
+    repeating-linear-gradient(90deg, rgba(120, 200, 150, 0.06) 0px, rgba(120, 200, 150, 0.06) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #22422c 0%, #10201a 100%);
+}
+
+.app[data-theme='scroll'][data-theme-variant='nautical_chart'] {
+  /* Nautical Chart — parchment washed in faded sea-ink blue, faint ruled grid. */
+  background-color: #101c26;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(120, 170, 220, 0.08), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(120, 170, 220, 0.05) 0px, rgba(120, 170, 220, 0.05) 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(90deg, rgba(120, 170, 220, 0.05) 0px, rgba(120, 170, 220, 0.05) 1px, transparent 1px, transparent 40px),
+    linear-gradient(180deg, #1c3a4c 0%, #0c1a22 100%);
+}
+
+/* Stone "Sotto-tema" variants (richiesta esplicita utente) — 5 alternative
+   gradient-only, stessa tecnica (speckle radiale + hatch diagonale) della
+   granitura base, solo la tinta cambia. */
+
+.app[data-theme='stone'][data-theme-variant='elder_stone'] {
+  /* Elder Stone — neutral aged granite (il look originale di Stone). */
   background-color: #211f1c;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
@@ -50,16 +91,74 @@
   background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
 }
 
-/* Dark Moon "Sfondo Luna" variants (Phase 21) — 5 selectable gradient-only
-   background-art alternatives to the original starfield+moon-disc look
-   (user feedback: no stars, no moon disc — gradients or other treatments
-   only). Selected via the header's "Sfondo Luna" picker (`moonVariant` in
-   App.tsx), applied through the `data-moon-variant` attribute. Page vs map
-   deliberately use different gradient placements (map rules further below,
-   next to `.eldhom-map`) so the two backgrounds stay visually distinct,
-   same principle as every other theme's page-vs-map skin. */
+.app[data-theme='stone'][data-theme-variant='frost_runes'] {
+  /* Frost Runes — icy blue-white granite, cold pale glow. */
+  background-color: #1a2024;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(200, 230, 255, 0.07), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(0, 10, 20, 0.32), transparent 8%),
+    radial-gradient(circle at 42% 55%, rgba(0, 10, 20, 0.28), transparent 7%),
+    radial-gradient(circle at 76% 22%, rgba(0, 10, 20, 0.3), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(0, 10, 20, 0.26), transparent 7%),
+    radial-gradient(circle at 18% 86%, rgba(0, 10, 20, 0.24), transparent 6%),
+    repeating-linear-gradient(0deg, rgba(150, 190, 220, 0.1) 0px, rgba(150, 190, 220, 0.1) 2px, transparent 2px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(150, 190, 220, 0.07) 0px, rgba(150, 190, 220, 0.07) 2px, transparent 2px, transparent 96px),
+    linear-gradient(180deg, #212e34 0%, #10171a 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
+}
 
-.app[data-theme='dark_moon'][data-moon-variant='moon_01'] {
+.app[data-theme='stone'][data-theme-variant='obsidian_codex'] {
+  /* Obsidian Codex — near-black volcanic glass, glossy high-contrast sheen. */
+  background-color: #0c0b0e;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(150, 120, 200, 0.08), transparent 50%),
+    radial-gradient(circle at 10% 15%, rgba(0, 0, 0, 0.4), transparent 8%),
+    radial-gradient(circle at 76% 22%, rgba(0, 0, 0, 0.4), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(0, 0, 0, 0.35), transparent 7%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.05) 0%, transparent 30%),
+    linear-gradient(180deg, #17141c 0%, #08070a 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, auto, auto;
+}
+
+.app[data-theme='stone'][data-theme-variant='primeval_dolmen'] {
+  /* Primeval Dolmen — earthy moss-brown megalith, primal and weathered. */
+  background-color: #201d16;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 250, 220, 0.04), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(20, 15, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 42% 55%, rgba(30, 40, 10, 0.24), transparent 7%),
+    radial-gradient(circle at 76% 22%, rgba(20, 15, 0, 0.28), transparent 8%),
+    radial-gradient(circle at 62% 82%, rgba(30, 40, 10, 0.22), transparent 7%),
+    repeating-linear-gradient(0deg, rgba(20, 15, 0, 0.16) 0px, rgba(20, 15, 0, 0.16) 2px, transparent 2px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(50, 60, 20, 0.1) 0px, rgba(50, 60, 20, 0.1) 2px, transparent 2px, transparent 96px),
+    linear-gradient(180deg, #29271a 0%, #17150e 100%);
+  background-size: auto, 170px 170px, 170px 170px, 170px 170px, 170px 170px, auto, auto, auto;
+}
+
+.app[data-theme='stone'][data-theme-variant='reliquary'] {
+  /* Reliquary — sacred stone with faint gold veining, opulent and warm. */
+  background-color: #221d15;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(220, 180, 100, 0.09), transparent 55%),
+    radial-gradient(circle at 10% 15%, rgba(0, 0, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 76% 22%, rgba(0, 0, 0, 0.28), transparent 8%),
+    linear-gradient(115deg, transparent 40%, rgba(200, 160, 70, 0.1) 48%, transparent 56%),
+    linear-gradient(65deg, transparent 60%, rgba(200, 160, 70, 0.08) 68%, transparent 76%),
+    linear-gradient(180deg, #2e2718 0%, #18140d 100%);
+  background-size: auto, 170px 170px, 170px 170px, auto, auto, auto;
+}
+
+/* Dark Moon "Sotto-tema" variants (Phase 21, generalised to all themes this
+   turn) — 5 selectable gradient-only background-art alternatives to the
+   original starfield+moon-disc look (user feedback: no stars, no moon disc
+   — gradients or other treatments only). Selected via the header's
+   "Sotto-tema" picker (`themeVariants` in App.tsx), applied through the
+   `data-theme-variant` attribute. Page vs map deliberately use different
+   gradient placements (map rules further below, next to `.eldhom-map`) so
+   the two backgrounds stay visually distinct, same principle as every
+   other theme's page-vs-map skin. */
+
+.app[data-theme='dark_moon'][data-theme-variant='moon_01'] {
   /* Crepuscolo — twilight: deep indigo fading to near-black, soft warm-violet glow low on the page. */
   background-color: #08070d;
   background-image:
@@ -68,7 +167,7 @@
     linear-gradient(180deg, #1c1830 0%, #0d0b18 55%, #06050a 100%);
 }
 
-.app[data-theme='dark_moon'][data-moon-variant='moon_02'] {
+.app[data-theme='dark_moon'][data-theme-variant='moon_02'] {
   /* Aurora — diagonal indigo/purple/teal sweep with two soft aurora-like glows. */
   background-color: #0a0916;
   background-image:
@@ -77,7 +176,7 @@
     linear-gradient(135deg, #0d0a1a 0%, #1a1030 35%, #142840 65%, #0a0a14 100%);
 }
 
-.app[data-theme='dark_moon'][data-moon-variant='moon_03'] {
+.app[data-theme='dark_moon'][data-theme-variant='moon_03'] {
   /* Nebulosa — soft, large, blurred color blooms (magenta/indigo/teal), no hard edges. */
   background-color: #0c0a15;
   background-image:
@@ -87,7 +186,7 @@
     linear-gradient(180deg, #100a1c 0%, #08060e 100%);
 }
 
-.app[data-theme='dark_moon'][data-moon-variant='moon_04'] {
+.app[data-theme='dark_moon'][data-theme-variant='moon_04'] {
   /* Nebbia — layered translucent grey-blue mist bands, minimal color, very moody. */
   background-color: #0c0d12;
   background-image:
@@ -97,7 +196,7 @@
     linear-gradient(180deg, #14161e 0%, #0a0b10 60%, #050507 100%);
 }
 
-.app[data-theme='dark_moon'][data-moon-variant='moon_05'] {
+.app[data-theme='dark_moon'][data-theme-variant='moon_05'] {
   /* Profondo — minimal deep vignette, the most understated of the 5 variants. */
   background-color: #08070b;
   background-image:
@@ -106,7 +205,12 @@
     linear-gradient(180deg, #17151f 0%, #08070c 100%);
 }
 
-.app[data-theme='blood'] {
+/* Blood "Sotto-tema" variants (richiesta esplicita utente) — 5 alternative
+   gradient-only, stessa tecnica (macchie radiali) della tinta base, solo il
+   colore/la concentrazione cambia. */
+
+.app[data-theme='blood'][data-theme-variant='sacrificial_altar'] {
+  /* Sacrificial Altar — deep crimson blotches on near-black (il look originale di Blood). */
   background-color: #150808;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04), transparent 55%),
@@ -116,13 +220,104 @@
     linear-gradient(180deg, #1c0a0a 0%, #0c0404 100%);
 }
 
-.app[data-theme='techno'] {
+.app[data-theme='blood'][data-theme-variant='crimson_earth'] {
+  /* Crimson Earth — rust-orange-red, earthy soil tones. */
+  background-color: #180a04;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 220, 180, 0.04), transparent 55%),
+    radial-gradient(ellipse at 15% 20%, rgba(150, 60, 20, 0.24), transparent 30%),
+    radial-gradient(ellipse at 85% 75%, rgba(120, 45, 10, 0.22), transparent 32%),
+    radial-gradient(ellipse at 60% 40%, rgba(90, 35, 5, 0.2), transparent 28%),
+    linear-gradient(180deg, #221008 0%, #100603 100%);
+}
+
+.app[data-theme='blood'][data-theme-variant='eclipse_runestone'] {
+  /* Eclipse Runestone — near-black with a concentrated dark-red eclipse glow ring. */
+  background-color: #0a0505;
+  background-image:
+    radial-gradient(circle at 50% 45%, transparent 18%, rgba(107, 21, 21, 0.5) 22%, rgba(107, 21, 21, 0.1) 30%, transparent 40%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.03), transparent 55%),
+    linear-gradient(180deg, #170808 0%, #070303 100%);
+}
+
+.app[data-theme='blood'][data-theme-variant='iron_blood'] {
+  /* Iron & Blood — grey iron flecks mixed with deep red. */
+  background-color: #14100f;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
+    radial-gradient(ellipse at 20% 25%, rgba(90, 90, 95, 0.16), transparent 30%),
+    radial-gradient(ellipse at 82% 70%, rgba(107, 21, 21, 0.24), transparent 32%),
+    radial-gradient(ellipse at 55% 85%, rgba(70, 70, 75, 0.14), transparent 28%),
+    linear-gradient(180deg, #221c1a 0%, #0e0b0a 100%);
+}
+
+.app[data-theme='blood'][data-theme-variant='nocturnal_blood'] {
+  /* Nocturnal Blood — very dark indigo-black with a faint deep-red undertone, nighttime. */
+  background-color: #0a0509;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.03), transparent 55%),
+    radial-gradient(ellipse at 20% 25%, rgba(40, 20, 60, 0.2), transparent 35%),
+    radial-gradient(ellipse at 82% 70%, rgba(80, 10, 20, 0.18), transparent 35%),
+    linear-gradient(180deg, #140a14 0%, #060309 100%);
+}
+
+/* Techno "Sotto-tema" variants (richiesta esplicita utente) — 5 alternative
+   gradient-only, stessa tecnica (griglia + bagliore radiale) della base, solo
+   la tinta cambia (cyan/magenta/brass/amber/viola). */
+
+.app[data-theme='techno'][data-theme-variant='motherboard'] {
+  /* Motherboard — cyan circuit-board grid on dark navy (il look originale di Techno). */
   background-color: #050d14;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(0, 229, 255, 0.06), transparent 55%),
     linear-gradient(rgba(0, 200, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px),
     linear-gradient(180deg, #0a1720 0%, #050d14 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
+}
+
+.app[data-theme='techno'][data-theme-variant='holographic'] {
+  /* Holographic — iridescent cyan/magenta sheen sweep. */
+  background-color: #0a0d18;
+  background-image:
+    radial-gradient(ellipse at 30% 10%, rgba(0, 229, 255, 0.08), transparent 50%),
+    radial-gradient(ellipse at 75% 60%, rgba(255, 0, 229, 0.08), transparent 50%),
+    linear-gradient(rgba(180, 0, 200, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(135deg, #150a20 0%, #0a1420 50%, #05080f 100%);
+  background-size: auto, auto, 160px 160px, 160px 160px, auto;
+}
+
+.app[data-theme='techno'][data-theme-variant='clockwork_brass'] {
+  /* Clockwork Brass — steampunk brass/copper grid instead of cyan. */
+  background-color: #140f08;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(220, 160, 80, 0.08), transparent 55%),
+    linear-gradient(rgba(200, 140, 60, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 140, 60, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, #241a0d 0%, #120d07 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
+}
+
+.app[data-theme='techno'][data-theme-variant='distopia'] {
+  /* Distopia — grimy amber warning-HUD, darker and grittier. */
+  background-color: #100c05;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 140, 0, 0.05), transparent 55%),
+    linear-gradient(rgba(255, 130, 20, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 130, 20, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #1c1206 0%, #0c0803 100%);
+  background-size: auto, 160px 160px, 160px 160px, auto;
+}
+
+.app[data-theme='techno'][data-theme-variant='quantum_monolith'] {
+  /* Quantum Monolith — deep purple/indigo quantum glow, mysterious. */
+  background-color: #0a0714;
+  background-image:
+    radial-gradient(ellipse at 50% 20%, rgba(140, 80, 220, 0.1), transparent 55%),
+    linear-gradient(rgba(140, 80, 220, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 80, 220, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #170f28 0%, #090714 100%);
   background-size: auto, 160px 160px, 160px 160px, auto;
 }
 
@@ -565,10 +760,18 @@
    mappa, non lo stato di gioco. ─────────────────────────────────────────── */
 
 [data-theme='scroll'] .eldhom-map {
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 60px rgba(101, 67, 33, 0.35), inset 0 0 0 6px rgba(255, 250, 230, 0.3);
+}
+
+/* Same 4 "Sotto-tema" variants as `.app[data-theme='scroll'][data-theme-variant]`
+   above, re-composed for the map surface — corner-ring ornament structure
+   stays identical across variants (it is the theme's "real map artifact"
+   identity, not something the user asked to vary), only the wash/blotch
+   tint changes per variant. */
+
+[data-theme='scroll'][data-theme-variant='ancient_library'] .eldhom-map {
   background-color: #efe0bb;
-  /* Angoli ornamentali (doppio arco, stile filigrana su pergamena) + vignette
-     bruciata ai bordi, ispirati a riferimenti di pergamena antica/mappa del
-     tesoro — realizzati SOLO con radial-gradient, nessun asset esterno. */
   background-image:
     radial-gradient(circle at 0% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
     radial-gradient(circle at 100% 0%, transparent 20px, #8a6a3f 21px, #8a6a3f 23px, transparent 24px, transparent 29px, #8a6a3f 30px, #8a6a3f 32px, transparent 33px),
@@ -583,8 +786,59 @@
   background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
   background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto, auto;
   background-repeat: no-repeat;
-  border: 2px solid var(--gm-border);
-  box-shadow: inset 0 0 60px rgba(101, 67, 33, 0.35), inset 0 0 0 6px rgba(255, 250, 230, 0.3);
+}
+
+[data-theme='scroll'][data-theme-variant='arcane_manuscript'] .eldhom-map {
+  background-color: #e8dcec;
+  background-image:
+    radial-gradient(circle at 0% 0%, transparent 20px, #6a4a6f 21px, #6a4a6f 23px, transparent 24px, transparent 29px, #6a4a6f 30px, #6a4a6f 32px, transparent 33px),
+    radial-gradient(circle at 100% 0%, transparent 20px, #6a4a6f 21px, #6a4a6f 23px, transparent 24px, transparent 29px, #6a4a6f 30px, #6a4a6f 32px, transparent 33px),
+    radial-gradient(circle at 0% 100%, transparent 20px, #6a4a6f 21px, #6a4a6f 23px, transparent 24px, transparent 29px, #6a4a6f 30px, #6a4a6f 32px, transparent 33px),
+    radial-gradient(circle at 100% 100%, transparent 20px, #6a4a6f 21px, #6a4a6f 23px, transparent 24px, transparent 29px, #6a4a6f 30px, #6a4a6f 32px, transparent 33px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(60, 20, 70, 0.28) 90%, rgba(35, 10, 45, 0.5) 100%),
+    radial-gradient(ellipse at 15% 20%, rgba(150, 90, 190, 0.18), transparent 45%),
+    radial-gradient(ellipse at 85% 30%, rgba(150, 90, 190, 0.14), transparent 42%),
+    radial-gradient(ellipse at 60% 88%, rgba(120, 70, 150, 0.14), transparent 45%),
+    radial-gradient(ellipse at 8% 90%, rgba(120, 70, 150, 0.1), transparent 35%),
+    repeating-linear-gradient(115deg, rgba(90, 50, 100, 0.04) 0px, rgba(90, 50, 100, 0.04) 1px, transparent 1px, transparent 6px);
+  background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto, auto;
+  background-repeat: no-repeat;
+}
+
+[data-theme='scroll'][data-theme-variant='alchemical_scriptorium'] .eldhom-map {
+  background-color: #dce8dd;
+  background-image:
+    radial-gradient(circle at 0% 0%, transparent 20px, #4a7a5f 21px, #4a7a5f 23px, transparent 24px, transparent 29px, #4a7a5f 30px, #4a7a5f 32px, transparent 33px),
+    radial-gradient(circle at 100% 0%, transparent 20px, #4a7a5f 21px, #4a7a5f 23px, transparent 24px, transparent 29px, #4a7a5f 30px, #4a7a5f 32px, transparent 33px),
+    radial-gradient(circle at 0% 100%, transparent 20px, #4a7a5f 21px, #4a7a5f 23px, transparent 24px, transparent 29px, #4a7a5f 30px, #4a7a5f 32px, transparent 33px),
+    radial-gradient(circle at 100% 100%, transparent 20px, #4a7a5f 21px, #4a7a5f 23px, transparent 24px, transparent 29px, #4a7a5f 30px, #4a7a5f 32px, transparent 33px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(20, 55, 35, 0.28) 90%, rgba(10, 35, 20, 0.5) 100%),
+    radial-gradient(ellipse at 15% 20%, rgba(40, 160, 120, 0.16), transparent 45%),
+    radial-gradient(ellipse at 85% 30%, rgba(40, 160, 120, 0.12), transparent 42%),
+    radial-gradient(ellipse at 60% 88%, rgba(30, 120, 90, 0.14), transparent 45%),
+    radial-gradient(ellipse at 8% 90%, rgba(30, 120, 90, 0.1), transparent 35%),
+    repeating-linear-gradient(115deg, rgba(30, 90, 60, 0.04) 0px, rgba(30, 90, 60, 0.04) 1px, transparent 1px, transparent 6px);
+  background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto, auto;
+  background-repeat: no-repeat;
+}
+
+[data-theme='scroll'][data-theme-variant='nautical_chart'] .eldhom-map {
+  background-color: #d8e4ec;
+  background-image:
+    radial-gradient(circle at 0% 0%, transparent 20px, #3a5a7a 21px, #3a5a7a 23px, transparent 24px, transparent 29px, #3a5a7a 30px, #3a5a7a 32px, transparent 33px),
+    radial-gradient(circle at 100% 0%, transparent 20px, #3a5a7a 21px, #3a5a7a 23px, transparent 24px, transparent 29px, #3a5a7a 30px, #3a5a7a 32px, transparent 33px),
+    radial-gradient(circle at 0% 100%, transparent 20px, #3a5a7a 21px, #3a5a7a 23px, transparent 24px, transparent 29px, #3a5a7a 30px, #3a5a7a 32px, transparent 33px),
+    radial-gradient(circle at 100% 100%, transparent 20px, #3a5a7a 21px, #3a5a7a 23px, transparent 24px, transparent 29px, #3a5a7a 30px, #3a5a7a 32px, transparent 33px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(15, 35, 55, 0.28) 90%, rgba(8, 20, 35, 0.5) 100%),
+    radial-gradient(ellipse at 15% 20%, rgba(40, 110, 160, 0.14), transparent 45%),
+    radial-gradient(ellipse at 85% 30%, rgba(40, 110, 160, 0.1), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(40, 90, 130, 0.07) 0px, rgba(40, 90, 130, 0.07) 1px, transparent 1px, transparent 34px),
+    repeating-linear-gradient(90deg, rgba(40, 90, 130, 0.07) 0px, rgba(40, 90, 130, 0.07) 1px, transparent 1px, transparent 34px);
+  background-position: top left, top right, bottom left, bottom right, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 50px 50px, 50px 50px, 50px 50px, 50px 50px, auto, auto, auto, auto, auto;
+  background-repeat: no-repeat;
 }
 
 [data-theme='scroll'] .eldhom-map__node {
@@ -606,6 +860,14 @@
 }
 
 [data-theme='stone'] .eldhom-map {
+  border: 3px solid var(--gm-border);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+/* Same 5 "Sotto-tema" variants as `.app[data-theme='stone'][data-theme-variant]`
+   above, re-composed for the map surface. */
+
+[data-theme='stone'][data-theme-variant='elder_stone'] .eldhom-map {
   background-color: #ada89e;
   background-image:
     radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.09), transparent 6%),
@@ -615,8 +877,49 @@
     radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.07), transparent 5%),
     repeating-linear-gradient(38deg, rgba(0, 0, 0, 0.05) 0px, rgba(0, 0, 0, 0.05) 1px, transparent 1px, transparent 16px);
   background-size: 140px 140px, 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
-  border: 3px solid var(--gm-border);
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='stone'][data-theme-variant='frost_runes'] .eldhom-map {
+  background-color: #a8b8c0;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.16), transparent 6%),
+    radial-gradient(circle at 55% 60%, rgba(20, 40, 60, 0.14), transparent 7%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.14), transparent 5%),
+    radial-gradient(circle at 30% 80%, rgba(20, 40, 60, 0.12), transparent 6%),
+    radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.12), transparent 5%),
+    repeating-linear-gradient(38deg, rgba(90, 130, 160, 0.07) 0px, rgba(90, 130, 160, 0.07) 1px, transparent 1px, transparent 16px);
+  background-size: 140px 140px, 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
+}
+
+[data-theme='stone'][data-theme-variant='obsidian_codex'] .eldhom-map {
+  background-color: #2a2530;
+  background-image:
+    radial-gradient(circle at 25% 30%, rgba(190, 160, 230, 0.14), transparent 6%),
+    radial-gradient(circle at 60% 65%, rgba(0, 0, 0, 0.3), transparent 8%),
+    radial-gradient(circle at 82% 22%, rgba(190, 160, 230, 0.1), transparent 5%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.06) 0%, transparent 35%);
+  background-size: 140px 140px, 140px 140px, 140px 140px, auto;
+}
+
+[data-theme='stone'][data-theme-variant='primeval_dolmen'] .eldhom-map {
+  background-color: #8a7d5e;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 250, 220, 0.1), transparent 6%),
+    radial-gradient(circle at 55% 60%, rgba(30, 25, 5, 0.16), transparent 7%),
+    radial-gradient(circle at 80% 20%, rgba(90, 100, 40, 0.14), transparent 5%),
+    radial-gradient(circle at 30% 80%, rgba(30, 25, 5, 0.14), transparent 6%),
+    repeating-linear-gradient(38deg, rgba(50, 45, 15, 0.06) 0px, rgba(50, 45, 15, 0.06) 1px, transparent 1px, transparent 16px);
+  background-size: 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
+}
+
+[data-theme='stone'][data-theme-variant='reliquary'] .eldhom-map {
+  background-color: #b8a373;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 240, 200, 0.16), transparent 6%),
+    radial-gradient(circle at 55% 60%, rgba(60, 45, 10, 0.16), transparent 7%),
+    linear-gradient(112deg, transparent 40%, rgba(220, 180, 90, 0.22) 48%, transparent 56%),
+    linear-gradient(70deg, transparent 55%, rgba(220, 180, 90, 0.16) 63%, transparent 71%);
+  background-size: 140px 140px, 140px 140px, auto, auto;
 }
 
 [data-theme='stone'] .eldhom-map__node {
@@ -643,18 +946,18 @@
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
 }
 
-/* Same 5 "Sfondo Luna" variants as `.app[data-theme='dark_moon'][data-moon-variant]`
+/* Same 5 "Sotto-tema" variants as `.app[data-theme='dark_moon'][data-theme-variant]`
    above, re-composed for the map surface (different gradient placement per
    variant so the map reads as a distinct surface from the page behind it). */
 
-[data-theme='dark_moon'][data-moon-variant='moon_01'] .eldhom-map {
+[data-theme='dark_moon'][data-theme-variant='moon_01'] .eldhom-map {
   background-color: #12101c;
   background-image:
     radial-gradient(ellipse 70% 45% at 50% 0%, rgba(126, 98, 168, 0.22), transparent 70%),
     linear-gradient(180deg, #201c34 0%, #14121f 60%, #0a0910 100%);
 }
 
-[data-theme='dark_moon'][data-moon-variant='moon_02'] .eldhom-map {
+[data-theme='dark_moon'][data-theme-variant='moon_02'] .eldhom-map {
   background-color: #0f0d1e;
   background-image:
     radial-gradient(ellipse at 70% 20%, rgba(120, 200, 190, 0.12), transparent 50%),
@@ -662,7 +965,7 @@
     linear-gradient(135deg, #241a3a 0%, #1a1030 35%, #14243a 70%, #0d0c16 100%);
 }
 
-[data-theme='dark_moon'][data-moon-variant='moon_03'] .eldhom-map {
+[data-theme='dark_moon'][data-theme-variant='moon_03'] .eldhom-map {
   background-color: #120e1e;
   background-image:
     radial-gradient(ellipse 55% 40% at 80% 20%, rgba(168, 80, 190, 0.18), transparent 60%),
@@ -671,7 +974,7 @@
     linear-gradient(180deg, #17102a 0%, #0b0814 100%);
 }
 
-[data-theme='dark_moon'][data-moon-variant='moon_04'] .eldhom-map {
+[data-theme='dark_moon'][data-theme-variant='moon_04'] .eldhom-map {
   background-color: #14171f;
   background-image:
     linear-gradient(20deg, rgba(150, 160, 180, 0.08) 0%, transparent 25%),
@@ -680,7 +983,7 @@
     linear-gradient(180deg, #1c202a 0%, #12141b 60%, #090a0d 100%);
 }
 
-[data-theme='dark_moon'][data-moon-variant='moon_05'] .eldhom-map {
+[data-theme='dark_moon'][data-theme-variant='moon_05'] .eldhom-map {
   background-color: #121016;
   background-image:
     radial-gradient(ellipse at 50% 20%, rgba(84, 84, 106, 0.22), transparent 60%),
@@ -706,10 +1009,15 @@
 }
 
 [data-theme='blood'] .eldhom-map {
+  border: 2px solid var(--gm-border);
+  box-shadow: inset 0 0 70px rgba(60, 5, 5, 0.45);
+}
+
+/* Same 5 "Sotto-tema" variants as `.app[data-theme='blood'][data-theme-variant]`
+   above, re-composed for the map surface. */
+
+[data-theme='blood'][data-theme-variant='sacrificial_altar'] .eldhom-map {
   background-color: #d8c6a0;
-  /* Schizzi/gocce a bordo netto + macchie/pozze più ampie a bordo morbido,
-     ispirati a riferimenti di schizzi di sangue su pergamena/superficie —
-     realizzati SOLO con radial-gradient, nessun asset esterno. */
   background-image:
     radial-gradient(circle at 24% 34%, rgba(90, 12, 12, 0.85) 0%, rgba(90, 12, 12, 0.85) 1.4%, transparent 1.9%),
     radial-gradient(circle at 68% 22%, rgba(107, 21, 21, 0.85) 0%, rgba(107, 21, 21, 0.85) 1.8%, transparent 2.3%),
@@ -723,8 +1031,47 @@
     radial-gradient(ellipse at 55% 70%, rgba(80, 10, 10, 0.45) 0%, rgba(80, 10, 10, 0.36) 20%, transparent 45%),
     radial-gradient(ellipse at 12% 85%, rgba(107, 21, 21, 0.34) 0%, rgba(107, 21, 21, 0.26) 15%, transparent 35%),
     repeating-linear-gradient(112deg, rgba(80, 50, 20, 0.05) 0px, rgba(80, 50, 20, 0.05) 1px, transparent 1px, transparent 6px);
-  border: 2px solid var(--gm-border);
-  box-shadow: inset 0 0 70px rgba(60, 5, 5, 0.45);
+}
+
+[data-theme='blood'][data-theme-variant='crimson_earth'] .eldhom-map {
+  background-color: #ddc49a;
+  background-image:
+    radial-gradient(circle at 24% 34%, rgba(140, 55, 15, 0.8) 0%, rgba(140, 55, 15, 0.8) 1.4%, transparent 1.9%),
+    radial-gradient(circle at 68% 22%, rgba(150, 65, 20, 0.8) 0%, rgba(150, 65, 20, 0.8) 1.8%, transparent 2.3%),
+    radial-gradient(circle at 44% 62%, rgba(120, 45, 10, 0.75) 0%, rgba(120, 45, 10, 0.75) 1.2%, transparent 1.7%),
+    radial-gradient(circle at 82% 68%, rgba(140, 55, 15, 0.75) 0%, rgba(140, 55, 15, 0.75) 1.5%, transparent 2%),
+    radial-gradient(ellipse at 20% 25%, rgba(150, 65, 20, 0.45) 0%, rgba(150, 65, 20, 0.38) 20%, transparent 42%),
+    radial-gradient(ellipse at 75% 18%, rgba(150, 65, 20, 0.38) 0%, rgba(150, 65, 20, 0.3) 16%, transparent 37%),
+    radial-gradient(ellipse at 55% 70%, rgba(120, 45, 10, 0.4) 0%, rgba(120, 45, 10, 0.32) 20%, transparent 45%),
+    repeating-linear-gradient(112deg, rgba(100, 65, 25, 0.05) 0px, rgba(100, 65, 25, 0.05) 1px, transparent 1px, transparent 6px);
+}
+
+[data-theme='blood'][data-theme-variant='eclipse_runestone'] .eldhom-map {
+  background-color: #1c0d0d;
+  background-image:
+    radial-gradient(circle at 50% 45%, transparent 16%, rgba(107, 21, 21, 0.55) 21%, rgba(107, 21, 21, 0.12) 30%, transparent 42%),
+    radial-gradient(ellipse at 20% 20%, rgba(80, 10, 10, 0.3), transparent 40%),
+    radial-gradient(ellipse at 80% 80%, rgba(80, 10, 10, 0.26), transparent 40%);
+}
+
+[data-theme='blood'][data-theme-variant='iron_blood'] .eldhom-map {
+  background-color: #c6bfb6;
+  background-image:
+    radial-gradient(circle at 24% 34%, rgba(90, 90, 95, 0.7) 0%, rgba(90, 90, 95, 0.7) 1.4%, transparent 1.9%),
+    radial-gradient(circle at 68% 22%, rgba(107, 21, 21, 0.8) 0%, rgba(107, 21, 21, 0.8) 1.8%, transparent 2.3%),
+    radial-gradient(circle at 44% 62%, rgba(80, 80, 85, 0.65) 0%, rgba(80, 80, 85, 0.65) 1.2%, transparent 1.7%),
+    radial-gradient(circle at 82% 68%, rgba(107, 21, 21, 0.75) 0%, rgba(107, 21, 21, 0.75) 1.5%, transparent 2%),
+    radial-gradient(ellipse at 20% 25%, rgba(90, 90, 95, 0.35) 0%, rgba(90, 90, 95, 0.28) 20%, transparent 42%),
+    radial-gradient(ellipse at 75% 18%, rgba(107, 21, 21, 0.38) 0%, rgba(107, 21, 21, 0.3) 16%, transparent 37%),
+    repeating-linear-gradient(112deg, rgba(90, 90, 95, 0.06) 0px, rgba(90, 90, 95, 0.06) 1px, transparent 1px, transparent 6px);
+}
+
+[data-theme='blood'][data-theme-variant='nocturnal_blood'] .eldhom-map {
+  background-color: #16101c;
+  background-image:
+    radial-gradient(ellipse at 25% 25%, rgba(80, 10, 20, 0.3), transparent 40%),
+    radial-gradient(ellipse at 75% 70%, rgba(50, 15, 60, 0.24), transparent 42%),
+    radial-gradient(ellipse at 55% 90%, rgba(80, 10, 20, 0.2), transparent 40%);
 }
 
 [data-theme='blood'] .eldhom-map__node {
@@ -746,10 +1093,21 @@
 }
 
 [data-theme='techno'] .eldhom-map {
+  border: 1px solid var(--gm-border);
+  box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.12);
+}
+
+/* Same 5 "Sotto-tema" variants as `.app[data-theme='techno'][data-theme-variant]`
+   above, re-composed for the map surface. The 8 HUD corner-bracket layers
+   (accent-driven via `var(--gm-accent)`, not hardcoded) are repeated in
+   EVERY variant rule below: CSS `background-image`/`-position`/`-size`/
+   `-repeat` lists do not merge across cascade rules, only the winning
+   (most specific) declaration's full list applies — unlike `border`/
+   `box-shadow` above, which the other 3 themes could keep in a single
+   shared base rule. */
+
+[data-theme='techno'][data-theme-variant='motherboard'] .eldhom-map {
   background-color: #08131e;
-  /* Cornice HUD ad angoli (bracket) + griglia blueprint + bagliore scanner,
-     ispirati a riferimenti di interfacce sci-fi/HUD — realizzati SOLO con
-     linear-gradient/radial-gradient, nessun asset esterno. */
   background-image:
     linear-gradient(var(--gm-accent), var(--gm-accent)),
     linear-gradient(var(--gm-accent), var(--gm-accent)),
@@ -770,8 +1128,102 @@
     100px 100px, 20px 20px, 20px 20px;
   background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
     repeat, repeat, repeat, repeat;
-  border: 1px solid var(--gm-border);
-  box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.12);
+}
+
+[data-theme='techno'][data-theme-variant='holographic'] .eldhom-map {
+  background-color: #0d0a18;
+  background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(255, 0, 229, 0.14), transparent 30%),
+    linear-gradient(rgba(255, 0, 229, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(rgba(200, 0, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.05) 1px, transparent 1px);
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
+}
+
+[data-theme='techno'][data-theme-variant='clockwork_brass'] .eldhom-map {
+  background-color: #1c140a;
+  background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(220, 160, 80, 0.16), transparent 30%),
+    linear-gradient(rgba(200, 140, 60, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 140, 60, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(200, 140, 60, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 140, 60, 0.07) 1px, transparent 1px);
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
+}
+
+[data-theme='techno'][data-theme-variant='distopia'] .eldhom-map {
+  background-color: #140f06;
+  background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(255, 140, 0, 0.14), transparent 30%),
+    linear-gradient(rgba(255, 130, 20, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 130, 20, 0.14) 1px, transparent 1px),
+    linear-gradient(rgba(255, 130, 20, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 130, 20, 0.05) 1px, transparent 1px);
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
+}
+
+[data-theme='techno'][data-theme-variant='quantum_monolith'] .eldhom-map {
+  background-color: #0d0818;
+  background-image:
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    linear-gradient(var(--gm-accent), var(--gm-accent)),
+    radial-gradient(circle at 82% 15%, rgba(140, 80, 220, 0.16), transparent 30%),
+    linear-gradient(rgba(140, 80, 220, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 80, 220, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(140, 80, 220, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 80, 220, 0.06) 1px, transparent 1px);
+  background-position: top 7px left 7px, top 7px left 7px, top 7px right 7px, top 7px right 7px, bottom 7px left 7px,
+    bottom 7px left 7px, bottom 7px right 7px, bottom 7px right 7px, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, auto, 100px 100px,
+    100px 100px, 20px 20px, 20px 20px;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat;
 }
 
 [data-theme='techno'] .eldhom-map__node {
