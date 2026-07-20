@@ -47,7 +47,7 @@ void handle_signal(int) { g_running = 0; }
 /// @brief Auto-dismiss timeout for a monster-action popup left unacknowledged
 /// (no client clicked it). Enforced by EldhomServer::advance_auto()'s
 /// existing 200ms polling loop — no dedicated timer/thread needed.
-constexpr std::chrono::milliseconds MONSTER_POPUP_TIMEOUT{3000};
+constexpr std::chrono::milliseconds MONSTER_POPUP_TIMEOUT{10000};
 
 /// @brief Parses "--flag_name <value>" from argv, or returns fallback if absent/invalid.
 uint16_t read_port_option(int argc, char** argv, const std::string& flag_name, uint16_t fallback)
