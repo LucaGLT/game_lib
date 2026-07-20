@@ -884,6 +884,7 @@ private:
 		{
 			nlohmann::json sj;
 			sj["object_id"]   = obj.object_id;
+			sj["name"]        = obj.name;
 			sj["type"]        = obj.type;
 			sj["location_id"] = obj.location_id;
 			nlohmann::json locked_adj = nlohmann::json::array();

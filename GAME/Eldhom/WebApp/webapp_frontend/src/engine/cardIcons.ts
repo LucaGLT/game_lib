@@ -54,8 +54,8 @@ const ATTACK_TYPE_ICONS: Record<string, string> = {
   RANGED: '🏹',
 }
 
-/** §5.4 — Posizione in formazione. */
-const POSITION_ICONS: Record<string, string> = {
+/** §5.4 — Posizione in formazione. Exported for reuse by `TimelineTrack.tsx` (merged Actor tile). */
+export const POSITION_ICONS: Record<string, string> = {
   FRONTLINE: '👤',
   BACKLINE: '👥',
 }

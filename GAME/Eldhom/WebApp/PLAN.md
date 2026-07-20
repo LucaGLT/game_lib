@@ -1,8 +1,8 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.27.0
-**Status:** Phase 27 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-27 inserite fuori sequenza su richiesta
+**Version:** 0.28.0
+**Status:** Phase 28 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-28 inserite fuori sequenza su richiesta
 esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
@@ -1904,6 +1904,57 @@ scritto semplicemente "Azione di Xxxxxx".
 - Nessuna modifica al wire-contract/motore C++ — puramente un riposizionamento UI React/CSS.
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.27.0, nuova Phase 27 in coda (dopo Phase
   26, mai rinumerata).
+
+### Phase 28 — Migliorie Grafiche: Timeline unita, mappa quadrata, tag PG, oggetti interagibili [✅ Completato]
+
+Richiesta utente in 4 punti (con immagini annotate): (01) unire le Tile Attori sotto la mappa
+con quelle della Linea Temporale, poi eliminare la riga separata; (02) nodi mappa quadrati
+invece di rettangolari, più alti; (03) i token mappa mostravano ancora "PG1"/"PG2" invece delle
+iniziali reali, e i colori fissi non erano theme-reattivi; (04) gli Oggetti Interagibili (Leva,
+Tesoro) non erano affatto visibili sulla mappa nonostante presenti nel JSON — dovevano essere
+"bolle" molto evidenti.
+
+- [x] **01 — Tile Timeline+Attori unite**: `TimelineActor` (`gameState.ts`) esteso con
+      `hp`/`maxHp`/`aliveCount`/`totalCount`/`location`/`position`, popolati in
+      `buildTimelineActors()` da `wire.heroes`/`wire.groups` (aggregato PV+vivi/totale per i
+      gruppi mostro). `TimelineTrack.tsx` riscritto: ogni tile mostra ora icona PG/Mostro
+      (👤/👹), barra PV (aggregata per i gruppi), "vivi/totale" (solo mostri),
+      la clessidra invariata, e per i soli PG "📍 Locazione" + icona Prima Linea/Retroguardia
+      (`POSITION_ICONS`, ora esportato da `cardIcons.ts`); l'intera tile è cliccabile
+      (`onActorClick`) e apre `ActorDetailModal` come già faceva la vecchia card. La riga
+      `.eldhom-hero-row` e i componenti `HeroPanel.tsx`/`MonsterGroupPanel.tsx` (ora del tutto
+      ridondanti) sono stati RIMOSSI (`git rm`), recuperando spazio verticale per la mappa.
+- [x] **02 — Nodi mappa quadrati**: `EldhomMap.tsx`'s `NODE_HEIGHT` 62→130 (uguale a
+      `NODE_WIDTH`, quindi quadrato), `ROW_SPACING` 100→170 per evitare sovrapposizioni tra
+      righe di nodi ora più alti.
+- [x] **03 — Tag PG reali + colori theme-reattivi**: nuova `heroTag()` in `gameState.ts`
+      (prima lettera + prima consonante successiva, saltando le vocali — "Thael"→"TH",
+      "Velyr"→"VL") sostituisce il placeholder `PG${index+1}` in `buildTokens()`. Sfondo token
+      mappa non più fisso (`#1a237e`): nuove classi `.eldhom-map__token--hero`
+      (`var(--gm-accent)`) / `--monster` (`var(--gm-danger)`) — stessa "famiglia di sfumature"
+      di un unico colore base già usata dalle barre PV (`--gm-success`/`--gm-danger`).
+      Aggiornato il commento del modulo (prima documentava i colori token come fissi non
+      theme-reattivi, ora lo sono su richiesta esplicita).
+- [x] **04 — Oggetti Interagibili come bolle evidenti**: causa root del punto 04 — il campo
+      `name` esiste in `SpecialObject` (C++) e nel JSON ma non era MAI serializzato sul wire
+      (`main.cpp::emit_full_state`); aggiunto `sj["name"] = obj.name;` + nuovo campo
+      `name: string` in `SpecialObjectWire` (`contract.ts`). `EldhomMap.tsx`: nuova prop
+      `specialObjects`, nuova mappa `SPECIAL_OBJECT_STYLES` (LEVER=🎚️ blu `#2979ff`,
+      PICKUP_TESORO=💰 oro `#ffb300`, fallback ❔ viola) — bolle circolari con bordo bianco,
+      colori FISSI non theme-reattivi (stessa logica "semantica di stato di gioco fissa" delle
+      porte), in una riga dedicata sopra i token attore per non essere mai confuse con quelli.
+- **Validato end-to-end nel browser reale con 2 utenti** (missione "Recuperare il Tesoro — Sim
+  A", che ha `special_objects` nel JSON): confermato via lettura DOM diretta che i token mappa
+  mostrano "TH"/"VL" (non più "PG1"/"PG2"), `getComputedStyle` conferma
+  `--gm-token-hero: rgb(0,229,255)` (= accent Techno) e `--monster: rgb(0,149,166)` (= danger
+  Techno, sfumatura più scura dello stesso colore), le bolle 🎚️/💰 sono presenti con lo sfondo
+  blu/oro corretto (`getComputedStyle` confermato), i nodi mappa sono 130×130 (quadrati,
+  `foreignObject` width/height confermati via DOM), e cliccare una tile Timeline (sia PG sia
+  Gruppo Mostri) apre correttamente `ActorDetailModal` con i dati giusti. Screenshot a pagina
+  intera confermano visivamente le tile Timeline unite con barra PV/vivi/locazione.
+- `npm run build`/`npm run lint` puliti (48 moduli, -2 rispetto a prima per i file rimossi).
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.28.0, nuova Phase 28 in coda (dopo Phase
+  27, mai rinumerata).
 
 ---
 

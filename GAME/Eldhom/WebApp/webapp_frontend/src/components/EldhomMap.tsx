@@ -17,9 +17,16 @@
  * theme-dependent" (`pyLib/gmGui/theme_manager.py::resolve_semantic_color`,
  * tokens `map_edge_locked_door` / `map_actor_turn_border`) — CLOSED_DOOR and
  * LOCKED_DOOR share the same red (#c03030), differing only by dash style;
- * the active-turn token border is a separate fixed red (#e03030). Only
- * FREE edges and the map panel/border chrome follow the active theme
- * (`--gm-*` vars), same as `border`'s semantic token being theme-dependent.
+ * the active-turn token border is a separate fixed red (#e03030). FREE
+ * edges, the map panel/border chrome, AND (since Migliorie Grafiche 03,
+ * explicit user request) actor TOKEN background colour follow the active
+ * theme (`--gm-*` vars): hero tokens use `--gm-accent`, monster tokens use
+ * `--gm-danger` — the same lighten/same/darken "family of shades" of one
+ * base colour already used by the HP bars (`--gm-success`/`--gm-danger`).
+ * Interactable-object bubbles (`SPECIAL_OBJECT_STYLES` below), however, ARE
+ * fixed/not theme-reactive — same "gameplay-state semantics" reasoning as
+ * the doors, and deliberately chosen to stay maximally evident regardless
+ * of which theme is active (explicit user request: "MOLTO EVIDENTE").
  *
  * Zoom/pan: mouse-wheel zoom (centred on the cursor) and click-drag pan are
  * implemented by adjusting an SVG `viewBox` rectangle over the fixed-size
@@ -31,6 +38,7 @@
  * map.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { SpecialObjectWire } from '../engine/contract'
 import type { ActorToken, MapEdge, MapLocation } from '../engine/gameState'
 import { readDragPayload } from '../engine/dragPayload'
 
@@ -38,6 +46,8 @@ export interface EldhomMapProps {
   locations: MapLocation[]
   edges: MapEdge[]
   tokens: ActorToken[]
+  /** Interactable objects (levers, treasure, …) rendered as evident coloured bubbles (Migliorie Grafiche 04). */
+  specialObjects: SpecialObjectWire[]
   activeActorId: string
   /** Called with a location id when the map is clicked (Phase 4: move targeting). */
   onLocationClick?: (locationId: string) => void
@@ -71,14 +81,32 @@ interface ViewBox {
 }
 
 const NODE_WIDTH = 130
-const NODE_HEIGHT = 62
+// Square nodes with more headroom (Migliorie Grafiche 02, explicit user
+// request: "le Aree sono Rettangolari, preferisco Quadrate, aumenta
+// l'altezza") — was 62. ROW_SPACING grows to match so taller nodes in
+// consecutive rows never overlap.
+const NODE_HEIGHT = 130
 const LAYER_SPACING = 190
-const ROW_SPACING = 100
+const ROW_SPACING = 170
 const MARGIN_X = 90
 const MARGIN_Y = 60
 const MIN_ZOOM = 0.4
 const MAX_ZOOM = 3.5
 const ZOOM_STEP = 1.15
+
+/**
+ * Interactable-object bubble styling by `SpecialObjectWire.type` (Migliorie
+ * Grafiche 04, explicit user request: "Bolle... MOLTO EVIDENTE"). Fixed,
+ * NOT theme-reactive colours — deliberately mirrors the map's edge/door
+ * colour convention (see the module docstring above): these are
+ * gameplay-state semantics (what kind of object this is), not a themed
+ * surface, and must stay maximally legible against any of the 5 themes.
+ */
+const SPECIAL_OBJECT_STYLES: Record<string, { icon: string; background: string }> = {
+  LEVER: { icon: '🎚️', background: '#2979ff' },
+  PICKUP_TESORO: { icon: '💰', background: '#ffb300' },
+}
+const DEFAULT_SPECIAL_OBJECT_STYLE = { icon: '❔', background: '#8e24aa' }
 
 /** BFS-layers every location (by distance from the mission's first location), one pass per connected component. */
 function computeLayout(locations: MapLocation[], edges: MapEdge[]): MapLayout {
@@ -181,6 +209,7 @@ export function EldhomMap({
   locations,
   edges,
   tokens,
+  specialObjects,
   activeActorId,
   onLocationClick,
   onTokenClick,
@@ -293,6 +322,16 @@ export function EldhomMap({
     return map
   }, [tokens])
 
+  const specialObjectsByLocation = useMemo(() => {
+    const map = new Map<string, SpecialObjectWire[]>()
+    for (const object of specialObjects) {
+      const list = map.get(object.location_id) ?? []
+      list.push(object)
+      map.set(object.location_id, list)
+    }
+    return map
+  }, [specialObjects])
+
   if (layout.nodes.length === 0) {
     return <p className="eldhom-map__empty">Nessuna missione in corso: nessuna mappa da mostrare.</p>
   }
@@ -355,6 +394,7 @@ export function EldhomMap({
       })}
       {layout.nodes.map((node) => {
         const locationTokens = tokensByLocation.get(node.id) ?? []
+        const locationObjects = specialObjectsByLocation.get(node.id) ?? []
         return (
           <foreignObject key={node.id} x={node.x} y={node.y} width={NODE_WIDTH} height={NODE_HEIGHT}>
             <div
@@ -389,12 +429,30 @@ export function EldhomMap({
               }
             >
               <div className="eldhom-map__node-name">{node.name}</div>
+              {locationObjects.length > 0 && (
+                <div className="eldhom-map__node-objects">
+                  {locationObjects.map((object) => {
+                    const style = SPECIAL_OBJECT_STYLES[object.type] ?? DEFAULT_SPECIAL_OBJECT_STYLE
+                    return (
+                      <span
+                        key={object.object_id}
+                        className="eldhom-map__special-object"
+                        style={{ backgroundColor: style.background }}
+                        title={object.name || object.type}
+                      >
+                        {style.icon}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
               <div className="eldhom-map__node-tokens">
                 {locationTokens.map((token) => (
                   <span
                     key={token.actorId}
                     className={[
                       'eldhom-map__token',
+                      token.isHero ? 'eldhom-map__token--hero' : 'eldhom-map__token--monster',
                       onTokenClick ? 'eldhom-map__token--clickable' : '',
                       token.alive ? '' : 'eldhom-map__token--dead',
                       token.actorId === activeActorId || token.groupId === activeActorId

@@ -65,7 +65,7 @@ export interface MapEdge {
 /** One actor token placed on the map (hero or monster instance). */
 export interface ActorToken {
   actorId: string
-  /** Short display label, e.g. "PG1", "G2", "GE1" — mirrors board_widget.py's labelling scheme. */
+  /** Short display label, e.g. "TH", "G2", "GE1" — heroes use a 2-letter tag derived from their name (see `heroTag`); monster instances mirror board_widget.py's labelling scheme. */
   label: string
   isHero: boolean
   /** For monster instances, the owning group's id (a `turn.next_actor` for the group highlights all its instances). */
@@ -77,12 +77,27 @@ export interface ActorToken {
   alive: boolean
 }
 
-/** One actor row on the activation timeline. */
+/**
+ * One actor row on the activation timeline — also the single source of
+ * truth for the merged Timeline+Actor tile (Migliorie Grafiche 01: the
+ * separate hero/monster-group card row was removed, all of that info now
+ * lives here). `aliveCount`/`totalCount` are only meaningful for monster
+ * groups (`isHero === false`); `location`/`position` are only shown for
+ * heroes (`isHero === true`) per the same explicit request.
+ */
 export interface TimelineActor {
   actorId: string
   name: string
   timeline: number
   isHero: boolean
+  hp: number
+  maxHp: number
+  /** Monster groups only: instances still alive / total instances. */
+  aliveCount: number
+  totalCount: number
+  /** Heroes only. */
+  location: string
+  position: 'FRONTLINE' | 'BACKLINE'
 }
 
 /** Phase 3+4 slice of Eldhôm's game state (map, timeline, hand, sequence, reaction window). */
@@ -241,6 +256,32 @@ function monsterLabelPrefix(
   return 'M'
 }
 
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u'])
+
+/**
+ * Derives a short 2-letter map-token tag from a hero's display name: the
+ * first letter, plus the first CONSONANT found after it (skipping vowels)
+ * — e.g. "Thael" -> "TH" ('h' is already a consonant), "Velyr" -> "VL"
+ * ('e' is skipped, 'l' is the next consonant). Falls back to the first two
+ * letters if no consonant follows (e.g. a 1-letter or all-vowel name).
+ * Replaces the previous placeholder `PG${index+1}` labelling, which never
+ * reflected the actual hero (Migliorie Grafiche 03, explicit user request).
+ */
+function heroTag(name: string): string {
+  const letters = name.replace(/[^a-zA-Z]/g, '')
+  if (letters.length === 0) {
+    return '??'
+  }
+  const first = letters[0].toUpperCase()
+  for (let i = 1; i < letters.length; i += 1) {
+    const ch = letters[i].toLowerCase()
+    if (!VOWELS.has(ch)) {
+      return first + ch.toUpperCase()
+    }
+  }
+  return (letters[0] + (letters[1] ?? letters[0])).toUpperCase()
+}
+
 function buildLocations(wire: StateFullWire): MapLocation[] {
   return wire.locations.map((loc) => ({
     id: loc.id,
@@ -303,9 +344,9 @@ function buildEdges(wire: StateFullWire, locations: MapLocation[]): MapEdge[] {
 }
 
 function buildTokens(wire: StateFullWire): ActorToken[] {
-  const tokens: ActorToken[] = wire.heroes.map((hero, index) => ({
+  const tokens: ActorToken[] = wire.heroes.map((hero) => ({
     actorId: hero.id,
-    label: `PG${index + 1}`,
+    label: heroTag(hero.name),
     isHero: true,
     groupId: null,
     location: hero.location,
@@ -352,13 +393,30 @@ function buildTimelineActors(wire: StateFullWire): TimelineActor[] {
       name: hero.name,
       timeline: hero.timeline,
       isHero: true,
+      hp: hero.hp,
+      maxHp: hero.max_hp,
+      aliveCount: 0,
+      totalCount: 0,
+      location: hero.location,
+      position: hero.position,
     })),
-    ...wire.groups.map((group) => ({
-      actorId: group.id,
-      name: group.name,
-      timeline: group.timeline,
-      isHero: false,
-    })),
+    ...wire.groups.map((group) => {
+      const aliveCount = group.instances.filter((instance) => instance.alive).length
+      const totalHp = group.instances.reduce((sum, instance) => sum + Math.max(0, instance.hp), 0)
+      const totalMaxHp = group.instances.reduce((sum, instance) => sum + instance.max_hp, 0)
+      return {
+        actorId: group.id,
+        name: group.name,
+        timeline: group.timeline,
+        isHero: false,
+        hp: totalHp,
+        maxHp: totalMaxHp,
+        aliveCount,
+        totalCount: group.instances.length,
+        location: group.location,
+        position: 'FRONTLINE' as const,
+      }
+    }),
   ]
 }
 

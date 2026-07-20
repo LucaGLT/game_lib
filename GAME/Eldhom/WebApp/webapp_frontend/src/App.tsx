@@ -48,14 +48,12 @@ import { AreaInfoPanel } from './components/AreaInfoPanel'
 import { DeckTable } from './components/DeckTable'
 import { EldhomMap } from './components/EldhomMap'
 import { FormationModal } from './components/FormationModal'
-import { HeroPanel } from './components/HeroPanel'
+import { TimelineTrack } from './components/TimelineTrack'
 import { HeroSelectModal } from './components/HeroSelectModal'
 import { InstantWindowModal } from './components/InstantWindowModal'
 import { MainMenuModal } from './components/MainMenuModal'
 import { MissionDetailsModal } from './components/MissionDetailsModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
-import { MonsterGroupPanel } from './components/MonsterGroupPanel'
-import { TimelineTrack } from './components/TimelineTrack'
 import './App.css'
 
 const THEME_STORAGE_KEY = 'eldhom-webapp-theme'
@@ -171,7 +169,9 @@ function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDe
  * Main Eldhôm WebApp page. Ties together mission selection, session
  * lifecycle, and all game-state-driven panels: `ActionPanel` (4 simple
  * actions + inline TAKE/BLOCK/DODGE reaction window), `EldhomMap`/
- * `TimelineTrack`, `HeroPanel`s/`MonsterGroupPanel`s, `DeckTable` (the full
+ * `TimelineTrack` (each tile now also carries the per-actor HP/alive-count/
+ * location info that used to live in a separate hero/monster-group card
+ * row — removed entirely, Migliorie Grafiche 01), `DeckTable` (the full
  * 6-zone card table — see that component's docstring for exactly which
  * zone-to-zone moves are real for Eldhôm vs display-only), the narrative
  * event log (coloured, see `logFormat.ts`) plus a collapsed raw-JSON debug
@@ -182,12 +182,11 @@ function resolveDetailSubject(target: DetailTarget, state: EldhomState): ActorDe
  * only "Gioca una missione" is wired up) and, once that is chosen,
  * `MissionSelectModal` (dismissible back to the main menu).
  *
- * Clicking any synthetic card in the hero row (`HeroPanel`/
- * `MonsterGroupPanel`) sets `detailTarget` (an id, not a data snapshot —
- * see `resolveDetailSubject`) which opens `ActorDetailModal` (Phase 20)
- * with that actor's/group's "extended card". Resolving against live state
- * on every render (rather than storing the clicked object) means the popup
- * keeps showing fresh HP/state while open and auto-closes if the
+ * Clicking any `TimelineTrack` tile sets `detailTarget` (an id, not a data
+ * snapshot — see `resolveDetailSubject`) which opens `ActorDetailModal`
+ * (Phase 20) with that actor's/group's "extended card". Resolving against
+ * live state on every render (rather than storing the clicked object) means
+ * the popup keeps showing fresh HP/state while open and auto-closes if the
  * underlying actor disappears (e.g. a fully-defeated monster group).
  *
  * A "Sotto-tema" picker (generalised from Phase 21's dark_moon-only
@@ -967,32 +966,20 @@ function App() {
         />
       )}
 
-      <TimelineTrack actors={eldhomState.timelineActors} activeActorId={eldhomState.nextActorId} />
-
-      <div className="eldhom-hero-row">
-        {Object.values(eldhomState.heroesById).map((hero) => (
-          <HeroPanel
-            key={hero.id}
-            hero={hero}
-            isActive={hero.id === eldhomState.nextActorId}
-            onClick={() => setDetailTarget({ kind: 'hero', id: hero.id })}
-          />
-        ))}
-        {eldhomState.groups.map((group) => (
-          <MonsterGroupPanel
-            key={group.id}
-            group={group}
-            isActive={group.id === eldhomState.nextActorId}
-            onClick={() => setDetailTarget({ kind: 'monsterGroup', id: group.id })}
-          />
-        ))}
-      </div>
+      <TimelineTrack
+        actors={eldhomState.timelineActors}
+        activeActorId={eldhomState.nextActorId}
+        onActorClick={(id, isHero) =>
+          setDetailTarget(isHero ? { kind: 'hero', id } : { kind: 'monsterGroup', id })
+        }
+      />
 
       <div className="eldhom-board-row">
         <EldhomMap
           locations={eldhomState.locations}
           edges={eldhomState.edges}
           tokens={eldhomState.tokens}
+          specialObjects={eldhomState.specialObjects}
           activeActorId={eldhomState.nextActorId}
           onLocationClick={(id) => void handleLocationClick(id)}
           onTokenClick={(id) => void handleTokenClick(id)}

@@ -335,7 +335,6 @@
 .eldhom-deck-table__zone-title,
 .eldhom-deck-table__card-name,
 .eldhom-deck-table__preview-card-name,
-.eldhom-hero-panel__name,
 .eldhom-area-info__title,
 .eldhom-map__node-name {
   font-family: var(--gm-font-display);
@@ -435,7 +434,6 @@
 .app[data-theme='stone'] .eldhom-deck-table__zone-title,
 .app[data-theme='stone'] .eldhom-deck-table__card-name,
 .app[data-theme='stone'] .eldhom-deck-table__preview-card-name,
-.app[data-theme='stone'] .eldhom-hero-panel__name,
 .app[data-theme='stone'] .eldhom-area-info__title,
 .app[data-theme='stone'] .eldhom-map__node-name {
   text-shadow:
@@ -451,7 +449,6 @@
 .eldhom-timeline,
 .eldhom-actions,
 .eldhom-hand,
-.eldhom-hero-panel,
 .eldhom-area-info,
 .eldhom-deck-table,
 .gmgui-event-log {
@@ -554,13 +551,15 @@
 .eldhom-timeline__chip {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 64px;
-  padding: 4px 8px;
+  align-items: stretch;
+  min-width: 130px;
+  gap: 3px;
+  padding: 6px 10px;
   border-radius: var(--gm-radius);
   border: 1px solid var(--gm-border);
   background-color: var(--gm-background);
   font-size: 12px;
+  cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
 }
 
@@ -576,11 +575,74 @@
   transform: translateY(-2px);
 }
 
+.eldhom-timeline__chip:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Merged Timeline+Actor tile (Migliorie Grafiche 01) — icon+name header,
+   HP bar (hero or monster-group aggregate), alive-count (monster groups
+   only), the pre-existing hourglass, and location+Prima Linea/Retroguardia
+   (heroes only). Monster-group HP fill reuses the same red/danger accent
+   convention as the chip's own `--enemy` border. ───────────────────────── */
+
+.eldhom-timeline__chip-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.eldhom-timeline__chip-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
 .eldhom-timeline__chip-name {
+  font-weight: 700;
+  text-align: center;
+}
+
+.eldhom-timeline__chip-hp-track {
+  position: relative;
+  height: 14px;
+  background-color: var(--gm-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  overflow: hidden;
+}
+
+.eldhom-timeline__chip-hp-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background-color: var(--gm-success);
+  transition: width 0.25s ease;
+}
+
+.eldhom-timeline__chip--enemy .eldhom-timeline__chip-hp-fill {
+  background-color: var(--gm-danger);
+}
+
+.eldhom-timeline__chip-hp-text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  line-height: 14px;
   font-weight: 700;
 }
 
+.eldhom-timeline__chip-alive,
+.eldhom-timeline__chip-location {
+  text-align: center;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
 .eldhom-timeline__chip-time {
+  display: block;
+  text-align: center;
   color: var(--gm-text);
   opacity: 0.75;
 }
@@ -707,6 +769,29 @@
   font-weight: 700;
 }
 
+/* ── Interactable-object bubbles (Migliorie Grafiche 04) — fixed, very
+   evident colours (see SPECIAL_OBJECT_STYLES in EldhomMap.tsx), a distinct
+   row above the actor tokens so they are never confused with them. ────── */
+.eldhom-map__node-objects {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+}
+
+.eldhom-map__special-object {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  font-size: 11px;
+  line-height: 1;
+}
+
 .eldhom-map__node-tokens {
   display: flex;
   flex-wrap: wrap;
@@ -714,6 +799,10 @@
   gap: 2px;
 }
 
+/* Hero/monster token background follows the active theme (Migliorie
+   Grafiche 03, explicit user request) — same lighten/same/darken "family of
+   shades" of one accent colour already used by HP bars elsewhere
+   (--gm-success/--gm-danger); tokens use --gm-accent/--gm-danger directly. */
 .eldhom-map__token {
   display: inline-flex;
   align-items: center;
@@ -722,11 +811,19 @@
   height: 16px;
   padding: 0 3px;
   border-radius: 8px;
-  background-color: #1a237e;
   color: #ffffff;
   font-size: 9px;
   font-weight: 700;
   line-height: 1;
+  transition: background-color 0.2s ease;
+}
+
+.eldhom-map__token--hero {
+  background-color: var(--gm-accent);
+}
+
+.eldhom-map__token--monster {
+  background-color: var(--gm-danger);
 }
 
 .eldhom-map__token--dead {
@@ -1697,95 +1794,6 @@
   font-family: 'Courier New', monospace;
   font-size: 11px;
   max-height: 200px;
-}
-
-/* ── Hero panel row ──────────────────────────────────────────────────────── */
-
-.eldhom-hero-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.eldhom-hero-panel {
-  width: 175px;
-  padding: 8px 12px;
-  background-color: var(--gm-panel);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
-}
-
-.eldhom-hero-panel--clickable {
-  cursor: pointer;
-}
-
-.eldhom-hero-panel--clickable:hover {
-  border-color: var(--gm-accent);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-  transform: translateY(-1px);
-}
-
-/* Monster-group synthetic card — same red/danger accent convention as
-   TimelineTrack's `--enemy` chip. Declared before `--active` so an active
-   monster group's turn highlight (accent border-color, all 4 sides) still
-   wins when both modifiers apply together. */
-.eldhom-hero-panel--monster {
-  border-color: var(--gm-danger);
-}
-
-.eldhom-hero-panel--monster .eldhom-hero-panel__hp-fill {
-  background-color: var(--gm-danger);
-}
-
-.eldhom-hero-panel--active {
-  border-width: 2px;
-  border-color: var(--gm-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--gm-accent) 45%, transparent);
-  transform: translateY(-2px);
-}
-
-.eldhom-hero-panel__name {
-  margin: 0 0 4px;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.eldhom-hero-panel__hp-track {
-  position: relative;
-  height: 16px;
-  margin-bottom: 4px;
-  background-color: var(--gm-background);
-  border: 1px solid var(--gm-border);
-  border-radius: var(--gm-radius);
-  overflow: hidden;
-}
-
-.eldhom-hero-panel__hp-fill {
-  position: absolute;
-  inset: 0;
-  width: 0;
-  background-color: var(--gm-success);
-  transition: width 0.25s ease;
-}
-
-.eldhom-hero-panel__hp-text {
-  position: relative;
-  z-index: 1;
-  display: block;
-  text-align: center;
-  font-size: 10px;
-  line-height: 16px;
-  font-weight: 700;
-}
-
-.eldhom-hero-panel__status,
-.eldhom-hero-panel__timeline,
-.eldhom-hero-panel__location {
-  margin: 2px 0 0;
-  font-size: 11px;
-  opacity: 0.85;
 }
 
 /* ── Board row (map + area info side by side) ───────────────────────────── */

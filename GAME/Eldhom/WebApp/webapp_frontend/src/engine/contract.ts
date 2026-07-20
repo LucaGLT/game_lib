@@ -155,6 +155,8 @@ export interface MonsterGroupWire {
 /** One entry of `eldhom.state.full`'s `special_objects` array. */
 export interface SpecialObjectWire {
   object_id: string
+  /** Human-readable display name (e.g. "Leva L", "Tesoro") — shown as a map bubble tooltip. */
+  name: string
   type: string
   location_id: string
   locked_adjacency: Array<[string, string]>
