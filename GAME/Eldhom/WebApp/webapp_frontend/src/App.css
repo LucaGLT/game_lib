@@ -1877,6 +1877,10 @@
   opacity: 0.8;
 }
 
+.eldhom-monster-popup {
+  cursor: pointer;
+}
+
 .eldhom-modal__checklist {
   list-style: none;
   margin: 0 0 10px;

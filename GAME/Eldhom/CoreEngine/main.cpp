@@ -44,6 +44,11 @@ namespace {
 volatile std::sig_atomic_t g_running = 1;
 void handle_signal(int) { g_running = 0; }
 
+/// @brief Auto-dismiss timeout for a monster-action popup left unacknowledged
+/// (no client clicked it). Enforced by EldhomServer::advance_auto()'s
+/// existing 200ms polling loop — no dedicated timer/thread needed.
+constexpr std::chrono::milliseconds MONSTER_POPUP_TIMEOUT{3000};
+
 /// @brief Parses "--flag_name <value>" from argv, or returns fallback if absent/invalid.
 uint16_t read_port_option(int argc, char** argv, const std::string& flag_name, uint16_t fallback)
 {
@@ -84,6 +89,20 @@ public:
 		std::unique_lock<std::mutex> lock(_mtx);
 		if (!_engine) { return; }
 		if (_engine->is_over()) { return; }
+
+		// While a monster-action popup is shown, no new group turn starts —
+		// only the 3s auto-dismiss timeout may advance it here. An explicit
+		// client ack is handled separately by handle_ack_monster_popup().
+		if (_engine->has_pending_monster_popup())
+		{
+			auto elapsed = std::chrono::steady_clock::now() - _monster_popup_shown_at;
+			if (elapsed >= MONSTER_POPUP_TIMEOUT)
+			{
+				advance_monster_popup();
+			}
+			return;
+		}
+
 		if (_engine->has_pending_reactive_window()) { return; } // await GUI response
 
 		gmActor::ActorKind kind = _engine->next_actor_kind();
@@ -91,6 +110,11 @@ public:
 		{
 			std::string group_id = _engine->next_actor();
 			_engine->resolve_group_turn_for(group_id);
+			if (_engine->has_pending_monster_popup())
+			{
+				emit_monster_popup();
+				return; // pause here; resume once acknowledged or timed out
+			}
 			if (_engine->has_pending_reactive_window())
 			{
 				emit_instant_window(_engine->pending_reactive_window().trigger);
@@ -167,6 +191,23 @@ public:
 			return;
 		}
 
+		// While a monster-action popup is shown (see advance_auto()), only its
+		// ack command and state requests are accepted — any connected client
+		// may dismiss it, closing it for everyone. Richiesta esplicita utente:
+		// non deve avvenire l'azione successiva di un Mostro finché il pop-up
+		// dell'azione precedente non si è chiuso.
+		if (_engine && _engine->has_pending_monster_popup()
+		    && type_id != eldhom::CMD_ACK_MONSTER_POPUP
+		    && type_id != eldhom::CMD_REQUEST_STATE)
+		{
+			nlohmann::json err;
+			err["ok"]      = false;
+			err["error"]   = "Pop-up azione mostro aperto: attendi la chiusura prima di continuare.";
+			err["command"] = type_id;
+			_bridge.send_event(eldhom::EVT_ACTION_RESULT, err);
+			return;
+		}
+
 		if (type_id == eldhom::CMD_START_MISSION)
 		{
 			handle_start_mission(data);
@@ -198,6 +239,10 @@ public:
 		else if (type_id == eldhom::CMD_RESOLVE_FORMATION)
 		{
 			handle_resolve_formation(data);
+		}
+		else if (type_id == eldhom::CMD_ACK_MONSTER_POPUP)
+		{
+			handle_ack_monster_popup(data);
 		}
 		else if (type_id == eldhom::CMD_STOP_SEQUENCE)
 		{
@@ -405,6 +450,45 @@ private:
 		w["trigger"] = trigger;
 		w["options"] = options;
 		_bridge.send_event(eldhom::EVT_INSTANT_WINDOW_OPEN, w);
+	}
+
+	// Emits the currently shown monster-action popup and records the wall-
+	// clock timestamp used by advance_auto()'s 3-second auto-dismiss check.
+	void emit_monster_popup()
+	{
+		if (!_engine) { return; }
+		const eldhom::PendingMonsterPopup& p = _engine->current_monster_popup();
+
+		nlohmann::json d;
+		d["actor_id"]    = p.actor_id;
+		d["description"] = p.description;
+		_monster_popup_shown_at = std::chrono::steady_clock::now();
+		_bridge.send_event(eldhom::EVT_MONSTER_ACTION_POPUP, d);
+	}
+
+	/**
+	 * @brief Acknowledges the current monster-action popup (explicit ack or
+	 * timeout) and either shows the next queued one or, once the queue is
+	 * empty, resumes the normal turn-advance flow.
+	 */
+	void advance_monster_popup()
+	{
+		if (!_engine) { return; }
+		_engine->acknowledge_monster_popup();
+
+		if (_engine->has_pending_monster_popup())
+		{
+			emit_monster_popup();
+			return;
+		}
+
+		_bridge.send_event(eldhom::EVT_MONSTER_POPUP_CLOSED, nlohmann::json::object());
+		if (_engine->has_pending_reactive_window())
+		{
+			emit_instant_window(_engine->pending_reactive_window().trigger);
+		}
+		emit_next_actor_event();
+		emit_full_state();
 	}
 
 	// Builds and emits the defender's reaction window from the pending attack.
@@ -620,6 +704,19 @@ private:
 			emit_next_actor_event();
 			emit_full_state();
 		}
+	}
+
+	/**
+	 * @brief Acknowledges (closes) the currently shown monster-action popup.
+	 *
+	 * Any connected client may send this — the first one to arrive wins.
+	 * Shows the next queued popup, if any, otherwise resumes the normal
+	 * turn-advance flow (see advance_monster_popup()).
+	 */
+	void handle_ack_monster_popup(const nlohmann::json&)
+	{
+		if (!_engine || !_engine->has_pending_monster_popup()) { return; }
+		advance_monster_popup();
 	}
 
 	// ── GM deck management commands ──────────────────────────────────────────
@@ -942,6 +1039,11 @@ private:
 	eldhom::MissionDefinition          _last_def;
 	std::mutex                         _mtx;
 	eldhom::EldhomGuiBridge*           _bridge_ref = nullptr;
+
+	// Wall-clock timestamp of the currently shown monster-action popup, used
+	// to enforce the 3-second auto-dismiss timeout from advance_auto()'s
+	// existing 200ms polling loop (no extra thread/timer needed).
+	std::chrono::steady_clock::time_point _monster_popup_shown_at;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

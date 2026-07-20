@@ -139,6 +139,26 @@ struct PendingReactiveWindow
 };
 
 /**
+ * @struct PendingMonsterPopup
+ * @brief One "monster acted" notification queued for display.
+ *
+ * Populated by `resolve_group_turn_for()` for each notable monster action
+ * (a movement that actually relocated the instance, or an attack that dealt
+ * damage). The caller (main.cpp) shows one at a time via
+ * `current_monster_popup()`, advancing to the next only after
+ * `acknowledge_monster_popup()` is called — either because a client
+ * dismissed it or because the caller enforced a timeout (e.g. 3 seconds).
+ * Deliberately holds no wall-clock timing: the engine stays free of
+ * `<chrono>`/timer concerns, which belong to the server loop (main.cpp
+ * already polls on a fixed interval).
+ */
+struct PendingMonsterPopup
+{
+	std::string actor_id;    ///< Monster instance that acted
+	std::string description; ///< Human-readable Italian description of the action
+};
+
+/**
  * @struct ActorFormationEntry
  * @brief One actor listed in an interactive formation dialog.
  */
@@ -465,6 +485,35 @@ public:
 	 */
 	ActionResult resolve_group_turn_for(const GroupId& group_id);
 
+	// ── Monster action popup API (paced notifications) ────────────────────────
+
+	/**
+	 * @brief True while a monster-action popup is queued or currently shown.
+	 *
+	 * Set by `resolve_group_turn_for()` whenever the resolved turn contained
+	 * at least one notable action (movement or attack). Stays true until
+	 * every queued popup has been acknowledged via `acknowledge_monster_popup()`.
+	 */
+	bool has_pending_monster_popup() const;
+
+	/**
+	 * @brief Read-only access to the currently shown popup.
+	 *
+	 * Only valid while `has_pending_monster_popup()` is true.
+	 */
+	const PendingMonsterPopup& current_monster_popup() const;
+
+	/**
+	 * @brief Acknowledges (closes) the currently shown monster-action popup.
+	 *
+	 * If more notable actions are queued for this group's turn, the next one
+	 * becomes the current popup. Otherwise the popup state is cleared and
+	 * `has_pending_monster_popup()` becomes false.
+	 *
+	 * @return `ActionResult`. `ERR_NO_PENDING_MONSTER_POPUP` if none is shown.
+	 */
+	ActionResult acknowledge_monster_popup();
+
 	// ── State queries ─────────────────────────────────────────────────────────
 
 	/** @brief Returns current mission time (⌛). */
@@ -589,6 +638,7 @@ private:
 	std::vector<std::string>                                  _hero_factions;
 	std::vector<std::string>                                  _monster_factions;
 	std::unordered_map<LocationId, std::vector<LocationId>>   _adjacency;
+	std::unordered_map<LocationId, std::string>               _location_names; ///< id → display name
 
 	// ── Services ──────────────────────────────────────────────────────────────
 	EldhomSequenceAdapter  _sequence_adapter;
@@ -604,6 +654,11 @@ private:
 	// ── Interactive attack state ──────────────────────────────────────────────
 	PendingAttack          _pending; ///< Open reaction window (active==false if none)
 	PendingReactiveWindow  _reactive_window; ///< Open non-damage instant window (Assestarsi)
+
+	// ── Monster action popup state (paced notifications) ─────────────────────
+	std::deque<PendingMonsterPopup> _monster_popup_queue;  ///< Notable actions awaiting display
+	bool                            _monster_popup_active = false; ///< True while one is shown
+	PendingMonsterPopup             _current_monster_popup; ///< Valid only when _monster_popup_active
 
 	// ── Interactive formation dialog state ───────────────────────────────
 	std::deque<PendingFormation> _formation_queue; ///< Queued formation dialogs
@@ -625,12 +680,34 @@ private:
 	 * in `enemy_loc` or an adjacent location and holds an eligible INSTANT
 	 * card. No-op if a reactive window is already open or no PG is nearby.
 	 *
+	 * Only updates internal state (`_reactive_window`); does NOT emit a
+	 * client-facing event. The caller (main.cpp) must check
+	 * has_pending_reactive_window() and call its own emit_instant_window()
+	 * builder, which is the sole source of the well-formed
+	 * {"trigger", "options"} payload for EVT_INSTANT_WINDOW_OPEN.
+	 *
 	 * @param enemy_loc Location the enemy just moved into.
 	 */
 	void maybe_open_enemy_approach_window(const LocationId& enemy_loc);
 
 	/** @brief Queues a DISRUPT formation dialog for the enemy faction at the attacker's location. */
 	void queue_enemy_disrupt(const HeroId& attacker_id);
+
+	/**
+	 * @brief Queues one notable monster action for paced popup display.
+	 *
+	 * If no popup is currently shown, this one becomes the current one
+	 * immediately (`has_pending_monster_popup()` turns true); otherwise it is
+	 * appended to `_monster_popup_queue` and shown once earlier ones have
+	 * been acknowledged.
+	 *
+	 * @param actor_id     Monster instance that performed the action.
+	 * @param description  Human-readable Italian description of the action.
+	 */
+	void queue_monster_popup(const std::string& actor_id, const std::string& description);
+
+	/** @brief Returns the display name for a location id, or the id itself if unknown. */
+	std::string location_display_name(const LocationId& location_id) const;
 
 	int active_group_count() const;
 

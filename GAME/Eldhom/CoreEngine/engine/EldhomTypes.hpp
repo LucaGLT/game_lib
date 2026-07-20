@@ -123,7 +123,8 @@ enum class ActionResultCode {
 	ERR_NO_PENDING_FORMATION,     ///< resolve_formation called without a pending dialog
 	ERR_INVALID_FORMATION_CHOICE, ///< Retroguardia count exceeds Prima Linea count
 	ERR_POSITION_REQUIRED,        ///< Card requires the caster to be in FRONTLINE
-	ERR_TURN_CONFIRMATION_PENDING ///< Hero already acted this turn; only a PASS confirmation is allowed
+	ERR_TURN_CONFIRMATION_PENDING, ///< Hero already acted this turn; only a PASS confirmation is allowed
+	ERR_NO_PENDING_MONSTER_POPUP  ///< acknowledge_monster_popup called with no popup currently shown
 };
 
 /** @brief Result returned by engine action methods. */
@@ -231,6 +232,14 @@ inline const EventType EVT_ATTACK_RESOLVED        = "eldhom.attack.resolved";
 inline const EventType EVT_INSTANT_WINDOW_OPEN    = "eldhom.instant.window_opened";
 inline const EventType EVT_INSTANT_WINDOW_CLOSED  = "eldhom.instant.window_closed";
 
+// Monster action popup (one per notable monster action — movement or attack).
+// Paces resolve_group_turn_for() so clients see/dismiss one description at a
+// time instead of a burst of events. Payload: {"actor_id", "description"}.
+// Closed after an explicit ack (any client), or a caller-enforced timeout
+// (e.g. 3s, enforced by main.cpp's polling loop, not by the engine itself).
+inline const EventType EVT_MONSTER_ACTION_POPUP   = "eldhom.monster.action_popup";
+inline const EventType EVT_MONSTER_POPUP_CLOSED   = "eldhom.monster.popup_closed";
+
 // Deck / hand events
 inline const EventType EVT_HAND_CHANGED      = "eldhom.deck.hand_updated";
 inline const EventType EVT_DECK_RESHUFFLED   = "eldhom.deck.reshuffled";
@@ -295,6 +304,10 @@ inline const std::string CMD_PLAY_REACTIVE_INSTANTS = "eldhom.play_reactive_inst
 
 // Interactive formation dialog command (GUI → engine)
 inline const std::string CMD_RESOLVE_FORMATION  = "eldhom.resolve_formation";
+
+// Acknowledges (closes) the currently shown monster-action popup. Any
+// connected client may send it — the first one to arrive wins.
+inline const std::string CMD_ACK_MONSTER_POPUP  = "eldhom.ack_monster_popup";
 
 // GM-level deck management commands (GUI → engine)
 inline const std::string CMD_DECK_DRAW          = "eldhom.deck.draw";

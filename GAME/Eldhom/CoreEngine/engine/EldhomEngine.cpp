@@ -234,6 +234,12 @@ EldhomEngine EldhomEngine::from_definition(
 		eng._special_object_used[obj.object_id] = false;
 	}
 
+	// ── Populate location display names (used by monster-action popups) ──────
+	for (const LocationNode& loc : def.locations)
+	{
+		eng._location_names[loc.id] = loc.name;
+	}
+
 	return eng;
 }
 
@@ -1215,7 +1221,18 @@ void EldhomEngine::maybe_open_enemy_approach_window(const LocationId& enemy_loc)
 	_reactive_window.active      = true;
 	_reactive_window.trigger     = EVT_ENEMY_APPROACH;
 	_reactive_window.location_id = enemy_loc;
-	emit(EVT_INSTANT_WINDOW_OPEN, {}, enemy_loc);
+
+	// Deliberately NOT emitting EVT_INSTANT_WINDOW_OPEN here. The generic
+	// emit() helper wraps payloads as {"actor_id", "payload"} for simple
+	// notifications, but this event's client-facing contract is the richer
+	// {"trigger", "options"} shape built exclusively by main.cpp's
+	// emit_instant_window() (it alone can compute eligible_instants() as a
+	// proper JSON array). main.cpp already checks has_pending_reactive_window()
+	// right after resolve_group_turn_for() and again once the monster-popup
+	// queue drains, and calls emit_instant_window() at the correct time — an
+	// extra raw emit here previously raced ahead of that with a malformed
+	// {"payload": enemy_loc} body, which crashed InstantWindowModal.tsx
+	// client-side (options.map() on undefined).
 }
 
 ActionResult EldhomEngine::play_reactive_instants(
@@ -1525,6 +1542,12 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 				// Assestarsi-style reactive window: give nearby PGs a chance
 				// to react before the group's turn is considered finished.
 				engine->maybe_open_enemy_approach_window(new_loc);
+
+				// Queue a paced popup describing the move (see
+				// EldhomEngine::queue_monster_popup — shown one at a time).
+				engine->queue_monster_popup(member_id,
+					mc.display_name + " si muove verso "
+					+ engine->location_display_name(new_loc) + ".");
 			}
 
 			// Log monster attacks on PG heroes.
@@ -1551,6 +1574,15 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 					+ ",\"type\":\"" + atk_type
 					+ "\",\"range\":" + std::to_string(atk_range) + "}";
 				engine->emit(EVT_PG_ATTACKED, member_id, atk_payload);
+
+				// Queue a paced popup describing the attack.
+				std::string target_name = st.has_actor(res.target_id)
+					? st.common(res.target_id).display_name
+					: res.target_id;
+				std::string popup_desc = mc.display_name + " attacca " + target_name
+					+ " (" + std::to_string(res.damage_dealt) + " danni).";
+				if (res.target_ko) { popup_desc += " " + target_name + " è KO!"; }
+				engine->queue_monster_popup(member_id, popup_desc);
 			}
 
 			if (res.target_ko && !res.target_id.empty())
@@ -1582,6 +1614,61 @@ ActionResult EldhomEngine::resolve_group_turn_for(const GroupId& group_id)
 	     "timeline=" + std::to_string(group.timeline_position));
 
 	return {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Monster action popup (paced notifications)
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool EldhomEngine::has_pending_monster_popup() const
+{
+	return _monster_popup_active;
+}
+
+const PendingMonsterPopup& EldhomEngine::current_monster_popup() const
+{
+	return _current_monster_popup;
+}
+
+ActionResult EldhomEngine::acknowledge_monster_popup()
+{
+	if (!_monster_popup_active)
+	{
+		return { ActionResultCode::ERR_NO_PENDING_MONSTER_POPUP,
+		         "No monster popup is currently shown" };
+	}
+
+	if (_monster_popup_queue.empty())
+	{
+		_monster_popup_active  = false;
+		_current_monster_popup = PendingMonsterPopup{};
+	}
+	else
+	{
+		_current_monster_popup = _monster_popup_queue.front();
+		_monster_popup_queue.pop_front();
+	}
+	return {};
+}
+
+void EldhomEngine::queue_monster_popup(const std::string& actor_id, const std::string& description)
+{
+	PendingMonsterPopup popup{ actor_id, description };
+	if (!_monster_popup_active)
+	{
+		_current_monster_popup = popup;
+		_monster_popup_active  = true;
+	}
+	else
+	{
+		_monster_popup_queue.push_back(popup);
+	}
+}
+
+std::string EldhomEngine::location_display_name(const LocationId& location_id) const
+{
+	auto it = _location_names.find(location_id);
+	return it != _location_names.end() ? it->second : location_id;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

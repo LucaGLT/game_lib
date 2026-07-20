@@ -1,9 +1,10 @@
 # Le Pergamene di Eldhôm — WebApp Development Plan
 
-**Version:** 0.28.0
-**Status:** Phase 28 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
-— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-28 inserite fuori sequenza su richiesta
-esplicita utente per correzioni estetiche/UX critiche e multiplayer — vedi Esito sotto)
+**Version:** 0.29.0
+**Status:** Phase 29 – Completato ✅ (Phase 2 – Completato ✅, completata insieme alla Phase 22
+— vedi Notes; Phase 7-8 non ancora iniziate — Phase 9-29 inserite fuori sequenza su richiesta
+esplicita utente per correzioni estetiche/UX critiche, multiplayer e Pop-Up Azione Mostri —
+vedi Esito sotto)
 **Language:** Python 3.11+ (FastAPI) + TypeScript 6 / React 19 (frontend) — polyglot web layer.
 Il CoreEngine C++17 esistente (`eldhom_engine.exe`, vedi `../info/PLAN.md`) è **invariato**.
 **Namespace:** N/A (no C++ namespace) — pacchetto Python `eng_serve`, app frontend `webapp_frontend`.
@@ -1955,6 +1956,84 @@ Tesoro) non erano affatto visibili sulla mappa nonostante presenti nel JSON — 
 - `npm run build`/`npm run lint` puliti (48 moduli, -2 rispetto a prima per i file rimossi).
 - `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.28.0, nuova Phase 28 in coda (dopo Phase
   27, mai rinumerata).
+
+---
+
+### Phase 29 — Pop-Up Azione Mostri: validazione live + correzione bug critico `InstantWindowModal` [✅ Completato]
+
+Richiesta utente (ereditata da conversazione precedente): validare dal vivo con 2 browser reali
+il Pop-Up Azione Mostri (già implementato: 127/127 test C++, componente React
+`MonsterActionPopup` completo) — mai confermato visivamente funzionante in sessione live. La
+validazione ha scoperto un bug critico SEPARATO che bloccava l'osservazione del pop-up stesso.
+
+- [x] **Root-cause del mistero originale ("il pop-up non appare mai mandando avanti
+      `mission_sim_a`")**: la card comportamento `guardiano_sentinella`
+      (`GAME/Eldhom/data/behavior_guardiano_base.json`, usata da 3 dei 4 gruppi mostro della
+      missione) ha come UNICO passo primario un `DEAL_DAMAGE` obbligatorio — se fallisce (nessun
+      PG nella locazione del mostro), l'intera fase primaria si interrompe subito
+      (`gmActor::BehaviorCardProcessor::run_steps`: un passo obbligatorio fallito per tutti i
+      membri interrompe immediatamente la lista, anche in fallback). Il fallback avvia poi un
+      `MOVE_TOWARD_PG` obbligatorio, ma `EldhomRuleAdapter::apply_behavior_step`'s MOVE_TOWARD_PG
+      NON fa vero pathfinding: sposta il mostro SOLO se un PG è già ADIACENTE (1 salto), mai se è
+      più lontano — quindi un mostro sentinella a 2+ salti da ogni PG non fa letteralmente nulla,
+      turno dopo turno (nessun movimento, nessun pop-up). Comportamento di game-design della
+      card, non un bug del meccanismo pop-up in sé.
+- [x] **Bug critico SEPARATO scoperto durante il test dal vivo (causa più probabile del mistero
+      originale)**: `InstantWindowModal.tsx` crashava con `TypeError: Cannot read properties of
+      undefined (reading 'map')` (nessun error boundary → intera pagina React si svuota, nessuna
+      UI, confermato via screenshot) ogni volta che un mostro si muoveva verso/a contatto con un
+      PG. **Causa root**: `EldhomEngine::maybe_open_enemy_approach_window()` chiamava
+      internamente `emit(EVT_INSTANT_WINDOW_OPEN, {}, enemy_loc)` — il canale generico
+      `forward_engine_event()` (usato da quasi tutti gli eventi motore) impacchetta QUALSIASI
+      payload come `{"actor_id"?, "payload"?}`, ma il contratto client di questo tipo evento è
+      lo schema RICCO `{"trigger", "options"}` costruito ESCLUSIVAMENTE da
+      `main.cpp::emit_instant_window()` (l'unico punto che sa calcolare `eligible_instants()`
+      come vero array JSON). Questo emit interno prematuro raggiungeva il client PRIMA
+      dell'emit corretto (che `main.cpp` invia comunque, subito dopo `resolve_group_turn_for()`
+      o dopo lo svuotamento della coda pop-up mostro), corrompendo `pendingInstantWindow` con
+      `{"payload": "<location_id>"}` invece di `{"trigger", "options": [...]}`
+      — `options.map()` su `undefined` mandava in crash l'intera pagina, impedendo SIA la
+      visualizzazione del pop-up mostro (già correttamente accodato lato server) SIA qualunque
+      UI successiva, per ENTRAMBI i client connessi (evento broadcast a tutti).
+- [x] **Fix backend**: rimossa la riga `emit(EVT_INSTANT_WINDOW_OPEN, {}, enemy_loc);` da
+      `EldhomEngine::maybe_open_enemy_approach_window()` (`EldhomEngine.cpp`) — lo stato interno
+      (`_reactive_window.active/trigger/location_id`) resta invariato, quindi
+      `has_pending_reactive_window()`/`pending_reactive_window()` (già controllati correttamente
+      da `main.cpp` in due punti: subito dopo `resolve_group_turn_for()` in `advance_auto()` e
+      dopo lo svuotamento coda pop-up in `advance_monster_popup()`) restano l'unica sorgente del
+      broadcast client, ora sempre ben formato. Doc-comment aggiornato in `EldhomEngine.hpp` per
+      chiarire esplicitamente questa responsabilità del chiamante, a prevenzione di regressioni.
+- [x] **Difesa aggiuntiva lato frontend**: `gameState.ts`'s reducer per `EVT_INSTANT_WINDOW_OPENED`
+      ora normalizza `options: wire.options ?? []` prima di scrivere `pendingInstantWindow` — un
+      futuro payload malformato/incompleto produce al più una checklist vuota (comportamento
+      corretto, non un crash) invece di mandare in errore l'intero albero React (che qui non ha
+      error boundary).
+- [x] **Suite C++ rieseguita**: 127/127 PASS (incluso `test_fase2_assestarsi`, che esercita
+      esplicitamente `has_pending_reactive_window()`/`play_reactive_instants()` — non dipende
+      dal payload di rete, quindi non copriva questo bug, ma conferma che la rimozione dell'emit
+      interno non rompe la logica di stato). `npm run build`/`npm run lint` puliti dopo la
+      modifica al reducer.
+- **Validato end-to-end nel browser reale con 2 utenti** (nuova sessione, missione "Recuperare
+  il Tesoro — Sim A", Thael posizionato adiacente/poi a contatto col gruppo
+  `guardiani_ingresso`): riprodotta la stessa identica sequenza che prima causava il crash
+  (mostro si muove verso un PG) — **nessun crash**, `Gruppo guardiani_ingresso — turno
+  completato` seguito correttamente dall'attivazione degli altri 3 gruppi, turno tornato
+  correttamente all'eroe successivo. **Pop-Up Azione Mostri confermato funzionante dal vivo**
+  per la prima volta: log grezzo WS conferma `eldhom.monster.action_popup` →
+  `eldhom.monster.popup_closed` sia per un'azione MOVE ("Guardiani — Ingresso
+  #guardiano_ingresso_1 si muove verso Stanza Ingresso — S1.") sia per due azioni ATTACK
+  successive ("...attacca Thael (1 danni)."), con descrizione italiana corretta e dati
+  (`damage`, `target`, `type`) esatti; auto-dismiss a 3s confermato funzionante (nessun ack
+  esplicito inviato in tempo, il pop-up si è comunque chiuso correttamente prima del turno
+  successivo); sincronizzazione cross-client confermata (entrambe le schede mostrano log/HP
+  identici per tutta la sequenza, PV di Thael 5→4→3 su entrambi i client).
+- **Variante REATTIVA (`eldhom.pg.enemy_approach`) con opzioni reali NON osservata in questo
+  turno di test** (nessun eroe aveva `base_assestarsi` in mano durante i tentativi) — il fix
+  stesso e il percorso codice restano comunque validati (rimozione causa di crash confermata
+  by construction + `test_fase2_assestarsi` verde); da confermare opportunisticamente se una
+  mano futura include l'istantanea giusta durante un avvicinamento nemico.
+- `GAME/Eldhom/WebApp/PLAN.md` aggiornato: versione 0.29.0, nuova Phase 29 in coda (dopo Phase
+  28, mai rinumerata).
 
 ---
 

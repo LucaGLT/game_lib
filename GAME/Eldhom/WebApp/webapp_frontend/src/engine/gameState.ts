@@ -20,8 +20,10 @@ import {
   EVT_INSTANT_WINDOW_CLOSED,
   EVT_INSTANT_WINDOW_OPENED,
   EVT_MISSION_TIME_ADVANCED,
+  EVT_MONSTER_ACTION_POPUP,
   EVT_MONSTER_DEFEATED,
   EVT_MONSTER_MOVED,
+  EVT_MONSTER_POPUP_CLOSED,
   EVT_PG_MOVED,
   EVT_REACTION_WINDOW_CLOSED,
   EVT_REACTION_WINDOW_OPENED,
@@ -35,6 +37,7 @@ import {
   type FormationDialogWire,
   type HeroWire,
   type InstantWindowWire,
+  type MonsterActionPopupWire,
   type MonsterGroupWire,
   type NextActorWire,
   type ReactionWindowWire,
@@ -129,6 +132,13 @@ export interface EldhomState {
   pendingFormation: FormationDialogWire | null
   /** Set while the engine awaits an instant-card choice (proactive or reactive); null otherwise. */
   pendingInstantWindow: InstantWindowWire | null
+  /**
+   * Set while a monster-action popup is shown (see EVT_MONSTER_ACTION_POPUP);
+   * null otherwise. Paces a monster group's turn one action at a time —
+   * cleared only by EVT_MONSTER_POPUP_CLOSED (server-authoritative, so every
+   * connected client closes it together, whoever acknowledged it).
+   */
+  pendingMonsterPopup: MonsterActionPopupWire | null
   /** Raw special-object wire data (levers/treasure/secret passages), refreshed only on `state.full` — used to check whether INTERACT has anything to do at a location (see App.tsx's `hasAnyAction`). */
   specialObjects: SpecialObjectWire[]
   /**
@@ -159,6 +169,7 @@ export const initialEldhomState: EldhomState = {
   groups: [],
   pendingFormation: null,
   pendingInstantWindow: null,
+  pendingMonsterPopup: null,
   specialObjects: [],
   turnAwaitingConfirmation: false,
 }
@@ -203,10 +214,22 @@ export function applyEnvelope(previous: EldhomState, envelope: EngineEnvelope): 
       return { ...previous, pendingFormation: envelope.data as unknown as FormationDialogWire }
     case EVT_FORMATION_DONE:
       return { ...previous, pendingFormation: null }
-    case EVT_INSTANT_WINDOW_OPENED:
-      return { ...previous, pendingInstantWindow: envelope.data as unknown as InstantWindowWire }
+    case EVT_INSTANT_WINDOW_OPENED: {
+      // Defensive: a malformed/incomplete payload must never crash the whole
+      // app (InstantWindowModal has no error boundary and previously did
+      // `options.map()` on `undefined` when a raw engine-side event slipped
+      // through without the {trigger, options} shape — see EldhomEngine.cpp's
+      // maybe_open_enemy_approach_window fix). Default options to [] so the
+      // modal renders an empty (but valid) checklist instead of crashing.
+      const wire = envelope.data as unknown as InstantWindowWire
+      return { ...previous, pendingInstantWindow: { ...wire, options: wire.options ?? [] } }
+    }
     case EVT_INSTANT_WINDOW_CLOSED:
       return { ...previous, pendingInstantWindow: null }
+    case EVT_MONSTER_ACTION_POPUP:
+      return { ...previous, pendingMonsterPopup: envelope.data as unknown as MonsterActionPopupWire }
+    case EVT_MONSTER_POPUP_CLOSED:
+      return { ...previous, pendingMonsterPopup: null }
     default:
       return previous
   }

@@ -37,6 +37,9 @@ export const CMD_REACT_DEFENSE = 'eldhom.react_defense'
 /** Resolves a pending formation dialog with the chosen Retroguardia actor ids. */
 export const CMD_RESOLVE_FORMATION = 'eldhom.resolve_formation'
 
+/** Acknowledges (closes) the currently shown monster-action popup. Any connected client may send it. */
+export const CMD_ACK_MONSTER_POPUP = 'eldhom.ack_monster_popup'
+
 /** Answers a proactive instant-card window (opened after an attack is declared). */
 export const CMD_PLAY_INSTANTS = 'eldhom.play_instants'
 
@@ -105,6 +108,17 @@ export const EVT_INSTANT_WINDOW_OPENED = 'eldhom.instant.window_opened'
 
 /** The engine closed the instant-card window after resolving it. */
 export const EVT_INSTANT_WINDOW_CLOSED = 'eldhom.instant.window_closed'
+
+/**
+ * Paces a monster group's turn: one popup per notable action (movement or
+ * attack), shown one at a time. Closed by an explicit ack (any client), or
+ * a 3-second server-side timeout if nobody dismisses it — see
+ * `EldhomEngine::resolve_group_turn_for()`/`main.cpp`'s `advance_auto()`.
+ */
+export const EVT_MONSTER_ACTION_POPUP = 'eldhom.monster.action_popup'
+
+/** The engine closed the monster-action popup (whole queue for this turn drained). */
+export const EVT_MONSTER_POPUP_CLOSED = 'eldhom.monster.popup_closed'
 
 /** One entry of `eldhom.state.full`'s `locations` array. */
 export interface LocationWire {
@@ -259,6 +273,13 @@ export interface InstantWindowWire {
    *  (resolve with CMD_PLAY_INSTANTS). Both variants reuse the same event/modal. */
   trigger: string
   options: InstantOptionWire[]
+}
+
+/** Full payload (`data`) of an `eldhom.monster.action_popup` envelope (sent at the data root). */
+export interface MonsterActionPopupWire {
+  actor_id: string
+  /** Human-readable Italian sentence describing the action (e.g. "Briganti A #1 attacca Thael (1 danni)."). */
+  description: string
 }
 
 /** One entry of GET /missions. */

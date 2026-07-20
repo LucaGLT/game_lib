@@ -20,6 +20,7 @@ import { EventLog, type EventLogEntry } from '@webgui/components/EventLog'
 import { ThemeSelect } from '@webgui/components/ThemeSelect'
 import '@webgui/styles.css'
 import {
+  CMD_ACK_MONSTER_POPUP,
   CMD_DECK_DISCARD,
   CMD_DECK_DRAW,
   CMD_DECK_RESHUFFLE,
@@ -54,6 +55,7 @@ import { InstantWindowModal } from './components/InstantWindowModal'
 import { MainMenuModal } from './components/MainMenuModal'
 import { MissionDetailsModal } from './components/MissionDetailsModal'
 import { MissionSelectModal } from './components/MissionSelectModal'
+import { MonsterActionPopup } from './components/MonsterActionPopup'
 import './App.css'
 
 const THEME_STORAGE_KEY = 'eldhom-webapp-theme'
@@ -617,6 +619,21 @@ function App() {
     await sendEldhomCommand(isReactive ? CMD_PLAY_REACTIVE_INSTANTS : CMD_PLAY_INSTANTS, payload)
   }
 
+  /**
+   * Dismisses the currently shown monster-action popup. Deliberately does
+   * NOT optimistically clear `pendingMonsterPopup` locally (unlike the other
+   * handlers above): the server is the sole authority on when it closes, so
+   * every connected client waits for the resulting `EVT_MONSTER_POPUP_CLOSED`
+   * / next `EVT_MONSTER_ACTION_POPUP` broadcast — this is what keeps
+   * multiple clients in sync when ANY one of them dismisses it.
+   */
+  async function handleAckMonsterPopup(): Promise<void> {
+    if (eldhomState.pendingMonsterPopup === null) {
+      return
+    }
+    await sendEldhomCommand(CMD_ACK_MONSTER_POPUP, {})
+  }
+
   // Only reachable for cards needing NEITHER a destination nor a target —
   // `DeckTable`'s Giocate/Memoria drop zones already filter those out before
   // calling this, so the guard below is defensive. Cards needing one are
@@ -934,6 +951,13 @@ function App() {
           options={eldhomState.pendingInstantWindow.options}
           actorNames={actorNames}
           onConfirm={(selected) => void handlePlayInstants(selected)}
+        />
+      )}
+
+      {eldhomState.pendingMonsterPopup && (
+        <MonsterActionPopup
+          popup={eldhomState.pendingMonsterPopup}
+          onAck={() => void handleAckMonsterPopup()}
         />
       )}
 

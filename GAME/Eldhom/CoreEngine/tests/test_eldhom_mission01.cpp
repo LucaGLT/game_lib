@@ -653,6 +653,73 @@ void test_monster_group_turn()
 	      "briganti_A timeline advanced after turn");
 }
 
+void test_monster_action_popup_queue()
+{
+	std::cout << "\n=== test_monster_action_popup_queue ===\n";
+
+	eldhom::MissionDefinition def = build_mission_01();
+	auto card_cat     = build_card_catalog();
+	auto behavior_cat = build_behavior_catalog();
+
+	eldhom::EldhomEngine engine = eldhom::EldhomEngine::from_definition(
+		def, card_cat, behavior_cat, nullptr);
+
+	// Co-locate both heroes with briganti_A in corridoio and push their
+	// timelines past the monsters' start_timeline=4 — mirrors the movement
+	// pattern already proven in test_victory_all_monsters_eliminated() (a
+	// closed zone door must be opened by a PG crossing it before a monster's
+	// MOVE_TOWARD_PG step can rely on it, so ending in the SAME location as
+	// the group avoids that entirely and keeps this test deterministic).
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "velyr");
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "ingresso");
+	confirm_turn(engine, "thael");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "ingresso");
+	confirm_turn(engine, "velyr");
+	engine.do_simple_action("thael", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "thael");
+	engine.do_simple_action("velyr", eldhom::SimpleActionType::MOVE, "corridoio");
+	confirm_turn(engine, "velyr");
+
+	check(engine.next_actor_kind() == gmActor::ActorKind::MONSTER_GROUP,
+	      "Monster group is next after both heroes co-locate in corridoio");
+	check(!engine.has_pending_monster_popup(),
+	      "No monster popup pending before the group's turn resolves");
+
+	eldhom::ActionResult r = engine.resolve_next_group_turn();
+	check(r.ok(), "resolve_next_group_turn OK");
+	check(engine.has_pending_monster_popup(),
+	      "A monster-action popup is queued after briganti_A's attack turn");
+
+	int shown = 0;
+	int guard = 0;
+	while (engine.has_pending_monster_popup() && guard < 10)
+	{
+		++guard;
+		const eldhom::PendingMonsterPopup& popup = engine.current_monster_popup();
+		check(!popup.actor_id.empty(),    "Popup has a non-empty actor_id");
+		check(!popup.description.empty(), "Popup has a non-empty description");
+		++shown;
+
+		eldhom::ActionResult ack = engine.acknowledge_monster_popup();
+		check(ack.ok(), "acknowledge_monster_popup OK while a popup is shown");
+	}
+
+	// briganti_A has 2 members, already co-located with both heroes: the
+	// active "brigante_assalto" card's MOVE_TOWARD_PG step is a no-op (no
+	// popup, already in contact) and its DEAL_DAMAGE step fires once per
+	// member — exactly 2 popups.
+	check(shown == 2, "Exactly 2 monster-action popups were shown (one per member's attack)");
+	check(!engine.has_pending_monster_popup(),
+	      "No popup pending after acknowledging the whole queue");
+
+	eldhom::ActionResult stray_ack = engine.acknowledge_monster_popup();
+	check(stray_ack.code == eldhom::ActionResultCode::ERR_NO_PENDING_MONSTER_POPUP,
+	      "Acknowledging with no popup shown returns ERR_NO_PENDING_MONSTER_POPUP");
+}
+
 void test_victory_all_monsters_eliminated()
 {
 	std::cout << "\n=== test_victory_all_monsters_eliminated ===\n";
@@ -1699,6 +1766,7 @@ int main()
 	test_pg_turn_play_card_single();
 	test_pg_turn_sequence();
 	test_monster_group_turn();
+	test_monster_action_popup_queue();
 	test_victory_all_monsters_eliminated();
 	test_defeat_time_limit();
 	test_zone_door_blocks_monster_until_pg_crosses();
